@@ -5,30 +5,22 @@ declare(strict_types=1);
 namespace App\Repositories\Contracts;
 
 use App\DTOs\Processes\CreateProcessDto;
+use App\DTOs\Processes\ProcessDto;
 use App\DTOs\Processes\UpdateProcessDto;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 interface ProcessRepositoryInterface
 {
     /**
-     * @return list<array{id: string, code: string, name: string, alias: string, icon: string|null, color: string|null, description: string|null, process_parent_id: string|null}>
+     * @return list<ProcessDto>
      */
     public function all(): array;
 
-    /**
-     * @return array{id: string, code: string, name: string, alias: string, icon: string|null, color: string|null, description: string|null, process_parent_id: string|null}|null
-     */
-    public function find(string $id): ?array;
+    public function find(string $id): ?ProcessDto;
 
-    /**
-     * @return array{id: string, code: string, name: string, alias: string, icon: string|null, color: string|null, description: string|null, process_parent_id: string|null}
-     */
-    public function create(CreateProcessDto $dto): array;
+    public function create(CreateProcessDto $dto): ProcessDto;
 
-    /**
-     * @return array{id: string, code: string, name: string, alias: string, icon: string|null, color: string|null, description: string|null, process_parent_id: string|null}
-     */
-    public function update(string $id, UpdateProcessDto $dto): array;
+    public function update(string $id, UpdateProcessDto $dto): ProcessDto;
 
     public function delete(string $id): void;
 
@@ -36,6 +28,7 @@ interface ProcessRepositoryInterface
 
     /**
      * @param  array{search?: string, parent_id?: string}  $filters
+     * @return LengthAwarePaginator<int, ProcessDto>
      */
     public function paginate(array $filters, int $perPage = 20): LengthAwarePaginator;
 }

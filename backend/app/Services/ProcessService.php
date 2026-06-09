@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DTOs\Processes\CreateProcessDto;
+use App\DTOs\Processes\ProcessDto;
 use App\DTOs\Processes\UpdateProcessDto;
 use App\Models\Process;
 use App\Repositories\Contracts\ProcessRepositoryInterface;
@@ -20,17 +21,14 @@ class ProcessService implements ProcessServiceInterface
     ) {}
 
     /**
-     * @return list<array{id: string, code: string, name: string, alias: string, icon: string|null, color: string|null, description: string|null, process_parent_id: string|null}>
+     * @return list<ProcessDto>
      */
     public function list(): array
     {
         return $this->repository->all();
     }
 
-    /**
-     * @return array{id: string, code: string, name: string, alias: string, icon: string|null, color: string|null, description: string|null, process_parent_id: string|null}
-     */
-    public function findOrFail(string $id): array
+    public function findOrFail(string $id): ProcessDto
     {
         $row = $this->repository->find($id);
 
@@ -41,24 +39,19 @@ class ProcessService implements ProcessServiceInterface
         return $row;
     }
 
-    /**
-     * @return array{id: string, code: string, name: string, alias: string, icon: string|null, color: string|null, description: string|null, process_parent_id: string|null}
-     */
-    public function create(CreateProcessDto $dto): array
+    public function create(CreateProcessDto $dto): ProcessDto
     {
         return $this->repository->create($dto);
     }
 
-    /**
-     * @return array{id: string, code: string, name: string, alias: string, icon: string|null, color: string|null, description: string|null, process_parent_id: string|null}
-     */
-    public function update(string $id, UpdateProcessDto $dto): array
+    public function update(string $id, UpdateProcessDto $dto): ProcessDto
     {
         return $this->repository->update($id, $dto);
     }
 
     /**
      * @param  array{search?: string, parent_id?: string}  $filters
+     * @return LengthAwarePaginator<int, ProcessDto>
      */
     public function paginate(array $filters, int $perPage = 20): LengthAwarePaginator
     {

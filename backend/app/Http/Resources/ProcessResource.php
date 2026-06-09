@@ -4,23 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\DTOs\Processes\ProcessDto;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * El recurso recibe arrays (DTO-like) emitidos por ProcessService::list(),
- * no modelos Eloquent — el repositorio devuelve `list<array{...}>`.
+ * El recurso recibe un `ProcessDto` tipado emitido por ProcessService,
+ * no modelos Eloquent ni arrays sueltos.
  *
- * @property-read array{
- *     id: string,
- *     code: string,
- *     name: string,
- *     alias: string,
- *     icon: string|null,
- *     color: string|null,
- *     description: string|null,
- *     process_parent_id: string|null,
- * } $resource
+ * @property-read ProcessDto $resource
  */
 class ProcessResource extends JsonResource
 {
@@ -30,14 +22,14 @@ class ProcessResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->resource['id'] ?? null,
-            'code' => $this->resource['code'] ?? null,
-            'name' => $this->resource['name'] ?? null,
-            'alias' => $this->resource['alias'] ?? null,
-            'icon' => $this->resource['icon'] ?? null,
-            'color' => $this->resource['color'] ?? null,
-            'description' => $this->resource['description'] ?? null,
-            'process_parent_id' => $this->resource['process_parent_id'] ?? null,
+            'id' => $this->resource->id,
+            'code' => $this->resource->code,
+            'name' => $this->resource->name,
+            'alias' => $this->resource->alias,
+            'icon' => $this->resource->icon,
+            'color' => $this->resource->color,
+            'description' => $this->resource->description,
+            'process_parent_id' => $this->resource->processParentId,
         ];
     }
 }

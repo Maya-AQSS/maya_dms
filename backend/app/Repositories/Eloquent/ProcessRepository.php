@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repositories\Eloquent;
 
 use App\DTOs\Processes\CreateProcessDto;
+use App\DTOs\Processes\ProcessDto;
 use App\DTOs\Processes\UpdateProcessDto;
 use App\Models\Process;
 use App\Repositories\Contracts\ProcessRepositoryInterface;
@@ -16,7 +17,7 @@ use Illuminate\Support\Str;
 class ProcessRepository implements ProcessRepositoryInterface
 {
     /**
-     * @return list<array{id: string, code: string, name: string, alias: string, icon: string|null, color: string|null, description: string|null, process_parent_id: string|null}>
+     * @return list<ProcessDto>
      */
     public function all(): array
     {
@@ -24,25 +25,19 @@ class ProcessRepository implements ProcessRepositoryInterface
             ->select(['id', 'code', 'name', 'alias', 'icon', 'color', 'description', 'process_parent_id'])
             ->orderBy('code')
             ->get()
-            ->map(fn (Process $process): array => $this->toRow($process))
+            ->map(fn (Process $process): ProcessDto => ProcessDto::fromModel($process))
             ->values()
             ->all();
     }
 
-    /**
-     * @return array{id: string, code: string, name: string, alias: string, icon: string|null, color: string|null, description: string|null, process_parent_id: string|null}|null
-     */
-    public function find(string $id): ?array
+    public function find(string $id): ?ProcessDto
     {
         $process = $this->findModel($id);
 
-        return $process !== null ? $this->toRow($process) : null;
+        return $process !== null ? ProcessDto::fromModel($process) : null;
     }
 
-    /**
-     * @return array{id: string, code: string, name: string, alias: string, icon: string|null, color: string|null, description: string|null, process_parent_id: string|null}
-     */
-    public function create(CreateProcessDto $dto): array
+    public function create(CreateProcessDto $dto): ProcessDto
     {
         $process = new Process;
         $process->id = (string) Str::uuid();
@@ -57,13 +52,10 @@ class ProcessRepository implements ProcessRepositoryInterface
         ]);
         $process->save();
 
-        return $this->toRow($process);
+        return ProcessDto::fromModel($process);
     }
 
-    /**
-     * @return array{id: string, code: string, name: string, alias: string, icon: string|null, color: string|null, description: string|null, process_parent_id: string|null}
-     */
-    public function update(string $id, UpdateProcessDto $dto): array
+    public function update(string $id, UpdateProcessDto $dto): ProcessDto
     {
         $process = $this->findModel($id);
 
@@ -82,7 +74,7 @@ class ProcessRepository implements ProcessRepositoryInterface
         ]);
         $process->save();
 
-        return $this->toRow($process);
+        return ProcessDto::fromModel($process);
     }
 
     public function delete(string $id): void
@@ -131,7 +123,7 @@ class ProcessRepository implements ProcessRepositoryInterface
         /** @var LengthAwarePaginator<int, Process> $page */
         $page = $query->paginate($perPage);
 
-        $items = $page->getCollection()->map(fn (Process $p) => $this->toRow($p))->values()->all();
+        $items = $page->getCollection()->map(fn (Process $p) => ProcessDto::fromModel($p))->values()->all();
 
         return new ConcretePaginator(
             items: $items,
@@ -148,22 +140,5 @@ class ProcessRepository implements ProcessRepositoryInterface
     private function findModel(string $id): ?Process
     {
         return Process::query()->find($id);
-    }
-
-    /**
-     * @return array{id: string, code: string, name: string, alias: string, icon: string|null, color: string|null, description: string|null, process_parent_id: string|null}
-     */
-    private function toRow(Process $process): array
-    {
-        return [
-            'id' => (string) $process->id,
-            'code' => (string) $process->code,
-            'name' => (string) $process->name,
-            'alias' => (string) $process->alias,
-            'icon' => $process->icon,
-            'color' => $process->color,
-            'description' => $process->description,
-            'process_parent_id' => $process->process_parent_id,
-        ];
     }
 }

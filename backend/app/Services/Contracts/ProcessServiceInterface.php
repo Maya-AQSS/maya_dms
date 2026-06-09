@@ -5,35 +5,28 @@ declare(strict_types=1);
 namespace App\Services\Contracts;
 
 use App\DTOs\Processes\CreateProcessDto;
+use App\DTOs\Processes\ProcessDto;
 use App\DTOs\Processes\UpdateProcessDto;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 interface ProcessServiceInterface
 {
     /**
-     * @return list<array{id: string, code: string, name: string, alias: string, icon: string|null, color: string|null, description: string|null, process_parent_id: string|null}>
+     * @return list<ProcessDto>
      */
     public function list(): array;
 
-    /**
-     * @return array{id: string, code: string, name: string, alias: string, icon: string|null, color: string|null, description: string|null, process_parent_id: string|null}
-     */
-    public function findOrFail(string $id): array;
+    public function findOrFail(string $id): ProcessDto;
 
-    /**
-     * @return array{id: string, code: string, name: string, alias: string, icon: string|null, color: string|null, description: string|null, process_parent_id: string|null}
-     */
-    public function create(CreateProcessDto $dto): array;
+    public function create(CreateProcessDto $dto): ProcessDto;
 
-    /**
-     * @return array{id: string, code: string, name: string, alias: string, icon: string|null, color: string|null, description: string|null, process_parent_id: string|null}
-     */
-    public function update(string $id, UpdateProcessDto $dto): array;
+    public function update(string $id, UpdateProcessDto $dto): ProcessDto;
 
     public function delete(string $id): void;
 
     /**
      * @param  array{search?: string, parent_id?: string}  $filters
+     * @return LengthAwarePaginator<int, ProcessDto>
      */
     public function paginate(array $filters, int $perPage = 20): LengthAwarePaginator;
 }
