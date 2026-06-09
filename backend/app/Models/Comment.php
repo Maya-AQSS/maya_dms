@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Observers\CommentObserver;
-use Illuminate\Database\Eloquent\Attributes\ObservedBy;
-
 use App\Support\DocumentHeadSnapshot;
 use App\Support\TemplateHeadSnapshot;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;

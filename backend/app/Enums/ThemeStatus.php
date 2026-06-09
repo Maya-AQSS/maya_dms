@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Enums;
 
+use App\Services\ThemeStateTransitions;
+
 /**
  * Estados posibles de un theme. El ciclo de vida lo gobierna
- * {@see \App\Services\ThemeStateTransitions}.
+ * {@see ThemeStateTransitions}.
  */
 enum ThemeStatus: string
 {

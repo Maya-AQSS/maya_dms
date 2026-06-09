@@ -19,11 +19,16 @@ final readonly class TemplateBlockDto
         public int $sortOrder,
         public ?string $createdAt,
         public ?string $updatedAt,
+        public string $blockType = 'content',
+        public bool $pageBreakAfter = false,
+        public ?string $themeId = null,
+        public bool $applyTheme = true,
     ) {}
 
     public static function fromModel(TemplateBlock $m): self
     {
         $state = $m->block_state;
+        $type = $m->block_type;
 
         return new self(
             id: (string) $m->id,
@@ -35,6 +40,10 @@ final readonly class TemplateBlockDto
             sortOrder: (int) $m->sort_order,
             createdAt: $m->created_at?->toIso8601String(),
             updatedAt: $m->updated_at?->toIso8601String(),
+            blockType: $type instanceof BackedEnum ? (string) $type->value : ($type !== null ? (string) $type : 'content'),
+            pageBreakAfter: (bool) $m->page_break_after,
+            themeId: $m->theme_id !== null ? (string) $m->theme_id : null,
+            applyTheme: (bool) $m->apply_theme,
         );
     }
 }

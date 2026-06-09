@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -105,7 +107,7 @@ SQL);
             Schema::table('user_favorite_templates', function (Blueprint $table) {
                 try {
                     $table->dropForeign(['template_version_id']);
-                } catch (\Throwable) {
+                } catch (Throwable) {
                 }
             });
         }
@@ -114,11 +116,11 @@ SQL);
             Schema::table('documents', function (Blueprint $table) {
                 try {
                     $table->dropForeign(['head_entity_version_id']);
-                } catch (\Throwable) {
+                } catch (Throwable) {
                 }
                 try {
                     $table->dropForeign(['template_version_id']);
-                } catch (\Throwable) {
+                } catch (Throwable) {
                 }
             });
         }
@@ -127,7 +129,7 @@ SQL);
             Schema::table('templates', function (Blueprint $table) {
                 try {
                     $table->dropForeign(['head_entity_version_id']);
-                } catch (\Throwable) {
+                } catch (Throwable) {
                 }
             });
         }
@@ -135,14 +137,14 @@ SQL);
         Schema::table('document_versions', function (Blueprint $table) {
             try {
                 $table->dropForeign(['entity_version_id']);
-            } catch (\Throwable) {
+            } catch (Throwable) {
             }
         });
 
         Schema::table('entity_versions', function (Blueprint $table) {
             try {
                 $table->dropForeign(['base_version_id']);
-            } catch (\Throwable) {
+            } catch (Throwable) {
             }
         });
 

@@ -21,7 +21,6 @@ use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\DocumentReviewService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Maya\Http\Concerns\RespondsWithEnvelope;
 
 /**

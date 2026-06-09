@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Models\User;
 
 return [
@@ -123,10 +125,10 @@ return [
     |--------------------------------------------------------------------------
     */
 
-    'jwks_url'       => env('JWKS_URL'),
-    'jwt_audience'     => env('JWT_AUDIENCE'),
+    'jwks_url' => env('JWKS_URL'),
+    'jwt_audience' => env('JWT_AUDIENCE'),
     'dev_bypass_auth' => env('DEV_BYPASS_AUTH', false),
-    'jwt_issuer'     => env('JWT_ISSUER'),
+    'jwt_issuer' => env('JWT_ISSUER'),
     'jwks_cache_ttl' => env('JWKS_CACHE_TTL', 3600),
 
     /*

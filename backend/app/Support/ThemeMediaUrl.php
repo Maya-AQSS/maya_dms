@@ -36,6 +36,7 @@ final class ThemeMediaUrl
         if (count($parts) >= 3) {
             $ct = rtrim($parts[0], 's'); // 'themes' → 'theme'
             $ci = $parts[1];
+
             return "{$base}?ct={$ct}&ci={$ci}&token={$token}";
         }
 

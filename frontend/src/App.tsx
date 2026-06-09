@@ -29,6 +29,7 @@ const TemplatePreviewPage = lazy(() => import('./pages/TemplatePreviewPage').the
 const ThemesListPage = lazy(() => import('./features/themes/pages/ThemesListPage').then(m => ({ default: m.ThemesListPage })));
 const ThemeNewPage = lazy(() => import('./features/themes/pages/ThemeNewPage').then(m => ({ default: m.ThemeNewPage })));
 const ThemeEditPage = lazy(() => import('./features/themes/pages/ThemeEditPage').then(m => ({ default: m.ThemeEditPage })));
+const ThemeShowPage = lazy(() => import('./features/themes/pages/ThemeShowPage').then(m => ({ default: m.ThemeShowPage })));
 const ThemeLayoutPage = lazy(() => import('./features/themes/pages/ThemeLayoutPage').then(m => ({ default: m.ThemeLayoutPage })));
 const ProcessesManagePage = lazy(() => import('./features/processes/pages/ProcessesManagePage').then(m => ({ default: m.ProcessesManagePage })));
 const ProcessShowPage = lazy(() => import('./features/processes/pages/ProcessShowPage').then(m => ({ default: m.ProcessShowPage })));
@@ -60,6 +61,7 @@ function AppRoutes() {
         <Route path="/themes" element={<ThemesListPage />} />
         <Route path="/themes/new" element={<ThemeNewPage />} />
         <Route path="/themes/:id/edit" element={<ThemeEditPage />} />
+        <Route path="/themes/:id" element={<ThemeShowPage />} />
         <Route path="/themes/:id/layout" element={<ThemeLayoutPage />} />
         <Route path="/admin/procesos" element={<ProcessesManagePage />} />
         <Route path="/admin/procesos/new" element={<ProcessShowPage />} />

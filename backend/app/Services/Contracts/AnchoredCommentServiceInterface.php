@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Contracts;
 
 use App\DTOs\AnchoredComment\AnchoredCommentDto;
-use Illuminate\Database\Eloquent\Collection;
 
 interface AnchoredCommentServiceInterface
 {

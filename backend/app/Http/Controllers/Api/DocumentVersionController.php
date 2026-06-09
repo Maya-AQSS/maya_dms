@@ -8,6 +8,7 @@ use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\DocumentVersionResource;
 use App\Services\Contracts\DocumentServiceInterface;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Auth;
@@ -30,7 +31,7 @@ class DocumentVersionController extends Controller
     {
         try {
             $doc = $this->documentService->findModelOrFail($document);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+        } catch (ModelNotFoundException) {
             $doc = $this->documentService->findModelOrFailWithoutUserAccess($document);
             if (! $this->documentService->hasPublishedSnapshot($doc->id)) {
                 abort(404);
@@ -56,7 +57,7 @@ class DocumentVersionController extends Controller
     {
         try {
             $doc = $this->documentService->findModelOrFail($document);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+        } catch (ModelNotFoundException) {
             $doc = $this->documentService->findModelOrFailWithoutUserAccess($document);
             if (! $this->documentService->hasPublishedSnapshot($doc->id)) {
                 abort(404);

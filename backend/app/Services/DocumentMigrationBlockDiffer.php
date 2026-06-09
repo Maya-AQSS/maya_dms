@@ -16,9 +16,9 @@ use App\Enums\BlockState;
 final class DocumentMigrationBlockDiffer
 {
     /**
-     * @param  list<array<string, mixed>>  $sourceBlocks   Bloques de la versión anclada al documento origen.
-     * @param  list<array<string, mixed>>  $targetBlocks   Bloques de la última versión publicada.
-     * @param  array<string, mixed>  $oldContentByBlock     Contenido real del documento origen, indexado por template_block_id.
+     * @param  list<array<string, mixed>>  $sourceBlocks  Bloques de la versión anclada al documento origen.
+     * @param  list<array<string, mixed>>  $targetBlocks  Bloques de la última versión publicada.
+     * @param  array<string, mixed>  $oldContentByBlock  Contenido real del documento origen, indexado por template_block_id.
      * @return list<array<string, mixed>>
      */
     public function diff(array $sourceBlocks, array $targetBlocks, array $oldContentByBlock): array

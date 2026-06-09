@@ -36,14 +36,14 @@ function insertProcess(string $code = 'PX01', ?string $parentId = null): string
 {
     $id = (string) Str::uuid();
     DB::table('processes')->insert([
-        'id'                => $id,
-        'code'              => $code,
-        'name'              => "Proceso {$code}",
-        'alias'             => strtolower(str_replace('.', '_', $code)),
-        'description'       => null,
+        'id' => $id,
+        'code' => $code,
+        'name' => "Proceso {$code}",
+        'alias' => strtolower(str_replace('.', '_', $code)),
+        'description' => null,
         'process_parent_id' => $parentId,
-        'created_at'        => now(),
-        'updated_at'        => now(),
+        'created_at' => now(),
+        'updated_at' => now(),
     ]);
 
     return $id;
@@ -53,8 +53,8 @@ function insertProcess(string $code = 'PX01', ?string $parentId = null): string
 
 it('store returns 201 with the created process', function () {
     $this->postJson('/api/v1/processes', [
-        'code'  => 'PBIZ01',
-        'name'  => 'Proceso Negocio',
+        'code' => 'PBIZ01',
+        'name' => 'Proceso Negocio',
         'alias' => 'neg',
     ])
         ->assertCreated()
@@ -65,18 +65,18 @@ it('store returns 201 with the created process', function () {
 
 it('store returns 422 when code is missing', function () {
     $this->postJson('/api/v1/processes', [
-        'name'  => 'Sin código',
+        'name' => 'Sin código',
         'alias' => 'sc',
     ])->assertUnprocessable()
-      ->assertJsonValidationErrors(['code']);
+        ->assertJsonValidationErrors(['code']);
 });
 
 it('store returns 422 when name is missing', function () {
     $this->postJson('/api/v1/processes', [
-        'code'  => 'PX_NO_NAME',
+        'code' => 'PX_NO_NAME',
         'alias' => 'nx',
     ])->assertUnprocessable()
-      ->assertJsonValidationErrors(['name']);
+        ->assertJsonValidationErrors(['name']);
 });
 
 it('store returns 422 when alias is missing', function () {
@@ -84,27 +84,27 @@ it('store returns 422 when alias is missing', function () {
         'code' => 'PX_NO_ALIAS',
         'name' => 'Sin alias',
     ])->assertUnprocessable()
-      ->assertJsonValidationErrors(['alias']);
+        ->assertJsonValidationErrors(['alias']);
 });
 
 it('store returns 422 when code is not unique', function () {
     insertProcess('PDUP01');
 
     $this->postJson('/api/v1/processes', [
-        'code'  => 'PDUP01',
-        'name'  => 'Duplicado',
+        'code' => 'PDUP01',
+        'name' => 'Duplicado',
         'alias' => 'dup',
     ])->assertUnprocessable()
-      ->assertJsonValidationErrors(['code']);
+        ->assertJsonValidationErrors(['code']);
 });
 
 it('store accepts a valid process_parent_id', function () {
     $parentId = insertProcess('PPAR01');
 
     $this->postJson('/api/v1/processes', [
-        'code'              => 'PCHILD01',
-        'name'              => 'Hijo',
-        'alias'             => 'hijo',
+        'code' => 'PCHILD01',
+        'name' => 'Hijo',
+        'alias' => 'hijo',
         'process_parent_id' => $parentId,
     ])
         ->assertCreated()
@@ -133,8 +133,8 @@ it('update returns 200 with updated data', function () {
     $id = insertProcess('PUPD01');
 
     $this->patchJson("/api/v1/processes/{$id}", [
-        'code'  => 'PUPD01',
-        'name'  => 'Nombre actualizado',
+        'code' => 'PUPD01',
+        'name' => 'Nombre actualizado',
         'alias' => 'upd',
     ])
         ->assertOk()
@@ -145,13 +145,13 @@ it('update returns 422 when required fields are missing', function () {
     $id = insertProcess('PUPD02');
 
     $this->patchJson("/api/v1/processes/{$id}", [])->assertUnprocessable()
-         ->assertJsonValidationErrors(['code', 'name', 'alias']);
+        ->assertJsonValidationErrors(['code', 'name', 'alias']);
 });
 
 it('update returns 404 for non-existent process', function () {
     $this->patchJson('/api/v1/processes/'.Str::uuid(), [
-        'code'  => 'PNONE',
-        'name'  => 'No existe',
+        'code' => 'PNONE',
+        'name' => 'No existe',
         'alias' => 'none',
     ])->assertNotFound();
 });
@@ -160,12 +160,12 @@ it('update returns 422 when process_parent_id is itself', function () {
     $id = insertProcess('PSELF01');
 
     $this->patchJson("/api/v1/processes/{$id}", [
-        'code'              => 'PSELF01',
-        'name'              => 'Autorreferencia',
-        'alias'             => 'self',
+        'code' => 'PSELF01',
+        'name' => 'Autorreferencia',
+        'alias' => 'self',
         'process_parent_id' => $id,
     ])->assertUnprocessable()
-      ->assertJsonValidationErrors(['process_parent_id']);
+        ->assertJsonValidationErrors(['process_parent_id']);
 });
 
 // ─── destroy (DELETE /:id) ────────────────────────────────────────────────────

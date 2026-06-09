@@ -27,8 +27,8 @@ class MediaController extends Controller
     public function store(StoreMediaRequest $request): JsonResponse
     {
         $contextType = $request->validated('context_type');
-        $contextId   = $request->validated('context_id');
-        $file        = $request->file('image');
+        $contextId = $request->validated('context_id');
+        $file = $request->file('image');
 
         $dto = $this->mediaService->store($file, $contextType, $contextId);
 
@@ -45,17 +45,17 @@ class MediaController extends Controller
     public function show(Request $request, string $uuid): Response
     {
         $contextType = (string) $request->query('ct', '') ?: null;
-        $contextId   = (string) $request->query('ci', '') ?: null;
-        $token       = (string) $request->query('token', '');
+        $contextId = (string) $request->query('ci', '') ?: null;
+        $token = (string) $request->query('token', '');
 
         try {
             $content = $this->mediaService->retrieve($uuid, $contextType, $contextId, $token);
             $mimeType = $this->mediaService->detectMimeType($content);
 
             return response($content, 200, [
-                'Content-Type'           => $mimeType,
+                'Content-Type' => $mimeType,
                 'X-Content-Type-Options' => 'nosniff',
-                'Cache-Control'          => 'private, max-age=31536000, immutable',
+                'Cache-Control' => 'private, max-age=31536000, immutable',
             ]);
         } catch (\Exception $e) {
             $statusCode = str_contains($e->getMessage(), 'no encontrada') ? 404 : 403;

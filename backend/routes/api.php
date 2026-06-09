@@ -1,26 +1,29 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Http\Controllers\Api\AnchoredCommentController;
 use App\Http\Controllers\Api\CommentController;
-use App\Http\Controllers\Api\DocumentDocxController;
+use App\Http\Controllers\Api\CoverImageController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DocumentBlockController;
 use App\Http\Controllers\Api\DocumentController;
+use App\Http\Controllers\Api\DocumentDocxController;
 use App\Http\Controllers\Api\DocumentExportController;
-use App\Http\Controllers\Api\DocumentPreviewController;
-use App\Http\Controllers\Api\TemplatePreviewController;
-use App\Http\Controllers\Api\MediaController;
 use App\Http\Controllers\Api\DocumentOptionsController;
+use App\Http\Controllers\Api\DocumentPreviewController;
 use App\Http\Controllers\Api\DocumentShareController;
 use App\Http\Controllers\Api\DocumentStateController;
 use App\Http\Controllers\Api\DocumentVersionController;
 use App\Http\Controllers\Api\FavoriteController;
 use App\Http\Controllers\Api\HealthCheckController;
+use App\Http\Controllers\Api\MediaController;
 use App\Http\Controllers\Api\ProcessController;
 use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\TemplateBlockBulkController;
 use App\Http\Controllers\Api\TemplateBlockController;
 use App\Http\Controllers\Api\TemplateController;
+use App\Http\Controllers\Api\TemplatePreviewController;
 use App\Http\Controllers\Api\TemplateReviewersController;
 use App\Http\Controllers\Api\TemplateStateController;
 use App\Http\Controllers\Api\TemplateVersionController;
@@ -95,7 +98,13 @@ Route::prefix('v1')->group(function () {
 
         // Imágenes de Theme (subidas al layout como bloques).
         Route::post('themes/{theme}/images', [ThemeImageController::class, 'store'])
-            ->whereUuid('theme');
+            ->whereUuid('theme')
+            ->middleware('throttle:60,1');
+
+        // Imágenes de bloques de portada (cover) de una plantilla.
+        Route::post('templates/{template}/cover-images', [CoverImageController::class, 'store'])
+            ->whereUuid('template')
+            ->middleware('throttle:60,1');
 
         // Verificación del theme: previsualización HTML (paged.js) y PDF de muestra.
         Route::get('themes/{theme}/preview', [ThemePreviewController::class, 'show'])

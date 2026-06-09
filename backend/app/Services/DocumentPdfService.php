@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\Document;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Services\Contracts\DocumentPdfServiceInterface;
 use App\Services\Contracts\DocumentRenderServiceInterface;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * Genera PDF/UA-1 tagged usando el binario WeasyPrint instalado en el container
@@ -81,7 +81,7 @@ class DocumentPdfService implements DocumentPdfServiceInterface
     /**
      * Extracts current version number from document model as scalar.
      */
-    private function extractCurrentVersion(\App\Models\Document $document): int
+    private function extractCurrentVersion(Document $document): int
     {
         return (int) ($document->getAttribute('current_version') ?? 1);
     }

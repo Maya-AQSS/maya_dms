@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\Policies;
 
 use App\Enums\TemplateVisibilityLevel;
@@ -7,6 +9,7 @@ use App\Models\JwtUser;
 use App\Models\Template;
 use App\Policies\TemplatePolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -28,13 +31,13 @@ class TemplatePolicyTest extends TestCase
         $creator = $this->makeJwtUser($creatorId);
         $other = $this->makeJwtUser('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', ['template.assign-review']);
 
-        $template = new Template;
-        $template->forceFill([
-            'id' => (string) \Illuminate\Support\Str::uuid(),
-            'created_by' => $creatorId,
-            'visibility_level' => TemplateVisibilityLevel::Personal->value,
-            'status' => 'draft',
-        ]);
+        // Los atributos delegados (status/visibility_level) se leen del snapshot del
+        // cabezal, por lo que la plantilla debe persistirse en lugar de un forceFill transitorio.
+        $template = $this->makeTemplate(
+            createdBy: $creatorId,
+            status: 'draft',
+            visibilityLevel: TemplateVisibilityLevel::Personal->value,
+        );
 
         $this->assertTrue($this->policy->assignReview($creator, $template));
         $this->assertFalse($this->policy->assignReview($other, $template));
@@ -46,13 +49,11 @@ class TemplatePolicyTest extends TestCase
         $coordinator = $this->makeJwtUser('dddddddd-dddd-dddd-dddd-dddddddddddd', ['template.assign-review']);
         $teacher = $this->makeJwtUser($creatorId);
 
-        $template = new Template;
-        $template->forceFill([
-            'id' => (string) \Illuminate\Support\Str::uuid(),
-            'created_by' => $creatorId,
-            'visibility_level' => TemplateVisibilityLevel::Global->value,
-            'status' => 'draft',
-        ]);
+        $template = $this->makeTemplate(
+            createdBy: $creatorId,
+            status: 'draft',
+            visibilityLevel: TemplateVisibilityLevel::Global->value,
+        );
 
         $this->assertTrue($this->policy->assignReview($coordinator, $template));
         $this->assertFalse($this->policy->assignReview($teacher, $template));
@@ -64,17 +65,16 @@ class TemplatePolicyTest extends TestCase
         $assigned = $this->makeJwtUser($reviewerId, ['template.review']);
         $notAssigned = $this->makeJwtUser($reviewerId);
 
-        $templateId = (string) \Illuminate\Support\Str::uuid();
-        $template = new Template;
-        $template->forceFill([
-            'id' => $templateId,
-            'created_by' => 'ffffffff-ffff-ffff-ffff-ffffffffffff',
-            'visibility_level' => TemplateVisibilityLevel::Global->value,
-            'status' => 'in_review',
-        ]);
+        // Persistida para satisfacer la FK de template_reviewers.template_id.
+        $template = $this->makeTemplate(
+            createdBy: 'ffffffff-ffff-ffff-ffff-ffffffffffff',
+            status: 'in_review',
+            visibilityLevel: TemplateVisibilityLevel::Global->value,
+        );
+        $templateId = (string) $template->id;
 
-        \Illuminate\Support\Facades\DB::table('template_reviewers')->insert([
-            'id' => (string) \Illuminate\Support\Str::uuid(),
+        DB::table('template_reviewers')->insert([
+            'id' => (string) Str::uuid(),
             'template_id' => $templateId,
             'user_id' => $reviewerId,
             'stage' => 1,
@@ -141,8 +141,8 @@ class TemplatePolicyTest extends TestCase
             visibilityLevel: TemplateVisibilityLevel::Personal->value,
         );
 
-        \Illuminate\Support\Facades\DB::table('entity_versions')->insert([
-            'id' => (string) \Illuminate\Support\Str::uuid(),
+        DB::table('entity_versions')->insert([
+            'id' => (string) Str::uuid(),
             'versionable_type' => Template::class,
             'versionable_id' => $template->id,
             'version_number' => 1,
@@ -167,8 +167,8 @@ class TemplatePolicyTest extends TestCase
     public function test_creator_without_templates_review_permission_cannot_review_template(): void
     {
         $creatorId = '11111111-1111-1111-1111-111111111111';
-        $user      = $this->makeJwtUser($creatorId);
-        $template  = $this->makeTemplate(createdBy: $creatorId);
+        $user = $this->makeJwtUser($creatorId);
+        $template = $this->makeTemplate(createdBy: $creatorId);
 
         $this->assertFalse($this->policy->review($user, $template));
     }
@@ -202,7 +202,7 @@ class TemplatePolicyTest extends TestCase
 
     public function test_update_denied_for_non_creator_without_privileged_role(): void
     {
-        $user     = $this->makeJwtUser('ffffffff-ffff-ffff-ffff-ffffffffffff');
+        $user = $this->makeJwtUser('ffffffff-ffff-ffff-ffff-ffffffffffff');
         $template = $this->makeTemplate(createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 
         $this->assertFalse($this->policy->update($user, $template));
@@ -210,7 +210,7 @@ class TemplatePolicyTest extends TestCase
 
     public function test_update_denied_for_coordinator_on_foreign_template(): void
     {
-        $user     = $this->makeJwtUser('11111111-2222-3333-4444-555555555555', ['template.update']);
+        $user = $this->makeJwtUser('11111111-2222-3333-4444-555555555555', ['template.update']);
         $template = $this->makeTemplate(createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 
         $this->assertFalse($this->policy->update($user, $template));
@@ -228,6 +228,7 @@ class TemplatePolicyTest extends TestCase
             status: 'published',
             visibilityLevel: TemplateVisibilityLevel::Global->value,
         );
+        $this->seedPublishedTemplateSnapshot($template, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 
         $this->assertTrue($this->policy->update($user, $template));
     }
@@ -264,8 +265,8 @@ class TemplatePolicyTest extends TestCase
     public function test_update_with_target_shared_visibility_denied_without_role(): void
     {
         $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
-        $user      = $this->makeJwtUser($creatorId);
-        $template  = $this->makeTemplate(createdBy: $creatorId);
+        $user = $this->makeJwtUser($creatorId);
+        $template = $this->makeTemplate(createdBy: $creatorId);
 
         $this->assertFalse($this->policy->update($user, $template, TemplateVisibilityLevel::Study->value));
     }
@@ -273,9 +274,9 @@ class TemplatePolicyTest extends TestCase
     public function test_delete_non_creator_requires_templates_delete(): void
     {
         $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
-        $creator     = $this->makeJwtUser($creatorId);
+        $creator = $this->makeJwtUser($creatorId);
         $sinPermisos = $this->makeJwtUser('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
-        $conDelete   = $this->makeJwtUser('cccccccc-cccc-cccc-cccc-cccccccccccc', ['template.delete']);
+        $conDelete = $this->makeJwtUser('cccccccc-cccc-cccc-cccc-cccccccccccc', ['template.delete']);
 
         $t1 = $this->makeTemplate(createdBy: $creatorId);
         $t2 = $this->makeTemplate(createdBy: $creatorId);
@@ -288,7 +289,7 @@ class TemplatePolicyTest extends TestCase
 
     public function test_update_denied_for_user_with_only_templates_delete(): void
     {
-        $user     = $this->makeJwtUser('dddddddd-dddd-dddd-dddd-dddddddddddd', ['template.delete']);
+        $user = $this->makeJwtUser('dddddddd-dddd-dddd-dddd-dddddddddddd', ['template.delete']);
         $template = $this->makeTemplate(createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 
         $this->assertFalse($this->policy->update($user, $template));
@@ -297,8 +298,8 @@ class TemplatePolicyTest extends TestCase
     public function test_start_revision_denied_when_not_published(): void
     {
         $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
-        $user      = $this->makeJwtUser($creatorId, ['template.show']);
-        $template  = $this->makeTemplate(createdBy: $creatorId, status: 'draft');
+        $user = $this->makeJwtUser($creatorId, ['template.show']);
+        $template = $this->makeTemplate(createdBy: $creatorId, status: 'draft');
 
         $this->assertFalse($this->policy->startRevision($user, $template));
     }
@@ -306,8 +307,8 @@ class TemplatePolicyTest extends TestCase
     public function test_start_revision_allows_creator_when_published_and_can_view(): void
     {
         $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
-        $user      = $this->makeJwtUser($creatorId, ['template.show']);
-        $template  = $this->makeTemplate(createdBy: $creatorId, status: 'published');
+        $user = $this->makeJwtUser($creatorId, ['template.show']);
+        $template = $this->makeTemplate(createdBy: $creatorId, status: 'published');
 
         $this->assertTrue($this->policy->startRevision($user, $template));
     }
@@ -324,6 +325,7 @@ class TemplatePolicyTest extends TestCase
             status: 'published',
             visibilityLevel: TemplateVisibilityLevel::Global->value,
         );
+        $this->seedPublishedTemplateSnapshot($template, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 
         $this->assertTrue($this->policy->startRevision($user, $template));
     }
@@ -362,6 +364,7 @@ class TemplatePolicyTest extends TestCase
         $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
         $creator = $this->makeJwtUser($creatorId);
         $template = $this->makeTemplate(createdBy: $creatorId, status: 'published');
+        $this->seedPublishedTemplateSnapshot($template, $creatorId);
 
         $this->assertTrue($this->policy->clone($creator, $template));
     }
@@ -379,6 +382,7 @@ class TemplatePolicyTest extends TestCase
             status: 'published',
             visibilityLevel: TemplateVisibilityLevel::Global->value,
         );
+        $this->seedPublishedTemplateSnapshot($template, $creatorId);
 
         $this->assertTrue($this->policy->clone($withSlug, $template));
 
@@ -412,6 +416,7 @@ class TemplatePolicyTest extends TestCase
             status: 'published',
             visibilityLevel: TemplateVisibilityLevel::Global->value,
         );
+        $this->seedPublishedTemplateSnapshot($template, $creatorId);
 
         $this->assertTrue($this->policy->viewHistory($viewer, $template));
 
@@ -457,8 +462,8 @@ class TemplatePolicyTest extends TestCase
     public function test_submit_for_review_allowed_for_creator_on_draft(): void
     {
         $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
-        $user      = $this->makeJwtUser($creatorId);
-        $template  = $this->makeTemplate(createdBy: $creatorId, status: 'draft');
+        $user = $this->makeJwtUser($creatorId);
+        $template = $this->makeTemplate(createdBy: $creatorId, status: 'draft');
 
         $this->assertTrue($this->policy->submitForReview($user, $template));
     }
@@ -466,8 +471,8 @@ class TemplatePolicyTest extends TestCase
     public function test_submit_for_review_denied_for_creator_on_in_review(): void
     {
         $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
-        $user      = $this->makeJwtUser($creatorId);
-        $template  = $this->makeTemplate(createdBy: $creatorId, status: 'in_review');
+        $user = $this->makeJwtUser($creatorId);
+        $template = $this->makeTemplate(createdBy: $creatorId, status: 'in_review');
 
         $this->assertFalse($this->policy->submitForReview($user, $template));
     }
@@ -475,15 +480,15 @@ class TemplatePolicyTest extends TestCase
     public function test_submit_for_review_denied_for_creator_on_published(): void
     {
         $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
-        $user      = $this->makeJwtUser($creatorId);
-        $template  = $this->makeTemplate(createdBy: $creatorId, status: 'published');
+        $user = $this->makeJwtUser($creatorId);
+        $template = $this->makeTemplate(createdBy: $creatorId, status: 'published');
 
         $this->assertFalse($this->policy->submitForReview($user, $template));
     }
 
     public function test_submit_for_review_denied_for_non_creator_even_on_draft(): void
     {
-        $user     = $this->makeJwtUser('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
+        $user = $this->makeJwtUser('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
         $template = $this->makeTemplate(createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', status: 'draft');
 
         $this->assertFalse($this->policy->submitForReview($user, $template));
@@ -495,12 +500,12 @@ class TemplatePolicyTest extends TestCase
     private function makeJwtUser(string $id, array $permissions = []): JwtUser
     {
         return new JwtUser([
-            'id'           => $id,
-            'email'        => null,
-            'name'         => null,
-            'department'   => null,
-            'permissions'  => $permissions,
-            'scope'        => '',
+            'id' => $id,
+            'email' => null,
+            'name' => null,
+            'department' => null,
+            'permissions' => $permissions,
+            'scope' => '',
         ]);
     }
 
@@ -537,6 +542,27 @@ class TemplatePolicyTest extends TestCase
         return $template;
     }
 
+    /**
+     * Inserta un snapshot publicado (version_number > 0) de la plantilla. Necesario
+     * para `clone` (exige snapshot publicado) y para la visibilidad de catálogo del
+     * scope `user_access` (una plantilla global publicada es visible para no creadores).
+     */
+    private function seedPublishedTemplateSnapshot(Template $template, string $createdBy): void
+    {
+        DB::table('entity_versions')->insert([
+            'id' => (string) Str::uuid(),
+            'versionable_type' => Template::class,
+            'versionable_id' => $template->id,
+            'version_number' => 1,
+            'status' => 'published',
+            'is_snapshot_immutable' => 1,
+            'created_by' => $createdBy,
+            'published_by' => $createdBy,
+            'published_at' => now(),
+            'changelog' => 'v1',
+            'snapshot_data' => json_encode(['template' => ['id' => $template->id]], JSON_THROW_ON_ERROR),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
 }
-
-

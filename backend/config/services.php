@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
 
     /*
@@ -39,7 +41,7 @@ return [
         'host' => env('RABBITMQ_HOST', 'localhost'),
         'port' => (int) env('RABBITMQ_PORT', 5672),
     ],
-    
+
     'health' => [
         'websocket_host' => env('REVERB_HOST', 'localhost'),
         'websocket_port' => (int) env('REVERB_PORT', 8082),

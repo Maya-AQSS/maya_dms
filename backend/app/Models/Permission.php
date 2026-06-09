@@ -28,5 +28,4 @@ class Permission extends Model
         'name',
         'description',
     ];
-
 }

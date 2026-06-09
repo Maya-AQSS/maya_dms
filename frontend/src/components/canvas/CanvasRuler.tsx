@@ -10,10 +10,11 @@ interface RulerProps {
 }
 
 /**
- * Regla graduada en cm para el lienzo del editor. Marca un tick por cm con
- * etiqueta, y un tick menor cada 5 mm. Pensada para acompañar el canvas mm.
+ * Regla graduada en cm para el lienzo de posicionamiento. Marca un tick por cm
+ * con etiqueta y un tick menor cada 5 mm. Genérica: solo depende de longitud y
+ * escala. (Extraída de `ThemeCanvasRuler`.)
  */
-export function ThemeCanvasRuler({ orientation, lengthMm, scale }: RulerProps) {
+export function CanvasRuler({ orientation, lengthMm, scale }: RulerProps) {
   const horizontal = orientation === 'horizontal';
   const lengthPx = lengthMm * scale;
   const ticks: React.ReactNode[] = [];
@@ -38,11 +39,7 @@ export function ThemeCanvasRuler({ orientation, lengthMm, scale }: RulerProps) {
         <span
           key={`l-${mm}`}
           className="absolute select-none text-[8px] leading-none text-text-muted"
-          style={
-            horizontal
-              ? { left: posPx + 1, top: 1 }
-              : { top: posPx + 1, left: 1 }
-          }
+          style={horizontal ? { left: posPx + 1, top: 1 } : { top: posPx + 1, left: 1 }}
         >
           {mm / 10}
         </span>,
@@ -53,11 +50,7 @@ export function ThemeCanvasRuler({ orientation, lengthMm, scale }: RulerProps) {
   return (
     <div
       className="relative shrink-0 bg-ui-body dark:bg-ui-dark-bg"
-      style={
-        horizontal
-          ? { height: RULER_SIZE, width: lengthPx }
-          : { width: RULER_SIZE, height: lengthPx }
-      }
+      style={horizontal ? { height: RULER_SIZE, width: lengthPx } : { width: RULER_SIZE, height: lengthPx }}
       aria-hidden="true"
     >
       {ticks}

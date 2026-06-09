@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use Maya\Messaging\Events\BroadcastNotificationCreated;
 use App\Events\TemplateStateChanged;
 use App\Models\Template;
 use App\Models\TemplateReviewer;
@@ -17,6 +16,7 @@ use App\Support\TemplateHeadSnapshot;
 use App\Support\VersionSubmissionChangelog;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Maya\Messaging\Events\BroadcastNotificationCreated;
 use Maya\Messaging\Publishers\NotificationPublisher;
 
 class TemplatePublishingService
@@ -216,7 +216,7 @@ class TemplatePublishingService
             $createdBy = is_string($updated->created_by) && $updated->created_by !== '' ? $updated->created_by : null;
             if ($createdBy !== null) {
                 $createdByTitle = 'Plantilla publicada';
-                $createdByBody = 'La plantilla "' . $updated->name . '" ha sido publicada correctamente';
+                $createdByBody = 'La plantilla "'.$updated->name.'" ha sido publicada correctamente';
                 $createdByMetadata = ['template_id' => (string) $updated->id];
 
                 try {
@@ -262,7 +262,7 @@ class TemplatePublishingService
             $affectedOwnerIds = $this->documentRepository->ownerIdsByTemplate((string) $updated->id);
             foreach ($affectedOwnerIds as $ownerId) {
                 $ownerTitle = 'Plantilla actualizada';
-                $ownerBody = 'Una plantilla que afecta a tus documentos "' . $updated->name . '" ha sido actualizada';
+                $ownerBody = 'Una plantilla que afecta a tus documentos "'.$updated->name.'" ha sido actualizada';
                 $ownerMetadata = ['template_id' => (string) $updated->id, 'version' => $next];
 
                 try {

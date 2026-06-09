@@ -7,8 +7,9 @@
   "layerDown": "Layer down",
   "newPurposePlaceholder": "What kind of documents this theme is for",
   "identity": {
+    "previewLabel": "Preview",
     "sections": {
-      "general": "General information",
+      "general": "Properties",
       "palette": "Color palette",
       "typography": "Typography",
       "accessibility": "Accessibility (PDF/UA)"

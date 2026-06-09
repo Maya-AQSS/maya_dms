@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Models\Document;
+use App\Models\Template;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Events\RouteMatched;
 use Illuminate\Support\Facades\DB;
@@ -60,7 +62,9 @@ it('allows document show for owner without document.show', function () {
         'alias' => 'default',
     ]);
 
-    DB::table('templates')->insert([
+    // Los metadatos (name/status/owner_id/…) viven en el snapshot del cabezal de
+    // versión; el evento `creating` de los modelos migra estas columnas legacy.
+    Template::query()->forceCreate([
         'id' => $templateId,
         'process_id' => '00000000-0000-0000-0000-000000000001',
         'name' => 'Plantilla',
@@ -75,11 +79,9 @@ it('allows document show for owner without document.show', function () {
         'status' => 'published',
         'review_stages' => 0,
         'review_mode' => 'sequential',
-        'created_at' => now(),
-        'updated_at' => now(),
     ]);
 
-    DB::table('documents')->insert([
+    Document::query()->forceCreate([
         'id' => $documentId,
         'process_id' => '00000000-0000-0000-0000-000000000001',
         'template_id' => $templateId,
@@ -91,8 +93,6 @@ it('allows document show for owner without document.show', function () {
         'created_by' => test()->userId,
         'owner_id' => test()->userId,
         'status' => 'draft',
-        'created_at' => now(),
-        'updated_at' => now(),
     ]);
 
     $this->getJson("/api/v1/documents/{$documentId}")

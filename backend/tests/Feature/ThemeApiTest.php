@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Models\JwtUser;
+use App\Models\Theme;
+use App\Policies\ThemePolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
@@ -153,7 +156,7 @@ class ThemeApiTest extends TestCase
         $owner = (string) Str::uuid();
         $stranger = (string) Str::uuid();
 
-        $theme = new \App\Models\Theme;
+        $theme = new Theme;
         $theme->id = (string) Str::uuid();
         $theme->name = 'Owned';
         $theme->created_by = $owner;
@@ -163,18 +166,18 @@ class ThemeApiTest extends TestCase
         $theme->accessibility = ['language' => 'es', 'title' => null, 'subject' => null, 'author' => 'CEEDCV'];
         $theme->save();
 
-        $policy = new \App\Policies\ThemePolicy;
-        $ownerUser = new \App\Models\JwtUser([
+        $policy = new ThemePolicy;
+        $ownerUser = new JwtUser([
             'id' => $owner,
             'sub' => $owner,
             'permissions' => ['theme.show', 'theme.create'],
         ]);
-        $strangerUser = new \App\Models\JwtUser([
+        $strangerUser = new JwtUser([
             'id' => $stranger,
             'sub' => $stranger,
             'permissions' => ['theme.show'],
         ]);
-        $editorUser = new \App\Models\JwtUser([
+        $editorUser = new JwtUser([
             'id' => $stranger,
             'sub' => $stranger,
             'permissions' => ['theme.show', 'theme.update'],
@@ -183,7 +186,7 @@ class ThemeApiTest extends TestCase
         $this->assertTrue($policy->update($ownerUser, $theme));
         $this->assertFalse($policy->update($strangerUser, $theme));
         $this->assertTrue($policy->update($editorUser, $theme));
-        $adminUser = new \App\Models\JwtUser([
+        $adminUser = new JwtUser([
             'id' => $stranger,
             'sub' => $stranger,
             'permissions' => ['theme.show', 'theme.delete'],

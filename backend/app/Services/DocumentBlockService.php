@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DTOs\Documents\BlockDisplayDto;
-use App\Support\TiptapContentSemantics;
 use App\DTOs\Documents\BlockUpdateDto;
 use App\DTOs\Documents\DeleteDocumentBlockDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
+use App\Enums\BlockState;
+use App\Enums\BlockType;
 use App\Models\Document;
 use App\Models\DocumentBlock;
 use App\Models\EntityVersion;
@@ -17,6 +18,7 @@ use App\Repositories\Contracts\DocumentBlockRepositoryInterface;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
+use App\Support\TiptapContentSemantics;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -70,6 +72,10 @@ class DocumentBlockService
                 content: $row?->content,
                 is_filled: (bool) ($row?->is_filled ?? false),
                 is_deleted: $isDeleted,
+                block_type: (string) ($def['block_type'] ?? 'content'),
+                page_break_after: (bool) ($def['page_break_after'] ?? false),
+                theme_id: isset($def['theme_id']) && $def['theme_id'] !== null ? (string) $def['theme_id'] : null,
+                apply_theme: (bool) ($def['apply_theme'] ?? true),
             );
         }
 
@@ -87,7 +93,7 @@ class DocumentBlockService
             }
             $tpl = $row->templateBlock;
             $tplState = $tpl?->block_state;
-            $state = $tplState instanceof \App\Enums\BlockState ? $tplState->value : (string) ($tplState ?? 'optional');
+            $state = $tplState instanceof BlockState ? $tplState->value : (string) ($tplState ?? 'optional');
 
             $out[] = new BlockDisplayDto(
                 document_block_id: $row->id,
@@ -103,6 +109,10 @@ class DocumentBlockService
                 is_filled: (bool) $row->is_filled,
                 is_deleted: false,
                 is_orphaned: true,
+                block_type: ($tpl?->block_type instanceof BlockType ? $tpl->block_type->value : (string) ($tpl?->block_type ?? 'content')),
+                page_break_after: (bool) ($tpl?->page_break_after ?? false),
+                theme_id: $tpl?->theme_id !== null ? (string) $tpl?->theme_id : null,
+                apply_theme: (bool) ($tpl?->apply_theme ?? true),
             );
         }
 
@@ -330,11 +340,15 @@ class DocumentBlockService
         return $template->blocks->map(fn ($b) => [
             'id' => $b->id,
             'type' => $b->type,
+            'block_type' => $b->block_type instanceof BlockType ? $b->block_type->value : (string) ($b->block_type ?? 'content'),
             'title' => $b->title,
             'description' => $b->description,
             'default_content' => $b->default_content,
             'block_state' => $b->block_state,
             'mandatory' => $b->mandatory,
+            'page_break_after' => (bool) $b->page_break_after,
+            'theme_id' => $b->theme_id !== null ? (string) $b->theme_id : null,
+            'apply_theme' => (bool) $b->apply_theme,
             'sort_order' => $b->sort_order,
         ])->all();
     }

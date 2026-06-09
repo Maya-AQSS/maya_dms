@@ -7,8 +7,9 @@
   "layerDown": "Capa abajo",
   "newPurposePlaceholder": "Para qué tipo de documentos usar este theme",
   "identity": {
+    "previewLabel": "Vista previa",
     "sections": {
-      "general": "Información general",
+      "general": "Propiedades",
       "palette": "Paleta de colores",
       "typography": "Tipografía",
       "accessibility": "Accesibilidad (PDF/UA)"

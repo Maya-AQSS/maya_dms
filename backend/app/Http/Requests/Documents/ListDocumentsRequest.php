@@ -33,12 +33,12 @@ class ListDocumentsRequest extends PaginatedFilterRequest
     protected function filterRules(): array
     {
         return [
-            'process_id'  => ['nullable', 'uuid'],
-            'status'      => ['nullable', 'string', 'in:draft,in_review,published,archived'],
+            'process_id' => ['nullable', 'uuid'],
+            'status' => ['nullable', 'string', 'in:draft,in_review,published,archived'],
             'template_id' => ['nullable', 'uuid'],
-            'created_by'  => ['nullable', 'string', 'max:255'],
-            'from'        => ['nullable', 'date'],
-            'to'          => ['nullable', 'date', 'after_or_equal:from'],
+            'created_by' => ['nullable', 'string', 'max:255'],
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date', 'after_or_equal:from'],
         ];
     }
 

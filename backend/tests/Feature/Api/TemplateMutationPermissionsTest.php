@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\Template;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Events\RouteMatched;
 use Illuminate\Support\Facades\DB;
@@ -75,7 +76,7 @@ it('allows shared template create with template.create', function () {
 it('allows creator to delete own template without template.delete', function () {
     $templateId = (string) Str::uuid();
 
-    DB::table('templates')->insert([
+    Template::query()->forceCreate([
         'id' => $templateId,
         'process_id' => '00000000-0000-0000-0000-000000000001',
         'name' => 'Borrar como creador',
@@ -103,7 +104,7 @@ it('denies delete by non creator without template.delete', function () {
     $templateId = (string) Str::uuid();
     $otherCreator = (string) Str::uuid();
 
-    DB::table('templates')->insert([
+    Template::query()->forceCreate([
         'id' => $templateId,
         'process_id' => '00000000-0000-0000-0000-000000000001',
         'name' => 'Ajena',
@@ -118,6 +119,27 @@ it('denies delete by non creator without template.delete', function () {
         'status' => 'draft',
         'review_stages' => 0,
         'review_mode' => 'sequential',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    // Una plantilla global con snapshot publicado es visible en el catálogo para
+    // cualquier usuario; así la petición llega al gate de permiso (403) en lugar
+    // de resolverse como 404 por invisibilidad.
+    DB::table('entity_versions')->insert([
+        'id' => (string) Str::uuid(),
+        'versionable_type' => Template::class,
+        'versionable_id' => $templateId,
+        'version_number' => 1,
+        'status' => 'published',
+        'is_snapshot_immutable' => true,
+        'created_by' => $otherCreator,
+        'published_by' => $otherCreator,
+        'published_at' => now(),
+        'changelog' => 'v1',
+        'snapshot_data' => json_encode([
+            'template' => ['id' => $templateId, 'visibility_level' => 'global', 'status' => 'published'],
+        ], JSON_THROW_ON_ERROR),
         'created_at' => now(),
         'updated_at' => now(),
     ]);

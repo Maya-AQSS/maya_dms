@@ -4,13 +4,10 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Observers\DocumentObserver;
-use Illuminate\Database\Eloquent\Attributes\ObservedBy;
-
 use App\Models\Concerns\HasCommentingStatus;
+use App\Observers\DocumentObserver;
 use App\Support\DocumentHeadSnapshot;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Date;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -20,6 +17,8 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\Query\Expression;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 

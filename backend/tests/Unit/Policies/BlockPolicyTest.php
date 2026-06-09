@@ -10,7 +10,6 @@ use App\Models\JwtUser;
 use App\Models\Template;
 use App\Policies\BlockPolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -70,7 +69,7 @@ class BlockPolicyTest extends TestCase
 
         $this->assertTrue($this->policy->listForTemplate($user, $template));
 
-        $stranger = $this->makeJwtUser(['block.index', 'template.update']);
+        $stranger = $this->makeJwtUser(['block.index', 'template.update'], '22222222-2222-2222-2222-222222222222');
         auth()->setUser($stranger);
         $this->assertFalse($this->policy->listForTemplate($stranger, $template));
     }
@@ -88,7 +87,7 @@ class BlockPolicyTest extends TestCase
     public function test_list_for_document_requires_view_on_parent(): void
     {
         $ownerId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
-        $user = $this->makeJwtUser(['block.index', 'document.update']);
+        $user = $this->makeJwtUser(['block.index', 'document.update'], $ownerId);
         auth()->setUser($user);
         $document = $this->makeDocument($ownerId, $ownerId);
 
@@ -104,7 +103,7 @@ class BlockPolicyTest extends TestCase
         auth()->setUser($owner);
         $this->assertTrue($this->policy->createForTemplate($owner, $template));
 
-        $user = $this->makeJwtUser(['block.create', 'template.update']);
+        $user = $this->makeJwtUser(['block.create', 'template.update'], '22222222-2222-2222-2222-222222222222');
         auth()->setUser($user);
         $this->assertFalse($this->policy->createForTemplate($user, $template));
 
@@ -115,7 +114,7 @@ class BlockPolicyTest extends TestCase
     public function test_update_for_document_requires_document_companion(): void
     {
         $ownerId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
-        $user = $this->makeJwtUser(['block.update', 'document.update']);
+        $user = $this->makeJwtUser(['block.update', 'document.update'], $ownerId);
         auth()->setUser($user);
         $document = $this->makeDocument($ownerId, $ownerId);
 
@@ -129,13 +128,13 @@ class BlockPolicyTest extends TestCase
     {
         $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
         $ownerId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
-        $owner = $this->makeJwtUser(['block.delete', 'document.update']);
+        $owner = $this->makeJwtUser(['block.delete', 'document.update'], $ownerId);
         auth()->setUser($owner);
         $document = $this->makeDocument($creatorId, $ownerId);
 
         $this->assertTrue($this->policy->deleteForDocument($owner, $document));
 
-        $stranger = $this->makeJwtUser(['block.delete', 'document.update']);
+        $stranger = $this->makeJwtUser(['block.delete', 'document.update'], 'cccccccc-cccc-cccc-cccc-cccccccccccc');
         auth()->setUser($stranger);
         $this->assertFalse($this->policy->deleteForDocument($stranger, $document));
     }

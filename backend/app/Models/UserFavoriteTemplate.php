@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Observers\UserFavoriteTemplateObserver;
-use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use App\Repositories\Eloquent\UserFavoriteRepository;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 

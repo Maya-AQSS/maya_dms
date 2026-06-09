@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\Policies;
 
 use App\Models\Document;
@@ -15,23 +17,23 @@ class DocumentPolicyPerformanceTest extends TestCase
     public function test_review_check_is_fast_enough_for_in_memory_id_comparison(): void
     {
         $policy = new DocumentPolicy;
-        $user   = new JwtUser([
-            'id'            => 'user-perf-1',
-            'email'         => null,
-            'name'          => null,
-            'department'    => null,
-            'permissions'   => [],
-            'scope'         => '',
+        $user = new JwtUser([
+            'id' => 'user-perf-1',
+            'email' => null,
+            'name' => null,
+            'department' => null,
+            'permissions' => [],
+            'scope' => '',
         ]);
         $doc = new Document;
         $doc->forceFill([
             'created_by' => 'other-user',
-            'owner_id'   => 'other-user',
-            'status'     => 'draft',
+            'owner_id' => 'other-user',
+            'status' => 'draft',
         ]);
 
         $iterations = 2_000;
-        $start      = hrtime(true);
+        $start = hrtime(true);
         for ($i = 0; $i < $iterations; $i++) {
             $policy->review($user, $doc);
         }

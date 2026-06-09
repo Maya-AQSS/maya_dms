@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * Maya — CORS configuration
  *
@@ -25,7 +27,7 @@ return [
 
     'allowed_origins_patterns' => [
         // Acepta cualquier subdominio del dominio configurado (cubre todos los slots).
-        '#^https?://[\w.-]+\.' . $corsDomainEscaped . '(:\d+)?$#',
+        '#^https?://[\w.-]+\.'.$corsDomainEscaped.'(:\d+)?$#',
         // Localhost con cualquier puerto.
         '#^http://localhost(:\d+)?$#',
         // Hostnames de servicio Docker (maya_authorization.localhost, etc.).

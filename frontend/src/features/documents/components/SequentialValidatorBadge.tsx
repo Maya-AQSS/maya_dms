@@ -43,8 +43,8 @@ export function SequentialValidatorBadge({ reviewers, reviewMode }: Props) {
     const pending = reviewers.filter((r) => (r.status ?? 'pending') === 'pending');
     if (pending.length === 0) return null;
 
-    const minStage = Math.min(...pending.map((r) => r.stage));
-    const active = pending.filter((r) => r.stage === minStage);
+    const minStage = Math.min(...pending.map((r) => r.stage ?? 0));
+    const active = pending.filter((r) => (r.stage ?? 0) === minStage);
     const names = active.map((r) => r.name ?? 'Validador').join(', ');
 
     return (

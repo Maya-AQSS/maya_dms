@@ -1,9 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests;
 
-use App\Models\Process;
 use App\Models\Document;
+use App\Models\Process;
 use App\Models\Template;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\DB;

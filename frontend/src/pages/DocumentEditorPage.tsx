@@ -1,6 +1,7 @@
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { DocumentWizard } from '../features/documents/components/DocumentWizard';
-import { Button, ErrorBoundary } from '@ceedcv-maya/shared-ui-react';
+import { Button } from '@ceedcv-maya/shared-ui-react';
+import { ErrorBoundaryWrapper as ErrorBoundary } from '../components/ErrorBoundaryWrapper';
 
 /**
  * Editor de programación: asistente de 3 pasos (propiedades, bloques, resumen), sin paso de usuarios.

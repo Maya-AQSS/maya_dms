@@ -15,7 +15,7 @@ import {
   syncTemplateValidators,
   syncDocumentReviewers,
 } from '../../../api/templates';
-import { ApiHttpError, apiFetchJson } from '../../../api/http';
+import { ApiHttpError } from '../../../api/http';
 import { VersionChangelogModal } from '../../../components/VersionChangelogModal';
 import { Button, ConfirmDialog } from '@ceedcv-maya/shared-ui-react';
 import { useProcessesQuery } from '../../../hooks/useProcesses';
@@ -64,7 +64,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   );
   const [leaveGuard, setLeaveGuard] = useState(false);
   const [hasInvalidBlocks, setHasInvalidBlocks] = useState(false);
-  const [invalidBlocksModal, setInvalidBlocksModal] = useState<{ onProceed: (remaining: TemplateBlock[]) => void } | null>(null);
+  const [invalidBlocksModal, setInvalidBlocksModal] = useState<{ onProceed?: (remaining: TemplateBlock[]) => void } | null>(null);
   const [blockInvariantModal, setBlockInvariantModal] = useState<string | null>(null);
 
   // Template state (synchronized with API)
@@ -191,9 +191,6 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     );
   };
 
-  // Dirty check
-  const isDirty = step === 'properties' && step1Methods.formState.isDirty;
-
   const validateBlocksInvariants = (blocksList: TemplateBlock[]): string | null => {
     const hasEditable = blocksList.some(b => b.block_state === 'editable' || b.block_state === 'modifiable');
     if (!hasEditable) return 'La plantilla debe tener al menos un bloque editable o modificable.';
@@ -211,6 +208,10 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     return null;
   };
 
+  // Leído en render para activar la suscripción del proxy de RHF; si solo se
+  // accediera dentro del handler, `isDirty` quedaría obsoleto (false).
+  const isStep1Dirty = step1Methods.formState.isDirty;
+
   const handleBackArrow = async () => {
     const order: Step[] = ['properties', 'blocks', 'users', 'summary'];
     const idx = order.indexOf(step);
@@ -220,6 +221,12 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       }
       setStep(order[idx - 1]!);
     } else {
+      // Primer paso: salir del asistente. Si hay cambios sin guardar en el
+      // formulario de propiedades, pedir confirmación antes de abandonar.
+      if (isStep1Dirty) {
+        setLeaveGuard(true);
+        return;
+      }
       if (window.history.length <= 1) {
         navigate("/dashboard");
       } else {
@@ -228,7 +235,9 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     }
   };
 
-  const saveProperties = step1Methods.handleSubmit(async (values) => {
+  const saveProperties = async (): Promise<boolean> => {
+    let success = false;
+    await step1Methods.handleSubmit(async (values) => {
     setSaving(true);
     setPermissionError(null);
     try {
@@ -268,6 +277,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       step1Methods.reset(values);
       setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'properties'])) as Step[]);
       setStep('blocks');
+      success = true;
     } catch (e) {
       if (e instanceof ApiHttpError && (e.status === 401 || e.status === 403)) {
         setPermissionError(
@@ -277,12 +287,12 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       } else {
         setErrors({ api: e instanceof Error ? e.message : 'Error al guardar' });
       }
-      return false
     } finally {
       setSaving(false);
-      return true
     }
-  });
+    })();
+    return success;
+  };
   
   const openChangelogModal = (mode: 'submit' | 'publish') => {
     const blockInvariantErr = validateBlocksInvariants(wizardBlocks);
@@ -455,7 +465,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     }
   };
 
-  const validateBlocksStep = async (onInvalid?: (remaining: Block[]) => void) => {
+  const validateBlocksStep = async (onInvalid?: (remaining: TemplateBlock[]) => void) => {
     if (blocksLoading || blocksCount < 1) {
       setErrors({ blocks: 'Añade al menos un bloque antes de continuar.' });
       return false;

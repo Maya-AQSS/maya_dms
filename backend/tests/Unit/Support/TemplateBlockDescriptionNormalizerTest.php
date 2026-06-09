@@ -92,8 +92,8 @@ final class TemplateBlockDescriptionNormalizerTest extends TestCase
     public function test_bullet_list_item_with_content_returns_text(): void
     {
         $node = [
-            'type'     => 'bulletListItem',
-            'content'  => [['type' => 'text', 'text' => 'Viñeta uno']],
+            'type' => 'bulletListItem',
+            'content' => [['type' => 'text', 'text' => 'Viñeta uno']],
             'children' => [],
         ];
         $result = TemplateBlockDescriptionNormalizer::toPlainString($node);
@@ -104,7 +104,7 @@ final class TemplateBlockDescriptionNormalizerTest extends TestCase
     {
         // children is a list of child blocks — hits the children branch (line 65)
         $node = [
-            'type'    => 'numberedListItem',
+            'type' => 'numberedListItem',
             'content' => [['type' => 'text', 'text' => 'Elemento principal']],
             'children' => [
                 ['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'Sub-elemento']], 'children' => []],
@@ -136,7 +136,7 @@ final class TemplateBlockDescriptionNormalizerTest extends TestCase
         // the 'content'/'children' fallback (lines 79-87)
         $node = [
             'customType' => 'something',
-            'content'    => [
+            'content' => [
                 ['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'Contenido']], 'children' => []],
             ],
         ];
@@ -148,7 +148,7 @@ final class TemplateBlockDescriptionNormalizerTest extends TestCase
     {
         // Associative array with 'children' key but no 'content' key
         $node = [
-            'id'       => 'block-xyz',
+            'id' => 'block-xyz',
             'children' => [
                 ['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'Hijo']], 'children' => []],
             ],
@@ -163,7 +163,7 @@ final class TemplateBlockDescriptionNormalizerTest extends TestCase
     {
         // An inline item that is not 'text' type → hits the else branch (line 122-123)
         $node = [
-            'type'    => 'paragraph',
+            'type' => 'paragraph',
             'content' => [
                 // non-text inline type → extractFromLegacyStructure called recursively
                 ['type' => 'hardBreak'],
@@ -180,7 +180,7 @@ final class TemplateBlockDescriptionNormalizerTest extends TestCase
     {
         // extractInlineText: non-array items are skipped (line 117-118)
         $node = [
-            'type'    => 'paragraph',
+            'type' => 'paragraph',
             'content' => [
                 'not-an-array',  // scalar — skipped
                 ['type' => 'text', 'text' => 'Solo esto'],

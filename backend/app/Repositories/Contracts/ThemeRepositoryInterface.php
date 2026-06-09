@@ -6,7 +6,9 @@ namespace App\Repositories\Contracts;
 
 use App\DTOs\Themes\CreateThemeDto;
 use App\DTOs\Themes\ThemeDto;
+use App\DTOs\Themes\ThemeResolvedDto;
 use App\DTOs\Themes\UpdateThemeDto;
+use App\Services\ThemeStateTransitions;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 interface ThemeRepositoryInterface
@@ -28,7 +30,7 @@ interface ThemeRepositoryInterface
 
     /**
      * Cambia únicamente el estado del theme. La validez de la transición la
-     * gobierna {@see \App\Services\ThemeStateTransitions}, no este método.
+     * gobierna {@see ThemeStateTransitions}, no este método.
      */
     public function updateStatus(string $id, string $status): ThemeDto;
 
@@ -57,8 +59,15 @@ interface ThemeRepositoryInterface
      * Fetch resolved theme data for rendering by theme ID.
      * Returns theme assets and styling configuration as DTO.
      * Returns null if theme not found.
-     *
-     * @return \App\DTOs\Themes\ThemeResolvedDto|null
      */
-    public function findThemeResolvedById(string $id): ?\App\DTOs\Themes\ThemeResolvedDto;
+    public function findThemeResolvedById(string $id): ?ThemeResolvedDto;
+
+    /**
+     * Carga palette/typography de varios themes por id (para CSS scopeado por
+     * bloque en el render). Los ids no encontrados se omiten.
+     *
+     * @param  list<string>  $ids
+     * @return array<int, array{id: string, palette: array<string,mixed>, typography: array<string,mixed>}>
+     */
+    public function findScopedThemesByIds(array $ids): array;
 }

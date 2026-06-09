@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -37,7 +39,7 @@ return new class extends Migration
             Schema::table('processes', function (Blueprint $table) {
                 try {
                     $table->dropForeign(['process_parent_id']);
-                } catch (\Throwable) {
+                } catch (Throwable) {
                 }
             });
         }

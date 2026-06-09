@@ -41,9 +41,9 @@ declare(strict_types=1);
 
 return (static function (): array {
     // --- Usuarios dev (realm Keycloak + seed-user-academic-assignments.sh) ---
-    $devUsers = require __DIR__ . '/maya_dev_users.php';
+    $devUsers = require __DIR__.'/maya_dev_users.php';
     $u = static fn (string $key): string => $devUsers[$key]
-        ?? throw new \InvalidArgumentException("Usuario dev desconocido: {$key}");
+        ?? throw new InvalidArgumentException("Usuario dev desconocido: {$key}");
 
     $uDir = $u('direccion');
     $uSec = $u('secretaria');
@@ -59,6 +59,7 @@ return (static function (): array {
         if ($text !== '') {
             $content[] = ['type' => 'text', 'text' => $text];
         }
+
         return [
             'type' => 'paragraph',
             'attrs' => ['textAlign' => 'left'],
@@ -75,6 +76,7 @@ return (static function (): array {
                 'marks' => [['type' => 'bold']],
             ];
         }
+
         return [
             'type' => 'paragraph',
             'attrs' => ['textAlign' => 'left'],
@@ -87,6 +89,7 @@ return (static function (): array {
         if ($text !== '') {
             $content[] = ['type' => 'text', 'text' => $text];
         }
+
         return [
             'type' => 'heading',
             'attrs' => ['textAlign' => 'left', 'level' => max(1, min(3, $level))],
@@ -99,6 +102,7 @@ return (static function (): array {
         if ($text !== '') {
             $content[] = ['type' => 'text', 'text' => $text];
         }
+
         return [
             'type' => 'listItem',
             'attrs' => ['textAlign' => 'left'],
@@ -125,6 +129,7 @@ return (static function (): array {
         if ($text !== '') {
             $content[] = ['type' => 'text', 'text' => $text];
         }
+
         return [
             'type' => 'paragraph',
             'attrs' => ['textAlign' => 'left'],
@@ -632,6 +637,7 @@ return (static function (): array {
     $snapshotFor = static function (string $templateId) use (&$blocks): array {
         $subset = array_values(array_filter($blocks, fn (array $b): bool => $b['template_id'] === $templateId));
         usort($subset, fn (array $a, array $b): int => $a['sort_order'] <=> $b['sort_order']);
+
         return array_map(static fn (array $b): array => [
             'id' => $b['id'],
             'title' => $b['title'],
@@ -681,7 +687,7 @@ return (static function (): array {
     // vive en programaciones_didacticas_doc_blocks.php
     // ============================================================
 
-    $document_blocks = require __DIR__ . '/programaciones_didacticas_doc_blocks.php';
+    $document_blocks = require __DIR__.'/programaciones_didacticas_doc_blocks.php';
 
     // ============================================================
     // TEMPLATE REVIEWERS — 2 etapas secuenciales, usuarios dev del realm

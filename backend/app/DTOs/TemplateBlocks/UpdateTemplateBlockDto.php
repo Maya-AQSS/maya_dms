@@ -17,5 +17,13 @@ readonly class UpdateTemplateBlockDto
         public bool $set_block_state = false,
         public ?array $description = null,
         public bool $set_description = false,
+        public ?string $block_type = null,
+        public bool $set_block_type = false,
+        public ?bool $page_break_after = null,
+        public bool $set_page_break_after = false,
+        public ?string $theme_id = null,
+        public bool $set_theme_id = false,
+        public ?bool $apply_theme = null,
+        public bool $set_apply_theme = false,
     ) {}
 }

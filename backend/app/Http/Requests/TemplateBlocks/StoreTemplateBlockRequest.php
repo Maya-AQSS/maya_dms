@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\TemplateBlocks;
 
 use App\Enums\BlockState;
+use App\Enums\BlockType;
 use App\Http\Concerns\SanitizesBlockContent;
 use App\Http\Requests\TemplateBlocks\Concerns\ResolvesTemplateForBlockAuthorization;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -39,9 +40,13 @@ class StoreTemplateBlockRequest extends FormRequest
                     $fail('"Bloque sin nombre" no es un nombre válido para un bloque.');
                 }
             }],
+            'block_type' => ['sometimes', 'string', 'in:'.implode(',', BlockType::values())],
+            'theme_id' => ['sometimes', 'nullable', 'uuid', 'exists:themes,id'],
+            'apply_theme' => ['sometimes', 'boolean'],
             'default_content' => ['nullable', 'array'],
             'description' => ['nullable', 'array'],
             'block_state' => ['sometimes', 'string', 'in:'.implode(',', BlockState::values())],
+            'page_break_after' => ['sometimes', 'boolean'],
             'sort_order' => ['sometimes', 'integer', 'min:0'],
         ];
     }

@@ -28,6 +28,12 @@ beforeEach(function () {
     $this->app['events']->listen(RouteMatched::class, function ($event) use ($userId) {
         $event->request->attributes->set('jwt_user', ['id' => $userId, 'sub' => $userId]);
     });
+
+    // Las rutas viven bajo el grupo `permission:dms.login`.
+    DB::table('user_resolved_permissions')->insert([
+        'user_id' => $this->userId,
+        'permission_slug' => 'dms.login',
+    ]);
 });
 
 function grantCommentPermissions(string ...$slugs): void
@@ -134,6 +140,8 @@ it('denies comment destroy without comment-block.delete', function () {
 
     $ctx = seedTemplateInReview(test()->otherUserId, test()->userId);
 
+    // Un autor puede borrar su propio comentario sin el slug; para verificar la
+    // denegación, el comentario debe ser de otro usuario.
     $commentId = (string) Str::uuid();
     Comment::query()->forceCreate([
         'id' => $commentId,
@@ -142,7 +150,7 @@ it('denies comment destroy without comment-block.delete', function () {
         'commentable_version' => 1,
         'blockable_type' => TemplateBlock::class,
         'blockable_id' => $ctx['blockId'],
-        'author_id' => test()->userId,
+        'author_id' => test()->otherUserId,
         'body' => 'Comentario',
     ]);
 
@@ -248,10 +256,12 @@ it('allows document edit-share collaborator to comment when rejected', function 
     $ownerId = test()->userId;
     $collabId = test()->otherUserId;
 
-    DB::table('user_resolved_permissions')->insert([
-        'user_id' => $collabId,
-        'permission_slug' => 'comment-block.create',
-    ]);
+    foreach (['dms.login', 'comment-block.create'] as $slug) {
+        DB::table('user_resolved_permissions')->insert([
+            'user_id' => $collabId,
+            'permission_slug' => $slug,
+        ]);
+    }
 
     $templateId = (string) Str::uuid();
     $documentId = (string) Str::uuid();
@@ -287,7 +297,7 @@ it('allows document edit-share collaborator to comment when rejected', function 
         'updated_at' => now(),
     ]);
 
-    test()->app['events']->listen(RouteMatched::class, function ($event) use ($collabId) {
+    app('events')->listen(RouteMatched::class, function ($event) use ($collabId) {
         $event->request->attributes->set('jwt_user', ['id' => $collabId, 'sub' => $collabId]);
     });
 

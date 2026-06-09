@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature;
 
 use App\Enums\TemplateVisibilityLevel;
@@ -8,6 +10,7 @@ use App\Models\EntityVersion;
 use App\Models\JwtUser;
 use App\Models\Template;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -145,7 +148,7 @@ class EntityVersionsModelTest extends TestCase
             'created_by' => (string) Str::uuid(),
         ]);
 
-        $this->expectException(\Illuminate\Database\QueryException::class);
+        $this->expectException(QueryException::class);
 
         EntityVersion::query()->create([
             'versionable_type' => Template::class,

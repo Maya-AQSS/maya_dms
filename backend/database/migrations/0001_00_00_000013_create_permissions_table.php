@@ -1,8 +1,10 @@
 <?php
 
-use Maya\Platform\Database\PostgresFdwMigration;
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
+use Maya\Platform\Database\PostgresFdwMigration;
 
 /**
  * Catálogo de permisos de DMS — consumido vía FDW desde maya_auth.v_dms_permissions.
@@ -39,7 +41,7 @@ return new class extends Migration
     public function down(): void
     {
         if (app()->environment('testing')) {
-            DB::statement('DROP TABLE IF EXISTS ' . self::VIEW_NAME . ' CASCADE');
+            DB::statement('DROP TABLE IF EXISTS '.self::VIEW_NAME.' CASCADE');
 
             return;
         }
@@ -71,14 +73,14 @@ return new class extends Migration
 
         if ($isLocal) {
             // En local apuntamos al mismo Postgres pero a la BD maya_auth.
-            $host     = config('database.connections.pgsql.host');
-            $port     = config('database.connections.pgsql.port');
+            $host = config('database.connections.pgsql.host');
+            $port = config('database.connections.pgsql.port');
             $database = config('database.fdw.permissions.database', 'maya_auth');
             $username = config('database.fdw.permissions.username', 'maya');
             $password = config('database.fdw.permissions.password', 'secret');
         } else {
-            $host     = config('database.fdw.permissions.host');
-            $port     = config('database.fdw.permissions.port');
+            $host = config('database.fdw.permissions.host');
+            $port = config('database.fdw.permissions.port');
             $database = config('database.fdw.permissions.database');
             $username = config('database.fdw.permissions.username');
             $password = config('database.fdw.permissions.password');
@@ -98,7 +100,7 @@ return new class extends Migration
         );
 
         $foreignColumnsSql = 'code VARCHAR(191), name VARCHAR(255), description TEXT, '
-            . 'created_at TIMESTAMP, updated_at TIMESTAMP';
+            .'created_at TIMESTAMP, updated_at TIMESTAMP';
 
         $viewSelectSql = 'code, name, description, created_at, updated_at';
 

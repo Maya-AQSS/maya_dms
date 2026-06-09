@@ -5,9 +5,6 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\DTOs\Users\JwtProfileDto;
-use App\Support\FdwTeardown;
-use Illuminate\Console\Events\CommandStarting;
-use Illuminate\Support\Facades\Event;
 use App\Models\Comment;
 use App\Models\Document;
 use App\Models\DocumentBlock;
@@ -18,9 +15,9 @@ use App\Models\TemplateBlock;
 use App\Models\Theme;
 use App\Policies\BlockPolicy;
 use App\Policies\CommentPolicy;
-use App\Policies\ProcessPolicy;
 use App\Policies\DocumentBlockPolicy;
 use App\Policies\DocumentPolicy;
+use App\Policies\ProcessPolicy;
 use App\Policies\TemplateBlockPolicy;
 use App\Policies\TemplatePolicy;
 use App\Policies\ThemePolicy;
@@ -68,7 +65,6 @@ use App\Repositories\Resolvers\FdwUserProfileResolver;
 use App\Services\AnchoredCommentService;
 use App\Services\ApiTeamEmbedService;
 use App\Services\CommentService;
-use App\Services\MediaService;
 use App\Services\Contracts\AnchoredCommentServiceInterface;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\CommentServiceInterface;
@@ -82,6 +78,7 @@ use App\Services\Contracts\ProcessServiceInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
 use App\Services\Contracts\TeamReadServiceInterface;
 use App\Services\Contracts\TemplateBlockServiceInterface;
+use App\Services\Contracts\TemplateRenderServiceInterface;
 use App\Services\Contracts\TemplateServiceInterface;
 use App\Services\Contracts\ThemeImageServiceInterface;
 use App\Services\Contracts\ThemePdfServiceInterface;
@@ -94,15 +91,15 @@ use App\Services\DashboardService;
 use App\Services\DocumentDocxExportService;
 use App\Services\DocumentExportService;
 use App\Services\DocumentPdfService;
-use App\Services\Contracts\TemplateRenderServiceInterface;
 use App\Services\DocumentRenderService;
 use App\Services\DocumentService;
-use App\Services\TemplateRenderService;
 use App\Services\EntityVersionLifecycleService;
+use App\Services\MediaService;
 use App\Services\ProcessService;
 use App\Services\SnapshotService;
 use App\Services\TeamReadService;
 use App\Services\TemplateBlockService;
+use App\Services\TemplateRenderService;
 use App\Services\TemplateService;
 use App\Services\ThemeImageService;
 use App\Services\ThemePdfService;
@@ -111,8 +108,11 @@ use App\Services\ThemeService;
 use App\Services\UserDirectoryService;
 use App\Services\UserFavoriteService;
 use App\Services\UserProfileService;
+use App\Support\FdwTeardown;
+use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Broadcast;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Maya\Profile\Migrations as ProfileMigrations;
@@ -184,7 +184,7 @@ class AppServiceProvider extends ServiceProvider
         // `maya/shared-profile-laravel`). dms consume la vista resuelta de
         // permisos vía FDW (`v_dms_user_permissions` en maya_authorization)
         // — eliminada la tabla local `user_permissions`.
-                // Broadcasting auth endpoint protegido por JWT y bajo prefijo /api/v1 para
+        // Broadcasting auth endpoint protegido por JWT y bajo prefijo /api/v1 para
         // consistencia con el resto de la API. Anula el `/broadcasting/auth` que
         // Laravel registra por defecto con middleware `web` (basado en sesión).
         Broadcast::routes([

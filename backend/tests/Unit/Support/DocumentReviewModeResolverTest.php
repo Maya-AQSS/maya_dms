@@ -1,13 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\Support;
 
 use App\Models\Document;
 use App\Models\EntityVersion;
 use App\Models\Template;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
-use App\Support\DocumentReviewModeResolver;
 use App\Support\DocumentHeadSnapshot;
+use App\Support\DocumentReviewModeResolver;
 use App\Support\TemplateHeadSnapshot;
 use Mockery;
 use Tests\TestCase;

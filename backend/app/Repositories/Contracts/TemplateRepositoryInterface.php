@@ -6,6 +6,7 @@ namespace App\Repositories\Contracts;
 
 use App\DTOs\Templates\FilterTemplatesDto;
 use App\DTOs\Templates\TemplateFilterDto;
+use App\DTOs\Templates\TemplateRenderDto;
 use App\Models\Template;
 use App\Policies\TemplatePolicy;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -148,7 +149,6 @@ interface TemplateRepositoryInterface
     /**
      * Sincroniza revisores de plantilla via relación (forceDelete old, create new).
      *
-     * @param  string  $templateId
      * @param  array<int, array{user_id: string, stage: int}>  $reviewerData
      */
     public function syncTemplateReviewers(string $templateId, array $reviewerData): void;
@@ -156,7 +156,6 @@ interface TemplateRepositoryInterface
     /**
      * Sincroniza revisores de documentos via relación (delete old, create new).
      *
-     * @param  string  $templateId
      * @param  array<int, array{user_id: string, stage: int}>  $reviewerData
      */
     public function syncDocumentReviewers(string $templateId, array $reviewerData): void;
@@ -201,8 +200,6 @@ interface TemplateRepositoryInterface
      * Returns template ID, name, description, theme_id, and blocks ordered by sort_order.
      * Blocks contain: id, title, default_content.
      * Without global catalog scope; caller must authorize.
-     *
-     * @return \App\DTOs\Templates\TemplateRenderDto|null
      */
-    public function findForRenderingWithoutCatalogScope(string $id): ?\App\DTOs\Templates\TemplateRenderDto;
+    public function findForRenderingWithoutCatalogScope(string $id): ?TemplateRenderDto;
 }

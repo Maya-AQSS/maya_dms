@@ -1,8 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Middleware\HandleCors;
+use Maya\Auth\Middleware\JwtMiddleware;
+use Maya\Auth\Middleware\RequirePermissionMiddleware;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -23,10 +28,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'content.*',
         ]);
         $middleware->alias([
-            'jwt' => \Maya\Auth\Middleware\JwtMiddleware::class,
-            'permission' => \Maya\Auth\Middleware\RequirePermissionMiddleware::class,
+            'jwt' => JwtMiddleware::class,
+            'permission' => RequirePermissionMiddleware::class,
         ]);
-        $middleware->api(prepend: [\Illuminate\Http\Middleware\HandleCors::class]);
+        $middleware->api(prepend: [HandleCors::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

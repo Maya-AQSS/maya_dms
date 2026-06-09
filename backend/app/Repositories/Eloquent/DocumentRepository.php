@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repositories\Eloquent;
 
+use App\DTOs\Documents\DocumentBlockPayloadDto;
 use App\DTOs\Documents\DocumentFilterDto;
 use App\Models\BlockVersion;
 use App\Models\Document;
@@ -16,10 +17,10 @@ use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Support\DocumentHeadSnapshot;
 use App\Support\TemplateHeadSnapshot;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Str;
 use JsonException;
 use RuntimeException;
@@ -60,7 +61,7 @@ class DocumentRepository implements DocumentRepositoryInterface
             ->first();
 
         if ($document === null) {
-            throw (new ModelNotFoundException())->setModel(Document::class);
+            throw (new ModelNotFoundException)->setModel(Document::class);
         }
 
         return $document;
@@ -909,7 +910,7 @@ class DocumentRepository implements DocumentRepositoryInterface
      * Fetch document blocks as DTOs, ordered by sort_order.
      * Encapsulates model access; exposes only needed data as DTO.
      *
-     * @return Collection<int, \App\DTOs\Documents\DocumentBlockPayloadDto>
+     * @return Collection<int, DocumentBlockPayloadDto>
      */
     public function findBlocksAsPayloadDtosForDocument(string $documentId): Collection
     {
@@ -918,7 +919,7 @@ class DocumentRepository implements DocumentRepositoryInterface
             ->orderBy('sort_order')
             ->get()
             ->map(function (DocumentBlock $block) {
-                return new \App\DTOs\Documents\DocumentBlockPayloadDto(
+                return new DocumentBlockPayloadDto(
                     blockId: (string) $block->id,
                     templateBlockId: $block->template_block_id ? (string) $block->template_block_id : null,
                     content: $block->content,

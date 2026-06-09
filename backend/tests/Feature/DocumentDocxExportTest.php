@@ -11,6 +11,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Maya\Auth\Contracts\JwksServiceInterface;
+use Maya\Editor\Support\DocxExporter;
+use PhpOffice\PhpWord\PhpWord;
 use Tests\Concerns\AssignsTestUserPermissions;
 use Tests\Concerns\BuildsTestJwt;
 use Tests\TestCase;
@@ -30,6 +32,7 @@ final class DocumentDocxExportTest extends TestCase
     use RefreshDatabase;
 
     private string $userId;
+
     private array $authHeaders;
 
     protected function setUp(): void
@@ -135,7 +138,7 @@ final class DocumentDocxExportTest extends TestCase
 
     public function test_owner_can_export_document_as_docx(): void
     {
-        if (! class_exists(\PhpOffice\PhpWord\PhpWord::class) || ! class_exists(\Maya\Editor\Support\DocxExporter::class)) {
+        if (! class_exists(PhpWord::class) || ! class_exists(DocxExporter::class)) {
             $this->markTestSkipped('phpoffice/phpword (ceedcv-maya/shared-editor-laravel) not installed in this environment.');
         }
 

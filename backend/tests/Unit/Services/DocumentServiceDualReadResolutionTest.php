@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\Services;
 
 use App\Models\Document;
@@ -11,14 +13,19 @@ use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TeamReadRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
+use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
 use App\Services\DocumentBlockService;
+use App\Services\DocumentMigrationBlockDiffer;
+use App\Services\DocumentMigrationPayloadResolver;
 use App\Services\DocumentReviewService;
 use App\Services\DocumentService;
 use App\Services\DocumentShareService;
 use App\Services\DocumentStateService;
 use App\Services\DocumentVersionService;
 use App\Services\TemplateContextResolver;
+use App\Support\DocumentReviewModeResolver;
+use Maya\Messaging\Publishers\NotificationPublisher;
 use Mockery;
 use ReflectionMethod;
 use Tests\TestCase;
@@ -66,6 +73,10 @@ class DocumentServiceDualReadResolutionTest extends TestCase
             Mockery::mock(TemplateContextResolver::class),
             Mockery::mock(AcademicHierarchyRepositoryInterface::class),
             Mockery::mock(TeamReadRepositoryInterface::class),
+            Mockery::mock(NotificationPublisher::class),
+            new DocumentReviewModeResolver($entityVersionRepo),
+            new DocumentMigrationPayloadResolver($docRepo, $entityVersionRepo, $blockSvc, new DocumentMigrationBlockDiffer),
+            Mockery::mock(UserDirectoryRepositoryInterface::class),
         );
 
         $document = new Document;
@@ -128,6 +139,10 @@ class DocumentServiceDualReadResolutionTest extends TestCase
             Mockery::mock(TemplateContextResolver::class),
             Mockery::mock(AcademicHierarchyRepositoryInterface::class),
             Mockery::mock(TeamReadRepositoryInterface::class),
+            Mockery::mock(NotificationPublisher::class),
+            new DocumentReviewModeResolver($entityVersionRepo),
+            new DocumentMigrationPayloadResolver($docRepo, $entityVersionRepo, $blockSvc, new DocumentMigrationBlockDiffer),
+            Mockery::mock(UserDirectoryRepositoryInterface::class),
         );
 
         $document = new Document;

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\Services;
 
 use App\Models\Document;
@@ -9,16 +11,21 @@ use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TeamReadRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
+use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
 use App\Services\DocumentBlockService;
+use App\Services\DocumentMigrationBlockDiffer;
+use App\Services\DocumentMigrationPayloadResolver;
 use App\Services\DocumentReviewService;
 use App\Services\DocumentService;
 use App\Services\DocumentShareService;
 use App\Services\DocumentStateService;
 use App\Services\DocumentVersionService;
 use App\Services\TemplateContextResolver;
+use App\Support\DocumentReviewModeResolver;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Validation\ValidationException;
+use Maya\Messaging\Publishers\NotificationPublisher;
 use Mockery;
 use Tests\TestCase;
 
@@ -33,11 +40,11 @@ class DocumentServiceSubmitTest extends TestCase
     public function test_delegate_owner_throws_when_actor_is_not_current_owner(): void
     {
         $repo = Mockery::mock(DocumentRepositoryInterface::class);
-        $doc  = new Document;
+        $doc = new Document;
         $doc->forceFill([
-            'id'       => 'doc-uuid',
+            'id' => 'doc-uuid',
             'owner_id' => 'real-owner-uuid',
-            'status'   => 'draft',
+            'status' => 'draft',
         ]);
 
         $repo->shouldReceive('findOrFail')
@@ -45,19 +52,19 @@ class DocumentServiceSubmitTest extends TestCase
             ->with('doc-uuid')
             ->andReturn($doc);
 
-        $tplRepo   = Mockery::mock(TemplateRepositoryInterface::class);
-        $snap      = Mockery::mock(SnapshotServiceInterface::class);
-        $blockSvc  = Mockery::mock(DocumentBlockService::class);
-        $verSvc    = Mockery::mock(DocumentVersionService::class);
-        $shareSvc  = Mockery::mock(DocumentShareService::class);
-        $stateSvc  = Mockery::mock(DocumentStateService::class);
+        $tplRepo = Mockery::mock(TemplateRepositoryInterface::class);
+        $snap = Mockery::mock(SnapshotServiceInterface::class);
+        $blockSvc = Mockery::mock(DocumentBlockService::class);
+        $verSvc = Mockery::mock(DocumentVersionService::class);
+        $shareSvc = Mockery::mock(DocumentShareService::class);
+        $stateSvc = Mockery::mock(DocumentStateService::class);
         $reviewSvc = Mockery::mock(DocumentReviewService::class);
         $entityVersionRepo = Mockery::mock(EntityVersionRepositoryInterface::class);
-        $blockRepo         = Mockery::mock(DocumentBlockRepositoryInterface::class);
-        $contextResolver   = Mockery::mock(TemplateContextResolver::class);
-        $academicRepo      = Mockery::mock(AcademicHierarchyRepositoryInterface::class);
-        $teamRepo          = Mockery::mock(TeamReadRepositoryInterface::class);
-        $service = new DocumentService($repo, $tplRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionRepo, $blockRepo, $contextResolver, $academicRepo, $teamRepo);
+        $blockRepo = Mockery::mock(DocumentBlockRepositoryInterface::class);
+        $contextResolver = Mockery::mock(TemplateContextResolver::class);
+        $academicRepo = Mockery::mock(AcademicHierarchyRepositoryInterface::class);
+        $teamRepo = Mockery::mock(TeamReadRepositoryInterface::class);
+        $service = new DocumentService($repo, $tplRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionRepo, $blockRepo, $contextResolver, $academicRepo, $teamRepo, Mockery::mock(NotificationPublisher::class), new DocumentReviewModeResolver($entityVersionRepo), new DocumentMigrationPayloadResolver($repo, $entityVersionRepo, $blockSvc, new DocumentMigrationBlockDiffer), Mockery::mock(UserDirectoryRepositoryInterface::class));
 
         $this->expectException(AuthorizationException::class);
 
@@ -86,11 +93,11 @@ class DocumentServiceSubmitTest extends TestCase
         $stateSvc = Mockery::mock(DocumentStateService::class);
         $reviewSvc = Mockery::mock(DocumentReviewService::class);
         $entityVersionRepo = Mockery::mock(EntityVersionRepositoryInterface::class);
-        $blockRepo         = Mockery::mock(DocumentBlockRepositoryInterface::class);
-        $contextResolver   = Mockery::mock(TemplateContextResolver::class);
-        $academicRepo      = Mockery::mock(AcademicHierarchyRepositoryInterface::class);
-        $teamRepo          = Mockery::mock(TeamReadRepositoryInterface::class);
-        $service = new DocumentService($repo, $tplRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionRepo, $blockRepo, $contextResolver, $academicRepo, $teamRepo);
+        $blockRepo = Mockery::mock(DocumentBlockRepositoryInterface::class);
+        $contextResolver = Mockery::mock(TemplateContextResolver::class);
+        $academicRepo = Mockery::mock(AcademicHierarchyRepositoryInterface::class);
+        $teamRepo = Mockery::mock(TeamReadRepositoryInterface::class);
+        $service = new DocumentService($repo, $tplRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionRepo, $blockRepo, $contextResolver, $academicRepo, $teamRepo, Mockery::mock(NotificationPublisher::class), new DocumentReviewModeResolver($entityVersionRepo), new DocumentMigrationPayloadResolver($repo, $entityVersionRepo, $blockSvc, new DocumentMigrationBlockDiffer), Mockery::mock(UserDirectoryRepositoryInterface::class));
 
         $this->expectException(ValidationException::class);
 

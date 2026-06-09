@@ -103,7 +103,7 @@ class TemplatePolicy
         // datos que proteger, por lo que se permite la vista si el permiso está presente.
         // En producción los controladores siempre pasan un modelo recuperado de BD.
         if ($templateId === null || $templateId === '') {
-            return true;
+            return $user->hasPermission('template.show') || $user->hasPermission('document.create');
         }
 
         // Revisor asignado: puede ver siempre, independientemente de permisos genéricos.
@@ -278,15 +278,14 @@ class TemplatePolicy
 
         $isCreator = (string) $user->getAuthIdentifier() === (string) $template->created_by;
 
-        if (! $isCreator && ! $user->hasPermission('template.clone')) {
-            return false;
+        if ($isCreator) {
+            return true;
         }
 
-        if($isCreator || $user->hasPermission('template.clone')){
-            return true;
-        }else{
-            return false;
-        }
+        // Quien no es creador del origen necesita `template.clone` y además
+        // `template.update` (misma línea que editar publicadas ajenas).
+        return $user->hasPermission('template.clone')
+            && $user->hasPermission('template.update');
     }
 
     /**

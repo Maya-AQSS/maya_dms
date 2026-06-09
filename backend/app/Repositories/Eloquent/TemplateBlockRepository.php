@@ -49,10 +49,14 @@ class TemplateBlockRepository implements TemplateBlockRepositoryInterface
         return TemplateBlock::forceCreate([
             'id' => (string) Str::uuid(),
             'template_id' => $template->getKey(),
+            'block_type' => $attributes['block_type'] ?? 'content',
+            'theme_id' => $attributes['theme_id'] ?? null,
+            'apply_theme' => $attributes['apply_theme'] ?? true,
             'title' => $attributes['title'] ?? null,
             'default_content' => $attributes['default_content'] ?? null,
             'description' => $attributes['description'] ?? null,
             'block_state' => $attributes['block_state'] ?? 'editable',
+            'page_break_after' => $attributes['page_break_after'] ?? false,
             'sort_order' => $attributes['sort_order'] ?? ($maxOrder + 1),
         ]);
     }

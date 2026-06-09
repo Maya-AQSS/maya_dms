@@ -1,5 +1,8 @@
 <?php
 
+declare(strict_types=1);
+
+use Maya\Messaging\Logging\RabbitMQLogChannel;
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
@@ -60,9 +63,9 @@ return [
 
         'rabbit' => [
             'driver' => 'custom',
-            'via'    => \Maya\Messaging\Logging\RabbitMQLogChannel::class,
-            'level'  => env('LOG_RABBIT_LEVEL', 'warning'),
-            'name'   => 'maya-dms-rabbit',
+            'via' => RabbitMQLogChannel::class,
+            'level' => env('LOG_RABBIT_LEVEL', 'warning'),
+            'name' => 'maya-dms-rabbit',
         ],
 
         'blocknote-migration' => [

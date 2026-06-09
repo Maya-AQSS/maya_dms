@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, act } from '@testing-libra
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ProcessFormModal } from '../ProcessFormModal';
 import type { Process } from '../../../../types/processes';
+import type { ProcessPayload } from '../../../../api/processes';
 
 const rootProcess: Process = {
   id: 'proc-root-1',
@@ -31,7 +32,7 @@ function renderModal(
   const defaults = {
     open: true,
     onClose: vi.fn(),
-    onSave: vi.fn<[unknown], Promise<void>>().mockResolvedValue(undefined),
+    onSave: vi.fn<(payload: ProcessPayload) => Promise<void>>().mockResolvedValue(undefined),
     processes: [] as Process[],
   };
   return render(<ProcessFormModal {...defaults} {...props} />);
@@ -126,7 +127,7 @@ describe('ProcessFormModal', () => {
     }
 
     it('calls onSave with correct payload', async () => {
-      const onSave = vi.fn<[unknown], Promise<void>>().mockResolvedValue(undefined);
+      const onSave = vi.fn<(payload: ProcessPayload) => Promise<void>>().mockResolvedValue(undefined);
       renderModal({ onSave });
       await fillAndSubmit();
       await waitFor(() => {
@@ -150,7 +151,7 @@ describe('ProcessFormModal', () => {
     });
 
     it('shows error message when onSave rejects', async () => {
-      const onSave = vi.fn<[unknown], Promise<void>>().mockRejectedValue(
+      const onSave = vi.fn<(payload: ProcessPayload) => Promise<void>>().mockRejectedValue(
         new Error('El servidor rechazó la solicitud'),
       );
       renderModal({ onSave });
@@ -162,7 +163,7 @@ describe('ProcessFormModal', () => {
 
     it('does not call onClose when onSave rejects', async () => {
       const onClose = vi.fn();
-      const onSave = vi.fn<[unknown], Promise<void>>().mockRejectedValue(new Error('fallo'));
+      const onSave = vi.fn<(payload: ProcessPayload) => Promise<void>>().mockRejectedValue(new Error('fallo'));
       renderModal({ onSave, onClose });
       await fillAndSubmit();
       await waitFor(() => {

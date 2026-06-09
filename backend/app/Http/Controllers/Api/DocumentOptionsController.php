@@ -13,7 +13,6 @@ use App\Http\Requests\Documents\DocumentCreationOptionsRequest;
 use App\Http\Resources\DocumentCreateFromModuleResource;
 use App\Http\Resources\DocumentCreationOptionsResource;
 use App\Http\Resources\DocumentMigrationPayloadResource;
-use App\Http\Resources\DocumentResource;
 use App\Http\Resources\DocumentTemplateVersionStatusResource;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;

@@ -13,10 +13,10 @@ readonly class ApplyTemplateMigrationDto
 {
     /**
      * @param  array<string, mixed>  $migratedBlockContent  Contenido final por template_block_id
-     *                                                       (replace/append ya resuelto en cliente).
-     *                                                       Los bloques `locked` ignoran este override.
-     * @param  array<string, string>  $removedBlockActions   Acción por template_block_id eliminado
-     *                                                        en la versión nueva: 'delete' | 'keep'.
+     *                                                      (replace/append ya resuelto en cliente).
+     *                                                      Los bloques `locked` ignoran este override.
+     * @param  array<string, string>  $removedBlockActions  Acción por template_block_id eliminado
+     *                                                      en la versión nueva: 'delete' | 'keep'.
      */
     public function __construct(
         public string $documentId,

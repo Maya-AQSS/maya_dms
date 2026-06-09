@@ -122,6 +122,15 @@ class DocumentBlockRepository implements DocumentBlockRepositoryInterface
         $block->save();
     }
 
+    public function updateBlockAttributes(DocumentBlock $block, array $attributes): DocumentBlock
+    {
+        if ($attributes !== []) {
+            $block->update($attributes);
+        }
+
+        return $block->fresh();
+    }
+
     /**
      * Elimina un bloque del documento.
      */

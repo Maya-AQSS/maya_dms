@@ -14,7 +14,6 @@ declare(strict_types=1);
  * - modifiable: contenido por defecto con placeholders en MAYÚSCULAS sustituibles
  * - optional: bloque opcional (se puede eliminar del documento)
  */
-
-$pack = require __DIR__ . '/programaciones_didacticas_pack.php';
+$pack = require __DIR__.'/programaciones_didacticas_pack.php';
 
 return $pack['template_blocks'];

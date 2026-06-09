@@ -26,9 +26,9 @@ declare(strict_types=1);
 
 return (static function (): array {
     // -- Owners (maya_dev_users.php + documents del pack) --
-    $devUsers = require __DIR__ . '/maya_dev_users.php';
+    $devUsers = require __DIR__.'/maya_dev_users.php';
     $u = static fn (string $key): string => $devUsers[$key]
-        ?? throw new \InvalidArgumentException("Usuario dev desconocido: {$key}");
+        ?? throw new InvalidArgumentException("Usuario dev desconocido: {$key}");
 
     $uJefeDI = $u('jefe_d_i');       // D0 (Ciclo ASIR)
     $uFp = $u('docente_i');          // D1, D2 (módulos FP informática)
@@ -53,6 +53,7 @@ return (static function (): array {
         if ($text !== '') {
             $content[] = ['type' => 'text', 'text' => $text];
         }
+
         return [
             'type' => 'paragraph',
             'attrs' => ['textAlign' => 'left'],
@@ -69,6 +70,7 @@ return (static function (): array {
                 'marks' => [['type' => 'bold']],
             ];
         }
+
         return [
             'type' => 'paragraph',
             'attrs' => ['textAlign' => 'left'],
@@ -81,6 +83,7 @@ return (static function (): array {
         if ($text !== '') {
             $content[] = ['type' => 'text', 'text' => $text];
         }
+
         return [
             'type' => 'heading',
             'attrs' => ['textAlign' => 'left', 'level' => max(1, min(3, $level))],
@@ -93,6 +96,7 @@ return (static function (): array {
         if ($text !== '') {
             $content[] = ['type' => 'text', 'text' => $text];
         }
+
         return [
             'type' => 'listItem',
             'attrs' => ['textAlign' => 'left'],
@@ -115,6 +119,7 @@ return (static function (): array {
         if ($text !== '') {
             $content[] = ['type' => 'text', 'text' => $text];
         }
+
         return [
             'type' => 'paragraph',
             'attrs' => ['textAlign' => 'left'],
@@ -185,14 +190,14 @@ return (static function (): array {
     // ============================================================
 
     // T0 / Block 1 — Cabecera (modifiable) — sustituye placeholders
-$blocks[] = $mkBlock($D0, $uJefeDI, $T0B(1), 0, 1, $finalizeDoc([
+    $blocks[] = $mkBlock($D0, $uJefeDI, $T0B(1), 0, 1, $finalizeDoc([
         $heading(1, 'CICLO FORMATIVO DE ADMINISTRACIÓN DE SISTEMAS INFORMÁTICOS EN RED'),
         $paraBold('Departamento: Informática y Comunicaciones'),
         $paraBold('Jefe de departamento: Óscar Villar Fernández'),
     ]));
 
     // T0 / Block 2 — Identificación del título (editable)
-$blocks[] = $mkBlock($D0, $uJefeDI, $T0B(2), 0, 2, $finalizeDoc([
+    $blocks[] = $mkBlock($D0, $uJefeDI, $T0B(2), 0, 2, $finalizeDoc([
         $heading(2, 'Identificación del título'),
         $para('La formación en general y la formación profesional en particular, constituyen hoy en día objetivos prioritarios de cualquier país que se plantee estrategias de crecimiento económico, de desarrollo tecnológico y de mejora de la calidad de vida de sus ciudadanos ante una realidad que manifiesta claros síntomas de cambio acelerado, especialmente en el campo tecnológico.'),
         $para('Esta formación de tipo polivalente debe permitir a los ciudadanos adaptarse a los cambios en la normativa laboral que puedan producirse a lo largo de su vida. La estructura y organización de las enseñanzas profesionales, sus objetivos y contenidos, así como los criterios de evaluación, son enfocados en la ordenación de la formación profesional desde la perspectiva de la adquisición de la competencia profesional.'),
@@ -213,7 +218,7 @@ $blocks[] = $mkBlock($D0, $uJefeDI, $T0B(2), 0, 2, $finalizeDoc([
     ]));
 
     // T0 / Block 5 — Objetivos del ciclo (editable)
-$blocks[] = $mkBlock($D0, $uJefeDI, $T0B(5), 0, 5, $finalizeDoc([
+    $blocks[] = $mkBlock($D0, $uJefeDI, $T0B(5), 0, 5, $finalizeDoc([
         $heading(2, 'Objetivos del ciclo'),
         $para('El presente elemento curricular se encuentra regulado en el RD 1629/2009, de 4 de noviembre. De manera más concreta, en el artículo 9, Capítulo III "Enseñanzas del ciclo formativo y parámetros básicos de contexto".'),
         $para('Los objetivos generales se refieren a la totalidad del ciclo formativo, ya que son objetivos estratégicos comunes a todos los módulos. Así, estos sirven de guía y orientación para la acción docente.'),
@@ -242,7 +247,7 @@ $blocks[] = $mkBlock($D0, $uJefeDI, $T0B(5), 0, 5, $finalizeDoc([
     ]));
 
     // T0 / Block 6 — Competencias (editable)
-$blocks[] = $mkBlock($D0, $uJefeDI, $T0B(6), 0, 6, $finalizeDoc([
+    $blocks[] = $mkBlock($D0, $uJefeDI, $T0B(6), 0, 6, $finalizeDoc([
         $heading(2, 'Competencias'),
         $para('Las competencias son un "conjunto complejo de conocimientos, habilidades, actitudes, valores, emociones y motivaciones que cada individuo o cada grupo pone en acción en un contexto concreto para hacer frente a las demandas peculiares de cada situación".'),
         $para('En concreto, el capítulo II del título de Técnico Superior en Administración de Sistemas Informáticos en Red, diferencia entre competencia general y competencias profesionales, personales y sociales. La competencia general toma como referente el conjunto de cualificaciones profesionales y las unidades de competencia incluidas en el Catálogo Nacional de Cualificaciones Profesionales.'),
@@ -274,7 +279,7 @@ $blocks[] = $mkBlock($D0, $uJefeDI, $T0B(6), 0, 6, $finalizeDoc([
     ]));
 
     // T0 / Block 8 — Evaluación (modifiable) — sustituye fechas reales del calendario ASIR
-$blocks[] = $mkBlock($D0, $uJefeDI, $T0B(8), 0, 8, $finalizeDoc([
+    $blocks[] = $mkBlock($D0, $uJefeDI, $T0B(8), 0, 8, $finalizeDoc([
         $heading(2, 'EVALUACIÓN'),
         $heading(3, 'Tipos de evaluación'),
         $para('La primera evaluación se realizará en formato "a distancia" y la segunda evaluación y evaluaciones ordinaria y extraordinaria se realizarán de forma presencial, en el CEEDCV en las aulas asignadas para tal efecto, de las cuales se informará tanto en el aula de tutoría como en las aulas de los módulos correspondientes.'),
@@ -290,13 +295,13 @@ $blocks[] = $mkBlock($D0, $uJefeDI, $T0B(8), 0, 8, $finalizeDoc([
     ]));
 
     // T0 / Block 9 — Actividades complementarias y extraescolares (optional)
-$blocks[] = $mkBlock($D0, $uJefeDI, $T0B(9), 0, 9, $finalizeDoc([
+    $blocks[] = $mkBlock($D0, $uJefeDI, $T0B(9), 0, 9, $finalizeDoc([
         $heading(2, 'Actividades complementarias y extraescolares'),
         $para('No se contemplan actividades extraescolares en este ciclo, aunque a lo largo del curso se indicarán a los alumnos jornadas (p.ej., jornadas de empleabilidad, jornadas de talento), cursos y seminarios que puedan servir de interés para su desarrollo profesional.'),
     ]));
 
     // T0 / Block 13 — Plan de dualización (editable)
-$blocks[] = $mkBlock($D0, $uJefeDI, $T0B(13), 0, 13, $finalizeDoc([
+    $blocks[] = $mkBlock($D0, $uJefeDI, $T0B(13), 0, 13, $finalizeDoc([
         $heading(2, 'Plan de dualización'),
         $para('La FP Dual permite al estudiante recibir una formación en el centro educativo y al mismo tiempo poner en práctica lo aprendido en un centro de trabajo. El periodo que se llevará en el centro de trabajo se desarrollará en el segundo curso del ciclo debido a las características específicas del CEEDCV.'),
         $para('En las siguientes tablas se muestran las horas que los alumnos realizarán en el centro de trabajo de cada módulo, así como los totales por curso.'),
@@ -335,7 +340,7 @@ $blocks[] = $mkBlock($D0, $uJefeDI, $T0B(13), 0, 13, $finalizeDoc([
     ]));
 
     // T0 / Block 14 — Programaciones módulos del ciclo (editable)
-$blocks[] = $mkBlock($D0, $uJefeDI, $T0B(14), 0, 14, $finalizeDoc([
+    $blocks[] = $mkBlock($D0, $uJefeDI, $T0B(14), 0, 14, $finalizeDoc([
         $heading(2, 'Programaciones módulos del ciclo'),
         $heading(3, 'CFGS Administración de Sistemas Informáticos en Red — Primer Curso'),
         $tableAsPara(
@@ -359,7 +364,7 @@ $blocks[] = $mkBlock($D0, $uJefeDI, $T0B(14), 0, 14, $finalizeDoc([
     // ============================================================
 
     // T1 / Block 1 — Cabecera DWES (modifiable)
-$blocks[] = $mkBlock($D1, $uFp, $T1B(1), 1, 1, $finalizeDoc([
+    $blocks[] = $mkBlock($D1, $uFp, $T1B(1), 1, 1, $finalizeDoc([
         $heading(1, 'Desarrollo Web en Entorno Servidor (0613)'),
         $paraBold('Ciclo formativo: Desarrollo de Aplicaciones Web (2º CFGS)'),
         $paraBold('Horas totales: 200 horas (6 horas/semana)'),
@@ -367,14 +372,14 @@ $blocks[] = $mkBlock($D1, $uFp, $T1B(1), 1, 1, $finalizeDoc([
     ]));
 
     // T1 / Block 2 — Introducción DWES
-$blocks[] = $mkBlock($D1, $uFp, $T1B(2), 1, 2, $finalizeDoc([
+    $blocks[] = $mkBlock($D1, $uFp, $T1B(2), 1, 2, $finalizeDoc([
         $heading(2, 'Introducción'),
         $heading(3, 'Justificación de la programación'),
         $para('Esta programación didáctica corresponde al módulo formativo Desarrollo Web en Entorno Servidor que forma parte del segundo curso del ciclo formativo de grado superior de Desarrollo de Aplicaciones Web de la familia de Informática. Este ciclo se distribuye en dos cursos con un total de 2.000 horas, de los cuales 200 corresponden a dicho módulo, que se imparte en el segundo curso a razón de 6 horas semanales y en la modalidad online. El resto de normativa por la que se regula esta programación queda recogida en la programación de ciclo.'),
     ]));
 
     // T1 / Block 3 — Competencias DWES
-$blocks[] = $mkBlock($D1, $uFp, $T1B(3), 1, 3, $finalizeDoc([
+    $blocks[] = $mkBlock($D1, $uFp, $T1B(3), 1, 3, $finalizeDoc([
         $heading(2, 'Competencias profesionales, personales y sociales'),
         $para('La competencia general de este título consiste en desarrollar, implantar y mantener aplicaciones web, con independencia del modelo empleado y utilizando tecnologías específicas, garantizando el acceso a los datos de forma segura y cumpliendo con los criterios de accesibilidad, usabilidad y calidad exigidos en los estándares establecidos.'),
         $para('La formación del módulo contribuye a alcanzar las siguientes competencias del título:'),
@@ -398,7 +403,7 @@ $blocks[] = $mkBlock($D1, $uFp, $T1B(3), 1, 3, $finalizeDoc([
     ]));
 
     // T1 / Block 4 — Resultados de aprendizaje DWES
-$blocks[] = $mkBlock($D1, $uFp, $T1B(4), 1, 4, $finalizeDoc([
+    $blocks[] = $mkBlock($D1, $uFp, $T1B(4), 1, 4, $finalizeDoc([
         $heading(2, 'Resultados de aprendizaje'),
         $para('Los objetivos del módulo de Desarrollo Web en Entorno Servidor aparecen en el Real Decreto descrito en la Programación de Ciclo, en forma de resultados de aprendizaje (en adelante RA). A continuación, se desglosan en la siguiente tabla los resultados de aprendizaje del título junto con el porcentaje del criterio de calificación que se le asigna:'),
         $tableAsPara(
@@ -418,7 +423,7 @@ $blocks[] = $mkBlock($D1, $uFp, $T1B(4), 1, 4, $finalizeDoc([
     ]));
 
     // T1 / Block 5 — Criterios de evaluación DWES (resumen por RA)
-$blocks[] = $mkBlock($D1, $uFp, $T1B(5), 1, 5, $finalizeDoc([
+    $blocks[] = $mkBlock($D1, $uFp, $T1B(5), 1, 5, $finalizeDoc([
         $heading(2, 'Criterios de evaluación'),
         $para('El RD descrito en la Programación de Ciclo indica cuáles deben ser los objetivos específicos de este módulo y lo hace en base a los resultados de aprendizaje a alcanzar, así como los criterios de evaluación que constatarán que se hayan logrado con éxito aquéllos. A continuación, se desglosan los criterios de evaluación por RA y la(s) unidad(es) didáctica(s) en que se trabajan:'),
         $tableAsPara(
@@ -439,7 +444,7 @@ $blocks[] = $mkBlock($D1, $uFp, $T1B(5), 1, 5, $finalizeDoc([
     ]));
 
     // T1 / Block 6 — Contenidos DWES
-$blocks[] = $mkBlock($D1, $uFp, $T1B(6), 1, 6, $finalizeDoc([
+    $blocks[] = $mkBlock($D1, $uFp, $T1B(6), 1, 6, $finalizeDoc([
         $heading(2, 'Contenidos'),
         $para('Los contenidos generales establecidos siguiendo la normativa descrita en la Programación de Ciclo, están divididos en bloques curriculares. A continuación, se detallan los contenidos curriculares del módulo según la normativa.'),
         $heading(3, 'Bloque 1. Selección de arquitecturas y herramientas de programación'),
@@ -500,7 +505,7 @@ $blocks[] = $mkBlock($D1, $uFp, $T1B(6), 1, 6, $finalizeDoc([
     ]));
 
     // T1 / Block 7 — Unidades didácticas DWES
-$blocks[] = $mkBlock($D1, $uFp, $T1B(7), 1, 7, $finalizeDoc([
+    $blocks[] = $mkBlock($D1, $uFp, $T1B(7), 1, 7, $finalizeDoc([
         $heading(2, 'Unidades didácticas'),
         $heading(3, 'Listado de unidades'),
         $tableAsPara(
@@ -567,7 +572,7 @@ $blocks[] = $mkBlock($D1, $uFp, $T1B(7), 1, 7, $finalizeDoc([
     ]));
 
     // T1 / Block 9 — Evaluación DWES (modifiable)
-$blocks[] = $mkBlock($D1, $uFp, $T1B(9), 1, 9, $finalizeDoc([
+    $blocks[] = $mkBlock($D1, $uFp, $T1B(9), 1, 9, $finalizeDoc([
         $heading(2, 'Evaluación'),
         $heading(3, 'Características de la evaluación'),
         $para('La calificación se realiza mediante Resultados de Aprendizaje (RA). Los RA dualizados en empresa se imparten en el curso, pero su calificación depende de la formación en empresa, con una calificación de "superado" o "no superado". Es imprescindible superar estos RA para aprobar el módulo. Los RA no dualizados tendrán una nota de 0 a 10, con 2 decimales, que será usada para la media final del curso.'),
@@ -605,7 +610,7 @@ $blocks[] = $mkBlock($D1, $uFp, $T1B(9), 1, 9, $finalizeDoc([
     ]));
 
     // T1 / Block 10 — Actividades didácticas complementarias DWES (optional, sin contenido específico)
-$blocks[] = $mkBlock($D1, $uFp, $T1B(10), 1, 10, $finalizeDoc([
+    $blocks[] = $mkBlock($D1, $uFp, $T1B(10), 1, 10, $finalizeDoc([
         $heading(2, 'Actividades didácticas complementarias'),
         $para('No se contemplan actividades extraescolares en este módulo, aunque a lo largo del curso se indicarán a los alumnos jornadas (p. ej., jornadas de empleabilidad, jornadas de talento), cursos y seminarios que puedan servir de interés para el desarrollo profesional.'),
     ]));
@@ -616,7 +621,7 @@ $blocks[] = $mkBlock($D1, $uFp, $T1B(10), 1, 10, $finalizeDoc([
     // ============================================================
 
     // T1 / Block 1 — Cabecera IPO I
-$blocks[] = $mkBlock($D2, $uFp, $T1B(1), 2, 1, $finalizeDoc([
+    $blocks[] = $mkBlock($D2, $uFp, $T1B(1), 2, 1, $finalizeDoc([
         $heading(1, "Itinerari Personal per a l'Ocupabilitat I (1709)"),
         $paraBold("Cicle formatiu: Desenvolupament d'Aplicacions Web (1r CFGS)"),
         $paraBold('Hores totals: 96 hores (3 hores/setmana)'),
@@ -624,7 +629,7 @@ $blocks[] = $mkBlock($D2, $uFp, $T1B(1), 2, 1, $finalizeDoc([
     ]));
 
     // T1 / Block 2 — Introducció IPO I
-$blocks[] = $mkBlock($D2, $uFp, $T1B(2), 2, 2, $finalizeDoc([
+    $blocks[] = $mkBlock($D2, $uFp, $T1B(2), 2, 2, $finalizeDoc([
         $heading(2, 'Introducció'),
         $heading(3, 'Justificació de la programació'),
         $para("La present programació està concebuda per al mòdul Itinerari personal per a l'ocupabilitat I, impartit en el primer curs d'aquest cicle formatiu al CEEDCV en València. A partir de la justificació i la contextualització, s'integraran les diferents parts que la componen, amb l'objectiu que esdevinga un document útil i eficaç per a la pràctica docent."),
@@ -638,7 +643,7 @@ $blocks[] = $mkBlock($D2, $uFp, $T1B(2), 2, 2, $finalizeDoc([
         $tableAsPara(
             ['Element', 'Valor'],
             [
-                ["Mòdul Professional", "Itinerari Personal per a l'Ocupabilitat I"],
+                ['Mòdul Professional', "Itinerari Personal per a l'Ocupabilitat I"],
                 ['CFGS', "Desenrotllament d'Aplicacions Web"],
                 ['Família Professional', 'Informàtica i Comunicacions'],
                 ['Duració del cicle', '2000 hores'],
@@ -649,10 +654,10 @@ $blocks[] = $mkBlock($D2, $uFp, $T1B(2), 2, 2, $finalizeDoc([
     ]));
 
     // T1 / Block 3 — Competències IPO I
-$blocks[] = $mkBlock($D2, $uFp, $T1B(3), 2, 3, $finalizeDoc([
+    $blocks[] = $mkBlock($D2, $uFp, $T1B(3), 2, 3, $finalizeDoc([
         $heading(2, 'Competències professionals, personals i socials'),
-        $para("El perfil professional del títol queda determinat per la seua competència general, les seues competències professionals, personals i socials, i per la relació de qualificacions i unitats de competència del Catàleg Nacional de Qualificacions Professionals incloses en el títol."),
-        $para("Una competència és la capacitat de posar en pràctica de forma integrada aquells coneixements adquirits, aptituds i trets de personalitat que permeten resoldre situacions diverses. El concepte de competència va més enllà del «saber» i el «saber fer» ja que inclou el «saber ser» i el «saber estar»."),
+        $para('El perfil professional del títol queda determinat per la seua competència general, les seues competències professionals, personals i socials, i per la relació de qualificacions i unitats de competència del Catàleg Nacional de Qualificacions Professionals incloses en el títol.'),
+        $para('Una competència és la capacitat de posar en pràctica de forma integrada aquells coneixements adquirits, aptituds i trets de personalitat que permeten resoldre situacions diverses. El concepte de competència va més enllà del «saber» i el «saber fer» ja que inclou el «saber ser» i el «saber estar».'),
         $para("En l'article 5 del RD de títol s'estableixen les competències professionals, personals i socials. Les que es treballen en el mòdul d'IPO I són les següents:"),
         $bullet("Adaptar-se a les noves situacions laborals, mantenint actualitzats els coneixements científics, tècnics i tecnològics relatius al seu entorn professional, gestionant la seua formació i els recursos existents en l'aprenentatge al llarg de la vida."),
         $bullet("Resoldre situacions, problemes o contingències amb iniciativa i autonomia en l'àmbit de la seua competència, amb creativitat, innovació i esperit de millora en el treball personal i en el dels membres de l'equip."),
@@ -663,7 +668,7 @@ $blocks[] = $mkBlock($D2, $uFp, $T1B(3), 2, 3, $finalizeDoc([
     ]));
 
     // T1 / Block 4 — Resultats d'aprenentatge IPO I
-$blocks[] = $mkBlock($D2, $uFp, $T1B(4), 2, 4, $finalizeDoc([
+    $blocks[] = $mkBlock($D2, $uFp, $T1B(4), 2, 4, $finalizeDoc([
         $heading(2, "Resultats d'aprenentatge"),
         $para("Els resultats d'aprenentatge (RA) per unitat didàctica són:"),
         $tableAsPara(
@@ -681,7 +686,7 @@ $blocks[] = $mkBlock($D2, $uFp, $T1B(4), 2, 4, $finalizeDoc([
     ]));
 
     // T1 / Block 5 — Criteris d'avaluació IPO I
-$blocks[] = $mkBlock($D2, $uFp, $T1B(5), 2, 5, $finalizeDoc([
+    $blocks[] = $mkBlock($D2, $uFp, $T1B(5), 2, 5, $finalizeDoc([
         $heading(2, "Criteris d'avaluació"),
         $para("Relacionem els RA amb els criteris d'avaluació, els continguts i les unitats de treball associades:"),
         $tableAsPara(
@@ -689,7 +694,7 @@ $blocks[] = $mkBlock($D2, $uFp, $T1B(5), 2, 5, $finalizeDoc([
             [
                 ['R1', "Cultura preventiva, factors de risc, danys derivats (accidents, malalties), avaluació de riscos, protocols d'emergència, drets i deures preventius, gestió de la prevenció, vigilància de la salut i primers auxilis.", '1, 2, 3 i 4', '25%'],
                 ['R2', "Oportunitats d'ocupació i inserció laboral al sector, comparativa de requeriments del mercat laboral i la funció pública, actituds i aptituds requerides per al sector.", '10', '5%'],
-                ['R3', "Drets i obligacions de la relació laboral, conveni col·lectiu, modalitats de contractació, components del rebut de salari, recursos laborals, Seguretat Social, prestacions per suspensió i extinció.", '5, 6, 7, 8 i 9', '30%'],
+                ['R3', 'Drets i obligacions de la relació laboral, conveni col·lectiu, modalitats de contractació, components del rebut de salari, recursos laborals, Seguretat Social, prestacions per suspensió i extinció.', '5, 6, 7, 8 i 9', '30%'],
                 ['R4', "Autoconeixement, competències personals i socials per a l'ocupació, projecte professional, autoestima, DAFO personal, itineraris formatius, objectius i pla d'acció.", '12', '15%'],
                 ['R5', "Responsabilitat individual en el desenvolupament professional, ocupabilitat, entorn personal d'aprenentatge, competència digital, identitat digital, pla de desenvolupament individual i eines d'aprenentatge autònom.", '11', '20%'],
                 ['R6', "Salut psicosocial al treball, sinistralitat i absentisme, factors de risc psicosocial, danys i impacte, estrès laboral, tecnoestrès i burnout, estratègies d'afrontament i mesures d'intervenció.", '2', '5%'],
@@ -698,7 +703,7 @@ $blocks[] = $mkBlock($D2, $uFp, $T1B(5), 2, 5, $finalizeDoc([
     ]));
 
     // T1 / Block 6 — Continguts IPO I
-$blocks[] = $mkBlock($D2, $uFp, $T1B(6), 2, 6, $finalizeDoc([
+    $blocks[] = $mkBlock($D2, $uFp, $T1B(6), 2, 6, $finalizeDoc([
         $heading(2, 'Continguts'),
         $para("Els continguts constitueixen el conjunt de sabers, habilitats i formes culturals que s'organitzen i es desenvolupen a través de les activitats d'ensenyament i aprenentatge a l'aula. Han d'estar vinculats i adequadament alineats amb els resultats d'aprenentatge (RA), que actuen com a eix vertebrador i guia del procés formatiu."),
         $heading(3, 'R1 — Salut laboral i prevenció (UT 1, 2, 3 i 4)'),
@@ -713,7 +718,7 @@ $blocks[] = $mkBlock($D2, $uFp, $T1B(6), 2, 6, $finalizeDoc([
         $heading(3, 'R3 — Condicions laborals (UT 5, 6, 7, 8 i 9)'),
         $bullet('Drets i deures derivats de la relació laboral. Contracte de treball: elements bàsics i modalitats.'),
         $bullet('Components del rebut de salari. Negociació col·lectiva i mesures de conflicte. Conveni col·lectiu.'),
-        $bullet("Seguretat Social i estat del benestar. Prestacions i tràmits per suspensió i extinció del contracte. Incapacitat temporal."),
+        $bullet('Seguretat Social i estat del benestar. Prestacions i tràmits per suspensió i extinció del contracte. Incapacitat temporal.'),
         $heading(3, 'R4 — Autoorientació professional (UT 12)'),
         $bullet('Autoanàlisi i presa de decisions acadèmiques i professionals. Autoconeixement: interessos, competències, habilitats i motivacions.'),
         $bullet("Anàlisi i avaluació del potencial professional. DAFO personal. Orientació per a la igualtat d'oportunitats."),
@@ -722,11 +727,11 @@ $blocks[] = $mkBlock($D2, $uFp, $T1B(6), 2, 6, $finalizeDoc([
         $bullet("Concepte d'ocupabilitat. Àrees ocupacionals. Anàlisi de lloc de treball. Identitat digital i impacte a l'ocupabilitat."),
         $heading(3, 'R6 — Salut psicosocial (UT 2)'),
         $bullet("Salut psicosocial lligada a l'àmbit laboral. Sinistralitat i absentisme. Definició i classificació de riscos psicosocials."),
-        $bullet("Estrès laboral, tecnoestrès i burnout. Temps de treball. Desconnexió digital. Conciliació personal i laboral. Factors de protecció."),
+        $bullet('Estrès laboral, tecnoestrès i burnout. Temps de treball. Desconnexió digital. Conciliació personal i laboral. Factors de protecció.'),
     ]));
 
     // T1 / Block 7 — Unitats didàctiques IPO I
-$blocks[] = $mkBlock($D2, $uFp, $T1B(7), 2, 7, $finalizeDoc([
+    $blocks[] = $mkBlock($D2, $uFp, $T1B(7), 2, 7, $finalizeDoc([
         $heading(2, 'Unitats didàctiques'),
         $heading(3, 'Organització i seqüenciació'),
         $tableAsPara(
@@ -774,7 +779,7 @@ $blocks[] = $mkBlock($D2, $uFp, $T1B(7), 2, 7, $finalizeDoc([
     ]));
 
     // T1 / Block 9 — Avaluació IPO I (modifiable)
-$blocks[] = $mkBlock($D2, $uFp, $T1B(9), 2, 9, $finalizeDoc([
+    $blocks[] = $mkBlock($D2, $uFp, $T1B(9), 2, 9, $finalizeDoc([
         $heading(2, 'Avaluació'),
         $heading(3, "Característiques de l'avaluació"),
         $para("L'avaluació dels alumnes serà CRITERIAL: es realitzarà segons els criteris d'avaluació establerts per als resultats d'aprenentatge del mòdul. Per superar el mòdul s'hauran de superar tots els resultats d'aprenentatge compresos en aquest, ja que l'article 18 del Reial Decret 659/2023 estableix que l'avaluació verifiqui l'adquisició dels resultats d'aprenentatge en les condicions de qualitat establertes."),
@@ -810,31 +815,31 @@ $blocks[] = $mkBlock($D2, $uFp, $T1B(9), 2, 9, $finalizeDoc([
         $para("Si s'opta per l'avaluació contínua: en la convocatòria ordinària, l'alumnat només haurà de presentar-se a la prova dels RA no superats; en la segona convocatòria ordinària, haurà d'examinar-se de tots els resultats d'aprenentatge impartits al centre."),
         $para("Si s'opta per l'avaluació no contínua: l'alumnat haurà de realitzar un examen global sobre tots els continguts del curs en Aules, tant en la convocatòria ordinària com en la segona ordinària. Les dates oficials de les proves seran les establertes pel calendari del CEEDCV i no es podran modificar."),
         $heading(3, 'Condicions especials i recuperació'),
-        $bullet("Coincidència >50% entre tasques: convocatòria per aportar aclariments; si no es justifica, les tasques quedaran invalidades."),
+        $bullet('Coincidència >50% entre tasques: convocatòria per aportar aclariments; si no es justifica, les tasques quedaran invalidades.'),
         $bullet('Qualsevol indici de còpia o plagi en proves de convocatòria ordinària/extraordinària implicarà el suspens automàtic del mòdul per a tots els implicats.'),
         $bullet("Inactivitat: alumnat sense connexió 10 dies consecutius passarà a estat inactiu; es comunicarà com a baixa d'activitat si no respon."),
         $bullet("Abans de cada convocatòria s'organitzaran sessions de repàs i tutories col·lectives."),
     ]));
 
     // T1 / Block 10 — Activitats didàctiques complementàries IPO I (optional, amb contingut real)
-$blocks[] = $mkBlock($D2, $uFp, $T1B(10), 2, 10, $finalizeDoc([
+    $blocks[] = $mkBlock($D2, $uFp, $T1B(10), 2, 10, $finalizeDoc([
         $heading(2, 'Activitats didàctiques complementàries'),
         $para("Les activitats didàctiques complementàries tenen com a finalitat enriquir el procés d'ensenyament-aprenentatge, afavorint l'aplicació pràctica dels continguts del mòdul i el desenvolupament de les competències professionals, personals i socials. Es vinculen als tres grans blocs temàtics del mòdul."),
         $heading(3, 'Bloc de Salut Laboral'),
         $bullet("Estudi de casos reals: anàlisi d'accidents laborals greus, identificant causes, errades de prevenció i mesures correctores."),
         $bullet('Visionat de vídeos formatius sobre prevenció de riscos laborals relacionats amb el sector professional.'),
-        $bullet("Avaluació de riscos laborals: estudi dels llocs de treball del sector per elaborar una avaluació i un pla de prevenció propi."),
+        $bullet('Avaluació de riscos laborals: estudi dels llocs de treball del sector per elaborar una avaluació i un pla de prevenció propi.'),
         $heading(3, 'Bloc de Legislació i Salut Laboral'),
-        $bullet("Estudi comparatiu de legislacions laborals: anàlisi de marcs normatius per comprendre variacions i similituds."),
-        $bullet("Visionat i anàlisi de seqüències de la pel·lícula «Treball Fem», sobre condicions laborals i reptes dels treballadors."),
-        $bullet("Visionat del documental «Sicko» de Michael Moore: comparativa Seguretat Social espanyola i sistema dels EUA."),
+        $bullet('Estudi comparatiu de legislacions laborals: anàlisi de marcs normatius per comprendre variacions i similituds.'),
+        $bullet('Visionat i anàlisi de seqüències de la pel·lícula «Treball Fem», sobre condicions laborals i reptes dels treballadors.'),
+        $bullet('Visionat del documental «Sicko» de Michael Moore: comparativa Seguretat Social espanyola i sistema dels EUA.'),
         $heading(3, "Bloc d'Orientació i Inserció Laboral"),
         $bullet("Xarrada o trobada d'orientació professional (fòrum, tutoria síncrona o sessió presencial) dedicada a la cerca d'ocupació i a la definició d'itineraris acadèmics i professionals."),
         $heading(3, 'Activitats transversals'),
-        $bullet("Visionat del documental «Fashion Victims»: vulneració de drets laborals a la indústria tèxtil."),
-        $bullet("Visionat de conferències de Víctor Küppers i Sergio Ayala sobre actitud positiva i humor com a competència professional."),
+        $bullet('Visionat del documental «Fashion Victims»: vulneració de drets laborals a la indústria tèxtil.'),
+        $bullet('Visionat de conferències de Víctor Küppers i Sergio Ayala sobre actitud positiva i humor com a competència professional.'),
         $heading(3, 'Activitats complementàries presencials'),
-        $para("Des del Departament de FOL es proposa, sempre que siga viable i compatible amb les activitats dels altres mòduls, la visita a la Ciutat de la Justícia de València. Aquesta activitat permet conèixer de prop el funcionament de les institucions judicials i la seua relació amb el món laboral."),
+        $para('Des del Departament de FOL es proposa, sempre que siga viable i compatible amb les activitats dels altres mòduls, la visita a la Ciutat de la Justícia de València. Aquesta activitat permet conèixer de prop el funcionament de les institucions judicials i la seua relació amb el món laboral.'),
     ]));
 
     // ============================================================
@@ -842,7 +847,7 @@ $blocks[] = $mkBlock($D2, $uFp, $T1B(10), 2, 10, $finalizeDoc([
     // ============================================================
 
     // T1 / Block 1 — Cabecera LAP
-$blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(1), 3, 1, $finalizeDoc([
+    $blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(1), 3, 1, $finalizeDoc([
         $heading(1, 'Logística de Aprovisionamiento (0626)'),
         $paraBold('Ciclo formativo: Transporte y Logística (2º CFGS — Comercio y Marketing)'),
         $paraBold('Horas totales: 100 horas (3 horas/semana)'),
@@ -850,14 +855,14 @@ $blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(1), 3, 1, $finalizeDoc([
     ]));
 
     // T1 / Block 2 — Introducción LAP
-$blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(2), 3, 2, $finalizeDoc([
+    $blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(2), 3, 2, $finalizeDoc([
         $heading(2, 'Introducción'),
         $heading(3, 'Justificación de la programación'),
         $para('El módulo de Logística de aprovisionamiento (LAP) se incluye en el segundo curso del ciclo formativo de grado superior de Transporte y Logística, con una carga lectiva de 3 horas semanales y 100 horas anuales en la modalidad de enseñanza presencial. La carga lectiva expuesta se corresponde con las horas de clase, a las que tenemos que añadir las horas dedicadas al estudio personal y a realizar actividades, lo que deberemos tener en cuenta a la hora de planificar el módulo. El resto de normativa por el cual se regula esta programación queda recogida en la programación de ciclo.'),
     ]));
 
     // T1 / Block 3 — Competencias LAP
-$blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(3), 3, 3, $finalizeDoc([
+    $blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(3), 3, 3, $finalizeDoc([
         $heading(2, 'Competencias profesionales, personales y sociales'),
         $heading(3, 'Competencia general'),
         $para('Siguiendo el artículo 4 del RD 1572/2011, de 4 de noviembre, la competencia general de este título consiste en "gestionar las operaciones comerciales de compraventa y distribución de productos y servicios, y organizar la implantación y animación de espacios comerciales según criterios de calidad, seguridad y prevención de riesgos", aplicando la normativa vigente.'),
@@ -882,7 +887,7 @@ $blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(3), 3, 3, $finalizeDoc([
     ]));
 
     // T1 / Block 4 — Resultados de aprendizaje LAP
-$blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(4), 3, 4, $finalizeDoc([
+    $blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(4), 3, 4, $finalizeDoc([
         $heading(2, 'Resultados de aprendizaje'),
         $para('El RD 1572/2011 indica cuáles deben ser los objetivos específicos de este módulo y lo hace en base a los resultados del aprendizaje a alcanzar por el alumnado. A continuación, se desglosan los resultados de aprendizaje junto al porcentaje del criterio de calificación que se le asigna:'),
         $tableAsPara(
@@ -900,7 +905,7 @@ $blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(4), 3, 4, $finalizeDoc([
     ]));
 
     // T1 / Block 5 — Criterios de evaluación LAP (resumen)
-$blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(5), 3, 5, $finalizeDoc([
+    $blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(5), 3, 5, $finalizeDoc([
         $heading(2, 'Criterios de evaluación'),
         $para('Los criterios de evaluación se ponderan dentro de cada RA con los porcentajes establecidos en la normativa. Se reflejan a continuación en forma resumida los criterios principales por RA:'),
         $heading(3, 'RA1 (20%) — Necesidades de materiales y plazos'),
@@ -958,7 +963,7 @@ $blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(5), 3, 5, $finalizeDoc([
     ]));
 
     // T1 / Block 6 — Contenidos LAP
-$blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(6), 3, 6, $finalizeDoc([
+    $blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(6), 3, 6, $finalizeDoc([
         $heading(2, 'Contenidos'),
         $para('Los contenidos generales establecidos en el RD 1572/2011, de 4 de noviembre, y ampliados en la Orden 39/2015, de 31 de marzo, están divididos en seis bloques curriculares relacionados directamente con cada uno de los resultados de aprendizaje.'),
         $heading(3, 'Bloque 1 — Políticas de aprovisionamiento y organización de la producción (RA1)'),
@@ -995,7 +1000,7 @@ $blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(6), 3, 6, $finalizeDoc([
     ]));
 
     // T1 / Block 7 — Unidades didácticas LAP
-$blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(7), 3, 7, $finalizeDoc([
+    $blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(7), 3, 7, $finalizeDoc([
         $heading(2, 'Unidades didácticas'),
         $heading(3, 'Relación entre unidades de trabajo y resultados de aprendizaje'),
         $tableAsPara(
@@ -1032,7 +1037,7 @@ $blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(7), 3, 7, $finalizeDoc([
     ]));
 
     // T1 / Block 9 — Evaluación LAP (modifiable)
-$blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(9), 3, 9, $finalizeDoc([
+    $blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(9), 3, 9, $finalizeDoc([
         $heading(2, 'Evaluación'),
         $heading(3, 'Características de la evaluación'),
         $para('La evaluación se realizará en base a los Resultados de Aprendizaje y Criterios de Evaluación. Para que se considere apto el módulo es necesario que todos los RA estén superados. La nota de cada RA se calculará como media ponderada de cada uno de los CE que lo componen. La nota del módulo se calculará como la media ponderada de cada uno de los RA del módulo.'),
@@ -1071,7 +1076,7 @@ $blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(9), 3, 9, $finalizeDoc([
     ]));
 
     // T1 / Block 10 — Actividades complementarias LAP (optional)
-$blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(10), 3, 10, $finalizeDoc([
+    $blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(10), 3, 10, $finalizeDoc([
         $heading(2, 'Actividades didácticas complementarias'),
         $para('No se contemplan actividades extraescolares en este módulo, aunque a lo largo del curso se indicarán a los alumnos jornadas (p.ej., jornadas de empleabilidad, jornadas de talento), cursos y seminarios que puedan servir de interés para su desarrollo profesional.'),
     ]));
@@ -1082,7 +1087,7 @@ $blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(10), 3, 10, $finalizeDoc([
     // ============================================================
 
     // T2 / Block 1 — Cabecera PXSI1
-$blocks[] = $mkBlock($D4, $uBach, $T2B(1), 4, 1, $finalizeDoc([
+    $blocks[] = $mkBlock($D4, $uBach, $T2B(1), 4, 1, $finalizeDoc([
         $heading(1, 'Programación, Redes y Sistemas Informáticos I'),
         $paraBold('Nivel: 1º de Bachillerato — Modalidad: Ciencias y Tecnología'),
         $paraBold('Departamento: Informática — Tipo: Troncal de modalidad / Específica'),
@@ -1090,7 +1095,7 @@ $blocks[] = $mkBlock($D4, $uBach, $T2B(1), 4, 1, $finalizeDoc([
     ]));
 
     // T2 / Block 2 — Introducción y justificación PXSI1
-$blocks[] = $mkBlock($D4, $uBach, $T2B(2), 4, 2, $finalizeDoc([
+    $blocks[] = $mkBlock($D4, $uBach, $T2B(2), 4, 2, $finalizeDoc([
         $heading(2, 'Introducción y justificación'),
         $para('El desarrollo de los avances tecnológicos y digitales está marcando la evolución de la sociedad del s. XXI. Es notorio cómo afectan a la vida cotidiana estos cambios y el ritmo con los que se producen, lo que justifica la necesidad de dotar al alumnado de capacidad de adaptación satisfactoria. La materia Programación, Redes y Sistemas Informáticos aborda el pensamiento computacional, los sistemas informáticos, las redes, y los servicios en red desde un punto de vista crítico, responsable y solidario para hacer frente a los principales retos de una sociedad digitalizada.'),
         $para('Esta materia favorece la consecución de los objetivos de Bachillerato gracias a su desarrollo práctico, colaborativo y crítico, lo que facilita el crecimiento personal y académico del alumnado. La realización en grupo de proyectos informáticos y de programación ayuda a fortalecer la confianza en sí mismo del alumnado, la iniciativa personal, la autonomía, la creatividad, la flexibilidad y el sentido estético, así como la capacidad de planificar, tomar decisiones y asumir responsabilidades proactivamente en el trabajo diario.'),
@@ -1107,7 +1112,7 @@ $blocks[] = $mkBlock($D4, $uBach, $T2B(2), 4, 2, $finalizeDoc([
     ]));
 
     // T2 / Block 4 — Situaciones de aprendizaje PXSI1
-$blocks[] = $mkBlock($D4, $uBach, $T2B(4), 4, 4, $finalizeDoc([
+    $blocks[] = $mkBlock($D4, $uBach, $T2B(4), 4, 4, $finalizeDoc([
         $heading(2, 'Situaciones de aprendizaje y criterios de evaluación asociados'),
         $para('Con el objetivo de conferir un enfoque competencial a la materia, los saberes confluyen en proyectos que suponen situaciones de aprendizaje contextualizadas, en las que el alumnado aplica sus conocimientos y destrezas para dar solución a una necesidad concreta. Los saberes básicos se integran en situaciones de aprendizaje contextualizadas, que permitan el desarrollo de las competencias específicas asociadas a los criterios de evaluación.'),
         $heading(3, 'Situación de aprendizaje 1 — Hardware'),
@@ -1139,7 +1144,7 @@ $blocks[] = $mkBlock($D4, $uBach, $T2B(4), 4, 4, $finalizeDoc([
     ]));
 
     // T2 / Block 5 — Temporalización PXSI1
-$blocks[] = $mkBlock($D4, $uBach, $T2B(5), 4, 5, $finalizeDoc([
+    $blocks[] = $mkBlock($D4, $uBach, $T2B(5), 4, 5, $finalizeDoc([
         $heading(2, 'Temporalización'),
         $tableAsPara(
             ['UD', 'Contenido', 'Fecha', 'Nº semanas'],
@@ -1162,7 +1167,7 @@ $blocks[] = $mkBlock($D4, $uBach, $T2B(5), 4, 5, $finalizeDoc([
     ]));
 
     // T2 / Block 7 — Evaluación PXSI1 (modifiable)
-$blocks[] = $mkBlock($D4, $uBach, $T2B(7), 4, 7, $finalizeDoc([
+    $blocks[] = $mkBlock($D4, $uBach, $T2B(7), 4, 7, $finalizeDoc([
         $heading(2, 'Evaluación'),
         $para('La evaluación continua se entiende como un elemento inherente al proceso de enseñanza-aprendizaje. No se pretende valorar solamente el conocimiento conceptual de los alumnos, sino también sus habilidades en contextos reales de uso. Es fundamental incardinar la evaluación en el proceso mismo de aprendizaje, siendo las principales actividades de enseñanza-aprendizaje al mismo tiempo actividades de evaluación.'),
         $heading(3, 'Criterios de evaluación de las competencias específicas'),

@@ -1,6 +1,8 @@
 import type { ReactElement } from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
+import i18n from '../../../../i18n';
 import { WizardStep2Blocks } from '../WizardStep2Blocks';
 import { useTemplateBlocks } from '../../hooks/useTemplateBlocks';
 import { UserProfileProvider } from '../../../../features/user-profile';
@@ -60,6 +62,7 @@ vi.mock('@ceedcv-maya/shared-hooks-react', () => ({
     triggerSave: vi.fn(),
     forceSave: vi.fn().mockResolvedValue(undefined),
   })),
+  useFlushOnPageLeave: vi.fn(),
 }));
 
 vi.mock('@dnd-kit/core', () => ({
@@ -107,10 +110,23 @@ const mockBlocks = [
 ];
 
 function renderWithProfile(ui: ReactElement) {
-  return render(<UserProfileProvider>{ui}</UserProfileProvider>);
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <UserProfileProvider>{ui}</UserProfileProvider>
+    </QueryClientProvider>,
+  );
 }
 
 describe('WizardStep2Blocks', () => {
+  // El componente usa `useQueryClient()` y resuelve textos vía `t('templates:...')`.
+  // jsdom expone `navigator.language = 'en-US'`, así que forzamos 'es'.
+  beforeAll(async () => {
+    await i18n.changeLanguage('es');
+  });
+
   const defaultProps = {
     template: { id: 't1', title: 'Template' } as any,
     onBlocksCountChange: vi.fn(),
@@ -224,6 +240,7 @@ describe('WizardStep2Blocks', () => {
 
       renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
       fireEvent.click(screen.getByRole('button', { name: /añadir bloque/i }));
+      fireEvent.click(screen.getByText('Bloque simple'));
 
       await waitFor(() => expect(screen.getByText('Propiedades')).toBeTruthy());
 
@@ -247,6 +264,7 @@ describe('WizardStep2Blocks', () => {
 
       renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
       fireEvent.click(screen.getByRole('button', { name: /añadir bloque/i }));
+      fireEvent.click(screen.getByText('Bloque simple'));
       await waitFor(() => expect(screen.getByText('Propiedades')).toBeTruthy());
 
       const input = screen.getByPlaceholderText('Nuevo bloque');
@@ -268,6 +286,7 @@ describe('WizardStep2Blocks', () => {
 
       renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
       fireEvent.click(screen.getByRole('button', { name: /añadir bloque/i }));
+      fireEvent.click(screen.getByText('Bloque simple'));
       await waitFor(() => expect(screen.getByText('Propiedades')).toBeTruthy());
 
       const input = screen.getByPlaceholderText('Nuevo bloque');
@@ -292,6 +311,7 @@ describe('WizardStep2Blocks', () => {
 
       renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
       fireEvent.click(screen.getByRole('button', { name: /añadir bloque/i }));
+      fireEvent.click(screen.getByText('Bloque simple'));
       await waitFor(() => expect(screen.getByText('Propiedades')).toBeTruthy());
 
       // Retrieve the doSave callback captured by useAutoSave mock
@@ -309,7 +329,7 @@ describe('WizardStep2Blocks', () => {
       renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
       fireEvent.click(screen.getByRole('button', { name: /Bloque 1/i }));
       await waitFor(() => expect(screen.getByText('Propiedades')).toBeTruthy());
-      fireEvent.click(screen.getByText('Contenido'));
+      fireEvent.click(screen.getByRole('button', { name: 'Contenido' }));
       await waitFor(() => expect(screen.getByTestId('bn-editor-panel')).toBeTruthy());
     };
 

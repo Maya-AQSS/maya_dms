@@ -1,80 +1,8 @@
 /*
- * Editor de layout absoluto en milímetros para Themes.
- *
- * El canvas simula la página a escala 96 dpi (1 mm ≈ 3.78 px). Cada bloque se
- * posiciona libremente con coordenadas en mm (campo `box`), se puede arrastrar,
- * redimensionar (tirador inferior-derecho) y solapar (capas vía z-index). Los
- * controles de cada bloque (↑/↓/✕) se ocultan salvo hover/selección.
+ * Estilos del CONTENIDO de cada bloque del tema (los `slot`), usados por
+ * `ThemeBlockPreview`. La mecánica/chrome del lienzo (página, arrastre,
+ * controles, tirador de resize) vive ahora en `components/canvas/canvas.css`.
  */
-
-.theme-grid-page {
-  position: relative;
-  /* Rejilla guía de 1 cm (ambos ejes). 1 cm = 10 mm * 96/25.4 ≈ 37.7953 px. */
-  background-image:
-    linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
-  background-size: 37.7953px 37.7953px;
-}
-
-.theme-grid-block {
-  display: flex;
-  align-items: stretch;
-  justify-content: stretch;
-  border: 1px dashed transparent;
-  border-radius: 4px;
-  transition: border-color 120ms ease, box-shadow 120ms ease;
-  cursor: grab;
-}
-
-.theme-grid-block:hover {
-  border-color: rgba(0, 0, 0, 0.18);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-}
-
-.theme-grid-block.is-selected {
-  border-color: #6366f1; /* indigo-500 */
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.35);
-}
-
-.theme-grid-block:active {
-  cursor: grabbing;
-}
-
-/* Controles flotantes en la esquina superior derecha del bloque. */
-.theme-grid-block-controls {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  display: none;
-  gap: 2px;
-  z-index: 50;
-}
-
-.theme-grid-block:hover .theme-grid-block-controls,
-.theme-grid-block.is-selected .theme-grid-block-controls {
-  display: flex;
-}
-
-.theme-grid-block-controls > button {
-  width: 22px;
-  height: 22px;
-  font-size: 12px;
-  line-height: 1;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.95);
-  color: #111;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.theme-grid-block-controls > button:hover {
-  background: #f3f4f6;
-}
-
-/* ─── Render de cada tipo de slot ──────────────────────────────────── */
 
 .theme-grid-slot {
   width: 100%;
@@ -159,26 +87,4 @@
   color: #6b7280;
   font-size: 11px;
   border: 1px dashed #9ca3af;
-}
-
-/* ─── Tirador de redimensionado ────────────────────────────────────── */
-.theme-grid-resize {
-  position: absolute;
-  right: -4px;
-  bottom: -4px;
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
-  background: #6366f1;
-  border: 2px solid #ffffff;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
-  cursor: nwse-resize;
-  touch-action: none;
-  display: none;
-  z-index: 60;
-}
-
-.theme-grid-block:hover .theme-grid-resize,
-.theme-grid-block.is-selected .theme-grid-resize {
-  display: block;
 }

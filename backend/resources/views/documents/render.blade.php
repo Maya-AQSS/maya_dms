@@ -129,23 +129,34 @@
      * Si el path no existe (theme sin asset subido) devuelve null.
      */
     $isPreview = ! empty($preview_mode);
-    $assetUrl = function (?string $relativePath) use ($isPreview): ?string {
-        if (! $relativePath) return null;
-        $absolute = storage_path('app/media/'.ltrim($relativePath, '/'));
-        if (! file_exists($absolute)) return null;
-
-        if ($isPreview) {
-            $mime = @mime_content_type($absolute) ?: 'image/png';
-            $contents = @file_get_contents($absolute);
-            if ($contents === false) return null;
-            return 'data:'.$mime.';base64,'.base64_encode($contents);
-        }
-
-        return 'file://'.$absolute;
-    };
+    // Resolución de assets unificada (file:// PDF / data: preview) con validación
+    // anti path-traversal — ver App\Services\MediaAssetResolver.
+    $assetUrl = fn (?string $relativePath): ?string => \App\Services\MediaAssetResolver::resolve($relativePath, $isPreview);
 
     // Helper para formatear cm con 4 decimales sin notación científica.
     $cm = fn (float $v) => number_format($v, 4, '.', '').'cm';
+
+    // Saneadores anti-inyección CSS: los valores de paleta/tipografía vienen de
+    // datos de theme y se interpolan en CSS; restringimos a formatos seguros.
+    $cssColor = function ($v, string $fallback): string {
+        $v = trim((string) $v);
+        return preg_match('/^(#[0-9a-fA-F]{3,8}|rgba?\([0-9.,%\s]+\)|hsla?\([0-9.,%\s]+\)|[a-zA-Z]{1,30})$/', $v) === 1 ? $v : $fallback;
+    };
+    $cssFont = function ($v, string $fallback): string {
+        $v = trim((string) $v);
+        // Permite "Georgia, serif", comillas y guiones; prohíbe ; { } : ( ) < > etc.
+        return preg_match('/^[\w\s,\'"\-]{1,120}$/u', $v) === 1 ? $v : $fallback;
+    };
+    // Escapa un valor para incrustarlo dentro de una CSS string ("..."): neutraliza
+    // comillas, barras y saltos de línea que romperían el literal e inyectarían CSS.
+    $cssString = function ($v, string $fallback = ''): string {
+        $v = (string) ($v ?? '');
+        if ($v === '') {
+            return $fallback;
+        }
+        $v = str_replace(["\r", "\n"], ' ', $v);
+        return str_replace(['\\', '"'], ['\\\\', '\\"'], $v);
+    };
 @endphp
 <!doctype html>
 <html lang="{{ $document['lang'] ?? 'es' }}">
@@ -157,22 +168,147 @@
     <style>
         /* ─── Tokens del Theme (CSS variables) ─── */
         :root {
-            --color-primary: {{ $theme['palette']['primary'] ?? '#0b5394' }};
-            --color-secondary: {{ $theme['palette']['secondary'] ?? '#666666' }};
-            --color-text: {{ $theme['palette']['text'] ?? '#1a1a1a' }};
-            --color-bg: {{ $theme['palette']['background'] ?? '#ffffff' }};
-            --color-accent: {{ $theme['palette']['accent'] ?? '#f59e0b' }};
-            --font-heading: {{ $theme['typography']['heading_font'] ?? 'sans-serif' }};
-            --font-body: {{ $theme['typography']['body_font'] ?? 'sans-serif' }};
+            --color-primary: {{ $cssColor($theme['palette']['primary'] ?? null, '#0b5394') }};
+            --color-secondary: {{ $cssColor($theme['palette']['secondary'] ?? null, '#666666') }};
+            --color-text: {{ $cssColor($theme['palette']['text'] ?? null, '#1a1a1a') }};
+            --color-bg: {{ $cssColor($theme['palette']['background'] ?? null, '#ffffff') }};
+            --color-accent: {{ $cssColor($theme['palette']['accent'] ?? null, '#f59e0b') }};
+            --font-heading: {{ $cssFont($theme['typography']['heading_font'] ?? null, 'sans-serif') }};
+            --font-body: {{ $cssFont($theme['typography']['body_font'] ?? null, 'sans-serif') }};
             --base-size: {{ $theme['typography']['base_size_pt'] ?? 11 }}pt;
             --line-height: {{ $theme['typography']['line_height'] ?? 1.5 }};
         }
+
+        @php $scopedThemes = $scoped_themes ?? []; @endphp
+        @foreach ($scopedThemes as $st)
+            @php
+                $stId = (string) ($st['id'] ?? '');
+                $pal  = $st['palette'] ?? [];
+                $typo = $st['typography'] ?? [];
+            @endphp
+            @if ($stId !== '')
+                /* ─── Override de tema por bloque (data-theme-id) ─── */
+                [data-theme-id="{{ $stId }}"] {
+                    --color-primary: {{ $cssColor($pal['primary'] ?? null, '#0b5394') }};
+                    --color-secondary: {{ $cssColor($pal['secondary'] ?? null, '#666666') }};
+                    --color-text: {{ $cssColor($pal['text'] ?? null, '#1a1a1a') }};
+                    --color-bg: {{ $cssColor($pal['background'] ?? null, '#ffffff') }};
+                    --color-accent: {{ $cssColor($pal['accent'] ?? null, '#f59e0b') }};
+                    --font-heading: {{ $cssFont($typo['heading_font'] ?? null, 'sans-serif') }};
+                    --font-body: {{ $cssFont($typo['body_font'] ?? null, 'sans-serif') }};
+                }
+            @endif
+        @endforeach
+
+        /* ─── Bloque sin tema (apply_theme=false): reset neutro + página propia ───
+           apply_theme=false ⇒ ni paleta ni tipografía del tema; colores neutros,
+           tipografía serif estándar. Además ocupa su propia página (named page
+           `no-theme`) y fuerza salto antes y después.
+
+           NOTA (limitación documentada): en WeasyPrint la overlay del grid del
+           theme usa `position: fixed` y se repite en TODAS las páginas del PDF,
+           incluidas las `no-theme` — no hay control per-page para `fixed`. En el
+           preview (paged.js) sí lo suprimimos vía JS (ver PagedConfig.after). */
+        [data-theme-id="none"] {
+            --color-primary: #1a1a1a;
+            --color-secondary: #666666;
+            --color-text: #1a1a1a;
+            --color-bg: #ffffff;
+            --color-accent: #1a1a1a;
+            --font-heading: serif;
+            --font-body: serif;
+        }
+        @page no-theme {
+            margin: 2cm;
+            @if (! $hasGridLayout)
+                /* Suprime el chrome de margin-boxes del @page base. Sólo aplica
+                   en modo chrome estándar; con grid layout el chrome vive en la
+                   overlay fixed (no suprimible per-page — limitación documentada). */
+                @top-left { content: none; }
+                @top-right { content: none; }
+                @top-center { content: none; }
+                @bottom-center { content: none; }
+                @bottom-left { content: none; }
+                @bottom-right { content: none; }
+            @endif
+        }
+        .doc-block--no-theme {
+            page: no-theme;
+            page-break-before: always;
+            page-break-after: always;
+        }
+
+        /* ─── Índice / tabla de contenidos (bloque index) ───
+           El TocBuilderService inyecta `<nav class="doc-toc">` dentro del bloque
+           índice. Cada enlace lleva el texto + un marcador `.doc-toc__page` para
+           el número de página. */
+        .doc-toc__list { list-style: none; margin: 0; padding: 0; }
+        .doc-toc__item { margin: 0.1cm 0; }
+        .doc-toc__item--block { padding-left: 0; font-weight: 700; }
+        .doc-toc__item--h1 { padding-left: 0.6cm; }
+        .doc-toc__item--h2 { padding-left: 1.2cm; font-size: 0.95em; }
+        .doc-toc__item--h3 { padding-left: 1.8cm; font-size: 0.9em; }
+        .doc-toc__link {
+            display: flex;
+            align-items: baseline;
+            text-decoration: none;
+            color: var(--color-text);
+        }
+        .doc-toc__text { flex: 0 1 auto; }
+        /* Línea de puntos entre el título y el número de página. */
+        .doc-toc__leader {
+            flex: 1 1 auto;
+            border-bottom: 1px dotted var(--color-secondary);
+            margin: 0 0.15cm 0.1cm;
+            min-width: 0.5cm;
+        }
+        .doc-toc__page { flex: 0 0 auto; color: var(--color-secondary); }
+        @if (empty($preview_mode))
+            /* WeasyPrint: resuelve el nº de página del destino con el patrón
+               documentado `target-counter(attr(href), page)` sobre el enlace.
+               En el preview lo rellena el JS de paged.js (ver PagedConfig.after),
+               por eso esta regla sólo se emite en el render de PDF. */
+            .doc-toc__link::after { content: target-counter(attr(href), page); color: var(--color-secondary); }
+        @endif
+
+        /* ─── Bloque portada (cover) ───
+           Página propia a sangre (margin 0) con elementos posicionados de forma
+           absoluta en cm sobre la página completa (geometría en mm/10 → cm). */
+        @page cover {
+            margin: 0;
+            @if (! $hasGridLayout)
+                @top-left { content: none; }
+                @top-right { content: none; }
+                @top-center { content: none; }
+                @bottom-center { content: none; }
+                @bottom-left { content: none; }
+                @bottom-right { content: none; }
+            @endif
+        }
+        .doc-block--cover {
+            page: cover;
+            page-break-before: always;
+            page-break-after: always;
+            position: relative;
+            width: {{ $cm($pageWidthCm) }};
+            height: {{ $cm($pageHeightCm) }};
+            overflow: hidden;
+        }
+        .doc-block--cover .cover-el { position: absolute; box-sizing: border-box; overflow: hidden; }
+        .doc-block--cover .cover-el--text,
+        .doc-block--cover .cover-el--placeholder,
+        .doc-block--cover .cover-el--date,
+        .doc-block--cover .cover-el--meta { font-family: var(--font-body); line-height: 1.25; }
+        .doc-block--cover .cover-el--image { display: flex; align-items: center; justify-content: center; }
+        .doc-block--cover .cover-el--image img { max-width: 100%; max-height: 100%; }
+        .doc-block--cover .cover-pn::before { content: counter(page); }
+        .doc-block--cover .cover-pt::before { content: counter(pages); }
 
         /* ─── CSS Paged Media ─── */
         h1.doc-title {
             string-set:
                 doc-title content(),
-                brand-name "{{ $theme['brand_name'] ?? 'CEEDCV' }}";
+                brand-name "{{ $cssString($theme['brand_name'] ?? null, 'CEEDCV') }}";
         }
 
         @page {
@@ -259,6 +395,16 @@
         h2 { font-family: var(--font-heading); color: var(--color-primary); font-size: 16pt; margin-top: 0.8cm; page-break-after: avoid; }
         h3 { font-family: var(--font-heading); color: var(--color-primary); font-size: 13pt; margin-top: 0.6cm; page-break-after: avoid; }
         h4, h5, h6 { font-family: var(--font-heading); color: var(--color-primary); margin-top: 0.4cm; page-break-after: avoid; }
+
+        /* Bloques de maquetación (layout blocks) ─────────────────────────── */
+        .doc-block { /* wrapper transparente; no altera el flujo */ }
+        /* Salto de página tras el bloque: el siguiente bloque empieza en página nueva.
+           Se usa `page-break-after: always` (legacy) por compatibilidad con paged.js
+           (iframe) además de WeasyPrint. */
+        .doc-block--page-break-after { page-break-after: always; break-after: page; }
+        /* Hoja en blanco: página vacía intencional (propia página). */
+        .doc-block--blank { page-break-before: always; page-break-after: always; min-height: 1px; }
+
         p { margin: 0 0 0.4cm; }
         ul, ol { margin: 0 0 0.4cm 1cm; }
         blockquote {
@@ -407,7 +553,7 @@
                     <div class="blk blk-text"
                          style="left:{{ $left }};top:{{ $top }};width:{{ $width }};height:{{ $height }};z-index:{{ $z }};
                                 font-size:{{ (float) ($p['size'] ?? 9) }}pt;
-                                color:{{ $p['color'] ?? '#333' }};
+                                color:{{ $cssColor($p['color'] ?? null, '#333333') }};
                                 text-align:{{ $align }};">
                         {{ $p['text'] ?? '' }}
                     </div>
@@ -504,7 +650,6 @@
         $pagedJsContent = file_exists($pagedJsPath) ? file_get_contents($pagedJsPath) : null;
     @endphp
     @if ($pagedJsContent !== null)
-        @if ($hasGridLayout)
             {{-- PagedConfig.after se llama tras paginar. Lo definimos ANTES
                  del polyfill para que éste lo lea al arrancar.
 
@@ -512,7 +657,11 @@
                  cada página; paged.js no — por eso clonamos el overlay
                  dentro de cada .pagedjs_pagebox y sustituimos manualmente
                  los contadores `Página N de M` (paged.js no propaga
-                 `counter(page)` a elementos fuera de su flujo). --}}
+                 `counter(page)` a elementos fuera de su flujo).
+
+                 También rellena los números de página del índice (TOC), que
+                 en WeasyPrint resuelve `target-counter` pero en paged.js hay
+                 que calcular vía JS. --}}
             <script>
                 window.PagedConfig = {
                     auto: true,
@@ -525,6 +674,11 @@
                             pages.forEach(function (pageEl, idx) {
                                 var pageBox = pageEl.querySelector('.pagedjs_pagebox');
                                 if (! pageBox) return;
+                                /* Bloques sin tema (apply_theme=false) ocupan su propia
+                                   página y NO deben llevar el chrome del theme: si la
+                                   página contiene un .doc-block--no-theme, no clonamos
+                                   la overlay en ella. */
+                                if (pageBox.querySelector('.doc-block--no-theme')) return;
                                 var clone = overlay.cloneNode(true);
                                 clone.classList.remove('theme-overlay');
                                 clone.classList.add('theme-overlay-clone');
@@ -559,10 +713,25 @@
                             fitToIframe();
                             window.addEventListener('resize', fitToIframe);
                         }
+
+                        /* 3) Rellenar los números de página del índice (TOC).
+                              Para cada enlace, localizamos el destino, vemos en
+                              qué `.pagedjs_page` cayó y escribimos su número. */
+                        var tocPages = document.querySelectorAll('.doc-toc__page[data-target]');
+                        tocPages.forEach(function (span) {
+                            var target = span.getAttribute('data-target');
+                            if (! target) return;
+                            var dest;
+                            try { dest = document.querySelector(target); } catch (e) { dest = null; }
+                            if (! dest) return;
+                            var pageEl = dest.closest('.pagedjs_page');
+                            if (! pageEl) return;
+                            var num = pageEl.getAttribute('data-page-number');
+                            if (num) span.textContent = num;
+                        });
                     }
                 };
             </script>
-        @endif
         <script>{!! $pagedJsContent !!}</script>
     @endif
 @endif

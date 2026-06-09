@@ -7,7 +7,6 @@ namespace App\Http\Requests\Processes;
 use App\DTOs\Processes\CreateProcessDto;
 use App\Models\Process;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class StoreProcessRequest extends FormRequest
 {

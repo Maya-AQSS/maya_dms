@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Support;
 
 /**
@@ -252,6 +254,7 @@ final class TiptapContentSemantics
                 if (trim(str_replace("\u{00A0}", ' ', $node['text'])) !== '') {
                     return true;
                 }
+
                 continue;
             }
             if ($type === 'hardBreak') {

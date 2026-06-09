@@ -21,7 +21,7 @@ class ApiTeamEmbedService implements ApiTeamEmbedServiceInterface
      *
      * @return array|null El equipo embedido, listo para ser aplicado a una plantilla
      */
-    public function resolveTemplateTeam(string|null $teamCatalogId, string $viewerUserId): array|null
+    public function resolveTemplateTeam(?string $teamCatalogId, string $viewerUserId): ?array
     {
         return $this->teamReadService->embeddableTeam(
             $teamCatalogId !== null ? (string) $teamCatalogId : null,
@@ -36,7 +36,7 @@ class ApiTeamEmbedService implements ApiTeamEmbedServiceInterface
      *
      * @return array|null El equipo embedido, listo para ser aplicado a un documento
      */
-    public function resolveDocumentTeam(string|null $teamCatalogId, string $viewerUserId): array|null
+    public function resolveDocumentTeam(?string $teamCatalogId, string $viewerUserId): ?array
     {
         return $this->teamReadService->embeddableTeam(
             $teamCatalogId !== null ? (string) $teamCatalogId : null,

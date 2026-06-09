@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Mapa de procesos del CEEDCV.
  *
@@ -20,7 +22,6 @@
  * proceso — asignado con HSL distribuido para garantizar unicidad
  * cromática dentro de cada categoría (PE=purples, PC=teals/blues, PS=warm).
  */
-
 $uid = static fn (string $tail): string => "33333333-3333-3333-3333-333333{$tail}";
 
 /** Convierte HSL → hex `#RRGGBB`. */
@@ -32,12 +33,12 @@ $hsl = static function (int $h, int $s, int $l): string {
     $m = $l - $c / 2;
 
     [$r, $g, $b] = match (true) {
-        $h <  60 => [$c, $x, 0],
+        $h < 60 => [$c, $x, 0],
         $h < 120 => [$x, $c, 0],
         $h < 180 => [0, $c, $x],
         $h < 240 => [0, $x, $c],
         $h < 300 => [$x, 0, $c],
-        default  => [$c, 0, $x],
+        default => [$c, 0, $x],
     };
 
     return sprintf('#%02X%02X%02X',
@@ -96,17 +97,17 @@ $processes[] = ['id' => $uid('011000'), 'code' => 'PC10',    'name' => 'Pruebas 
 
 /* ── PS — Procesos Soporte (warm: orange/amber/red-soft, hue 0-60 + 330) ── */
 
-$processes[] = ['id' => $uid('020100'), 'code' => 'PS01',    'name' => 'Gestión administrativa',                                    'alias' => 'Gestión administ.',       'icon' => 'folder',           'color' => $hsl(28,  65, 50), 'process_parent_id' => null];
-$processes[] = ['id' => $uid('020101'), 'code' => 'PS01.01', 'name' => 'Matrícula FPA',                                             'alias' => 'Matrícula FPA',           'icon' => 'user-plus',        'color' => $hsl(32,  60, 55), 'process_parent_id' => $uid('020100')];
-$processes[] = ['id' => $uid('020102'), 'code' => 'PS01.02', 'name' => 'Matrícula Bachillerato',                                    'alias' => 'Matrícula Bachiller.',    'icon' => 'user-plus',        'color' => $hsl(36,  60, 55), 'process_parent_id' => $uid('020100')];
-$processes[] = ['id' => $uid('020103'), 'code' => 'PS01.03', 'name' => 'Matrícula FP',                                              'alias' => 'Matrícula FP',            'icon' => 'user-plus',        'color' => $hsl(40,  60, 55), 'process_parent_id' => $uid('020100')];
-$processes[] = ['id' => $uid('020104'), 'code' => 'PS01.04', 'name' => 'Certificación, titulación y expedientes',                   'alias' => 'Cert. y títulos',         'icon' => 'award',            'color' => $hsl(44,  60, 50), 'process_parent_id' => $uid('020100')];
-$processes[] = ['id' => $uid('020105'), 'code' => 'PS01.05', 'name' => 'Certificados de aprovechamiento FPA',                       'alias' => 'Cert. aprov. FPA',        'icon' => 'award',            'color' => $hsl(48,  60, 50), 'process_parent_id' => $uid('020100')];
+$processes[] = ['id' => $uid('020100'), 'code' => 'PS01',    'name' => 'Gestión administrativa',                                    'alias' => 'Gestión administ.',       'icon' => 'folder',           'color' => $hsl(28, 65, 50), 'process_parent_id' => null];
+$processes[] = ['id' => $uid('020101'), 'code' => 'PS01.01', 'name' => 'Matrícula FPA',                                             'alias' => 'Matrícula FPA',           'icon' => 'user-plus',        'color' => $hsl(32, 60, 55), 'process_parent_id' => $uid('020100')];
+$processes[] = ['id' => $uid('020102'), 'code' => 'PS01.02', 'name' => 'Matrícula Bachillerato',                                    'alias' => 'Matrícula Bachiller.',    'icon' => 'user-plus',        'color' => $hsl(36, 60, 55), 'process_parent_id' => $uid('020100')];
+$processes[] = ['id' => $uid('020103'), 'code' => 'PS01.03', 'name' => 'Matrícula FP',                                              'alias' => 'Matrícula FP',            'icon' => 'user-plus',        'color' => $hsl(40, 60, 55), 'process_parent_id' => $uid('020100')];
+$processes[] = ['id' => $uid('020104'), 'code' => 'PS01.04', 'name' => 'Certificación, titulación y expedientes',                   'alias' => 'Cert. y títulos',         'icon' => 'award',            'color' => $hsl(44, 60, 50), 'process_parent_id' => $uid('020100')];
+$processes[] = ['id' => $uid('020105'), 'code' => 'PS01.05', 'name' => 'Certificados de aprovechamiento FPA',                       'alias' => 'Cert. aprov. FPA',        'icon' => 'award',            'color' => $hsl(48, 60, 50), 'process_parent_id' => $uid('020100')];
 
-$processes[] = ['id' => $uid('020200'), 'code' => 'PS02',    'name' => 'Gestión RRHH',                                              'alias' => 'Gestión RRHH',            'icon' => 'users-2',          'color' => $hsl(14,  65, 52), 'process_parent_id' => null];
-$processes[] = ['id' => $uid('020201'), 'code' => 'PS02.01', 'name' => 'Acogida del personal',                                      'alias' => 'Acogida del personal',    'icon' => 'user-plus',        'color' => $hsl(10,  60, 55), 'process_parent_id' => $uid('020200')];
-$processes[] = ['id' => $uid('020202'), 'code' => 'PS02.02', 'name' => 'Formación',                                                 'alias' => 'Formación',               'icon' => 'graduation-cap',   'color' => $hsl(6,   60, 55), 'process_parent_id' => $uid('020200')];
-$processes[] = ['id' => $uid('020203'), 'code' => 'PS02.03', 'name' => 'Competencia',                                               'alias' => 'Competencia',             'icon' => 'star',             'color' => $hsl(2,   60, 55), 'process_parent_id' => $uid('020200')];
+$processes[] = ['id' => $uid('020200'), 'code' => 'PS02',    'name' => 'Gestión RRHH',                                              'alias' => 'Gestión RRHH',            'icon' => 'users-2',          'color' => $hsl(14, 65, 52), 'process_parent_id' => null];
+$processes[] = ['id' => $uid('020201'), 'code' => 'PS02.01', 'name' => 'Acogida del personal',                                      'alias' => 'Acogida del personal',    'icon' => 'user-plus',        'color' => $hsl(10, 60, 55), 'process_parent_id' => $uid('020200')];
+$processes[] = ['id' => $uid('020202'), 'code' => 'PS02.02', 'name' => 'Formación',                                                 'alias' => 'Formación',               'icon' => 'graduation-cap',   'color' => $hsl(6, 60, 55), 'process_parent_id' => $uid('020200')];
+$processes[] = ['id' => $uid('020203'), 'code' => 'PS02.03', 'name' => 'Competencia',                                               'alias' => 'Competencia',             'icon' => 'star',             'color' => $hsl(2, 60, 55), 'process_parent_id' => $uid('020200')];
 $processes[] = ['id' => $uid('020204'), 'code' => 'PS02.04', 'name' => 'Gestión de horarios',                                       'alias' => 'Gestión de horarios',     'icon' => 'clock',            'color' => $hsl(358, 60, 55), 'process_parent_id' => $uid('020200')];
 $processes[] = ['id' => $uid('020205'), 'code' => 'PS02.05', 'name' => 'Ausencias y guardias',                                      'alias' => 'Ausencias y guardias',    'icon' => 'user-x',           'color' => $hsl(354, 60, 55), 'process_parent_id' => $uid('020200')];
 $processes[] = ['id' => $uid('020206'), 'code' => 'PS02.06', 'name' => 'Alumnado en prácticas',                                     'alias' => 'Alumnado prácticas',      'icon' => 'briefcase',        'color' => $hsl(350, 60, 55), 'process_parent_id' => $uid('020200')];
@@ -115,8 +116,8 @@ $processes[] = ['id' => $uid('020207'), 'code' => 'PS02.07', 'name' => 'Prevenci
 $processes[] = ['id' => $uid('020300'), 'code' => 'PS03',    'name' => 'Gestión de infraestructuras y equipamiento de soporte',     'alias' => 'Infraestructuras',        'icon' => 'settings',         'color' => $hsl(340, 60, 48), 'process_parent_id' => null];
 $processes[] = ['id' => $uid('020301'), 'code' => 'PS03.01', 'name' => 'Mantenimiento y renovación de equipos',                     'alias' => 'Mant. de equipos',        'icon' => 'wrench',           'color' => $hsl(336, 55, 55), 'process_parent_id' => $uid('020300')];
 
-$processes[] = ['id' => $uid('020500'), 'code' => 'PS05',    'name' => 'Protección de datos y seguridad de la información',         'alias' => 'Protección de datos',     'icon' => 'shield',           'color' => $hsl(54,  65, 48), 'process_parent_id' => null];
-$processes[] = ['id' => $uid('020600'), 'code' => 'PS06',    'name' => 'Gestión económica y compras',                               'alias' => 'Gestión económica',       'icon' => 'dollar-sign',      'color' => $hsl(60,  65, 48), 'process_parent_id' => null];
+$processes[] = ['id' => $uid('020500'), 'code' => 'PS05',    'name' => 'Protección de datos y seguridad de la información',         'alias' => 'Protección de datos',     'icon' => 'shield',           'color' => $hsl(54, 65, 48), 'process_parent_id' => null];
+$processes[] = ['id' => $uid('020600'), 'code' => 'PS06',    'name' => 'Gestión económica y compras',                               'alias' => 'Gestión económica',       'icon' => 'dollar-sign',      'color' => $hsl(60, 65, 48), 'process_parent_id' => null];
 
 return [
     'processes' => array_map(static fn (array $p): array => $p + ['description' => null], $processes),

@@ -10,6 +10,7 @@ use App\Http\Requests\AnchoredCommentRequest;
 use App\Http\Resources\AnchoredCommentResource;
 use App\Repositories\Resolvers\PolymorphicResourceResolver;
 use App\Services\Contracts\AnchoredCommentServiceInterface;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -72,7 +73,7 @@ final class AnchoredCommentController extends Controller
         // Verify the anchor belongs to this resource
         $anchor = $this->anchoredCommentService->getForResource($resourceType, (string) $resource->getKey(), $anchorId);
         if ($anchor === null) {
-            throw new NotFoundHttpException();
+            throw new NotFoundHttpException;
         }
 
         $updated = $this->anchoredCommentService->updateAnchor(
@@ -96,7 +97,7 @@ final class AnchoredCommentController extends Controller
         // Verify the anchor belongs to this resource
         $anchor = $this->anchoredCommentService->getForResource($resourceType, (string) $resource->getKey(), $anchorId);
         if ($anchor === null) {
-            throw new NotFoundHttpException();
+            throw new NotFoundHttpException;
         }
 
         $this->anchoredCommentService->deleteAnchor($anchorId);
@@ -104,12 +105,12 @@ final class AnchoredCommentController extends Controller
         return response()->json(null, 204);
     }
 
-    private function resolveAndAuthorize(string $resourceType, string $resourceId, string $ability): \Illuminate\Database\Eloquent\Model
+    private function resolveAndAuthorize(string $resourceType, string $resourceId, string $ability): Model
     {
         try {
             $resource = $this->resourceResolver->resolve($resourceType, $resourceId);
-        } catch (ResourceNotFoundException | ModelNotFoundException) {
-            throw new NotFoundHttpException();
+        } catch (ResourceNotFoundException|ModelNotFoundException) {
+            throw new NotFoundHttpException;
         }
 
         $this->authorize($ability, $resource);

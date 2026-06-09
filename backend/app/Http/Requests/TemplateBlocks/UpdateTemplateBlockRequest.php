@@ -6,6 +6,7 @@ namespace App\Http\Requests\TemplateBlocks;
 
 use App\DTOs\TemplateBlocks\UpdateTemplateBlockDto;
 use App\Enums\BlockState;
+use App\Enums\BlockType;
 use App\Http\Concerns\SanitizesBlockContent;
 use App\Http\Requests\TemplateBlocks\Concerns\ResolvesTemplateForBlockAuthorization;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -34,9 +35,13 @@ class UpdateTemplateBlockRequest extends FormRequest
                     $fail('"Bloque sin nombre" no es un nombre válido para un bloque.');
                 }
             }],
+            'block_type' => ['sometimes', 'string', 'in:'.implode(',', BlockType::values())],
+            'theme_id' => ['sometimes', 'nullable', 'uuid', 'exists:themes,id'],
+            'apply_theme' => ['sometimes', 'boolean'],
             'default_content' => ['sometimes', 'nullable', 'array'],
             'description' => ['sometimes', 'nullable', 'array'],
             'block_state' => ['sometimes', 'string', 'in:'.implode(',', BlockState::values())],
+            'page_break_after' => ['sometimes', 'boolean'],
             'sort_order' => ['sometimes', 'integer', 'min:0'],
         ];
     }
@@ -61,6 +66,14 @@ class UpdateTemplateBlockRequest extends FormRequest
             set_block_state: $this->has('block_state'),
             description: $validated['description'] ?? null,
             set_description: $this->has('description'),
+            block_type: $validated['block_type'] ?? null,
+            set_block_type: $this->has('block_type'),
+            page_break_after: array_key_exists('page_break_after', $validated) ? (bool) $validated['page_break_after'] : null,
+            set_page_break_after: $this->has('page_break_after'),
+            theme_id: $validated['theme_id'] ?? null,
+            set_theme_id: $this->has('theme_id'),
+            apply_theme: array_key_exists('apply_theme', $validated) ? (bool) $validated['apply_theme'] : null,
+            set_apply_theme: $this->has('apply_theme'),
         );
     }
 }

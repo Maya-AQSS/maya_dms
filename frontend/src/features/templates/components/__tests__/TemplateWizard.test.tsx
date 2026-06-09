@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import i18n from '../../../../i18n';
 import { TemplateWizard } from '../TemplateWizard';
 import {
   createTemplate,
@@ -51,7 +52,16 @@ vi.mock('../../../../api/users', () => ({
       study_ids: [],
       module_ids: [],
       team_ids: [],
-      permissions: ['template.create', 'template.index', 'template.show'],
+      permissions: [
+        'template.create',
+        'template.index',
+        'template.show',
+        'block.index',
+        'block.show',
+        'block.create',
+        'block.update',
+        'block.delete',
+      ],
       locale: 'es',
       source: 'fdw' as const,
     },
@@ -130,6 +140,13 @@ vi.mock('react-router-dom', async () => {
 });
 
 describe('TemplateWizard Integration', () => {
+  // El wizard resuelve títulos y placeholders vía `t('templates:...')`. Sin
+  // inicializar i18n, `t()` devuelve la clave y las queries por texto fallan.
+  // jsdom expone `navigator.language = 'en-US'`, así que forzamos 'es'.
+  beforeAll(async () => {
+    await i18n.changeLanguage('es');
+  });
+
   const fullTemplate = (overrides: Partial<Record<string, unknown>> = {}) => ({
     id: 't1',
     name: 'Existing',
@@ -204,7 +221,7 @@ describe('TemplateWizard Integration', () => {
     // Step 1: Properties
     expect(screen.getByText('Nueva plantilla')).toBeTruthy();
     
-    const nameInput = screen.getAllByPlaceholderText(/Acta de Evaluación Final/i)[0];
+    const nameInput = screen.getAllByPlaceholderText(/Nombre de la plantilla/i)[0];
     fireEvent.change(nameInput, { target: { value: 'New Template' } });
 
     const deadlineInput = screen.getByLabelText(/Plazo de entrega/i);
@@ -257,7 +274,9 @@ describe('TemplateWizard Integration', () => {
     fireEvent.change(screen.getByTestId('changelog-editor'), {
       target: { value: 'Primera publicación con changelog.' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }));
+    // Exact name: el modal de changelog expone «Publicar», distinto del
+    // disparador «Publicar plantilla» que sigue en el DOM tras él.
+    fireEvent.click(screen.getByRole('button', { name: 'Publicar' }));
 
     await waitFor(() => {
       expect(submitTemplateForReview).toHaveBeenCalledWith('t123', 'Primera publicación con changelog.');
@@ -286,7 +305,9 @@ describe('TemplateWizard Integration', () => {
         type: 'paragraph',
         title: 'B1',
         default_content: null,
-        block_state: 'locked',
+        // Editable (no locked/modifiable empty-content constraint) so the
+        // blocks step validates and the stepper allows navigating back.
+        block_state: 'editable',
         mandatory: true,
         sort_order: 0,
       }],
@@ -295,23 +316,32 @@ describe('TemplateWizard Integration', () => {
     await renderWizard({ template: mockTemplate });
     
     // We start at Step 1, but let's go to Step 2
-    fireEvent.change(screen.getAllByPlaceholderText(/Acta de Evaluación Final/i)[0], { target: { value: 'Modified' } });
+    fireEvent.change(screen.getAllByPlaceholderText(/Nombre de la plantilla/i)[0], { target: { value: 'Modified' } });
     fireEvent.click(screen.getByRole('button', { name: /Guardar y continuar →/ }));
 
     await waitFor(() => {
       expect(screen.getByText(/Bloques \(/i)).toBeTruthy();
     }, { timeout: 10000 });
 
-    // Now go back using the stepper
-    fireEvent.click(screen.getByRole('button', { name: /Propiedades/i }));
-    
-    expect(screen.getAllByPlaceholderText(/Acta de Evaluación Final/i)[0]).toBeTruthy();
+    // Espera a que los bloques terminen de cargar antes de retroceder:
+    // `handleBackArrow` llama a `saveBlocks()` y la navegación depende del
+    // estado de carga de bloques.
+    await waitFor(() => expect(screen.getByText('B1')).toBeTruthy(), { timeout: 10000 });
+
+    // Retroceder con la flecha «Volver» (handleBackArrow): es la navegación
+    // hacia atrás soportada. El stepper solo permite saltar a pasos activos o
+    // completados, y «Propiedades» no se marca como completado al avanzar.
+    fireEvent.click(screen.getByLabelText('Volver'));
+
+    await waitFor(() =>
+      expect(screen.getAllByPlaceholderText(/Nombre de la plantilla/i)[0]).toBeTruthy(),
+    );
   });
 
   it('shows leave guard when dirty', async () => {
     await renderWizard();
 
-    const nameInput = screen.getAllByPlaceholderText(/Acta de Evaluación Final/i)[0];
+    const nameInput = screen.getAllByPlaceholderText(/Nombre de la plantilla/i)[0];
     fireEvent.input(nameInput, { target: { value: 'Some change' } });
 
     // Wait for RHF to flush the dirty flag before triggering the leave action

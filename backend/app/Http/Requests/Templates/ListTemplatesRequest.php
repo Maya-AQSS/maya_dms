@@ -36,14 +36,14 @@ class ListTemplatesRequest extends PaginatedFilterRequest
     protected function filterRules(): array
     {
         return [
-            'process_id'          => ['nullable', 'uuid', 'exists:processes,id'],
-            'status'              => ['nullable', 'string', 'in:draft,in_review,published,archived'],
-            'visibility_level'    => ['nullable', Rule::enum(TemplateVisibilityLevel::class)],
-            'study_type_id'       => ['nullable', 'string', 'max:255'],
-            'study_id'            => ['nullable', 'string', 'max:255'],
-            'module_id'           => ['nullable', 'string', 'max:255'],
-            'team_id'             => ['nullable', 'uuid', 'exists:teams,id'],
-            'usable_for_documents'=> ['nullable', 'boolean'],
+            'process_id' => ['nullable', 'uuid', 'exists:processes,id'],
+            'status' => ['nullable', 'string', 'in:draft,in_review,published,archived'],
+            'visibility_level' => ['nullable', Rule::enum(TemplateVisibilityLevel::class)],
+            'study_type_id' => ['nullable', 'string', 'max:255'],
+            'study_id' => ['nullable', 'string', 'max:255'],
+            'module_id' => ['nullable', 'string', 'max:255'],
+            'team_id' => ['nullable', 'uuid', 'exists:teams,id'],
+            'usable_for_documents' => ['nullable', 'boolean'],
         ];
     }
 

@@ -25,6 +25,12 @@ beforeEach(function () {
     $this->app['events']->listen(RouteMatched::class, function ($event) use ($userId) {
         $event->request->attributes->set('jwt_user', ['id' => $userId, 'sub' => $userId]);
     });
+
+    // Las rutas viven bajo el grupo `permission:dms.login`.
+    DB::table('user_resolved_permissions')->insert([
+        'user_id' => $this->userId,
+        'permission_slug' => 'dms.login',
+    ]);
 });
 
 function grantBlockPermissions(string ...$slugs): void
@@ -66,6 +72,27 @@ function seedTemplateWithBlock(string $creatorId): array
         'sort_order' => 0,
     ]);
 
+    // Snapshot publicado: una plantilla global con versión publicada es visible
+    // en el catálogo para no creadores, de modo que la autorización llegue al
+    // gate de permiso (no se resuelva como 404 por invisibilidad).
+    DB::table('entity_versions')->insert([
+        'id' => (string) Str::uuid(),
+        'versionable_type' => Template::class,
+        'versionable_id' => $templateId,
+        'version_number' => 1,
+        'status' => 'published',
+        'is_snapshot_immutable' => true,
+        'created_by' => $creatorId,
+        'published_by' => $creatorId,
+        'published_at' => now(),
+        'changelog' => 'v1',
+        'snapshot_data' => json_encode([
+            'template' => ['id' => $templateId, 'visibility_level' => 'global', 'status' => 'published'],
+        ], JSON_THROW_ON_ERROR),
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
     return ['templateId' => $templateId, 'blockId' => $blockId];
 }
 
@@ -78,13 +105,16 @@ it('denies template blocks index without block.index', function () {
         ->assertForbidden();
 });
 
-it('denies template blocks index without companion mutation slug', function () {
+it('allows template blocks index with block.index and template read access without companion slug', function () {
+    // El listado de bloques de plantilla ya no exige compañero de mutación
+    // (cambio en BlockPolicy::listForTemplate): basta block.index + acceso de
+    // lectura sobre la plantilla (template.show sobre plantilla visible).
     grantBlockPermissions('template.show', 'block.index');
 
     $ctx = seedTemplateWithBlock(test()->otherUserId);
 
     $this->getJson("/api/v1/templates/{$ctx['templateId']}/blocks")
-        ->assertForbidden();
+        ->assertOk();
 });
 
 it('allows template blocks index with block.index and template.update', function () {

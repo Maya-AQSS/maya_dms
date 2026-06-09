@@ -12,6 +12,7 @@ use Illuminate\Foundation\Http\FormRequest;
 class UpdateThemeRequest extends FormRequest
 {
     use SanitizesThemeLayout;
+
     public function authorize(): bool
     {
         $theme = Theme::query()->findOrFail($this->route('theme'));

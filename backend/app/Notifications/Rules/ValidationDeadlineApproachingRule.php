@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Notifications\Rules;
 
-use App\Models\Document;
 use App\Support\DocumentHeadSnapshot;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;

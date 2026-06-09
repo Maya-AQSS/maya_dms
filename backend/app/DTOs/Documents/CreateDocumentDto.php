@@ -11,8 +11,8 @@ readonly class CreateDocumentDto
 {
     /**
      * @param  array<string, mixed>|null  $migratedBlockContent  Contenido a precargar por template_block_id
-     *                                                            (paso de migración del wizard). Los bloques
-     *                                                            `locked` ignoran este override.
+     *                                                           (paso de migración del wizard). Los bloques
+     *                                                           `locked` ignoran este override.
      */
     public function __construct(
         public string $templateId,

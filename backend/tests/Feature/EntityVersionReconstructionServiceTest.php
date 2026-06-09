@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature;
 
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\EntityVersion;
 use App\Models\Template;
+use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Services\EntityVersionReconstructionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -48,8 +51,8 @@ class EntityVersionReconstructionServiceTest extends TestCase
             'created_by' => (string) Str::uuid(),
         ]);
 
-        $service = new EntityVersionReconstructionService(app(\App\Repositories\Contracts\EntityVersionRepositoryInterface::class));
-        $state = $service->reconstruct($v2);
+        $service = new EntityVersionReconstructionService(app(EntityVersionRepositoryInterface::class));
+        $state = $service->reconstruct($v2->id);
 
         $this->assertSame('Plantilla base v2', $state['name']);
         $this->assertSame('study_type', $state['meta']['visibility_level']);
@@ -85,8 +88,8 @@ class EntityVersionReconstructionServiceTest extends TestCase
             'published_at' => now(),
         ]);
 
-        $service = new EntityVersionReconstructionService(app(\App\Repositories\Contracts\EntityVersionRepositoryInterface::class));
-        $state = $service->reconstruct($target);
+        $service = new EntityVersionReconstructionService(app(EntityVersionRepositoryInterface::class));
+        $state = $service->reconstruct($target->id);
 
         $this->assertSame('Desde snapshot', $state['name']);
         $this->assertTrue($state['published']);
@@ -119,10 +122,10 @@ class EntityVersionReconstructionServiceTest extends TestCase
         $v1->base_version_id = $v2->id;
         $v1->save();
 
-        $service = new EntityVersionReconstructionService(app(\App\Repositories\Contracts\EntityVersionRepositoryInterface::class));
+        $service = new EntityVersionReconstructionService(app(EntityVersionRepositoryInterface::class));
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('ciclo detectado');
-        $service->reconstruct($v2);
+        $service->reconstruct($v2->id);
     }
 
     public function test_reconstruct_handles_base_deletion_via_null_on_delete(): void
@@ -152,8 +155,8 @@ class EntityVersionReconstructionServiceTest extends TestCase
         $child->refresh();
         $this->assertNull($child->base_version_id);
 
-        $service = new EntityVersionReconstructionService(app(\App\Repositories\Contracts\EntityVersionRepositoryInterface::class));
-        $state = $service->reconstruct($child);
+        $service = new EntityVersionReconstructionService(app(EntityVersionRepositoryInterface::class));
+        $state = $service->reconstruct($child->id);
         $this->assertSame('v2', $state['name']);
     }
 
@@ -181,10 +184,10 @@ class EntityVersionReconstructionServiceTest extends TestCase
             'created_by' => (string) Str::uuid(),
         ]);
 
-        $service = new EntityVersionReconstructionService(app(\App\Repositories\Contracts\EntityVersionRepositoryInterface::class));
+        $service = new EntityVersionReconstructionService(app(EntityVersionRepositoryInterface::class));
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('mezcla de entidades detectada');
-        $service->reconstruct($targetFromB);
+        $service->reconstruct($targetFromB->id);
     }
 
     private function createTemplateForVersioning(): string

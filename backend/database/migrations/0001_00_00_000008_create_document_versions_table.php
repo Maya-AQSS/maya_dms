@@ -1,5 +1,8 @@
 <?php
 
+declare(strict_types=1);
+
+use App\Models\EntityVersion;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -10,7 +13,7 @@ return new class extends Migration
     /**
      * Fila legacy por versión de documento (append-only).
      *
-     * El snapshot completo publicado también se guarda en {@see \App\Models\EntityVersion} (`snapshot_data`),
+     * El snapshot completo publicado también se guarda en {@see EntityVersion} (`snapshot_data`),
      * enlazado por `entity_version_id`. `snapshot_data` puede ser null en esa fila cuando existe enlace (sin duplicar JSON).
      * Otros `trigger_event` pueden seguir usando solo esta tabla.
      *

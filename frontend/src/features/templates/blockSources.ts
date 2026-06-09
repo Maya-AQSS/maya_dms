@@ -8,8 +8,8 @@ import type { ReactNode } from 'react';
 export interface BlockSourceContext {
   /** ID de la plantilla actual. */
   templateId: string;
-  /** Crea un bloque simple vacío y entra en edición (comportamiento actual). */
-  createBlock: (block: Partial<{ name: string; description: string; content: any }>) => void | Promise<void>;
+  /** Crea un bloque vacío (opcionalmente de un `block_type` de maquetación) y entra en edición. */
+  createBlock: (block: Partial<{ name: string; description: string; content: any; block_type: 'content' | 'cover' | 'blank' | 'index' }>) => void | Promise<void>;
   /** Abre el modal DocxBlockSplitter. */
   openDocxSplitter: () => void;
   /** Cierra el diálogo activo (id=null) o uno específico. */
@@ -51,6 +51,9 @@ export const BLOCK_SOURCES: BlockSource[] = [
       setActiveDialog('docx-splitter');
     },
   },
+  // El tipo de bloque (contenido / portada / hoja en blanco / índice) se
+  // elige en el panel "Propiedades" del bloque, no aquí: todo bloque nuevo
+  // nace como "contenido" y el usuario lo cambia si lo necesita.
   // Futuras entradas (galería de plantillas, bloques IA, …) entran aquí
   // sin tocar el wizard.
 ];

@@ -15,6 +15,7 @@ use App\Http\Resources\TemplateResource;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\TemplateServiceInterface;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -115,7 +116,7 @@ class TemplateStateController extends Controller
         try {
             $model = $this->templateService->findModelOrFail($template);
             $directAccess = true;
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+        } catch (ModelNotFoundException) {
             // Recurso no accesible en el estado actual (p.ej. draft visible solo al creador).
             // Si existe y tiene snapshot publicado, el usuario puede recibir el 409 informativo.
             $model = $this->templateService->findOrFailWithoutCatalogScope($template);

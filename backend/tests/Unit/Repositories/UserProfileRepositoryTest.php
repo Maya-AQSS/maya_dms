@@ -1,8 +1,12 @@
 <?php
 
-use App\Repositories\Eloquent\UserProfileRepository;
-use Illuminate\Support\Facades\DB;
+declare(strict_types=1);
 
+use App\Models\UserFdw;
+use App\Repositories\Eloquent\UserProfileRepository;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
+use Tests\TestCase;
 
 /**
  * Escenario 1 (Consulta filtrada por usuario):
@@ -11,11 +15,10 @@ use Illuminate\Support\Facades\DB;
  * Escenario 4 (Prohibición de JOIN sin filtro):
  *   Verifica que findTeamsByUserId SIEMPRE incluya filtro de user_id en el JOIN.
  */
-
-uses(Tests\TestCase::class);
+uses(TestCase::class);
 
 beforeEach(function () {
-    $this->repository = new UserProfileRepository();
+    $this->repository = new UserProfileRepository;
 });
 
 it('findById runs inside transaction with SET LOCAL statement_timeout and filters by user id', function () {
@@ -29,9 +32,9 @@ it('findById runs inside transaction with SET LOCAL statement_timeout and filter
         ->once()
         ->with('SET LOCAL statement_timeout = 500');
 
-    $mockModel = Mockery::mock('overload:' . \App\Models\UserFdw::class);
+    $mockModel = Mockery::mock('overload:'.UserFdw::class);
 
-    $mockBuilder = Mockery::mock(\Illuminate\Database\Eloquent\Builder::class);
+    $mockBuilder = Mockery::mock(Builder::class);
     $mockBuilder->shouldReceive('where')
         ->once()
         ->with('id', '=', 'user-123')

@@ -1,16 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature;
 
-use Maya\Auth\Middleware\JwtMiddleware;
 use App\Models\JwtUser;
-use Maya\Auth\Contracts\JwksServiceInterface;
 use DateTimeImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Lcobucci\JWT\Configuration;
 use Lcobucci\JWT\Signer\Key\InMemory;
 use Lcobucci\JWT\Signer\Rsa\Sha256;
+use Maya\Auth\Contracts\JwksServiceInterface;
+use Maya\Auth\Middleware\JwtMiddleware;
 use Tests\TestCase;
 
 class JwtValidationTest extends TestCase
@@ -22,7 +24,7 @@ class JwtValidationTest extends TestCase
         [$privatePem, $publicPem] = $this->generateRsaKeyPair();
 
         config([
-            'auth.jwt_issuer'   => 'test-issuer',
+            'auth.jwt_issuer' => 'test-issuer',
             'auth.jwt_audience' => 'test-audience',
         ]);
 
@@ -31,11 +33,11 @@ class JwtValidationTest extends TestCase
             ->andReturn($publicPem);
 
         $middleware = app(JwtMiddleware::class);
-        $method     = (new \ReflectionClass(JwtMiddleware::class))
+        $method = (new \ReflectionClass(JwtMiddleware::class))
             ->getMethod('validateAndExtractClaims');
         $method->setAccessible(true);
 
-        $token  = $this->buildJwt($privatePem, $publicPem, userId: 'user-uuid-123');
+        $token = $this->buildJwt($privatePem, $publicPem, userId: 'user-uuid-123');
         $claims = $method->invoke($middleware, $token);
 
         $this->assertSame('user-uuid-123', $claims['sub']);
@@ -44,9 +46,9 @@ class JwtValidationTest extends TestCase
     public function test_jwt_user_exposes_id_from_sub_claim(): void
     {
         $user = new JwtUser([
-            'id'         => 'user-uuid-123',
-            'email'      => 'test@example.com',
-            'name'       => 'Test User',
+            'id' => 'user-uuid-123',
+            'email' => 'test@example.com',
+            'name' => 'Test User',
             'department' => 'Engineering',
         ]);
 
@@ -59,8 +61,8 @@ class JwtValidationTest extends TestCase
     public function test_jwt_user_exposes_name_and_department_from_profile(): void
     {
         $user = new JwtUser([
-            'id'         => 'uuid',
-            'name'       => 'Ana García',
+            'id' => 'uuid',
+            'name' => 'Ana García',
             'department' => 'Calidad',
         ]);
 
@@ -73,7 +75,7 @@ class JwtValidationTest extends TestCase
         [$privatePem, $publicPem] = $this->generateRsaKeyPair();
 
         config([
-            'auth.jwt_issuer'   => 'test-issuer',
+            'auth.jwt_issuer' => 'test-issuer',
             'auth.jwt_audience' => 'test-audience',
         ]);
 
@@ -82,11 +84,11 @@ class JwtValidationTest extends TestCase
             ->andReturn($publicPem);
 
         $middleware = app(JwtMiddleware::class);
-        $method     = (new \ReflectionClass(JwtMiddleware::class))
+        $method = (new \ReflectionClass(JwtMiddleware::class))
             ->getMethod('validateAndExtractClaims');
         $method->setAccessible(true);
 
-        $token  = $this->buildJwt($privatePem, $publicPem, department: 'Engineering');
+        $token = $this->buildJwt($privatePem, $publicPem, department: 'Engineering');
         $claims = $method->invoke($middleware, $token);
 
         $this->assertSame('Engineering', $claims['department']);
@@ -95,7 +97,7 @@ class JwtValidationTest extends TestCase
     public function test_department_is_null_when_claim_is_absent(): void
     {
         $user = new JwtUser([
-            'id'   => 'uuid',
+            'id' => 'uuid',
             'name' => 'Sin Departamento',
         ]);
 
@@ -105,7 +107,7 @@ class JwtValidationTest extends TestCase
     public function test_jwt_user_exposes_scope(): void
     {
         $user = new JwtUser([
-            'id'    => 'uuid',
+            'id' => 'uuid',
             'scope' => 'openid profile email',
         ]);
 
@@ -124,8 +126,8 @@ class JwtValidationTest extends TestCase
     public function test_api_guard_resolves_jwt_user_from_request_attributes(): void
     {
         $profile = [
-            'id'    => 'guard-test-uuid',
-            'name'  => 'Guard User',
+            'id' => 'guard-test-uuid',
+            'name' => 'Guard User',
             'email' => 'guard@example.com',
             'scope' => 'openid',
         ];
@@ -168,7 +170,7 @@ class JwtValidationTest extends TestCase
             ->andReturn($publicPem);
 
         config([
-            'auth.jwt_issuer'   => 'test-issuer',
+            'auth.jwt_issuer' => 'test-issuer',
             'auth.jwt_audience' => 'test-audience',
         ]);
 
@@ -211,12 +213,12 @@ class JwtValidationTest extends TestCase
         bool $expiredAt = false,
     ): string {
         $config = Configuration::forAsymmetricSigner(
-            new Sha256(),
+            new Sha256,
             InMemory::plainText($privatePem),
             InMemory::plainText($publicPem),
         );
 
-        $now = new DateTimeImmutable();
+        $now = new DateTimeImmutable;
         $exp = $expiredAt ? $now->modify('-1 hour') : $now->modify('+1 hour');
 
         $builder = $config->builder()
@@ -235,7 +237,7 @@ class JwtValidationTest extends TestCase
         }
 
         return $builder
-            ->getToken(new Sha256(), InMemory::plainText($privatePem))
+            ->getToken(new Sha256, InMemory::plainText($privatePem))
             ->toString();
     }
 }

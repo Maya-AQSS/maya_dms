@@ -43,19 +43,19 @@ final class CommentServiceTest extends TestCase
     {
         $c = new Comment;
         $c->forceFill(array_merge([
-            'id'                 => 'comment-uuid',
-            'commentable_type'   => Document::class,
-            'commentable_id'     => 'doc-uuid',
-            'commentable_version'=> 1,
-            'blockable_type'     => null,
-            'blockable_id'       => null,
-            'parent_id'          => null,
-            'author_id'          => 'author-uuid',
-            'body'               => 'Test comment body',
-            'resolved'           => false,
-            'resolved_by'        => null,
-            'resolved_at'        => null,
-            'deleted_at'         => null,
+            'id' => 'comment-uuid',
+            'commentable_type' => Document::class,
+            'commentable_id' => 'doc-uuid',
+            'commentable_version' => 1,
+            'blockable_type' => null,
+            'blockable_id' => null,
+            'parent_id' => null,
+            'author_id' => 'author-uuid',
+            'body' => 'Test comment body',
+            'resolved' => false,
+            'resolved_by' => null,
+            'resolved_at' => null,
+            'deleted_at' => null,
         ], $attributes));
 
         return $c;
@@ -73,11 +73,11 @@ final class CommentServiceTest extends TestCase
     public function test_find_or_fail_returns_dto(): void
     {
         $comment = $this->makeComment();
-        $repo    = Mockery::mock(CommentRepositoryInterface::class);
-        $repo->shouldReceive('findOrFail')->once()->with('comment-uuid')->andReturn($comment);
+        $repo = Mockery::mock(CommentRepositoryInterface::class);
+        $repo->shouldReceive('findOrFail')->once()->with('comment-uuid', null)->andReturn($comment);
 
         $service = $this->makeService($repo);
-        $result  = $service->findOrFail('comment-uuid');
+        $result = $service->findOrFail('comment-uuid');
 
         $this->assertInstanceOf(CommentDto::class, $result);
         $this->assertSame('comment-uuid', $result->id);
@@ -86,11 +86,11 @@ final class CommentServiceTest extends TestCase
     public function test_find_model_or_fail_returns_model(): void
     {
         $comment = $this->makeComment();
-        $repo    = Mockery::mock(CommentRepositoryInterface::class);
-        $repo->shouldReceive('findOrFail')->once()->with('comment-uuid')->andReturn($comment);
+        $repo = Mockery::mock(CommentRepositoryInterface::class);
+        $repo->shouldReceive('findOrFail')->once()->with('comment-uuid', null)->andReturn($comment);
 
         $service = $this->makeService($repo);
-        $result  = $service->findModelOrFail('comment-uuid');
+        $result = $service->findModelOrFail('comment-uuid');
 
         $this->assertInstanceOf(Comment::class, $result);
     }
@@ -99,7 +99,7 @@ final class CommentServiceTest extends TestCase
 
     public function test_create_throws_when_blockable_type_set_but_id_null(): void
     {
-        $repo    = Mockery::mock(CommentRepositoryInterface::class);
+        $repo = Mockery::mock(CommentRepositoryInterface::class);
         $service = $this->makeService($repo);
 
         $this->expectException(ValidationException::class);
@@ -118,7 +118,7 @@ final class CommentServiceTest extends TestCase
 
     public function test_create_throws_when_blockable_id_set_but_type_null(): void
     {
-        $repo    = Mockery::mock(CommentRepositoryInterface::class);
+        $repo = Mockery::mock(CommentRepositoryInterface::class);
         $service = $this->makeService($repo);
 
         $this->expectException(ValidationException::class);
@@ -139,7 +139,7 @@ final class CommentServiceTest extends TestCase
 
     public function test_create_throws_for_invalid_commentable_type(): void
     {
-        $repo    = Mockery::mock(CommentRepositoryInterface::class);
+        $repo = Mockery::mock(CommentRepositoryInterface::class);
         $service = $this->makeService($repo);
 
         $this->expectException(ValidationException::class);
@@ -314,12 +314,12 @@ final class CommentServiceTest extends TestCase
     {
         // Parent belongs to a different document
         $parent = $this->makeComment([
-            'id'                  => 'parent-uuid',
-            'commentable_type'    => Document::class,
-            'commentable_id'      => 'other-doc-uuid',  // different resource
+            'id' => 'parent-uuid',
+            'commentable_type' => Document::class,
+            'commentable_id' => 'other-doc-uuid',  // different resource
             'commentable_version' => 1,
-            'blockable_type'      => null,
-            'blockable_id'        => null,
+            'blockable_type' => null,
+            'blockable_id' => null,
         ]);
 
         $repo = Mockery::mock(CommentRepositoryInterface::class);
@@ -350,12 +350,12 @@ final class CommentServiceTest extends TestCase
     {
         // Parent is attached to a different block
         $parent = $this->makeComment([
-            'id'                  => 'parent-uuid',
-            'commentable_type'    => Document::class,
-            'commentable_id'      => 'doc-uuid',
+            'id' => 'parent-uuid',
+            'commentable_type' => Document::class,
+            'commentable_id' => 'doc-uuid',
             'commentable_version' => 1,
-            'blockable_type'      => DocumentBlock::class,
-            'blockable_id'        => 'block-other',  // different block
+            'blockable_type' => DocumentBlock::class,
+            'blockable_id' => 'block-other',  // different block
         ]);
 
         $repo = Mockery::mock(CommentRepositoryInterface::class);
@@ -391,5 +391,9 @@ final class CommentServiceTest extends TestCase
 
         $service = $this->makeService($repo);
         $service->delete('comment-uuid', 'user-uuid', 'User Name');
+
+        // La verificación real la hace la expectativa Mockery `->once()`; esta
+        // aserción evita que PHPUnit marque el test como "risky" (sin aserciones).
+        $this->assertTrue(true);
     }
 }

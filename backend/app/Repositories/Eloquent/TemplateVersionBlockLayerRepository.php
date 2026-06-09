@@ -45,9 +45,6 @@ class TemplateVersionBlockLayerRepository implements TemplateVersionBlockLayerRe
             ->first();
     }
 
-    /**
-     * @return TemplateVersionBlockLayerDto|null
-     */
     public function findForVersionAndBlockAsDto(string $entityVersionId, string $templateBlockId): ?TemplateVersionBlockLayerDto
     {
         $layer = $this->findForVersionAndBlock($entityVersionId, $templateBlockId);
