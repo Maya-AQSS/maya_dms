@@ -310,9 +310,11 @@ export function TemplatePreviewPage() {
       ? snapshotTemplate.name
       : template?.name)
     : template?.name;
+  // Con una sola versión publicada no hay historial que mostrar (ni comparación
+  // posible): ocultamos el botón hasta que existan al menos dos.
   const showVersionHistory =
     publishedVersionCount !== null
-    && publishedVersionCount > 0
+    && publishedVersionCount > 1
     && (isOwner || hasPermission(DMS_PERMISSIONS.templateHistoryView));
 
   const canEdit = isOwner && isDraft && !viewingPublishedSnapshot;

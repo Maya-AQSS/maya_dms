@@ -18,6 +18,7 @@ import {
 } from '../api/documents';
 import { fetchMe } from '../api/users';
 import { useDocumentCommentsQuery } from '../features/documents/hooks/useDocumentComments';
+import { useDocumentVersionSummariesQuery } from '../features/documents/hooks/useDocumentVersionSummaries';
 import { useTemplateQuery } from '../features/templates/hooks/useTemplate';
 import { useProcessesQuery } from '../hooks/useProcesses';
 import { normalizeBlockContentForEditor } from '../features/documents/lib/normalizeBlockContent';
@@ -303,8 +304,15 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       isOwner || hasPermission(DMS_PERMISSIONS.documentDelete),
     );
   const canEditDraft = isDraft && canUpdate;
+  const canViewVersionHistory = isOwner || hasPermission(DMS_PERMISSIONS.documentHistoryView);
+  const versionSummariesQuery = useDocumentVersionSummariesQuery(documentId ?? '', {
+    enabled: !!documentId && canViewVersionHistory,
+  });
+  const publishedVersionCount = versionSummariesQuery.data?.length ?? null;
+  // Con una sola versión publicada no hay historial que mostrar (ni comparación
+  // posible): ocultamos el botón hasta que existan al menos dos.
   const showVersionHistory =
-    isOwner || hasPermission(DMS_PERMISSIONS.documentHistoryView);
+    canViewVersionHistory && publishedVersionCount !== null && publishedVersionCount > 1;
   const canStartNewVersion =
     !isValidateMode &&
     isPublished &&
