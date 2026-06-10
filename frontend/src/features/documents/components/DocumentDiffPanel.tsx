@@ -7,41 +7,12 @@ import {
   diffTiptapRemovedContent,
   type TiptapDiffLine,
 } from '../lib/tiptapLineDiff';
+import { DiffLines } from './DiffLines';
 import type { DocumentDisplayBlock } from '../../../types/documents';
 
 type DiffLine = TiptapDiffLine;
 
 // ── Sub-components ────────────────────────────────────────────────────────────
-
-function DiffLines({ lines }: { lines: DiffLine[] }) {
-  const { t } = useTranslation('documents');
-  if (lines.length === 0) {
-    return (
-      <p className="px-2 py-1 text-text-muted italic text-2xs">
-        {t('diff.noChangesInSubmission')}
-      </p>
-    );
-  }
-  return (
-    <>
-      {lines.map((line, li) => (
-        <div
-          key={li}
-          className={`px-2 py-0.5 whitespace-pre-wrap break-all leading-relaxed ${
-            line.type === 'removed'
-              ? 'bg-danger/10 text-danger-dark dark:bg-danger/15 dark:text-danger'
-              : 'bg-success/10 text-success-dark dark:bg-success/15 dark:text-success'
-          }`}
-        >
-          <span className="mr-2 select-none font-bold opacity-70">
-            {line.type === 'removed' ? '−' : '+'}
-          </span>
-          {line.text}
-        </div>
-      ))}
-    </>
-  );
-}
 
 function blockStateLabel(
   block: DocumentDisplayBlock,
@@ -61,10 +32,12 @@ type Props = {
   blocks: DocumentDisplayBlock[];
   /** Lista completa del documento para numerar bloques; si no se pasa, se usa `blocks`. */
   allBlocks?: DocumentDisplayBlock[];
-  onClose: () => void;
+  /** En modo embebido se omiten título y botón de cierre (los aporta el contenedor con pestañas). */
+  embedded?: boolean;
+  onClose?: () => void;
 };
 
-export function DocumentDiffPanel({ blocks, allBlocks, onClose }: Props) {
+export function DocumentDiffPanel({ blocks, allBlocks, embedded = false, onClose }: Props) {
   const { t } = useTranslation('documents');
   const [ascending, setAscending] = useState(true);
   const [focusedIdx, setFocusedIdx] = useState(0);
@@ -122,9 +95,13 @@ export function DocumentDiffPanel({ blocks, allBlocks, onClose }: Props) {
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="flex items-center shrink-0 border-b border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card px-4 py-3 gap-2">
-        <span className="text-2xs font-black uppercase tracking-[0.15em] text-text-primary dark:text-text-dark-primary flex-1">
-          {t('diff.panelHeader')}
-        </span>
+        {embedded ? (
+          <span className="flex-1" />
+        ) : (
+          <span className="text-2xs font-black uppercase tracking-[0.15em] text-text-primary dark:text-text-dark-primary flex-1">
+            {t('diff.panelHeader')}
+          </span>
+        )}
         <button
           type="button"
           onClick={() => setAscending((v) => !v)}
@@ -138,14 +115,16 @@ export function DocumentDiffPanel({ blocks, allBlocks, onClose }: Props) {
             }
           </svg>
         </button>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={t('diff.closePanel')}
-          className="w-7 h-7 rounded-full hover:bg-ui-body dark:hover:bg-ui-dark-bg flex items-center justify-center text-text-muted transition-colors text-sm shrink-0"
-        >
-          ✕
-        </button>
+        {!embedded && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t('diff.closePanel')}
+            className="w-7 h-7 rounded-full hover:bg-ui-body dark:hover:bg-ui-dark-bg flex items-center justify-center text-text-muted transition-colors text-sm shrink-0"
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       {/* Body */}

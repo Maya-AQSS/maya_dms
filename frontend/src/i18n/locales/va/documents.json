@@ -144,6 +144,10 @@
     "documentsTitle": "Documents",
     "scheduleTitle": "Programacions Didàctiques"
   },
+  "changes": {
+    "tabChanged": "Canviat",
+    "tabHistory": "Històric"
+  },
   "history": {
     "closePanelAria": "Tancar panell",
     "panelHeader": "⎇ Bloc {{n}} · Historial de canvis",

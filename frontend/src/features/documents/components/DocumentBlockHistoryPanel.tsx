@@ -42,12 +42,14 @@ type Props = {
   blockId: string;
   blockNumber: number | string;
   history: DocumentReviewCycleSnapshot[];
-  onClose: () => void;
+  /** En modo embebido se omiten título y botón de cierre (los aporta el contenedor con pestañas). */
+  embedded?: boolean;
+  onClose?: () => void;
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function DocumentBlockHistoryPanel({ blockId, blockNumber, history, onClose }: Props) {
+export function DocumentBlockHistoryPanel({ blockId, blockNumber, history, embedded = false, onClose }: Props) {
   const { t, i18n } = useTranslation('documents');
   const [ascending, setAscending] = useState(false);
 
@@ -78,9 +80,13 @@ export function DocumentBlockHistoryPanel({ blockId, blockNumber, history, onClo
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="flex items-center shrink-0 border-b border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card px-4 py-3 gap-2">
-        <span className="text-2xs font-black uppercase tracking-[0.15em] text-text-primary dark:text-text-dark-primary flex-1">
-          {t('history.panelHeader', { n: blockNumber })}
-        </span>
+        {embedded ? (
+          <span className="flex-1" />
+        ) : (
+          <span className="text-2xs font-black uppercase tracking-[0.15em] text-text-primary dark:text-text-dark-primary flex-1">
+            {t('history.panelHeader', { n: blockNumber })}
+          </span>
+        )}
         <button
           type="button"
           onClick={() => setAscending((v) => !v)}
@@ -95,14 +101,16 @@ export function DocumentBlockHistoryPanel({ blockId, blockNumber, history, onClo
             )}
           </svg>
         </button>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={t('history.closePanelAria')}
-          className="w-7 h-7 rounded-full hover:bg-ui-body dark:hover:bg-ui-dark-bg flex items-center justify-center text-text-muted transition-colors text-sm shrink-0"
-        >
-          ✕
-        </button>
+        {!embedded && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t('history.closePanelAria')}
+            className="w-7 h-7 rounded-full hover:bg-ui-body dark:hover:bg-ui-dark-bg flex items-center justify-center text-text-muted transition-colors text-sm shrink-0"
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       {/* Body */}

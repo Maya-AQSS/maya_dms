@@ -145,6 +145,10 @@
     "documentsTitle": "Documentos",
     "scheduleTitle": "Programaciones Didácticas"
   },
+  "changes": {
+    "tabChanged": "Cambiado",
+    "tabHistory": "Histórico"
+  },
   "history": {
     "closePanelAria": "Cerrar panel",
     "panelHeader": "⎇ Bloque {{n}} · Historial de cambios",

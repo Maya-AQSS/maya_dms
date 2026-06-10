@@ -145,6 +145,10 @@
     "documentsTitle": "Documents",
     "scheduleTitle": "Teaching schedules"
   },
+  "changes": {
+    "tabChanged": "Changed",
+    "tabHistory": "History"
+  },
   "history": {
     "closePanelAria": "Close panel",
     "panelHeader": "⎇ Block {{n}} · Change history",
