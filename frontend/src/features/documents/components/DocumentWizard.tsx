@@ -331,6 +331,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
   const [saving, setSaving] = useState(false);
   const [submittingForReview, setSubmittingForReview] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [transferError, setTransferError] = useState<string | null>(null);
 
   const [activeBlockKey, setActiveBlockKey] = useState<string | null>(null);
   const [summaryBlockKey, setSummaryBlockKey] = useState<string | null>(null);
@@ -1328,11 +1329,6 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
             module_id: moduleId || undefined,
           });
 
-          if (newOwnerForDoc) {
-            await delegateDocument(documentId, newOwnerForDoc.id);
-            setNewOwnerForDoc(null);
-          }
-
           setDetail((prev: DocumentDetail | null) => (prev ? { ...prev, ...updated, blocks: prev.blocks } : prev));
           setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'properties'] as Step[])));
           if (showMigrationStep) {
@@ -1465,6 +1461,21 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
     if (summaryConfirmAction === 'save') {
       setSummaryConfirmAction(null);
       navigate(processBackTo, { state: { tab: 'documents' } });
+    }
+  };
+
+  const handleTransferOwnershipDoc = async () => {
+    if (!documentId || !newOwnerForDoc) return;
+    setSaving(true);
+    setTransferError(null);
+    try {
+      await delegateDocument(documentId, newOwnerForDoc.id);
+      setNewOwnerForDoc(null);
+      navigate(processBackTo, { state: { tab: 'documents' } });
+    } catch (e) {
+      setTransferError(e instanceof Error ? e.message : 'No se pudo cambiar el propietario del documento.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -1667,7 +1678,18 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
           </Button>
         </>
       )}
-      {!isValidateMode && step === 'summary' && (
+      {!isValidateMode && step === 'summary' && newOwnerForDoc && (
+        <Button
+          type="button"
+          variant="primary"
+          size="sm"
+          loading={saving}
+          onClick={() => void handleTransferOwnershipDoc()}
+        >
+          Cambiar propietario
+        </Button>
+      )}
+      {!isValidateMode && step === 'summary' && !newOwnerForDoc && (
         <>
           <Button
             type="button"
@@ -2591,6 +2613,11 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
 
       {step === 'summary' && detail && (
         <div className="flex-1 min-h-0 flex flex-col px-6 py-5 space-y-4 overflow-hidden">
+          {transferError && (
+            <div className="shrink-0 rounded-lg border border-danger/30 bg-danger/5 px-4 py-3 text-xs text-danger-dark dark:text-danger">
+              {transferError}
+            </div>
+          )}
           {isValidateMode && (
             <p className="text-xs text-text-muted text-center shrink-0">
               Revisa el resumen del documento y confirma si lo apruebas o lo rechazas.
