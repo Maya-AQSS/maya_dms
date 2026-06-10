@@ -38,7 +38,13 @@ export function mapSnapshotDocumentBlocks(raw: unknown): DocumentDisplayBlock[] 
   return out;
 }
 
-/** Contenido Tiptap efectivo del bloque: el rellenado si tiene nodos, si no el de plantilla. */
+/**
+ * Contenido Tiptap efectivo del bloque: el rellenado si tiene nodos, si no el
+ * de plantilla. Refleja a propósito la MISMA semántica de render que
+ * `blockContentForPreview`/PDF (un bloque sin rellenar muestra la guía de la
+ * plantilla), de modo que comparar versiones compara lo que realmente se ve:
+ * un bloque que pasa de relleno a vacío produce diff (texto → guía), no se oculta.
+ */
 export function effectiveDocumentBlockContent(block: DocumentDisplayBlock): unknown {
   const filled = normalizeBlockContentForEditor(block.content);
   return filled.length > 0 ? block.content : block.default_content;

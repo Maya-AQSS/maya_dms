@@ -73,6 +73,39 @@ describe('compareVersionBlocks', () => {
     expect(result[0].blockNumber).toBe(2);
   });
 
+  it('shows a transition when a block goes from filled to empty (content → guía)', () => {
+    // content efectivo: v1 = texto del usuario, v2 = guía de plantilla (vacío → fallback)
+    const a = [block({ key: 't1', content: para('Texto del usuario'), sortOrder: 0 })];
+    const b = [block({ key: 't1', content: para('Guía de plantilla'), sortOrder: 0 })];
+    const result = compareVersionBlocks(a, b, opts);
+    expect(result).toHaveLength(1);
+    expect(result[0].status).toBe('modified');
+    expect(result[0].lines).toEqual([
+      { type: 'removed', text: 'Texto del usuario' },
+      { type: 'added', text: 'Guía de plantilla' },
+    ]);
+  });
+
+  it('treats structural/empty blocks (content null) as unchanged when both empty', () => {
+    const a = [block({ key: 'cover', title: 'Portada', content: null, sortOrder: 0 })];
+    const b = [block({ key: 'cover', title: 'Portada', content: null, sortOrder: 0 })];
+    expect(compareVersionBlocks(a, b, opts)).toEqual([]);
+  });
+
+  it('reports both changes even when blocks share the same sortOrder', () => {
+    const a = [
+      block({ key: 't1', content: para('A1'), sortOrder: 0 }),
+      block({ key: 't2', content: para('A2'), sortOrder: 0 }),
+    ];
+    const b = [
+      block({ key: 't1', content: para('B1'), sortOrder: 0 }),
+      block({ key: 't2', content: para('B2'), sortOrder: 0 }),
+    ];
+    const result = compareVersionBlocks(a, b, opts);
+    expect(result.map((c) => c.key).sort()).toEqual(['t1', 't2']);
+    expect(result.every((c) => c.status === 'modified')).toBe(true);
+  });
+
   it('orders changes by version-B sort order, removed blocks last', () => {
     const a = [
       block({ key: 'keep', content: para('x'), sortOrder: 0 }),
