@@ -43,6 +43,28 @@
     "publishedBy": "Publicat per",
     "versionAuthor": "Autor versió"
   },
+  "versionCompare": {
+    "toggleList": "Historial",
+    "toggleCompare": "Comparar",
+    "firstLabel": "Versió A",
+    "secondLabel": "Versió B",
+    "samePick": "Selecciona dos versions distintes per a veure les diferències.",
+    "loading": "Carregant versions…",
+    "loadFailed": "No s'han pogut carregar les versions seleccionades.",
+    "needTwo": "Es necessiten almenys dos versions publicades per a comparar.",
+    "resultHeading": "Canvis de v{{from}} a v{{to}}",
+    "noChanges": "No hi ha diferències de contingut entre estes versions.",
+    "changeCount_one": "{{count}} bloc amb canvis",
+    "changeCount_other": "{{count}} blocs amb canvis",
+    "blockLabel": "Bloc {{n}}: {{title}}",
+    "untitled": "Sense títol",
+    "emptyBlock": "(bloc sense contingut)",
+    "status": {
+      "added": "Afegit",
+      "removed": "Eliminat",
+      "modified": "Modificat"
+    }
+  },
   "filters": {
     "allModules": "Tots els mòduls"
   }

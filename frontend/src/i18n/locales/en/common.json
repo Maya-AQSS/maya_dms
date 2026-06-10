@@ -43,6 +43,28 @@
     "publishedBy": "Published by",
     "versionAuthor": "Version author"
   },
+  "versionCompare": {
+    "toggleList": "History",
+    "toggleCompare": "Compare",
+    "firstLabel": "Version A",
+    "secondLabel": "Version B",
+    "samePick": "Select two different versions to see the differences.",
+    "loading": "Loading versions…",
+    "loadFailed": "Could not load the selected versions.",
+    "needTwo": "At least two published versions are required to compare.",
+    "resultHeading": "Changes from v{{from}} to v{{to}}",
+    "noChanges": "No content differences between these versions.",
+    "changeCount_one": "{{count}} block changed",
+    "changeCount_other": "{{count}} blocks changed",
+    "blockLabel": "Block {{n}}: {{title}}",
+    "untitled": "Untitled",
+    "emptyBlock": "(empty block)",
+    "status": {
+      "added": "Added",
+      "removed": "Removed",
+      "modified": "Modified"
+    }
+  },
   "versionChangelog": {
     "label": "Changes in this version",
     "hint": "Describe what you changed. Validators will see this text.",

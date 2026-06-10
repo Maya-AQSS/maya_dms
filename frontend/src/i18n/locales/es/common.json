@@ -43,6 +43,28 @@
     "publishedBy": "Publicado por",
     "versionAuthor": "Autor versión"
   },
+  "versionCompare": {
+    "toggleList": "Historial",
+    "toggleCompare": "Comparar",
+    "firstLabel": "Versión A",
+    "secondLabel": "Versión B",
+    "samePick": "Selecciona dos versiones distintas para ver las diferencias.",
+    "loading": "Cargando versiones…",
+    "loadFailed": "No se pudieron cargar las versiones seleccionadas.",
+    "needTwo": "Se necesitan al menos dos versiones publicadas para comparar.",
+    "resultHeading": "Cambios de v{{from}} a v{{to}}",
+    "noChanges": "No hay diferencias de contenido entre estas versiones.",
+    "changeCount_one": "{{count}} bloque con cambios",
+    "changeCount_other": "{{count}} bloques con cambios",
+    "blockLabel": "Bloque {{n}}: {{title}}",
+    "untitled": "Sin título",
+    "emptyBlock": "(bloque sin contenido)",
+    "status": {
+      "added": "Añadido",
+      "removed": "Eliminado",
+      "modified": "Modificado"
+    }
+  },
   "versionChangelog": {
     "label": "Cambios en esta versión",
     "hint": "Describe qué has modificado. Los validadores verán este texto.",

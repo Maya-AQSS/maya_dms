@@ -21,7 +21,7 @@ import { useDocumentCommentsQuery } from '../features/documents/hooks/useDocumen
 import { useTemplateQuery } from '../features/templates/hooks/useTemplate';
 import { useProcessesQuery } from '../hooks/useProcesses';
 import { normalizeBlockContentForEditor } from '../features/documents/lib/normalizeBlockContent';
-import type { BlockState } from '../types/blocks';
+import { mapSnapshotDocumentBlocks } from '../features/documents/lib/mapSnapshotBlocks';
 import type { DocumentDetail, DocumentDisplayBlock } from '../types/documents';
 import { visibilityLabel } from '../features/templates/constants';
 import { Button, ConfirmDialog, statusBadgeClass } from '@ceedcv-maya/shared-ui-react';
@@ -70,35 +70,6 @@ function blockContentForPreview(block: DocumentDisplayBlock): unknown[] {
 function isStructuralBlock(block: DocumentDisplayBlock): boolean {
   const t = block.block_type ?? 'content';
   return t === 'cover' || t === 'index' || t === 'blank';
-}
-
-function mapSnapshotDocumentBlocks(raw: unknown): DocumentDisplayBlock[] {
-  if (!Array.isArray(raw)) return [];
-  const out: DocumentDisplayBlock[] = [];
-  for (let idx = 0; idx < raw.length; idx++) {
-    const item = raw[idx];
-    if (!item || typeof item !== 'object') continue;
-    const o = item as Record<string, unknown>;
-    const blockState = (typeof o.block_state === 'string' ? o.block_state : 'locked') as BlockState;
-    out.push({
-      document_block_id: typeof o.document_block_id === 'string' ? o.document_block_id : null,
-      template_block_id: String(o.template_block_id ?? o.id ?? ''),
-      type: typeof o.type === 'string' ? o.type : 'text',
-      title: o.title != null ? String(o.title) : null,
-      description: o.description,
-      default_content: o.default_content ?? null,
-      block_type: typeof o.block_type === 'string'
-        ? (o.block_type as DocumentDisplayBlock['block_type'])
-        : undefined,
-      block_state: blockState,
-      mandatory: Boolean(o.mandatory),
-      sort_order: typeof o.sort_order === 'number' ? o.sort_order : idx,
-      content: o.content ?? null,
-      is_filled: Boolean(o.is_filled),
-      is_deleted: Boolean(o.is_deleted),
-    });
-  }
-  return out;
 }
 
 function snapshotDocumentTitle(snapshotData: Record<string, unknown>): string | undefined {

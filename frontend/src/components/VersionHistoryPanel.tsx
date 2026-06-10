@@ -1,9 +1,10 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@ceedcv-maya/shared-ui-react';
 import { ChangelogHtmlContent } from './ChangelogHtmlContent';
+import { VersionComparePanel, type CompareVersionOption } from './VersionComparePanel';
 import { ApiHttpError } from '../api/http';
 import type { DocumentVersionSummary } from '../api/documents';
 import type { TemplateVersionSummary } from '../api/templates';
@@ -130,6 +131,21 @@ export function VersionHistoryPanel({ open, entityType, entityId, onClose, canSt
     return documentRows.length === 0;
   }, [entityType, templateRows.length, documentRows.length]);
 
+  const [view, setView] = useState<'list' | 'compare'>('list');
+  useEffect(() => {
+    if (!open) setView('list');
+  }, [open]);
+
+  const versionOptions = useMemo<CompareVersionOption[]>(
+    () =>
+      (entityType === 'template' ? templateRows : documentRows).map((r) => ({
+        id: r.id,
+        versionNumber: r.version_number,
+      })),
+    [entityType, templateRows, documentRows],
+  );
+  const canCompare = versionOptions.length >= 2;
+
   if (!open) return null;
 
   return (
@@ -168,7 +184,46 @@ export function VersionHistoryPanel({ open, entityType, entityId, onClose, canSt
           </div>
         </div>
 
+        {!loading && !error && canCompare && (
+          <div className="shrink-0 px-4 pt-3 -mb-1">
+            <div className="inline-flex rounded-lg border border-ui-border dark:border-ui-dark-border p-0.5 bg-ui-body/40 dark:bg-ui-dark-bg/40">
+              <button
+                type="button"
+                onClick={() => setView('list')}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
+                  view === 'list'
+                    ? 'bg-white dark:bg-ui-dark-card text-text-primary dark:text-text-dark-primary shadow-sm'
+                    : 'text-text-muted dark:text-text-dark-muted hover:text-text-primary dark:hover:text-text-dark-primary'
+                }`}
+                aria-pressed={view === 'list'}
+              >
+                {t('versionCompare.toggleList')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setView('compare')}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
+                  view === 'compare'
+                    ? 'bg-white dark:bg-ui-dark-card text-text-primary dark:text-text-dark-primary shadow-sm'
+                    : 'text-text-muted dark:text-text-dark-muted hover:text-text-primary dark:hover:text-text-dark-primary'
+                }`}
+                aria-pressed={view === 'compare'}
+              >
+                {t('versionCompare.toggleCompare')}
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto px-4 py-4 min-h-0 space-y-0">
+          {view === 'compare' && canCompare ? (
+            <VersionComparePanel
+              entityType={entityType}
+              entityId={entityId}
+              versions={versionOptions}
+            />
+          ) : (
+          <>
           {loading && (
             <p className="text-sm text-text-muted dark:text-text-dark-muted text-center py-8">
               {t('versionHistory.loading')}
@@ -315,6 +370,8 @@ export function VersionHistoryPanel({ open, entityType, entityId, onClose, canSt
                 </li>
               ))}
             </ul>
+          )}
+          </>
           )}
         </div>
       </aside>
