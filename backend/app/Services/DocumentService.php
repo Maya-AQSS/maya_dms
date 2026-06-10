@@ -1690,7 +1690,13 @@ class DocumentService implements DocumentServiceInterface
             $servePublishedSnapshot = true;
         }
 
-        $isCreator = (string) $resolved->created_by === $viewerId || (string) $resolved->owner_id === $viewerId;
+        // Titular efectivo: si hay titular operativo (owner_id) solo cuenta ese; si no,
+        // el autor (created_by) como fallback. Tras una cesión, el autor anterior deja de
+        // tratarse como titular y recibe el snapshot publicado en lugar del contenido vivo.
+        $ownerId = (string) $resolved->owner_id;
+        $isCreator = $ownerId !== ''
+            ? $viewerId === $ownerId
+            : $viewerId === (string) $resolved->created_by;
         $isAssignedReviewer = false;
 
         if (! $servePublishedSnapshot && ! $isCreator && in_array($resolved->status, ['draft', 'in_review'], true)) {

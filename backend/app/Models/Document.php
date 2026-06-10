@@ -61,8 +61,14 @@ class Document extends Model
             }
 
             $builder->where(function (Builder $outer) use ($userId) {
-                $outer->where('document_head_ev.snapshot_data->document->created_by', $userId)
-                    ->orWhere('document_head_ev.snapshot_data->document->owner_id', $userId)
+                $outer->where('document_head_ev.snapshot_data->document->owner_id', $userId)
+                    ->orWhere(function (Builder $author) use ($userId) {
+                        // El autor (created_by) conserva acceso solo mientras no exista un
+                        // titular operativo distinto. Tras ceder la titularidad (owner_id
+                        // pasa a otro usuario) deja de tener acceso al documento.
+                        $author->where('document_head_ev.snapshot_data->document->created_by', $userId)
+                            ->where('document_head_ev.snapshot_data->document->owner_id', '');
+                    })
                     ->orWhereExists(function ($subQuery) use ($userId) {
                         $subQuery->select(DB::raw(1))
                             ->from('document_shares')
