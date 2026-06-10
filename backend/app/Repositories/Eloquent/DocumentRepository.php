@@ -424,6 +424,30 @@ class DocumentRepository implements DocumentRepositoryInterface
             $query->whereIn('documents.id', $filter->favoriteIds);
         }
 
+        // Contexto académico (snapshot del cabezal): filtro estructurado en cascada.
+        // Se aplican como AND independientes; el selector en cascada garantiza
+        // que los valores padres acompañan siempre al hijo más específico.
+        if ($filter->studyTypeId !== null) {
+            $query->whereRaw(
+                DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'study_type_id').' = ?',
+                [$filter->studyTypeId]
+            );
+        }
+
+        if ($filter->studyId !== null) {
+            $query->whereRaw(
+                DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'study_id').' = ?',
+                [$filter->studyId]
+            );
+        }
+
+        if ($filter->moduleId !== null) {
+            $query->whereRaw(
+                DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'module_id').' = ?',
+                [$filter->moduleId]
+            );
+        }
+
         if ($filter->from !== null) {
             $query->whereDate('documents.created_at', '>=', $filter->from);
         }

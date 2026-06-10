@@ -144,3 +144,65 @@ it('ignores empty favorite_ids for documents (returns all)', function () {
 
     expect($count)->toBe(2);
 });
+
+it('filters documents by module_id (snapshot académico)', function () {
+    $moduleA = (string) Str::uuid();
+    $moduleB = (string) Str::uuid();
+    $match = makeOwnDocument('Del módulo A', ['module_id' => $moduleA]);
+    makeOwnDocument('Del módulo B', ['module_id' => $moduleB]);
+
+    $ids = $this->getJson('/api/v1/documents?module_id='.$moduleA)
+        ->assertOk()
+        ->json('data.*.id');
+
+    expect($ids)->toBe([$match]);
+});
+
+it('filters documents by study_id (snapshot académico)', function () {
+    $studyA = (string) Str::uuid();
+    $studyB = (string) Str::uuid();
+    $match = makeOwnDocument('Del estudio A', ['study_id' => $studyA]);
+    makeOwnDocument('Del estudio B', ['study_id' => $studyB]);
+
+    $ids = $this->getJson('/api/v1/documents?study_id='.$studyA)
+        ->assertOk()
+        ->json('data.*.id');
+
+    expect($ids)->toBe([$match]);
+});
+
+it('filters documents by study_type_id (snapshot académico)', function () {
+    $typeA = (string) Str::uuid();
+    $typeB = (string) Str::uuid();
+    $match = makeOwnDocument('Del tipo A', ['study_type_id' => $typeA]);
+    makeOwnDocument('Del tipo B', ['study_type_id' => $typeB]);
+
+    $ids = $this->getJson('/api/v1/documents?study_type_id='.$typeA)
+        ->assertOk()
+        ->json('data.*.id');
+
+    expect($ids)->toBe([$match]);
+});
+
+it('combines academic filters as AND (tipo + estudio + módulo)', function () {
+    $type = (string) Str::uuid();
+    $study = (string) Str::uuid();
+    $module = (string) Str::uuid();
+    $match = makeOwnDocument('Coincide todo', [
+        'study_type_id' => $type,
+        'study_id' => $study,
+        'module_id' => $module,
+    ]);
+    // Mismo tipo y estudio, otro módulo → excluido por el AND de módulo.
+    makeOwnDocument('Otro módulo', [
+        'study_type_id' => $type,
+        'study_id' => $study,
+        'module_id' => (string) Str::uuid(),
+    ]);
+
+    $ids = $this->getJson('/api/v1/documents?study_type_id='.$type.'&study_id='.$study.'&module_id='.$module)
+        ->assertOk()
+        ->json('data.*.id');
+
+    expect($ids)->toBe([$match]);
+});

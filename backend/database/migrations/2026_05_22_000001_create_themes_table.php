@@ -69,10 +69,34 @@ return new class extends Migration
                     ->restrictOnDelete();
             });
         }
+
+        /* Añade FK desde template_blocks.theme_id a themes.id (tema por bloque). */
+        if (Schema::hasTable('template_blocks')) {
+            Schema::table('template_blocks', function (Blueprint $table) {
+                $table->index('theme_id');
+                $table->foreign('theme_id')
+                    ->references('id')
+                    ->on('themes')
+                    ->nullOnDelete();
+            });
+        }
     }
 
     public function down(): void
     {
+        if (Schema::hasTable('template_blocks')) {
+            Schema::table('template_blocks', function (Blueprint $table) {
+                try {
+                    $table->dropForeign(['theme_id']);
+                } catch (Throwable) {
+                }
+                try {
+                    $table->dropIndex(['theme_id']);
+                } catch (Throwable) {
+                }
+            });
+        }
+
         if (Schema::hasTable('templates')) {
             Schema::table('templates', function (Blueprint $table) {
                 try {

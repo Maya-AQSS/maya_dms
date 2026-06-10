@@ -40,6 +40,9 @@ class ListDocumentsRequest extends PaginatedFilterRequest
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],
             'favorite_ids' => ['nullable', 'string', 'max:4000'],
+            'study_type_id' => ['nullable', 'uuid'],
+            'study_id' => ['nullable', 'uuid'],
+            'module_id' => ['nullable', 'uuid'],
         ];
     }
 
@@ -72,6 +75,9 @@ class ListDocumentsRequest extends PaginatedFilterRequest
             from: $this->input('from'),
             to: $this->input('to'),
             favoriteIds: $this->parseFavoriteIds(),
+            studyTypeId: $this->input('study_type_id'),
+            studyId: $this->input('study_id'),
+            moduleId: $this->input('module_id'),
             page: $this->getPage(),
             perPage: $this->getPerPage(),
             sortBy: $this->getSortBy() ?? 'created_at',

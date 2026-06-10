@@ -1,23 +1,18 @@
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Button,
   Card,
   DataTable,
   PageTitle,
   Pagination,
-  paginate,
   useTablePreferences,
   type ColumnDef,
 } from '@ceedcv-maya/shared-ui-react';
 import { CascadeFilters } from './CascadeFilters';
-import {
-  useDocuments,
-  useFilteredDocuments,
-  type CascadeDocumentFilters,
-} from '../features/documents';
-import { useHierarchy } from '../features/hierarchy';
+import { useServerDocumentsTable } from '../features/documents/hooks/useServerDocumentsTable';
+import type { CascadeDocumentFilters } from '../features/documents/types';
 import {
   createDocumentFromModule,
   fetchDocumentCreationOptions,
@@ -64,18 +59,45 @@ const STATUS_CLASS: Record<DocumentStatus, string> = {
 
 /**
  * Componente para mostrar el contenido de los documentos.
+ *
+ * Listado 100% server-side: filtros (estado, búsqueda, contexto académico en
+ * cascada, favoritos), paginación clásica y ordenación los resuelve el backend
+ * vía {@link useServerDocumentsTable} (estándar unificado useServerTable).
  */
 export function DocumentsContent() {
   const { t } = useTranslation('documents');
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
   const [showSubmittedForReviewBanner, setShowSubmittedForReviewBanner] = useState(false);
+
+  const table = useServerDocumentsTable();
+  const {
+    filters,
+    setFilters,
+    resetFilters,
+    filtersActiveCount,
+    sortBy,
+    onSortChange,
+    page,
+    onPageChange,
+    pageSize,
+    onPageSizeChange,
+    rows: serverDocuments,
+    meta,
+    loading,
+    error,
+    canIndex,
+    refetch,
+  } = table;
+
+  // Puente entre el filtro en cascada (camelCase) y los params del backend (snake_case).
   const activeFilters: CascadeDocumentFilters = {
-    studyTypeId: searchParams.get('studyTypeId') ?? '',
-    studyId: searchParams.get('studyId') ?? '',
-    moduleId: searchParams.get('moduleId') ?? '',
+    studyTypeId: filters.study_type_id,
+    studyId: filters.study_id,
+    moduleId: filters.module_id,
   };
+  const selectedModuleId = activeFilters.moduleId;
+
   const [creationOptions, setCreationOptions] = useState<DocumentCreationOption[]>([]);
   const [creationMode, setCreationMode] = useState<'none' | 'auto' | 'select' | null>(null);
   const [creationMessage, setCreationMessage] = useState<string | null>(null);
@@ -87,24 +109,20 @@ export function DocumentsContent() {
   const [previewBlocks, setPreviewBlocks] = useState<TemplateVersionSnapshotBlock[]>([]);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
+
   const {
     hiddenIds: hiddenColumnIds,
     toggleHidden: toggleColumn,
-    sortBy,
-    setSortBy,
-    pageSize,
-    setPageSize,
   } = useTablePreferences({ storageKey: 'maya:dms:documents-table' });
-  const [, startTransition] = useTransition();
-  const [page, setPage] = useState(1);
 
-  const { documents, loading, error, reload } = useDocuments();
-  const { hierarchy } = useHierarchy();
   const { hasPermission, loading: profileLoading, profile } = useUserProfile();
-  const canIndex = hasPermission(DMS_PERMISSIONS.documentIndex);
+
+  // Expansión de filas: un documento con versión publicada distinta del head
+  // se muestra como dos filas (viva + publicada). Server-side: la expansión
+  // ocurre sobre la página servida por el backend.
   const displayDocuments = useMemo(() => {
     const out: Document[] = [];
-    for (const d of documents) {
+    for (const d of serverDocuments) {
       const hasPublishedFallback =
         d.status !== 'published' &&
         !!d.latest_published_version_id;
@@ -136,14 +154,8 @@ export function DocumentsContent() {
       out.push(publishedFallback);
     }
     return out;
-  }, [documents, hasPermission, profile?.id]);
+  }, [serverDocuments, profile?.id]);
 
-  const filtered = useFilteredDocuments(displayDocuments, activeFilters, hierarchy);
-  const filtersActiveCount =
-    (activeFilters.studyTypeId ? 1 : 0) +
-    (activeFilters.studyId ? 1 : 0) +
-    (activeFilters.moduleId ? 1 : 0);
-  const selectedModuleId = activeFilters.moduleId;
   const isSelectingTemplate = showSelector && creationMode === 'select';
 
   const showSelectModuleHint =
@@ -226,37 +238,17 @@ export function DocumentsContent() {
     const state = location.state as { documentSubmittedForReview?: boolean } | null;
     if (!state?.documentSubmittedForReview) return;
     setShowSubmittedForReviewBanner(true);
-    void reload();
+    refetch();
     navigate(location.pathname, { replace: true, state: {} });
-  }, [location.state, location.pathname, navigate, reload]);
+  }, [location.state, location.pathname, navigate, refetch]);
 
-  const handleClear = () =>
-    startTransition(() => {
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.delete('studyTypeId');
-        next.delete('studyId');
-        next.delete('moduleId');
-        next.delete('page');
-        return next;
-      });
-      setPage(1);
-    });
+  const handleClear = () => resetFilters();
 
-  const handleChange = (filters: CascadeDocumentFilters) =>
-    startTransition(() => {
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        if (filters.studyTypeId) next.set('studyTypeId', filters.studyTypeId);
-        else next.delete('studyTypeId');
-        if (filters.studyId) next.set('studyId', filters.studyId);
-        else next.delete('studyId');
-        if (filters.moduleId) next.set('moduleId', filters.moduleId);
-        else next.delete('moduleId');
-        next.delete('page');
-        return next;
-      });
-      setPage(1);
+  const handleChange = (next: CascadeDocumentFilters) =>
+    setFilters({
+      study_type_id: next.studyTypeId,
+      study_id: next.studyId,
+      module_id: next.moduleId,
     });
 
   const handleCreateFromModule = async (templateVersionId?: string, processId?: string) => {
@@ -274,7 +266,7 @@ export function DocumentsContent() {
         ...(templateVersionId ? { template_version_id: templateVersionId } : {}),
       });
       navigate(`/documents/${created.id}/editor`);
-      void reload();
+      refetch();
     } catch (err) {
       setCreationError(err instanceof Error ? err.message : 'No se pudo crear la programación.');
     } finally {
@@ -341,7 +333,6 @@ export function DocumentsContent() {
       {
         id: 'version',
         header: t('list.versionColumn'),
-        sortable: true,
         align: 'left',
         cell: (d: Document) => (
           <span className="text-xs text-text-muted dark:text-text-dark-muted">
@@ -405,32 +396,7 @@ export function DocumentsContent() {
         ),
       },
     ],
-    [navigate, profile],
-  );
-
-  const sortedFiltered = useMemo(() => {
-    if (!sortBy) return filtered;
-    const dir = sortBy.direction === 'asc' ? 1 : -1;
-    const cmp = (a: Document, b: Document): number => {
-      switch (sortBy.columnId) {
-        case 'title':
-          return (a.title ?? '').localeCompare(b.title ?? '') * dir;
-        case 'version':
-          return ((a.current_version ?? 0) - (b.current_version ?? 0)) * dir;
-        case 'status':
-          return (a.status ?? '').localeCompare(b.status ?? '') * dir;
-        case 'delivery_deadline':
-          return (a.delivery_deadline ?? '').localeCompare(b.delivery_deadline ?? '') * dir;
-        default:
-          return 0;
-      }
-    };
-    return [...filtered].sort(cmp);
-  }, [filtered, sortBy]);
-
-  const { pageItems: pageRows, meta } = useMemo(
-    () => paginate(sortedFiltered, { pageSize, currentPage: page }),
-    [sortedFiltered, page, pageSize],
+    [navigate, profile, t],
   );
 
   const handleNewProgrammingClick = async () => {
@@ -461,6 +427,8 @@ export function DocumentsContent() {
       </div>
     );
   }
+
+  const totalDocuments = meta?.total ?? 0;
 
   return (
     <div className="p-6">
@@ -653,23 +621,20 @@ export function DocumentsContent() {
                   title={t('pages.scheduleTitle')}
                   description={
                     <span>
-                      {filtered.length}{' '}
-                      {filtered.length === 1 ? 'documento' : 'documentos'}
+                      {totalDocuments}{' '}
+                      {totalDocuments === 1 ? 'documento' : 'documentos'}
                     </span>
                   }
                   columns={columns}
-                  rows={pageRows}
+                  rows={displayDocuments}
                   rowKey={(d) => d.list_row_id ?? d.id}
                   loading={loading}
                   pageSize={pageSize}
-                  onPageSizeChange={(size) => {
-                    setPageSize(size)
-                    setPage(1)
-                  }}
+                  onPageSizeChange={onPageSizeChange}
                   hiddenColumnIds={hiddenColumnIds}
                   onToggleHiddenColumn={toggleColumn}
                   sortBy={sortBy}
-                  onSortChange={setSortBy}
+                  onSortChange={onSortChange}
                   onRowClick={(d) => {
                     if (d.list_variant === 'published_fallback' && d.latest_published_version_id) {
                       navigate(`/documents/${d.id}?documentVersionId=${encodeURIComponent(d.latest_published_version_id)}`);
@@ -697,13 +662,13 @@ export function DocumentsContent() {
                   onClearFilters={handleClear}
                   filtersDefaultOpen={false}
                 />
-                {meta.totalPages > 1 && (
+                {meta && meta.last_page > 1 && (
                   <div className="px-5 py-3 border-t border-ui-border-l dark:border-ui-dark-border-l">
                     <Pagination
-                      currentPage={meta.currentPage}
-                      totalPages={meta.totalPages}
-                      onChange={setPage}
-                      info={`${meta.totalItems} documentos`}
+                      currentPage={page}
+                      totalPages={meta.last_page}
+                      onChange={onPageChange}
+                      info={`${totalDocuments} documentos`}
                     />
                   </div>
                 )}

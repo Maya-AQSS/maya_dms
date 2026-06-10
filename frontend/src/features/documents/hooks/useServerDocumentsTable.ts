@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useServerTable } from '@ceedcv-maya/shared-hooks-react';
 import { fetchDocumentsPage, type DocumentsListMeta } from '../../../api/documents';
 import { useUserProfile } from '../../../features/user-profile';
@@ -16,6 +16,10 @@ const NO_MATCH_ID = '00000000-0000-0000-0000-000000000000';
 const DOCUMENT_FILTER_DEFAULTS = {
   status: '',
   search: '',
+  /** Contexto académico estructurado en cascada (server-side sobre el snapshot del cabezal). */
+  study_type_id: '',
+  study_id: '',
+  module_id: '',
   /** Flag UI: '' = todos; 'favorites' = solo favoritos (se traduce a `favorite_ids` server-side). */
   favorites: '',
 } as const;
@@ -46,6 +50,9 @@ export function useServerDocumentsTable(processId?: string) {
   const [meta, setMeta] = useState<DocumentsListMeta | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  // Token para forzar refetch tras mutaciones externas (p. ej. crear documento).
+  const [refetchToken, setRefetchToken] = useState(0);
+  const refetch = useCallback(() => setRefetchToken((n) => n + 1), []);
 
   const favoriteIdsCsv = useMemo(() => [...favoriteDocumentIds].join(','), [favoriteDocumentIds]);
 
@@ -91,7 +98,7 @@ export function useServerDocumentsTable(processId?: string) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiParamsKey, canIndex]);
+  }, [apiParamsKey, canIndex, refetchToken]);
 
-  return { ...table, rows, meta, loading, error, canIndex };
+  return { ...table, rows, meta, loading, error, canIndex, refetch };
 }

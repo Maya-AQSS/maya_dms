@@ -47,9 +47,22 @@ vi.mock('../features/hierarchy', () => ({
   useHierarchy: () => mockUseHierarchy(),
 }));
 
+const mockFetchDocumentsPage = vi.fn();
+
 vi.mock('../api/documents', () => ({
   fetchDocumentCreationOptions: (...args: unknown[]) => mockFetchDocumentCreationOptions(...args),
   createDocumentFromModule: (...args: unknown[]) => mockCreateDocumentFromModule(...args),
+  fetchDocumentsPage: (...args: unknown[]) => mockFetchDocumentsPage(...args),
+}));
+
+// Favoritos vía react-query: mockeado para no necesitar QueryClientProvider en el test.
+vi.mock('../hooks/useFavoritesIds', () => ({
+  useFavoritesIds: () => ({
+    templateIds: new Set<string>(),
+    documentIds: new Set<string>(),
+    loading: false,
+    refetch: vi.fn(),
+  }),
 }));
 
 const mockFetchTemplateVersion = vi.fn();
@@ -147,6 +160,10 @@ describe('DocumentsContent creation flow', () => {
     });
     mockUseFilteredDocuments.mockImplementation((docs: unknown[]) => docs);
     mockUseHierarchy.mockReturnValue({ hierarchy: [], loading: false, error: null });
+    mockFetchDocumentsPage.mockResolvedValue({
+      data: [baseDocument],
+      meta: { current_page: 1, last_page: 1, per_page: 15, total: 1 },
+    });
   });
 
   it('deshabilita nueva programación sin permiso document.create', async () => {

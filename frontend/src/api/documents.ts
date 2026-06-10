@@ -24,6 +24,10 @@ export type DocumentListFilters = {
   from?: string;
   /** Y-m-d: documentos creados en esa fecha o antes. */
   to?: string;
+  /** Contexto académico (filtro estructurado en cascada, server-side sobre el snapshot del cabezal). */
+  study_type_id?: string;
+  study_id?: string;
+  module_id?: string;
   /** Columna de ordenación server-side (whitelist backend: title, status, delivery_deadline, created_at, updated_at). */
   sort_by?: string;
   sort_dir?: 'asc' | 'desc';
@@ -55,6 +59,9 @@ function buildDocumentsListQuery(filters: DocumentListFilters): string {
   if (filters.search) q.set('search', filters.search);
   if (filters.from) q.set('from', filters.from);
   if (filters.to) q.set('to', filters.to);
+  if (filters.study_type_id) q.set('study_type_id', filters.study_type_id);
+  if (filters.study_id) q.set('study_id', filters.study_id);
+  if (filters.module_id) q.set('module_id', filters.module_id);
   if (filters.sort_by) q.set('sort_by', filters.sort_by);
   if (filters.sort_dir) q.set('sort_dir', filters.sort_dir);
   if (filters.favorite_ids) q.set('favorite_ids', filters.favorite_ids);

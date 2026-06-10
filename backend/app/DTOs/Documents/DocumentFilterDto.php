@@ -23,6 +23,10 @@ final readonly class DocumentFilterDto extends FilterDto
         public readonly ?string $to = null,
         /** @var list<string>|null Ids de documentos marcados como favoritos por el usuario. */
         public readonly ?array $favoriteIds = null,
+        // Contexto académico (snapshot del cabezal): filtro estructurado en cascada.
+        public readonly ?string $studyTypeId = null,
+        public readonly ?string $studyId = null,
+        public readonly ?string $moduleId = null,
         int $page = 1,
         int $perPage = 15,
         ?string $sortBy = 'created_at',

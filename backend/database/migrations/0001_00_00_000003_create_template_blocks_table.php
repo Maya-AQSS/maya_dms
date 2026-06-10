@@ -24,10 +24,9 @@ return new class extends Migration
             $table->foreignUuid('template_id')->constrained('templates')->cascadeOnDelete();
             $table->enum('block_type', BlockType::values())
                 ->default(BlockType::Content->value);
-            $table->foreignUuid('theme_id')
-                ->nullable()
-                ->constrained('themes')
-                ->nullOnDelete();
+            // theme_id FK: se añade en create_themes (no aquí, porque themes no existe
+            // todavía en este punto del orden de migraciones; mismo patrón que templates.theme_id).
+            $table->uuid('theme_id')->nullable();
             $table->boolean('apply_theme')->default(true);
             $table->string('title')->nullable();
             $table->json('default_content')->nullable(); // contenido BlockNote inicial
