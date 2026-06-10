@@ -17,8 +17,15 @@ class DocumentStateService
     /**
      * @param  array<string, mixed>  $extraAttributes
      */
-    public function transition(string $documentId, string $newStatus, string $actorId, array $extraAttributes = []): Document
-    {
+    public function transition(
+        string $documentId,
+        string $newStatus,
+        string $actorId,
+        array $extraAttributes = [],
+        ?int $reviewerStage = null,
+        ?string $reviewerName = null,
+        ?string $rejectionReason = null,
+    ): Document {
         $document = $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
         $oldStatus = $document->status;
 
@@ -34,6 +41,9 @@ class DocumentStateService
             oldStatus: $oldStatus,
             newStatus: $newStatus,
             actorId: $actorId,
+            reviewerStage: $reviewerStage,
+            reviewerName: $reviewerName,
+            rejectionReason: $rejectionReason,
         ));
 
         return $fresh;

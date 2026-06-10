@@ -19,6 +19,7 @@ class DocumentReviewApproved implements AuditableEvent
         public readonly string $documentId,
         public readonly DocumentReview $review,
         public readonly string $actorId,
+        public readonly ?string $reviewerName = null,
     ) {}
 
     public function toAuditPayload(): array
@@ -30,14 +31,13 @@ class DocumentReviewApproved implements AuditableEvent
             'action' => 'review_approved',
             'userId' => $this->actorId,
             'previousValue' => [
-                'review_id' => (string) $this->review->id,
                 'stage' => (int) $this->review->stage,
                 'status' => 'pending',
             ],
             'newValue' => [
-                'review_id' => (string) $this->review->id,
                 'stage' => (int) $this->review->stage,
                 'status' => 'approved',
+                'reviewer_name' => $this->reviewerName,
             ],
         ];
     }
