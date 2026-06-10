@@ -125,6 +125,39 @@ class ThemePolicyTest extends TestCase
         $this->assertFalse($this->policy->delete($other, $theme));
     }
 
+    public function test_delete_denies_creator_when_theme_is_system(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $creator = $this->makeJwtUser(['theme.show', 'theme.create'], $creatorId);
+        $theme = $this->makeTheme('published', $creatorId, isSystem: true);
+
+        $this->assertFalse($this->policy->delete($creator, $theme));
+    }
+
+    public function test_delete_denies_admin_when_theme_is_system(): void
+    {
+        $admin = $this->makeJwtUser(['theme.show', 'theme.delete'], (string) Str::uuid());
+        $theme = $this->makeTheme('published', (string) Str::uuid(), isSystem: true);
+
+        $this->assertFalse($this->policy->delete($admin, $theme));
+    }
+
+    public function test_update_allows_admin_on_system_theme(): void
+    {
+        $editor = $this->makeJwtUser(['theme.show', 'theme.update'], (string) Str::uuid());
+        $theme = $this->makeTheme('published', (string) Str::uuid(), isSystem: true);
+
+        $this->assertTrue($this->policy->update($editor, $theme));
+    }
+
+    public function test_clone_allows_system_theme(): void
+    {
+        $cloner = $this->makeJwtUser(['theme.clone', 'theme.show'], (string) Str::uuid());
+        $theme = $this->makeTheme('published', (string) Str::uuid(), isSystem: true);
+
+        $this->assertTrue($this->policy->clone($cloner, $theme));
+    }
+
     public function test_clone_requires_theme_clone_and_view(): void
     {
         $creatorId = (string) Str::uuid();
@@ -151,7 +184,7 @@ class ThemePolicyTest extends TestCase
         ]);
     }
 
-    private function makeTheme(string $status, ?string $createdBy = null): Theme
+    private function makeTheme(string $status, ?string $createdBy = null, bool $isSystem = false): Theme
     {
         $theme = new Theme;
         $theme->forceFill([
@@ -159,6 +192,7 @@ class ThemePolicyTest extends TestCase
             'name' => 'Test',
             'status' => $status,
             'created_by' => $createdBy ?? (string) Str::uuid(),
+            'is_system' => $isSystem,
         ]);
 
         return $theme;

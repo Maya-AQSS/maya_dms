@@ -82,9 +82,15 @@ class ThemePolicy
 
     /**
      * Eliminar: el creador siempre; cualquier usuario con `theme.delete` (admin).
+     * Los themes de sistema ({@see Theme::$is_system}) nunca se borran, ni por su
+     * creador ni por un admin — son editables y clonables, pero permanentes.
      */
     public function delete(JwtUser $user, Theme $theme): bool
     {
+        if ($theme->is_system) {
+            return false;
+        }
+
         if (! $this->view($user, $theme)) {
             return false;
         }

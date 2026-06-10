@@ -56,6 +56,7 @@ export function ThemeWizardStepIdentity({
       name: value.name,
       description: value.description || null,
       status: theme?.status ?? 'draft',
+      is_system: theme?.is_system ?? false,
       created_by: theme?.created_by ?? '',
       team_id: theme?.team_id ?? null,
       palette: value.palette,

@@ -91,6 +91,8 @@ export interface Theme {
   name: string;
   description: string | null;
   status: ThemeStatus;
+  /** Theme de sistema: siempre presente, editable y clonable, pero no borrable. */
+  is_system: boolean;
   created_by: string;
   team_id: string | null;
   palette: ThemePalette;

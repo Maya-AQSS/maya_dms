@@ -62,7 +62,7 @@ export function ThemeShowPage() {
   const isPublished = theme.status === 'published';
   const mayEdit = canUpdateTheme(hasPermission, profile?.id, theme.created_by);
   const mayClone = canCloneTheme(hasPermission);
-  const mayDelete = canDeleteTheme(hasPermission, profile?.id, theme.created_by);
+  const mayDelete = canDeleteTheme(hasPermission, profile?.id, theme.created_by, theme.is_system);
 
   const handleClone = async () => {
     try {

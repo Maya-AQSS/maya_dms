@@ -43,5 +43,6 @@ readonly class ThemeDto
         public ?string $clonedFromId,
         public string $createdAt,
         public string $updatedAt,
+        public bool $isSystem = false,
     ) {}
 }

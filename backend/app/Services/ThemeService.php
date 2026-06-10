@@ -13,6 +13,7 @@ use App\Repositories\Contracts\ThemeRepositoryInterface;
 use App\Services\Contracts\ThemeServiceInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class ThemeService implements ThemeServiceInterface
@@ -93,6 +94,12 @@ class ThemeService implements ThemeServiceInterface
 
     public function delete(string $id): void
     {
+        // Defensa en profundidad: la policy ya bloquea el borrado de themes de
+        // sistema, pero el service también lo rechaza por si se invoca por otra vía.
+        if ($this->get($id)->isSystem) {
+            throw new ConflictHttpException('Un theme de sistema no se puede eliminar.');
+        }
+
         $this->repository->delete($id);
     }
 

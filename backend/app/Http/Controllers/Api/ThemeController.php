@@ -92,6 +92,7 @@ class ThemeController extends Controller
         $model->id = $dto->id;
         $model->created_by = $dto->createdBy;
         $model->status = $dto->status;
+        $model->is_system = $dto->isSystem;
 
         return $model;
     }

@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $name
  * @property string|null $description
  * @property string $status
+ * @property bool $is_system
  * @property string $created_by
  * @property string|null $team_id
  * @property array<string, string> $palette
@@ -40,6 +41,7 @@ class Theme extends Model
         'name',
         'description',
         'status',
+        'is_system',
         'created_by',
         'team_id',
         'palette',
@@ -52,6 +54,7 @@ class Theme extends Model
     protected function casts(): array
     {
         return [
+            'is_system' => 'boolean',
             'palette' => 'array',
             'typography' => 'array',
             'layout' => 'array',
