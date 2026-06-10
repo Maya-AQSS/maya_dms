@@ -28,6 +28,27 @@ paquetes públicos estándar:
 - Dev override local: copiar `backend/composer.local.dist.json` → `composer.local.json` (gitignored)
 - Doc completa: ver PM05 en `DOCUMENTATION/docs/src/desarrollo/`
 
+## Testing (backend)
+La suite corre contra **Postgres real** en la BD `maya_dms_test` (NO sqlite): los repos usan
+SQL específico de Postgres (`GREATEST`, operadores `jsonb`). Tests con **Pest** (no el runner
+phpunit directo).
+
+```bash
+# Dentro del contenedor backend del slot (p. ej. maya-<slot>-dms-backend-1):
+./vendor/bin/pest --no-coverage                 # toda la suite
+./vendor/bin/pest --no-coverage tests/Feature/HealthCheckTest.php
+# o desde el host:
+make test
+```
+
+- **Portable entre slots**: `phpunit.xml` y `tests/bootstrap.php` toman `DB_HOST`/`DB_PORT`
+  del entorno que ya exporta el contenedor del slot (p. ej. `maya-<slot>-postgres`); no hay
+  que parchear el host a mano. Sólo se fuerzan los valores críticos de aislamiento:
+  `DB_DATABASE=maya_dms_test` (distinta de la de runtime `maya_dms_db`) y el usuario
+  `maya` (superusuario, dueño-agnóstico para `migrate:fresh`/`RefreshDatabase`).
+- Usar `pest --no-coverage`: `artisan test` con pcov puede agotar memoria (**OOM**). Si la
+  cobertura OOMea, correr `tests/Unit` y `tests/Feature` por separado.
+
 ## Guías importantes
 - `../maya_authorization/docs/src/new-app-guide.md` — requisitos para nuevas apps
 - `../maya_authorization/docs/src/architecture.md` — arquitectura del sistema

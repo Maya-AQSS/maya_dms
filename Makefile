@@ -54,13 +54,17 @@ seed:
 	docker compose exec backend php artisan db:seed
 
 # ─── Tests ────────────────────────────────────────────────────
-# `env ...` evita que el compose (DB_CONNECTION=pgsql) gane sobre phpunit.xml; la suite usa
-# sqlite :memory: y no toca maya_dms_db ni el catálogo teams (FDW solo lectura).
+# La suite corre contra Postgres REAL en la BD `maya_dms_test` (NO sqlite): DMS usa SQL
+# específico de Postgres (GREATEST, operadores jsonb) en los repos. El host/puerto de la BD
+# se toman del entorno del slot y la BD de tests se aísla de la de runtime — todo lo resuelven
+# `phpunit.xml` + `tests/bootstrap.php`, sin fijar nada a mano (portable entre slots).
+# Usamos `pest --no-coverage` porque `artisan test` con pcov puede agotar memoria (OOM).
 test:
-	docker compose exec backend env APP_ENV=testing DB_CONNECTION=sqlite DB_DATABASE=:memory: DB_URL= php artisan test
+	docker compose exec backend ./vendor/bin/pest --no-coverage
 
+# Con cobertura: pcov es pesado; si OOMea, correr Unit y Feature por separado.
 test-backend:
-	docker compose exec backend env APP_ENV=testing DB_CONNECTION=sqlite DB_DATABASE=:memory: DB_URL= php artisan test --coverage --min=80
+	docker compose exec backend ./vendor/bin/pest --coverage --min=80
 
 test-frontend:
 	docker compose exec frontend npm run test

@@ -33,9 +33,20 @@
         <!-- DMS usa SQL específico de Postgres (GREATEST, json_extract) en repos.
              Los tests deben correr contra Postgres real, no SQLite. -->
         <env name="DB_CONNECTION" value="pgsql" force="true"/>
-        <env name="DB_HOST" value="maya_infra_postgres" force="true"/>
-        <env name="DB_PORT" value="5432" force="true"/>
+        <!-- Host/puerto cambian por slot (DB_HOST = maya-<slot>-postgres). Sin force, phpunit
+             NO pisa una variable ya presente en el entorno → respetamos el valor correcto que
+             exporta el contenedor del slot. El `value` actúa sólo como fallback si la variable
+             no está definida (p. ej. CI). tests/bootstrap.php aplica la misma lógica antes de
+             que Laravel lea .env. -->
+        <env name="DB_HOST" value="postgres"/>
+        <env name="DB_PORT" value="5432"/>
+        <!-- DB_DATABASE sí se fuerza: la BD de tests (maya_dms_test) es distinta de la de
+             runtime (maya_dms_db). Sin force, RefreshDatabase haría migrate:fresh sobre la
+             BD real y borraría los datos que ves en el navegador. -->
         <env name="DB_DATABASE" value="maya_dms_test" force="true"/>
+        <!-- DB_USERNAME/PASSWORD se fuerzan a `maya` (superusuario del slot): es dueño-agnóstico
+             y puede recrear/limpiar maya_dms_test aunque sus tablas las creara otra corrida.
+             El usuario de runtime (maya_dms_user) NO sirve: no es dueño de esas tablas. -->
         <env name="DB_USERNAME" value="maya" force="true"/>
         <env name="DB_PASSWORD" value="secret" force="true"/>
         <env name="DB_URL" value="" force="true"/>
