@@ -386,11 +386,6 @@ class DocumentRepository implements DocumentRepositoryInterface
      */
     public function paginate(DocumentFilterDto $filter): LengthAwarePaginator
     {
-        $allowedSortColumns = ['created_at', 'updated_at', 'title'];
-        $sortBy = in_array($filter->sortBy, $allowedSortColumns, true)
-            ? 'documents.'.$filter->sortBy
-            : 'documents.created_at';
-
         $query = Document::withoutGlobalScopes(['join_head_document_entity_version'])
             ->join('entity_versions as document_head_ev', 'document_head_ev.id', '=', 'documents.head_entity_version_id')
             ->select(['documents.*', 'owner_user.name as owner_name'])
@@ -439,9 +434,47 @@ class DocumentRepository implements DocumentRepositoryInterface
             );
         }
 
-        return $query
-            ->orderBy($sortBy, $filter->sortDir)
-            ->paginate($filter->perPage, ['*'], 'page', $filter->page);
+        $this->applyDocumentSort($query, $filter->sortBy, $filter->sortDir);
+
+        return $query->paginate($filter->perPage, ['*'], 'page', $filter->page);
+    }
+
+    /**
+     * Ordenación server-side con whitelist. Las columnas en el snapshot JSON
+     * (title, status, delivery_deadline) se ordenan por su expresión JSON, que
+     * es la fuente de verdad. Cualquier valor fuera de la whitelist cae al
+     * default (created_at desc).
+     *
+     * Columnas permitidas: created_at, updated_at, title, status, delivery_deadline.
+     *
+     * @param  \Illuminate\Contracts\Database\Eloquent\Builder<Document>  $query
+     */
+    private function applyDocumentSort($query, ?string $sortBy, string $sortDir): void
+    {
+        $dir = strtolower($sortDir) === 'asc' ? 'asc' : 'desc';
+        $jsonField = fn (string $f): string => DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', $f);
+
+        switch ($sortBy) {
+            case 'updated_at':
+                $query->orderBy('documents.updated_at', $dir);
+                break;
+            case 'title':
+                $query->orderByRaw($jsonField('title').' '.$dir);
+                break;
+            case 'status':
+                $query->orderByRaw($jsonField('status').' '.$dir);
+                break;
+            case 'delivery_deadline':
+                $deadline = $jsonField('delivery_deadline');
+                // Documentos sin plazo van al final independientemente de la dirección.
+                $query->orderByRaw('CASE WHEN '.$deadline.' IS NULL THEN 1 ELSE 0 END ASC')
+                    ->orderByRaw($deadline.' '.$dir);
+                break;
+            case 'created_at':
+            default:
+                $query->orderBy('documents.created_at', $dir);
+                break;
+        }
     }
 
     /**

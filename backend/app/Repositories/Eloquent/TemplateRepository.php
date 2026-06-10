@@ -102,11 +102,6 @@ class TemplateRepository implements TemplateRepositoryInterface
      */
     public function paginateFiltered(TemplateFilterDto $filter): LengthAwarePaginator
     {
-        $allowedSortColumns = ['updated_at', 'created_at'];
-        $sortBy = in_array($filter->sortBy, $allowedSortColumns, true)
-            ? 'templates.'.$filter->sortBy
-            : 'templates.updated_at';
-
         $query = Template::withoutGlobalScopes(['join_head_entity_version'])
             ->join('entity_versions as template_head_ev', 'template_head_ev.id', '=', 'templates.head_entity_version_id')
             ->select('templates.*')
@@ -160,19 +155,64 @@ class TemplateRepository implements TemplateRepositoryInterface
         if ($filter->search !== null && trim($filter->search) !== '') {
             $needle = SearchAccentFold::fold($filter->search);
             if ($needle !== '') {
-                [$expr, $tr] = SearchAccentFold::sqlFoldedLowerColumn('users.name');
+                [$authorExpr, $authorTr] = SearchAccentFold::sqlFoldedLowerColumn('users.name');
+                $nameColumn = TemplateHeadSnapshot::jsonTemplateFieldExpression('template_head_ev', 'name');
+                [$nameExpr, $nameTr] = SearchAccentFold::sqlFoldedLowerColumn($nameColumn);
                 $like = '%'.SearchAccentFold::escapeLike($needle).'%';
-                $query->whereRaw("{$expr} LIKE ?", [$tr[0], $tr[1], $like]);
+                // Coincide por nombre de la plantilla o por nombre del autor.
+                $query->where(function ($q) use ($authorExpr, $authorTr, $nameExpr, $nameTr, $like) {
+                    $q->whereRaw("{$nameExpr} LIKE ?", [$nameTr[0], $nameTr[1], $like])
+                        ->orWhereRaw("{$authorExpr} LIKE ?", [$authorTr[0], $authorTr[1], $like]);
+                });
             }
         }
+
+        $this->applyTemplateSort($query, $filter->sortBy, $filter->sortDir);
 
         return $query
             ->with(['headVersion'])
             ->withExists(['comments as has_review_comments' => fn ($q) => $q])
             ->with('reviewers')
-            ->orderBy($sortBy, $filter->sortDir)
             ->distinct()
             ->paginate($filter->perPage, ['*'], 'page', $filter->page);
+    }
+
+    /**
+     * Ordenación server-side con whitelist. Las columnas en el snapshot JSON
+     * (name, delivery_deadline) se añaden al SELECT como alias para que sean
+     * compatibles con `DISTINCT` en PostgreSQL (ORDER BY debe estar en el SELECT).
+     *
+     * Columnas permitidas: updated_at, created_at, name, delivery_deadline.
+     * Cualquier otro valor cae al default (updated_at desc).
+     *
+     * @param  \Illuminate\Contracts\Database\Eloquent\Builder<Template>  $query
+     */
+    private function applyTemplateSort($query, ?string $sortBy, string $sortDir): void
+    {
+        $dir = strtolower($sortDir) === 'asc' ? 'asc' : 'desc';
+
+        switch ($sortBy) {
+            case 'created_at':
+                $query->orderBy('templates.created_at', $dir);
+                break;
+            case 'name':
+                $expr = TemplateHeadSnapshot::jsonTemplateFieldExpression('template_head_ev', 'name');
+                $query->addSelect(DB::raw("{$expr} as sort_name"))
+                    ->orderBy('sort_name', $dir);
+                break;
+            case 'delivery_deadline':
+                $expr = TemplateHeadSnapshot::jsonTemplateFieldExpression('template_head_ev', 'delivery_deadline');
+                // Plantillas sin plazo van al final independientemente de la dirección.
+                $query->addSelect(DB::raw("{$expr} as sort_deadline"))
+                    ->addSelect(DB::raw("(CASE WHEN {$expr} IS NULL THEN 1 ELSE 0 END) as sort_deadline_nulls"))
+                    ->orderBy('sort_deadline_nulls', 'asc')
+                    ->orderBy('sort_deadline', $dir);
+                break;
+            case 'updated_at':
+            default:
+                $query->orderBy('templates.updated_at', $dir);
+                break;
+        }
     }
 
     /**
