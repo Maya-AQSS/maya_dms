@@ -7,9 +7,11 @@ namespace App\Services;
 use App\DTOs\Templates\TemplateBlockPayloadDto;
 use App\Enums\BlockType;
 use App\Enums\TemplateVisibilityLevel;
+use App\Events\TemplateSubmittedForReview;
 use App\Models\Template;
 use App\Models\TemplateReviewer;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
+use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Support\ReviewValidationNotificationRecipients;
 use App\Support\VersionSubmissionChangelog;
 use Illuminate\Support\Facades\Log;
@@ -22,6 +24,7 @@ class TemplateReviewService
         private readonly TemplateRepositoryInterface $templateRepository,
         private readonly TemplatePublishingService $templatePublishingService,
         private readonly NotificationPublisher $notificationPublisher,
+        private readonly UserDirectoryRepositoryInterface $userDirectoryRepository,
     ) {}
 
     /**
@@ -144,6 +147,31 @@ class TemplateReviewService
             $inReview = $this->templatePublishingService->transitionStatus($template, 'in_review', $actorId);
 
             $this->notifyTemplateValidationRequested($inReview);
+
+            $inReview->loadMissing('reviewers');
+            $visibility = $inReview->visibility_level instanceof TemplateVisibilityLevel
+                ? $inReview->visibility_level->value
+                : (is_string($inReview->visibility_level) ? $inReview->visibility_level : null);
+
+            TemplateSubmittedForReview::dispatch(
+                $templateId,
+                $actorId,
+                is_string($inReview->review_mode) ? $inReview->review_mode : 'parallel',
+                $inReview->reviewers
+                    ->map(fn (TemplateReviewer $r): array => [
+                        'id' => (string) $r->user_id,
+                        'name' => $this->userDirectoryRepository->findNameById((string) $r->user_id),
+                        'stage' => (int) $r->stage,
+                    ])
+                    ->values()
+                    ->all(),
+                $inReview->name,
+                $visibility,
+                $inReview->study_type_id,
+                $inReview->study_id,
+                $inReview->module_id,
+                $normalizedChangelog,
+            );
 
             return $inReview;
         });
