@@ -43,6 +43,40 @@ export async function uploadCoverImage(
   return (await response.json()) as { data: { src: string; url: string } };
 }
 
+/**
+ * GET /api/v1/templates/{id}/pdf — descarga binaria autenticada del PDF/UA de la
+ * plantilla. El backend lo genera de forma síncrona (WeasyPrint), igual que el
+ * PDF de muestra de themes. Fetch + blob + `<a>` sintético (JWT en header).
+ */
+export async function downloadTemplatePdf(templateId: string, filename: string): Promise<void> {
+  const token = await getBearerToken();
+  const response = await fetch(buildApiUrl(`templates/${encodeURIComponent(templateId)}/pdf`), {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+  if (!response.ok) {
+    let message = response.statusText;
+    try {
+      const body = (await response.json()) as { message?: string };
+      if (body?.message) message = body.message;
+    } catch {
+      /* keep statusText */
+    }
+    throw new ApiHttpError(message, response.status);
+  }
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  try {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 export type { Template, TemplateListFilters, TemplatesListResponse } from '../types/templates';
 
 export type CreateTemplatePayload = {

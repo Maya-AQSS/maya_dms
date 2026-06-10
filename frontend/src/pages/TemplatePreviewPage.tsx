@@ -10,6 +10,7 @@ import {
   startTemplateNewVersion,
   discardTemplateWorkingVersion,
   fetchTemplateVersion,
+  downloadTemplatePdf,
 } from '../api/templates';
 import { fetchBlocks } from '../api/blocks';
 import { apiFetchJson, ApiHttpError } from '../api/http';
@@ -122,6 +123,7 @@ export function TemplatePreviewPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [pdfDownloading, setPdfDownloading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [snapshotVersionNumber, setSnapshotVersionNumber] = useState<number | null>(null);
@@ -375,6 +377,19 @@ export function TemplatePreviewPage() {
     }
   };
 
+  const handleDownloadPdf = async () => {
+    if (!id) return;
+    setPdfDownloading(true);
+    setActionError(null);
+    try {
+      await downloadTemplatePdf(id, template?.name ?? 'plantilla');
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'No se pudo descargar el PDF de la plantilla.');
+    } finally {
+      setPdfDownloading(false);
+    }
+  };
+
   const handleClone = async () => {
     if (!id) return;
     setActionLoading(true);
@@ -534,6 +549,16 @@ export function TemplatePreviewPage() {
               Historial
             </Button>
           ) : null}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            loading={pdfDownloading}
+            onClick={() => void handleDownloadPdf()}
+            title="Genera y descarga el PDF de la plantilla"
+          >
+            {pdfDownloading ? 'Descargando…' : 'Descargar PDF'}
+          </Button>
           {canDelete && (
             <Button
               type="button"

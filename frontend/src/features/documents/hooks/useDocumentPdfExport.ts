@@ -1,34 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  downloadDocumentPdf,
-  exportDocumentPdf,
-  getDocumentExportStatus,
-  type DocumentExportState,
-} from '../../../api/documents';
-
-const POLL_INTERVAL_MS = 1500;
-const POLL_MAX_ATTEMPTS = 60; // 90 s total, suficiente para WeasyPrint de un doc grande
+import { downloadDocumentPdf, type DocumentExportState } from '../../../api/documents';
 
 export interface UseDocumentPdfExportResult {
-  /** Estado del flujo end-to-end. */
+  /** Estado del flujo. */
   state: DocumentExportState | 'idle' | 'downloading';
   /** Mensaje de error legible (cuando state === 'failed'). */
   error: string | null;
-  /** Lanza la generación + polling + descarga. No-op si ya está en curso. */
+  /** Genera y descarga el PDF. No-op si ya está en curso. */
   start: () => Promise<void>;
   /** Resetea a `idle`. Útil para reintentar. */
   reset: () => void;
 }
 
 /**
- * Hook que orquesta el flujo de descarga del PDF/UA de un documento.
+ * Hook de descarga del PDF/UA de un documento (o de una versión histórica).
  *
- * Flujo: `start()` → POST /export-pdf → poll cada 1.5 s sobre /export-status
- * → cuando `ready`, GET /pdf como blob → descarga automática.
- *
- * El backend ya hace el job idempotente: si el PDF se generó hace poco
- * y sigue válido en disco, `start()` devuelve `state=ready` sin
- * re-encolar.
+ * Flujo SÍNCRONO, igual que el PDF de muestra de themes: `start()` → GET
+ * `/pdf` (el backend genera el PDF con WeasyPrint en la propia respuesta) →
+ * blob → descarga automática. Sin cola ni polling.
  */
 export function useDocumentPdfExport(
   documentId: string | undefined,
@@ -37,95 +26,30 @@ export function useDocumentPdfExport(
 ): UseDocumentPdfExportResult {
   const [state, setState] = useState<DocumentExportState | 'idle' | 'downloading'>('idle');
   const [error, setError] = useState<string | null>(null);
-  const pollAttemptsRef = useRef(0);
-  const timerRef = useRef<number | null>(null);
   const mountedRef = useRef(true);
 
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
-      if (timerRef.current) {
-        window.clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
     };
   }, []);
 
-  const finishWithError = useCallback((message: string) => {
-    if (!mountedRef.current) return;
-    setError(message);
-    setState('failed');
-  }, []);
-
-  const triggerDownload = useCallback(async () => {
-    if (!documentId) return;
+  const start = useCallback(async () => {
+    if (!documentId || state === 'downloading') return;
+    setError(null);
     setState('downloading');
     try {
       await downloadDocumentPdf(documentId, documentName ?? 'documento', versionId);
-      if (mountedRef.current) {
-        setState('ready');
-      }
+      if (mountedRef.current) setState('ready');
     } catch (e) {
-      finishWithError(e instanceof Error ? e.message : 'No se pudo descargar el PDF.');
-    }
-  }, [documentId, documentName, versionId, finishWithError]);
-
-  const pollOnce = useCallback(async () => {
-    if (!documentId || !mountedRef.current) return;
-    try {
-      const payload = await getDocumentExportStatus(documentId, versionId);
       if (!mountedRef.current) return;
-      setState(payload.state);
-      if (payload.state === 'ready') {
-        await triggerDownload();
-        return;
-      }
-      if (payload.state === 'failed') {
-        finishWithError(payload.error ?? 'La generación del PDF falló.');
-        return;
-      }
-      pollAttemptsRef.current += 1;
-      if (pollAttemptsRef.current >= POLL_MAX_ATTEMPTS) {
-        finishWithError('La generación del PDF está tardando demasiado. Inténtalo de nuevo.');
-        return;
-      }
-      timerRef.current = window.setTimeout(() => void pollOnce(), POLL_INTERVAL_MS);
-    } catch (e) {
-      finishWithError(e instanceof Error ? e.message : 'No se pudo consultar el estado del PDF.');
+      setError(e instanceof Error ? e.message : 'No se pudo descargar el PDF.');
+      setState('failed');
     }
-  }, [documentId, versionId, triggerDownload, finishWithError]);
-
-  const start = useCallback(async () => {
-    if (!documentId) return;
-    if (state === 'queued' || state === 'processing' || state === 'downloading') return;
-    setError(null);
-    pollAttemptsRef.current = 0;
-    try {
-      const initial = await exportDocumentPdf(documentId, versionId);
-      if (!mountedRef.current) return;
-      setState(initial.state);
-      if (initial.state === 'ready') {
-        await triggerDownload();
-        return;
-      }
-      if (initial.state === 'failed') {
-        finishWithError(initial.error ?? 'La generación del PDF falló.');
-        return;
-      }
-      // queued | processing → arrancar polling.
-      timerRef.current = window.setTimeout(() => void pollOnce(), POLL_INTERVAL_MS);
-    } catch (e) {
-      finishWithError(e instanceof Error ? e.message : 'No se pudo iniciar la exportación.');
-    }
-  }, [documentId, versionId, state, pollOnce, triggerDownload, finishWithError]);
+  }, [documentId, documentName, versionId, state]);
 
   const reset = useCallback(() => {
-    if (timerRef.current) {
-      window.clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-    pollAttemptsRef.current = 0;
     setError(null);
     setState('idle');
   }, []);

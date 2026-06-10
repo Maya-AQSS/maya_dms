@@ -45,6 +45,39 @@ class DocumentPdfService implements DocumentPdfServiceInterface
 
     public function generate(string $documentId, ?string $versionId = null): string
     {
+        [$html, $version] = $this->buildHtml($documentId, $versionId);
+
+        $relative = sprintf('%s/%s/v%d/document.pdf', self::PREFIX, $documentId, $version);
+        $absolute = Storage::disk(self::DISK)->path($relative);
+
+        Storage::disk(self::DISK)->makeDirectory(
+            sprintf('%s/%s/v%d', self::PREFIX, $documentId, $version),
+        );
+
+        // weasyprint - <out> : lee HTML por stdin y escribe a $absolute.
+        $this->runWeasyprint($html, $absolute, $documentId);
+
+        return $relative;
+    }
+
+    public function generateBytes(string $documentId, ?string $versionId = null): string
+    {
+        [$html] = $this->buildHtml($documentId, $versionId);
+
+        // `weasyprint - -` lee el HTML por stdin y escribe el PDF por stdout:
+        // generación SÍNCRONA en memoria (igual que el PDF de muestra de themes),
+        // sin tocar disco ni la infraestructura de colas/estado del export real.
+        return $this->runWeasyprint($html, '-', $documentId);
+    }
+
+    /**
+     * Construye el HTML themed (HEAD vivo o snapshot de versión) y el número de
+     * versión para la ruta de salida.
+     *
+     * @return array{0: string, 1: int}
+     */
+    private function buildHtml(string $documentId, ?string $versionId): array
+    {
         $document = $this->documentRepository->findOrFail($documentId);
 
         if ($versionId !== null) {
@@ -55,24 +88,27 @@ class DocumentPdfService implements DocumentPdfServiceInterface
             $snapshotBlocks = is_array($detail['snapshot_data']['blocks'] ?? null)
                 ? $detail['snapshot_data']['blocks']
                 : [];
-            $html = $this->renderer->renderHtmlForVersion($documentId, $snapshotBlocks);
-            $version = (int) ($detail['version_number'] ?? 1);
-        } else {
-            $html = $this->renderer->renderHtml($documentId);
-            // current_version (alias seleccionado en el join del head EV) o 1 como fallback.
-            // Extract as scalar, not model attribute reference.
-            $version = (int) $this->extractCurrentVersion($document);
+
+            return [
+                $this->renderer->renderHtmlForVersion($documentId, $snapshotBlocks),
+                (int) ($detail['version_number'] ?? 1),
+            ];
         }
 
-        $relative = sprintf('%s/%s/v%d/document.pdf', self::PREFIX, $documentId, $version);
-        $absolute = Storage::disk(self::DISK)->path($relative);
+        // current_version (alias del join del head EV) o 1 como fallback.
+        return [
+            $this->renderer->renderHtml($documentId),
+            (int) $this->extractCurrentVersion($document),
+        ];
+    }
 
-        Storage::disk(self::DISK)->makeDirectory(
-            sprintf('%s/%s/v%d', self::PREFIX, $documentId, $version),
-        );
-
-        // weasyprint - <out> : lee HTML por stdin y escribe a $absolute.
-        // --pdf-variant pdf/ua-1 fuerza estructura tagged + metadatos PDF/UA.
+    /**
+     * Invoca WeasyPrint con `--pdf-variant pdf/ua-1` (estructura tagged + metadatos
+     * PDF/UA, requisito legal). `$out` es ruta absoluta o `-` (stdout). Devuelve
+     * los bytes del PDF cuando `$out === '-'`, o '' cuando escribe a fichero.
+     */
+    private function runWeasyprint(string $html, string $out, string $documentId): string
+    {
         $result = Process::input($html)
             ->timeout(self::PROCESS_TIMEOUT)
             ->run([
@@ -80,7 +116,7 @@ class DocumentPdfService implements DocumentPdfServiceInterface
                 '--encoding', 'utf-8',
                 '--pdf-variant', 'pdf/ua-1',
                 '-',
-                $absolute,
+                $out,
             ]);
 
         if ($result->failed()) {
@@ -90,7 +126,7 @@ class DocumentPdfService implements DocumentPdfServiceInterface
             );
         }
 
-        return $relative;
+        return $out === '-' ? $result->output() : '';
     }
 
     /**

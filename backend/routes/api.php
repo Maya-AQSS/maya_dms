@@ -128,6 +128,8 @@ Route::prefix('v1')->group(function () {
         // Preview HTML themed de la plantilla (mismo Blade que documentos).
         Route::get('templates/{template}/preview', [TemplatePreviewController::class, 'show'])
             ->whereUuid('template');
+        Route::get('templates/{template}/pdf', [TemplatePreviewController::class, 'pdf'])
+            ->whereUuid('template');
 
         Route::apiResource('templates.blocks', TemplateBlockController::class)
             ->shallow()

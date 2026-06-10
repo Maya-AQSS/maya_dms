@@ -275,7 +275,14 @@
            Página propia a sangre (margin 0) con elementos posicionados de forma
            absoluta en cm sobre la página completa (geometría en mm/10 → cm). */
         @page cover {
-            margin: 0;
+            /* La portada conserva los MÁRGENES base de @page (no margin:0). Así el
+               overlay del theme (`position: fixed`, relativo al área de contenido y
+               desplazado por -margin) queda alineado y pinta el fondo a sangre en la
+               portada igual que en las páginas de contenido. La portada se lleva a
+               sangre a nivel de SECCIÓN, con márgenes negativos (.doc-block--cover),
+               no anulando el margen de la página (que descuadraba el overlay y dejaba
+               franja blanca abajo/derecha). Se fijan explícitos (no por herencia). */
+            margin: {{ $cm($marginTop) }} {{ $cm($marginRight) }} {{ $cm($marginBottom) }} {{ $cm($marginLeft) }};
             @if (! $hasGridLayout)
                 @top-left { content: none; }
                 @top-right { content: none; }
@@ -302,6 +309,12 @@
             position: relative;
             width: {{ $cm($pageWidthCm) }};
             height: {{ $cm($pageHeightCm) }};
+            /* Rompe el área de contenido para ocupar la página A4 entera (a sangre):
+               la página `cover` conserva sus márgenes, así que tiramos la sección a
+               la esquina con márgenes negativos. Los elementos absolutos de la
+               portada están en coordenadas de página completa y quedan alineados. */
+            margin-top: -{{ $cm($marginTop) }};
+            margin-left: -{{ $cm($marginLeft) }};
             overflow: hidden;
         }
         .doc-block--cover .cover-el { position: absolute; box-sizing: border-box; overflow: hidden; }

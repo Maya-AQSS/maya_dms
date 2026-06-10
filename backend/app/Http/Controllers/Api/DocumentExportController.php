@@ -11,14 +11,13 @@ use App\Http\Resources\DocumentPdfExportResource;
 use App\Models\Document;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Services\Contracts\DocumentExportServiceInterface;
+use App\Services\Contracts\DocumentPdfServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Storage;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 class DocumentExportController extends Controller
@@ -27,6 +26,7 @@ class DocumentExportController extends Controller
         private readonly DocumentRepositoryInterface $documentRepository,
         private readonly DocumentExportServiceInterface $exportService,
         private readonly DocumentServiceInterface $documentService,
+        private readonly DocumentPdfServiceInterface $pdfService,
     ) {}
 
     /**
@@ -65,32 +65,20 @@ class DocumentExportController extends Controller
 
     /**
      * GET /api/v1/documents/{document}/pdf
-     * Descarga el último PDF generado (si existe).
+     * Genera y descarga el PDF/UA del documento de forma SÍNCRONA (WeasyPrint a
+     * memoria, mismo patrón que el PDF de muestra de themes): sin cola ni polling.
      */
-    public function download(Request $request, string $document): BinaryFileResponse
+    public function download(Request $request, string $document): Response
     {
         $model = $this->documentRepository->findOrFail($document);
         $this->authorize('view', $model);
 
-        $path = $this->exportService->getPdfExportPath($document);
-        if ($path === null) {
-            abort(404, 'No hay PDF generado para este documento. Solicita un export primero.');
-        }
-
-        $disk = Storage::disk('local');
-        if (! $disk->exists($path)) {
-            abort(404, 'El PDF generado ya no está disponible. Solicita un export nuevo.');
-        }
-
+        $bytes = $this->pdfService->generateBytes($document);
         $this->recordDownload($request, $document);
 
         $filename = $this->exportService->sanitizeFilename((string) ($model->title ?? 'documento')).'.pdf';
 
-        return response()->download(
-            $disk->path($path),
-            $filename,
-            ['Content-Type' => 'application/pdf'],
-        );
+        return $this->pdfResponse($bytes, $filename);
     }
 
     /**
@@ -127,22 +115,15 @@ class DocumentExportController extends Controller
 
     /**
      * GET /api/v1/documents/{document}/versions/{version}/pdf
-     * Descarga el PDF de una versión histórica (si existe).
+     * Genera y descarga el PDF de una versión histórica (snapshot congelado) de
+     * forma SÍNCRONA. Gate viewHistory + validación de pertenencia de la versión.
      */
-    public function downloadVersion(Request $request, string $document, string $version): BinaryFileResponse
+    public function downloadVersion(Request $request, string $document, string $version): Response
     {
         $this->resolveDocumentForHistory($document);
         $detail = $this->assertVersionBelongs($document, $version);
 
-        $path = $this->exportService->getPdfExportPath($document, $version);
-        if ($path === null) {
-            abort(404, 'No hay PDF generado para esta versión. Solicita un export primero.');
-        }
-
-        $disk = Storage::disk('local');
-        if (! $disk->exists($path)) {
-            abort(404, 'El PDF generado ya no está disponible. Solicita un export nuevo.');
-        }
+        $bytes = $this->pdfService->generateBytes($document, $version);
 
         $versionNumber = (int) ($detail['version_number'] ?? 0);
         $this->recordDownload($request, $document, $version, $versionNumber);
@@ -150,11 +131,7 @@ class DocumentExportController extends Controller
         $base = $this->exportService->sanitizeFilename((string) ($detail['snapshot_data']['document']['title'] ?? 'documento'));
         $filename = $base.'_v'.$versionNumber.'.pdf';
 
-        return response()->download(
-            $disk->path($path),
-            $filename,
-            ['Content-Type' => 'application/pdf'],
-        );
+        return $this->pdfResponse($bytes, $filename);
     }
 
     /**
@@ -189,6 +166,15 @@ class DocumentExportController extends Controller
     private function assertVersionBelongs(string $document, string $version): array
     {
         return $this->documentService->findDocumentVersionDetailOrFail($document, $version);
+    }
+
+    private function pdfResponse(string $bytes, string $filename): Response
+    {
+        return response($bytes, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
     private function recordDownload(

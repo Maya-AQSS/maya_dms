@@ -19,4 +19,13 @@ interface DocumentPdfServiceInterface
      * el número de versión del snapshot.
      */
     public function generate(string $documentId, ?string $versionId = null): string;
+
+    /**
+     * Igual que {@see generate()} pero SÍNCRONO: devuelve los bytes del PDF en
+     * memoria (WeasyPrint a stdout) sin tocar disco ni colas. Pensado para la
+     * descarga directa del botón (mismo patrón que el PDF de muestra de themes).
+     *
+     * Lanza RuntimeException si WeasyPrint falla.
+     */
+    public function generateBytes(string $documentId, ?string $versionId = null): string;
 }
