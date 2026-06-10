@@ -1605,6 +1605,8 @@ class DocumentService implements DocumentServiceInterface
             $previousOwnerId,
             $newOwnerId,
             $actorId,
+            $this->userDirectoryRepository->findNameById($previousOwnerId),
+            $this->userDirectoryRepository->findNameById($newOwnerId),
             $request?->ip(),
             $request?->userAgent(),
         );

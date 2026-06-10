@@ -20,6 +20,7 @@ use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateBlockRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
+use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Services\Contracts\TemplateServiceInterface;
 use App\Support\TemplateHeadSnapshot;
 use Illuminate\Support\Collection;
@@ -42,6 +43,7 @@ class TemplateService implements TemplateServiceInterface
         private readonly TemplateReviewerAssignmentService $templateReviewerAssignmentService,
         private readonly DocumentBlockRepositoryInterface $documentBlockRepository,
         private readonly AcademicHierarchyRepositoryInterface $academicHierarchyRepository,
+        private readonly UserDirectoryRepositoryInterface $userDirectoryRepository,
     ) {}
 
     /**
@@ -351,6 +353,8 @@ class TemplateService implements TemplateServiceInterface
                 $previousCreatedBy,
                 (string) $dto->createdBy,
                 (string) (Auth::id() ?? ''),
+                $this->userDirectoryRepository->findNameById($previousCreatedBy),
+                $this->userDirectoryRepository->findNameById((string) $dto->createdBy),
                 $request?->ip(),
                 $request?->userAgent(),
             );

@@ -22,6 +22,8 @@ class OwnershipTransferred implements AuditableEvent
         public readonly string $previousOwnerId,
         public readonly string $newOwnerId,
         public readonly string $actorId,
+        public readonly ?string $previousOwnerName = null,
+        public readonly ?string $newOwnerName = null,
         public readonly ?string $ipAddress = null,
         public readonly ?string $userAgent = null,
     ) {}
@@ -34,8 +36,14 @@ class OwnershipTransferred implements AuditableEvent
             'entityId' => $this->entityId,
             'action' => 'ownership_transferred',
             'userId' => $this->actorId,
-            'previousValue' => ['owner_id' => $this->previousOwnerId],
-            'newValue' => ['owner_id' => $this->newOwnerId],
+            'previousValue' => [
+                'owner_id' => $this->previousOwnerId,
+                'owner_name' => $this->previousOwnerName,
+            ],
+            'newValue' => [
+                'owner_id' => $this->newOwnerId,
+                'owner_name' => $this->newOwnerName,
+            ],
             'ipAddress' => $this->ipAddress,
             'userAgent' => $this->userAgent,
         ];
