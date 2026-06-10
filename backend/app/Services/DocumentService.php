@@ -1402,6 +1402,101 @@ class DocumentService implements DocumentServiceInterface
     }
 
     /**
+     * Pool de validadores efectivo del documento para mostrar en el wizard.
+     *
+     * Los `document_reviewers` se resuelven con la MISMA fuente que el envío a
+     * revisión ({@see self::resolveReviewCandidatesFromTemplateVersion}): la versión
+     * publicada de plantilla anclada al documento (con fallback a la config viva).
+     * Así la UI muestra exactamente los validadores que se materializarán al validar,
+     * sin requerir acceso de lectura a la plantilla.
+     *
+     * Si la plantilla no define validadores de documento pero sí revisores de plantilla,
+     * se devuelven estos últimos como información (`template_fallback`): no participan en
+     * la validación del documento, que se publicará directamente.
+     *
+     * @return array{
+     *   kind: 'document'|'template_fallback'|'none',
+     *   review_mode: string,
+     *   reviewers: list<array{id: string, name: ?string, stage: ?int}>
+     * }
+     */
+    public function getDocumentReviewerPool(Document $document): array
+    {
+        $reviewMode = $this->documentReviewModeResolver->resolve($document);
+
+        $candidates = $this->resolveReviewCandidatesFromTemplateVersion($document);
+        if ($candidates !== []) {
+            return [
+                'kind' => 'document',
+                'review_mode' => $reviewMode,
+                'reviewers' => array_map(fn (array $c) => [
+                    'id' => $c['reviewer_id'],
+                    'name' => $this->userDirectoryRepository->findNameById($c['reviewer_id']),
+                    'stage' => $c['stage'],
+                ], $candidates),
+            ];
+        }
+
+        $templateReviewerIds = $this->resolveTemplateReviewerIdsFromAnchoredVersion($document);
+        if ($templateReviewerIds !== []) {
+            return [
+                'kind' => 'template_fallback',
+                'review_mode' => $reviewMode,
+                'reviewers' => array_map(fn (string $id) => [
+                    'id' => $id,
+                    'name' => $this->userDirectoryRepository->findNameById($id),
+                    'stage' => null,
+                ], $templateReviewerIds),
+            ];
+        }
+
+        return [
+            'kind' => 'none',
+            'review_mode' => $reviewMode,
+            'reviewers' => [],
+        ];
+    }
+
+    /**
+     * IDs de revisores de plantilla (`template_reviewers`) del snapshot de la versión
+     * publicada anclada al documento. Solo informativos para la UI.
+     *
+     * @return list<string>
+     */
+    private function resolveTemplateReviewerIdsFromAnchoredVersion(Document $document): array
+    {
+        $versionId = $document->template_version_id;
+        if (! is_string($versionId) || $versionId === '') {
+            return [];
+        }
+
+        $entityVersion = $this->entityVersionRepository->findPublishedByIdForVersionable(
+            $versionId,
+            Template::class,
+            (string) $document->template_id,
+        );
+
+        if ($entityVersion === null || ! is_array($entityVersion->snapshot_data)) {
+            return [];
+        }
+
+        $rows = data_get($entityVersion->snapshot_data, 'reviewers.template_reviewers');
+        if (! is_array($rows)) {
+            return [];
+        }
+
+        $ids = [];
+        foreach ($rows as $row) {
+            $userId = is_array($row) ? ($row['user_id'] ?? null) : null;
+            if (is_string($userId) && $userId !== '') {
+                $ids[] = $userId;
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
      * Publica el documento.
      */
     public function publishDocument(string $documentId, string $actorId, ?string $changelog): Document

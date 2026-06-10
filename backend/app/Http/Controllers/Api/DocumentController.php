@@ -149,6 +149,19 @@ class DocumentController extends Controller
     }
 
     /**
+     * Pool de validadores del documento (resuelto desde la versión de plantilla anclada).
+     *
+     * Autorizado con la policy `view`: cualquiera que pueda ver el documento ve sus
+     * validadores, sin depender del acceso de lectura a la plantilla.
+     */
+    public function reviewers(ShowDocumentRequest $request, string $document): JsonResponse
+    {
+        $resolved = $request->resolveDocument();
+
+        return response()->json(['data' => $this->documentService->getDocumentReviewerPool($resolved)]);
+    }
+
+    /**
      * Actualizar documento.
      */
     public function update(UpdateDocumentRequest $request, string $document): JsonResponse

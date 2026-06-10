@@ -23,6 +23,7 @@ import {
   deleteDocumentBlock,
   fetchDocument,
   fetchDocumentMigrationPayload,
+  fetchDocumentReviewers,
   fetchDocumentReviews,
   rejectDocumentReview,
   submitDocumentForReview,
@@ -49,7 +50,7 @@ import { useDocumentCommentsQuery } from '../hooks/useDocumentComments';
 import { useCompletedBlocks } from '../hooks/useCompletedBlocks';
 import { BlockCommentsCard } from '../../templates/components/BlockCommentsCard';
 import type { BlockComment } from '../../templates/components/BlockCommentsCard';
-import { fetchMe, searchDocumentReviewerCandidates, searchOwnerCandidates, searchUsers } from '../../../api/users';
+import { fetchMe, searchOwnerCandidates } from '../../../api/users';
 import { useAutoSave, useFlushOnPageLeave } from '@ceedcv-maya/shared-hooks-react';
 import {
   normalizeTiptapContentForPersistence,
@@ -339,10 +340,6 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
   const [blockSaveError, setBlockSaveError] = useState<string | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [documentReviewers, setDocumentReviewers] = useState<ReviewerView[]>([]);
-  /** IDs de `template_document_reviewers` (vacío si la plantilla no define pool de documento). */
-  const [, setDocumentReviewerPoolIds] = useState<string[]>([]);
-  /** IDs de `template_reviewers` (solo informativos en UI si no hay pool de documento). */
-  const [, setTemplateReviewerPoolIds] = useState<string[]>([]);
   const [reviewerListKind, setReviewerListKind] = useState<'document' | 'template_fallback' | 'none'>('none');
   const [documentReviewMode, setDocumentReviewMode] = useState<ReviewModeView>('parallel');
   const [summaryConfirmAction, setSummaryConfirmAction] = useState<SummaryConfirmAction>(null);
@@ -841,86 +838,32 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
   }, [summaryBlockKey]);
 
   useEffect(() => {
-    if (step !== 'summary' || !detail) {
+    const docId = detail?.id;
+    if (!docId) {
       return;
     }
     let cancelled = false;
     const loadDocumentReviewers = async () => {
       setSummaryError(null);
-      setDocumentReviewerPoolIds([]);
-      setTemplateReviewerPoolIds([]);
-      setReviewerListKind('none');
       try {
-        const templateResp = await fetchTemplate(detail.template_id);
+        // Pool resuelto en backend desde la versión de plantilla anclada (misma fuente
+        // que el envío a validar). No depende del acceso de lectura a la plantilla, por
+        // lo que el titular del documento ve siempre sus validadores.
+        const pool = await fetchDocumentReviewers(docId);
         if (cancelled) return;
-        const usersResp = await searchDocumentReviewerCandidates('', undefined, {
-          visibility_level: templateResp.data.visibility_level,
-          study_type_id: templateResp.data.study_type_id ?? undefined,
-          study_id: templateResp.data.study_id ?? undefined,
-          module_id: templateResp.data.module_id ?? undefined,
-          team_id: templateResp.data.team_id ?? undefined,
-        });
-        if (cancelled) return;
-        setDocumentReviewMode(effectiveDocumentReviewMode(templateResp.data));
-
-        const docIds = templateResp.data.document_reviewers ?? [];
-        const tplRows = templateResp.data.reviewers ?? [];
-        const tplUserIds = tplRows.map((r: { user_id: string }) => r.user_id);
-        setDocumentReviewerPoolIds(docIds);
-        setTemplateReviewerPoolIds(tplUserIds);
-
-        const displayIds = docIds.length > 0 ? docIds : tplUserIds;
-        if (docIds.length > 0) {
-          setReviewerListKind('document');
-        } else if (tplUserIds.length > 0) {
-          setReviewerListKind('template_fallback');
-        } else {
-          setReviewerListKind('none');
-        }
-
-        if (displayIds.length === 0) {
-          setDocumentReviewers([]);
-          return;
-        }
-
-        const byId = new Map(usersResp.data.map((u: { id: string; name: string }) => [u.id, u.name] as const));
-        const initial = displayIds.map((id: string) => ({
-          id,
-          name: byId.get(id) ?? '',
-          resolved: byId.has(id),
-        }));
-        const missing = initial.filter((r) => !r.resolved);
-        if (missing.length === 0) {
-          setDocumentReviewers(initial);
-          return;
-        }
-        const lookedUp = await Promise.all(
-          missing.map(async (r) => {
-            try {
-              const resp = await searchUsers(r.id);
-              const exact = resp.data.find((u) => u.id === r.id);
-              if (exact?.name) {
-                return { ...r, name: exact.name, resolved: true };
-              }
-            } catch {
-              // noop: fallback below
-            }
-            return {
-              ...r,
-              name: `Usuario no encontrado (${r.id.slice(0, 8)}...)`,
-              resolved: false,
-            };
-          }),
+        setReviewerListKind(pool.kind);
+        setDocumentReviewMode(pool.review_mode);
+        setDocumentReviewers(
+          pool.reviewers.map((r) => ({
+            id: r.id,
+            name: r.name ?? `Usuario no encontrado (${r.id.slice(0, 8)}...)`,
+            resolved: r.name != null,
+          })),
         );
-        const lookedUpById = new Map(lookedUp.map((r: ReviewerView) => [r.id, r] as const));
-        const finalReviewers = initial.map((r: ReviewerView) => lookedUpById.get(r.id) ?? r);
-        setDocumentReviewers(finalReviewers);
       } catch (e) {
         if (!cancelled) {
           setSummaryError(e instanceof Error ? e.message : 'No se pudieron cargar los validadores de documento.');
           setDocumentReviewers([]);
-          setDocumentReviewerPoolIds([]);
-          setTemplateReviewerPoolIds([]);
           setReviewerListKind('none');
         }
       }
@@ -929,7 +872,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
     return () => {
       cancelled = true;
     };
-  }, [step, detail]);
+  }, [detail?.id, detail?.status, detail?.template_version_id]);
 
   useEffect(() => {
     const tId = detail?.template_id || templateId;
@@ -955,19 +898,6 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
       cancelled = true;
     };
   }, [detail?.template_id, templateId]);
-
-  useEffect(() => {
-    if (!template) return;
-    const docIds = template.document_reviewers ?? [];
-    const tplUserIds = (template.reviewers ?? []).map((r: { user_id: string }) => r.user_id);
-    if (docIds.length > 0) {
-      setReviewerListKind('document');
-    } else if (tplUserIds.length > 0) {
-      setReviewerListKind('template_fallback');
-    } else {
-      setReviewerListKind('none');
-    }
-  }, [template]);
 
   useEffect(() => {
     const effectiveProcessId = template?.process_id ?? locationProcessId ?? null;

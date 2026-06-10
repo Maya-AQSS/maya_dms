@@ -170,6 +170,8 @@ Route::prefix('v1')->group(function () {
             ->whereUuid('document');
         Route::get('documents/{document}', [DocumentController::class, 'show'])
             ->whereUuid('document');
+        Route::get('documents/{document}/reviewers', [DocumentController::class, 'reviewers'])
+            ->whereUuid('document');
         Route::match(['put', 'patch'], 'documents/{document}', [DocumentController::class, 'update'])
             ->whereUuid('document');
         Route::delete('documents/{document}', [DocumentController::class, 'destroy'])
