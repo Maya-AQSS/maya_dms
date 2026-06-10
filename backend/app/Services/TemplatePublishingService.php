@@ -12,6 +12,7 @@ use App\Models\TemplateReviewer;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
+use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Repositories\Contracts\UserFavoriteRepositoryInterface;
 use App\Services\Contracts\EntityVersionLifecycleServiceInterface;
 use App\Support\TemplateHeadSnapshot;
@@ -31,6 +32,7 @@ class TemplatePublishingService
         private readonly TemplateVersionBlockLayerWriter $templateVersionBlockLayerWriter,
         private readonly UserFavoriteRepositoryInterface $userFavoriteRepository,
         private readonly NotificationPublisher $notificationPublisher,
+        private readonly UserDirectoryRepositoryInterface $userDirectoryRepository,
     ) {}
 
     /**
@@ -43,6 +45,8 @@ class TemplatePublishingService
         string $newStatus,
         string $actorId,
         array $extraHeadAttributes = [],
+        ?int $reviewerStage = null,
+        ?string $reviewerName = null,
     ): Template {
         $oldStatus = $template->status;
         $updated = $this->templateRepository->update(
@@ -55,6 +59,8 @@ class TemplatePublishingService
             oldStatus: $oldStatus,
             newStatus: $newStatus,
             actorId: $actorId,
+            reviewerStage: $reviewerStage,
+            reviewerName: $reviewerName,
         ));
 
         return $updated;
@@ -206,11 +212,15 @@ class TemplatePublishingService
             // Clean submission data from head version via repository
             $this->templateRepository->cleanHeadVersionSubmissionData($templateId);
 
+            // Si la publicación la provoca la aprobación final de un revisor, adjuntamos
+            // su etapa y nombre. En publicación directa del creador, $reviewer es null.
             event(new TemplateStateChanged(
                 template: $updated,
                 oldStatus: $oldStatus,
                 newStatus: 'published',
                 actorId: $actorId,
+                reviewerStage: $reviewer !== null ? (int) $reviewer->stage : null,
+                reviewerName: $reviewer !== null ? $this->userDirectoryRepository->findNameById($actorId) : null,
             ));
 
             $createdBy = is_string($updated->created_by) && $updated->created_by !== '' ? $updated->created_by : null;

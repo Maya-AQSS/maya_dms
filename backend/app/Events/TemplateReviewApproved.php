@@ -4,20 +4,20 @@ declare(strict_types=1);
 
 namespace App\Events;
 
-use App\Models\DocumentReview;
+use App\Models\TemplateReviewer;
 use Illuminate\Foundation\Events\Dispatchable;
 use Maya\Messaging\Contracts\AuditableEvent;
 
 /**
- * Hecho de negocio: un revisor asignado aprueba su etapa.
+ * Hecho de negocio: un revisor asignado aprueba su etapa de la plantilla.
  */
-class DocumentReviewApproved implements AuditableEvent
+class TemplateReviewApproved implements AuditableEvent
 {
     use Dispatchable;
 
     public function __construct(
-        public readonly string $documentId,
-        public readonly DocumentReview $review,
+        public readonly string $templateId,
+        public readonly TemplateReviewer $reviewer,
         public readonly string $actorId,
         public readonly ?string $reviewerName = null,
     ) {}
@@ -26,16 +26,16 @@ class DocumentReviewApproved implements AuditableEvent
     {
         return [
             'applicationSlug' => 'maya-dms',
-            'entityType' => 'document',
-            'entityId' => $this->documentId,
+            'entityType' => 'template',
+            'entityId' => $this->templateId,
             'action' => 'review_approved',
             'userId' => $this->actorId,
             'previousValue' => [
-                'stage' => (int) $this->review->stage,
+                'stage' => (int) $this->reviewer->stage,
                 'status' => 'pending',
             ],
             'newValue' => [
-                'stage' => (int) $this->review->stage,
+                'stage' => (int) $this->reviewer->stage,
                 'status' => 'approved',
                 'reviewer_name' => $this->reviewerName,
             ],

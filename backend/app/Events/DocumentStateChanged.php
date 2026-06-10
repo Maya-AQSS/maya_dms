@@ -17,6 +17,9 @@ class DocumentStateChanged implements AuditableEvent
         public readonly string $oldStatus,
         public readonly string $newStatus,
         public readonly string $actorId,
+        public readonly ?int $reviewerStage = null,
+        public readonly ?string $reviewerName = null,
+        public readonly ?string $rejectionReason = null,
     ) {}
 
     public function toAuditPayload(): array
@@ -28,7 +31,12 @@ class DocumentStateChanged implements AuditableEvent
             'action' => 'state_changed',
             'userId' => $this->actorId,
             'previousValue' => ['status' => $this->oldStatus],
-            'newValue' => ['status' => $this->newStatus],
+            'newValue' => array_filter([
+                'status' => $this->newStatus,
+                'stage' => $this->reviewerStage,
+                'reviewer_name' => $this->reviewerName,
+                'rejection_reason' => $this->rejectionReason,
+            ], static fn ($v): bool => $v !== null),
         ];
     }
 }

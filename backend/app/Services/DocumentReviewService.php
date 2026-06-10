@@ -6,11 +6,11 @@ namespace App\Services;
 
 use App\DTOs\Documents\CreateDocumentSnapshotDto;
 use App\Events\DocumentReviewApproved;
-use App\Events\DocumentReviewRejected;
 use App\Models\Document;
 use App\Models\DocumentReview;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
+use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
 use App\Support\DocumentReviewModeResolver;
 use App\Support\ReviewValidationNotificationRecipients;
@@ -33,6 +33,7 @@ class DocumentReviewService
         private readonly DocumentStateService $stateService,
         private readonly NotificationPublisher $notificationPublisher,
         private readonly DocumentReviewModeResolver $documentReviewModeResolver,
+        private readonly UserDirectoryRepositoryInterface $userDirectoryRepository,
     ) {}
 
     /**
@@ -80,7 +81,6 @@ class DocumentReviewService
 
             // Recargar para tener timestamp actualizado
             $review = $this->documentRepository->findReviewInDocument((string) $review->id, $documentId);
-            DocumentReviewApproved::dispatch($documentId, $review, $actorId);
 
             if ($this->documentRepository->countPendingReviewsForDocument($documentId) === 0) {
                 $document->loadMissing('headVersion');
@@ -89,7 +89,15 @@ class DocumentReviewService
                     $document->headVersion?->changelog,
                 );
 
-                $this->stateService->transition($documentId, 'published', $actorId);
+                // Aprobación final: provoca la publicación, que se audita como
+                // state_changed(published) enriquecido con la etapa y el validador.
+                $this->stateService->transition(
+                    $documentId,
+                    'published',
+                    $actorId,
+                    reviewerStage: (int) $review->stage,
+                    reviewerName: $this->userDirectoryRepository->findNameById($actorId),
+                );
                 $this->snapshotService->createDocumentSnapshot(new CreateDocumentSnapshotDto(
                     documentId: $documentId,
                     triggerEvent: 'published',
@@ -103,6 +111,15 @@ class DocumentReviewService
 
                 return $refreshed;
             }
+
+            // Aprobación intermedia: no hay cambio de estado (sigue in_review), así que
+            // este evento es la única traza de la decisión del validador.
+            DocumentReviewApproved::dispatch(
+                $documentId,
+                $review,
+                $actorId,
+                $this->userDirectoryRepository->findNameById($actorId),
+            );
 
             $refreshed = $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
             if ($this->resolveReviewMode($refreshed) === 'sequential') {
@@ -301,9 +318,17 @@ class DocumentReviewService
 
             // Recargar para tener datos actualizados
             $review = $this->documentRepository->findReviewInDocument((string) $review->id, $documentId);
-            DocumentReviewRejected::dispatch($documentId, $review, $actorId, $reason);
 
-            $this->stateService->transition($documentId, 'rejected', $actorId);
+            // El rechazo cambia el estado a "rejected"; se audita como state_changed
+            // enriquecido con la etapa, el validador y el motivo del rechazo.
+            $this->stateService->transition(
+                $documentId,
+                'rejected',
+                $actorId,
+                reviewerStage: (int) $review->stage,
+                reviewerName: $this->userDirectoryRepository->findNameById($actorId),
+                rejectionReason: $reason,
+            );
 
             $this->documentRepository->deletePendingReviewsForDocument($documentId);
 

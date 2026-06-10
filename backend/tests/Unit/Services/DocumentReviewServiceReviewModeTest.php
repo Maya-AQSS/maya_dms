@@ -9,6 +9,7 @@ use App\Models\EntityVersion;
 use App\Models\Template;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
+use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
 use App\Services\DocumentReviewService;
 use App\Services\DocumentStateService;
@@ -37,6 +38,7 @@ class DocumentReviewServiceReviewModeTest extends TestCase
             Mockery::mock(DocumentStateService::class),
             Mockery::mock(NotificationPublisher::class),
             new DocumentReviewModeResolver($evRepo),
+            Mockery::mock(UserDirectoryRepositoryInterface::class),
         );
     }
 
