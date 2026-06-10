@@ -124,3 +124,23 @@ it('falls back to created_at desc for an invalid sort column', function () {
 
     expect($ids)->toBe([$new, $old]);
 });
+
+it('filters documents by favorite_ids (document id)', function () {
+    $favId = makeOwnDocument('Favorito');
+    makeOwnDocument('Otro');
+
+    $ids = $this->getJson('/api/v1/documents?favorite_ids='.$favId)
+        ->assertOk()
+        ->json('data.*.id');
+
+    expect($ids)->toBe([$favId]);
+});
+
+it('ignores empty favorite_ids for documents (returns all)', function () {
+    makeOwnDocument('Uno');
+    makeOwnDocument('Dos');
+
+    $count = count($this->getJson('/api/v1/documents?favorite_ids=')->assertOk()->json('data'));
+
+    expect($count)->toBe(2);
+});

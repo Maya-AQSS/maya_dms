@@ -39,7 +39,24 @@ class ListDocumentsRequest extends PaginatedFilterRequest
             'created_by' => ['nullable', 'string', 'max:255'],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],
+            'favorite_ids' => ['nullable', 'string', 'max:4000'],
         ];
+    }
+
+    /**
+     * Parsea `favorite_ids` (CSV de ids de documento) a una lista, o null si vacío.
+     *
+     * @return list<string>|null
+     */
+    private function parseFavoriteIds(): ?array
+    {
+        $raw = $this->input('favorite_ids');
+        if (! is_string($raw) || trim($raw) === '') {
+            return null;
+        }
+        $ids = array_values(array_filter(array_map('trim', explode(',', $raw)), fn ($v) => $v !== ''));
+
+        return $ids === [] ? null : $ids;
     }
 
     /**
@@ -54,6 +71,7 @@ class ListDocumentsRequest extends PaginatedFilterRequest
             createdBy: $this->input('created_by'),
             from: $this->input('from'),
             to: $this->input('to'),
+            favoriteIds: $this->parseFavoriteIds(),
             page: $this->getPage(),
             perPage: $this->getPerPage(),
             sortBy: $this->getSortBy() ?? 'created_at',

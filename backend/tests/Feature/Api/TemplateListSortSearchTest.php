@@ -119,3 +119,24 @@ it('searches templates by template name (accent/case insensitive)', function () 
 
     expect($ids)->toBe([$match]);
 });
+
+it('filters templates by favorite_ids (head version id)', function () {
+    $favId = makeOwnTemplate('Favorita');
+    makeOwnTemplate('Otra');
+    $headEv = (string) \App\Models\Template::query()->withoutGlobalScopes()->find($favId)->head_entity_version_id;
+
+    $ids = $this->getJson('/api/v1/templates?favorite_ids='.$headEv)
+        ->assertOk()
+        ->json('data.*.id');
+
+    expect($ids)->toBe([$favId]);
+});
+
+it('ignores empty favorite_ids (returns all)', function () {
+    makeOwnTemplate('Una');
+    makeOwnTemplate('Dos');
+
+    $count = count($this->getJson('/api/v1/templates?favorite_ids=')->assertOk()->json('data'));
+
+    expect($count)->toBe(2);
+});

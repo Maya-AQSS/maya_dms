@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Button,
   DataTable,
-  DatePicker,
   FieldLabel,
   FilterField,
   PageTitle,
@@ -16,14 +15,13 @@ import {
   visibilityBadgeClass,
   type ColumnDef,
 } from '@ceedcv-maya/shared-ui-react';
-import { useTemplates } from '../hooks/useTemplates';
-import { buildTemplatesListMeta, sliceTemplatesPage } from '../clientTemplatePagination';
+import { useServerTemplatesTable } from '../hooks/useServerTemplatesTable';
 import { STATUS_OPTIONS } from '../constants';
 import { TemplateCard } from './TemplateCard';
 import { TemplateHierarchyFields } from './TemplateHierarchyFields';
 import { useUserProfile } from '../../../features/user-profile';
 import { useHierarchy } from '../../../features/hierarchy';
-import { formatListRowVisibilityCaption, listRowSearchMatches } from '../../../utils/academicContextSearch';
+import { formatListRowVisibilityCaption } from '../../../utils/academicContextSearch';
 import type { Template, TemplateStatus } from '../../../types/templates';
 import { useFavoritesIds } from '../../../hooks/useFavoritesIds';
 import { FavoriteInlineMark } from '../../../components/FavoriteInlineMark';
@@ -37,24 +35,23 @@ const STATUS_LABEL: Record<TemplateStatus, string> = {
   rejected: 'Rechazada',
 };
 
-// Estado y visibilidad: clases en `@ceedcv-maya/shared-ui-react/badges`.
+const STORAGE_KEY = 'maya:dms:templates-content';
 
 /**
- * Gestión de plantillas normativas: datos vía {@link useTemplates}.
+ * Gestión de plantillas normativas (página principal). Listado server-side vía
+ * useServerTemplatesTable (filtros/paginación/sort en backend), tarjetas y mutaciones.
  */
 export function TemplatesContent() {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const { t } = useTranslation(['templates', 'common']);
   const { profile } = useUserProfile();
   const { hierarchy } = useHierarchy();
-  const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } = useTablePreferences({
-    storageKey: 'maya:dms:templates-content',
-  });
+  const { hiddenIds, toggleHidden } = useTablePreferences({ storageKey: STORAGE_KEY });
   const { templateIds: favoriteTemplateIds } = useFavoritesIds();
+
   const {
-    catalogSorted,
-    filters,
+    rows,
+    meta,
     loading,
     listError,
     actionError,
@@ -62,230 +59,92 @@ export function TemplatesContent() {
     clearActionError,
     clearActionInfo,
     refetch,
-    applyFilters,
-    goToPage,
+    filters,
+    setFilter,
+    resetFilters,
+    filtersActiveCount,
+    page,
+    onPageChange,
+    pageSize,
+    onPageSizeChange,
+    sortBy,
+    onSortChange,
     deleteTemplate,
     cloneTemplate,
-  } = useTemplates(undefined, sortBy);
+  } = useServerTemplatesTable(undefined, STORAGE_KEY);
 
-  const [authorInput, setAuthorInput] = useState(filters.author_name ?? searchParams.get('author_name') ?? '');
-  const authorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const [academicContextInput, setAcademicContextInput] = useState(searchParams.get('context') ?? '');
-  const [academicContextFilter, setAcademicContextFilter] = useState(searchParams.get('context') ?? '');
-  const academicContextDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Inicializar filtros desde URL params al montar.
-  // Solo se ejecuta una vez (array vacío), los cambios posteriores van a través de applyFiltersWithUrl.
-  const initializedFromUrlRef = useRef(false);
+  // Búsqueda con debounce → param server-side `search` (nombre de plantilla o autor).
+  const [searchInput, setSearchInput] = useState(filters.search ?? '');
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (initializedFromUrlRef.current) return;
-    initializedFromUrlRef.current = true;
-    const patch: Partial<import('../../../types/templates').TemplateListFilters> = {};
-    const status = searchParams.get('status');
-    const studyTypeId = searchParams.get('studyTypeId');
-    const studyId = searchParams.get('studyId');
-    const moduleId = searchParams.get('moduleId');
-    const teamId = searchParams.get('teamId');
-    const authorName = searchParams.get('author_name');
-    const deliveryDeadline = searchParams.get('delivery_deadline');
-    if (status) patch.status = status as import('../../../types/templates').TemplateStatus;
-    if (studyTypeId) patch.study_type_id = studyTypeId;
-    if (studyId) patch.study_id = studyId;
-    if (moduleId) patch.module_id = moduleId;
-    if (teamId) patch.team_id = teamId;
-    if (authorName) { patch.author_name = authorName; setAuthorInput(authorName); }
-    if (deliveryDeadline) patch.delivery_deadline = deliveryDeadline;
-    if (Object.keys(patch).length > 0) applyFilters(patch);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    setSearchInput(filters.search ?? '');
+  }, [filters.search]);
 
-  /** Wrapper que aplica filtros en el hook Y sincroniza la URL. */
-  const applyFiltersWithUrl = (patch: Partial<import('../../../types/templates').TemplateListFilters>) => {
-    applyFilters(patch);
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      const urlKeyMap: Record<string, string> = {
-        status: 'status',
-        study_type_id: 'studyTypeId',
-        study_id: 'studyId',
-        module_id: 'moduleId',
-        team_id: 'teamId',
-        author_name: 'author_name',
-        delivery_deadline: 'delivery_deadline',
-      };
-      for (const [k, v] of Object.entries(patch)) {
-        const urlKey = urlKeyMap[k];
-        if (!urlKey) continue;
-        if (v !== undefined && v !== '') next.set(urlKey, String(v));
-        else next.delete(urlKey);
-      }
-      // Reset page on filter change
-      if (!Object.prototype.hasOwnProperty.call(patch, 'page')) next.delete('page');
-      return next;
-    });
-  };
-
-  const listPage = filters.page ?? 1;
-  const listPerPage = filters.per_page ?? pageSize;
-
-  const clientFilteredCatalog = useMemo(() => {
-    if (!academicContextFilter.trim()) return catalogSorted;
-    return catalogSorted.filter((t) =>
-      listRowSearchMatches(
-        hierarchy,
-        {
-          visibility_level: t.visibility_level,
-          study_type_id: t.study_type_id,
-          study_id: t.study_id,
-          module_id: t.module_id,
-          team_id: t.team_id,
-          team: t.team,
-        },
-        academicContextFilter,
-      ),
-    );
-  }, [catalogSorted, academicContextFilter, hierarchy]);
-
-  useEffect(() => {
-    const last = Math.max(1, Math.ceil(clientFilteredCatalog.length / Math.max(1, listPerPage)));
-    if (listPage > last) {
-      applyFilters({ page: last });
-    }
-  }, [clientFilteredCatalog.length, listPage, listPerPage, applyFilters]);
-
-  const pagedSource = useMemo(
-    () => sliceTemplatesPage(clientFilteredCatalog, listPage, listPerPage),
-    [clientFilteredCatalog, listPage, listPerPage],
-  );
-
-  const listMeta = useMemo(
-    () => buildTemplatesListMeta(clientFilteredCatalog.length, listPage, listPerPage),
-    [clientFilteredCatalog.length, listPage, listPerPage],
-  );
-
-  const handleAuthorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    setAuthorInput(value);
-    if (authorDebounceRef.current) clearTimeout(authorDebounceRef.current);
-    authorDebounceRef.current = setTimeout(() => {
-      applyFiltersWithUrl({ author_name: value || undefined });
+    setSearchInput(value);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      setFilter('search', value || undefined);
     }, 400);
   };
-
-  const handleAcademicContextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setAcademicContextInput(value);
-    if (academicContextDebounceRef.current) clearTimeout(academicContextDebounceRef.current);
-    academicContextDebounceRef.current = setTimeout(() => {
-      setAcademicContextFilter(value);
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        if (value) next.set('context', value);
-        else next.delete('context');
-        next.delete('page');
-        return next;
-      });
-    }, 400);
-  };
-
-  const filterUi = useMemo(
-    () => ({
-      status: filters.status ?? '',
-      studyTypeId: filters.study_type_id ?? '',
-      studyId: filters.study_id ?? '',
-      moduleId: filters.module_id ?? '',
-      teamId: filters.team_id ?? '',
-      authorName: filters.author_name ?? '',
-      deliveryDeadline: filters.delivery_deadline ?? '',
-    }),
-    [filters],
-  );
-
-  const filtersActiveCount = [
-    academicContextFilter,
-    filterUi.status,
-    filterUi.studyTypeId,
-    filterUi.studyId,
-    filterUi.moduleId,
-    filterUi.teamId,
-    filterUi.authorName,
-    filterUi.deliveryDeadline,
-  ].filter((v) => v && v !== '').length;
 
   const clearFilters = () => {
-    if (authorDebounceRef.current) clearTimeout(authorDebounceRef.current);
-    if (academicContextDebounceRef.current) clearTimeout(academicContextDebounceRef.current);
-    setAuthorInput('');
-    setAcademicContextInput('');
-    setAcademicContextFilter('');
-    applyFilters({
-      visibility_level: undefined,
-      status: undefined,
-      study_type_id: undefined,
-      study_id: undefined,
-      module_id: undefined,
-      team_id: undefined,
-      author_name: undefined,
-      delivery_deadline: undefined,
-    });
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      ['status', 'studyTypeId', 'studyId', 'moduleId', 'teamId', 'author_name', 'delivery_deadline', 'context', 'page'].forEach(k => next.delete(k));
-      return next;
-    });
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    setSearchInput('');
+    resetFilters();
   };
 
+  // Si la página actual queda fuera de rango (p. ej. tras filtrar), corrige a la última.
+  useEffect(() => {
+    if (meta && meta.last_page >= 1 && page > meta.last_page) {
+      onPageChange(meta.last_page);
+    }
+  }, [meta, page, onPageChange]);
+
   const displayTemplates = useMemo(() => {
-    /** Con filtro de estado ≠ publicada, no mostrar la fila sintética de última publicada (siempre `published`). */
     const includePublishedFallbackRow = !filters.status || filters.status === 'published';
 
     const out: Template[] = [];
-    for (const t of pagedSource) {
-      const hasPublishedFallback =
-        t.status !== 'published' &&
-        !!t.latest_published_version_id;
+    for (const tpl of rows) {
+      const hasPublishedFallback = tpl.status !== 'published' && !!tpl.latest_published_version_id;
       const isAssignedReviewer =
-        t.status === 'in_review' &&
+        tpl.status === 'in_review' &&
         !!profile?.id &&
-        (t.reviewers?.some((r) => r.user_id === profile.id) ?? false);
-      const canSeeLive = (!!profile?.id && t.created_by === profile.id) || isAssignedReviewer;
+        (tpl.reviewers?.some((r) => r.user_id === profile.id) ?? false);
+      const canSeeLive = (!!profile?.id && tpl.created_by === profile.id) || isAssignedReviewer;
 
       if (!hasPublishedFallback) {
-        out.push({ ...t, list_variant: 'live', list_row_id: `${t.id}:live` });
+        out.push({ ...tpl, list_variant: 'live', list_row_id: `${tpl.id}:live` });
         continue;
       }
 
       const publishedFallback: Template = {
-        ...t,
-        name: t.latest_published_name ?? t.name,
+        ...tpl,
+        name: tpl.latest_published_name ?? tpl.name,
         status: 'published',
-        version: t.latest_published_version_number ?? t.version,
+        version: tpl.latest_published_version_number ?? tpl.version,
         list_variant: 'published_fallback',
-        list_row_id: `${t.id}:published`,
+        list_row_id: `${tpl.id}:published`,
       };
 
       if (canSeeLive) {
-        out.push({ ...t, list_variant: 'live', list_row_id: `${t.id}:live` });
+        out.push({ ...tpl, list_variant: 'live', list_row_id: `${tpl.id}:live` });
       }
       if (includePublishedFallbackRow) {
         out.push(publishedFallback);
       }
     }
-    if (filters.delivery_deadline) {
-      return out.filter((row) => row.status !== 'published');
-    }
     return out;
-  }, [pagedSource, profile?.id, filters.delivery_deadline, filters.status]);
+  }, [rows, profile?.id, filters.status]);
 
-  const handleRowClick = (t: Template) => {
-    if (t.list_variant === 'published_fallback' && t.latest_published_version_id) {
-      navigate(`/templates/${t.id}?templateVersionId=${encodeURIComponent(t.latest_published_version_id)}`);
+  const handleRowClick = (tpl: Template) => {
+    if (tpl.list_variant === 'published_fallback' && tpl.latest_published_version_id) {
+      navigate(`/templates/${tpl.id}?templateVersionId=${encodeURIComponent(tpl.latest_published_version_id)}`);
       return;
     }
-    const isReviewer =
-      t.status === 'in_review' && t.reviewers?.some((r) => r.user_id === profile?.id);
-    navigate(isReviewer ? `/templates/${t.id}/review` : `/templates/${t.id}`);
+    const isReviewer = tpl.status === 'in_review' && tpl.reviewers?.some((r) => r.user_id === profile?.id);
+    navigate(isReviewer ? `/templates/${tpl.id}/review` : `/templates/${tpl.id}`);
   };
 
   const columns: ColumnDef<Template>[] = useMemo(
@@ -377,21 +236,10 @@ export function TemplatesContent() {
         subtitle={t('templates:pageSubtitle')}
         actions={
           <>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => void refetch()}
-              disabled={loading}
-            >
+            <Button type="button" variant="outline" size="sm" onClick={() => refetch()} disabled={loading}>
               Actualizar
             </Button>
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              onClick={() => navigate('/templates/new')}
-            >
+            <Button type="button" variant="primary" size="sm" onClick={() => navigate('/templates/new')}>
               Nueva Plantilla
             </Button>
           </>
@@ -425,42 +273,39 @@ export function TemplatesContent() {
       <DataTable<Template>
         columns={columns}
         rows={displayTemplates}
-        loading={loading && catalogSorted.length === 0}
-        rowKey={(t) => t.list_row_id ?? t.id}
+        loading={loading && rows.length === 0}
+        rowKey={(tpl) => tpl.list_row_id ?? tpl.id}
         hiddenColumnIds={hiddenIds}
         onToggleHiddenColumn={toggleHidden}
         sortBy={sortBy}
-        onSortChange={setSortBy}
+        onSortChange={onSortChange}
         pageSize={pageSize}
-        onPageSizeChange={(size) => {
-          setPageSize(size);
-          applyFilters({ per_page: size });
-        }}
+        onPageSizeChange={onPageSizeChange}
         defaultView="cards"
         emptyMessage="No hay plantillas visibles con los filtros actuales."
         onRowClick={handleRowClick}
-        cardRender={(t) => (
-          <TemplateCard template={t} onDelete={deleteTemplate} onClone={cloneTemplate} />
+        cardRender={(tpl) => (
+          <TemplateCard template={tpl} onDelete={deleteTemplate} onClone={cloneTemplate} />
         )}
         filtersActiveCount={filtersActiveCount}
         onClearFilters={clearFilters}
-        filtersStorageKey="maya:dms:templates-content"
+        filtersStorageKey={STORAGE_KEY}
         filtersPanel={
           <>
-            <FilterField label="Visibilidad">
+            <FilterField label="Buscar">
               <TextInput
                 fieldSize="sm"
                 type="search"
-                placeholder={t('templates:table.searchVisibility')}
-                value={academicContextInput}
-                onChange={handleAcademicContextChange}
+                placeholder={t('templates:table.searchName')}
+                value={searchInput}
+                onChange={handleSearchChange}
               />
             </FilterField>
             <FilterField label="Estado">
               <Select
                 fieldSize="sm"
-                value={filterUi.status}
-                onChange={(e) => applyFiltersWithUrl({ status: (e.target.value || undefined) as import('../../../types/templates').TemplateStatus | undefined })}
+                value={filters.status ?? ''}
+                onChange={(e) => setFilter('status', e.target.value || undefined)}
               >
                 {STATUS_OPTIONS.map((o) => (
                   <option key={o.value || 'all'} value={o.value}>
@@ -469,34 +314,26 @@ export function TemplatesContent() {
                 ))}
               </Select>
             </FilterField>
-            <FilterField label="Autor">
-              <TextInput
+            <FilterField label={t('templates:table.filters.favorites')}>
+              <Select
                 fieldSize="sm"
-                placeholder={t('templates:table.authorPlaceholder')}
-                value={authorInput}
-                onChange={handleAuthorChange}
-              />
-            </FilterField>
-            <FilterField label="Fecha de validación (hasta)">
-              <DatePicker
-                value={filterUi.deliveryDeadline || null}
-                onChange={(d) => applyFiltersWithUrl({ delivery_deadline: d ?? undefined })}
-                placeholder={t('templates:table.deadlinePlaceholder')}
-                ariaLabel="Plantillas no publicadas cuya fecha límite de validación sea esta fecha o anterior (las publicadas no aplican)"
-              />
+                value={filters.favorites ?? ''}
+                onChange={(e) => setFilter('favorites', e.target.value || undefined)}
+              >
+                <option value="">{t('templates:table.favoritesFilter.all')}</option>
+                <option value="favorites">{t('templates:table.favoritesFilter.onlyFavorites')}</option>
+              </Select>
             </FilterField>
             <div className="col-span-full pt-2 border-t border-ui-border/50 dark:border-ui-dark-border/50">
               <FieldLabel>{t('fields.linking')}</FieldLabel>
               <TemplateHierarchyFields
                 values={{
-                  study_type_id: filterUi.studyTypeId,
-                  study_id: filterUi.studyId,
-                  module_id: filterUi.moduleId,
-                  team_id: filterUi.teamId,
+                  study_type_id: filters.study_type_id ?? '',
+                  study_id: filters.study_id ?? '',
+                  module_id: filters.module_id ?? '',
+                  team_id: filters.team_id ?? '',
                 }}
-                onFieldChange={(key, value) =>
-                  applyFiltersWithUrl({ [key]: value.trim() === '' ? undefined : value.trim() })
-                }
+                onFieldChange={(key, value) => setFilter(key, value.trim() === '' ? undefined : value.trim())}
                 gridClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
                 filterMode={true}
                 maxLevel={undefined}
@@ -507,14 +344,14 @@ export function TemplatesContent() {
         }
       />
 
-      {listMeta && (
+      {meta && (
         <Pagination
-          currentPage={listMeta.current_page}
-          totalPages={listMeta.last_page}
-          onChange={goToPage}
+          currentPage={meta.current_page}
+          totalPages={meta.last_page}
+          onChange={onPageChange}
           info={
-            listMeta.total > 0
-              ? `${(listMeta.current_page - 1) * listMeta.per_page + 1}–${Math.min(listMeta.current_page * listMeta.per_page, listMeta.total)} de ${listMeta.total} plantillas`
+            meta.total > 0
+              ? `${(meta.current_page - 1) * meta.per_page + 1}–${Math.min(meta.current_page * meta.per_page, meta.total)} de ${meta.total} plantillas`
               : undefined
           }
         />

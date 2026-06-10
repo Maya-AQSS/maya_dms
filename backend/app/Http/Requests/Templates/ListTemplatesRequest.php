@@ -44,7 +44,24 @@ class ListTemplatesRequest extends PaginatedFilterRequest
             'module_id' => ['nullable', 'string', 'max:255'],
             'team_id' => ['nullable', 'uuid', 'exists:teams,id'],
             'usable_for_documents' => ['nullable', 'boolean'],
+            'favorite_ids' => ['nullable', 'string', 'max:4000'],
         ];
+    }
+
+    /**
+     * Parsea `favorite_ids` (CSV de ids de versión) a una lista, o null si vacío.
+     *
+     * @return list<string>|null
+     */
+    private function parseFavoriteIds(): ?array
+    {
+        $raw = $this->input('favorite_ids');
+        if (! is_string($raw) || trim($raw) === '') {
+            return null;
+        }
+        $ids = array_values(array_filter(array_map('trim', explode(',', $raw)), fn ($v) => $v !== ''));
+
+        return $ids === [] ? null : $ids;
     }
 
     /**
@@ -61,6 +78,7 @@ class ListTemplatesRequest extends PaginatedFilterRequest
             moduleId: $this->input('module_id'),
             teamId: $this->input('team_id'),
             usableForDocuments: (bool) $this->input('usable_for_documents', false),
+            favoriteIds: $this->parseFavoriteIds(),
             page: $this->getPage(),
             perPage: $this->getPerPage(),
             sortBy: $this->getSortBy() ?? 'updated_at',

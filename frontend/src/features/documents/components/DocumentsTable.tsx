@@ -1,10 +1,9 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useDocuments } from '../hooks/useDocuments';
+import { useServerDocumentsTable } from '../hooks/useServerDocumentsTable';
 import {
   DataTable,
-  DatePicker,
   FilterField,
   Pagination,
   Select,
@@ -22,12 +21,7 @@ import { useUserProfile } from '../../../features/user-profile';
 import { DMS_PERMISSIONS } from '../../../permissions';
 import { useHierarchy } from '../../../features/hierarchy';
 import { formatCalendarDateForBrowser } from '../../../utils/formatCalendarDate';
-import { formatListRowVisibilityCaption, listRowSearchMatches } from '../../../utils/academicContextSearch';
-import { normalizeForSearch } from '../../../utils/normalizeForSearch';
-import type { AcademicHierarchy } from '../../../types/hierarchy';
-
-// Estado y visibilidad: clases provenientes del módulo compartido `badges`
-// (los colores hex viven en `maya_infra/configs/styles/index.css`).
+import { formatListRowVisibilityCaption } from '../../../utils/academicContextSearch';
 
 function documentStatusLabel(
   status: string | null | undefined,
@@ -40,75 +34,6 @@ function documentStatusLabel(
   return label || status;
 }
 
-/** `delivery_deadline` presente y día calendario ≤ cap (Y-m-d), inclusive. */
-function deliveryDeadlineOnOrBefore(iso: string | null | undefined, capYmd: string): boolean {
-  const ymd = (iso ?? '').slice(0, 10);
-  if (!ymd) return false;
-  return ymd <= capYmd;
-}
-
-type Filters = {
-  name: string;
-  /** Texto libre del filtro «Visibilidad»: coincide con la columna (nivel + jerarquía + equipo). */
-  academicContext: string;
-  status: string;
-  authorName: string;
-  date: string;
-  /** '' = sin filtro; 'favorites' = solo marcados como favoritos */
-  favorites: string;
-};
-
-function applyClientFilters(
-  docs: Document[],
-  filters: Filters,
-  favoriteDocumentIds: ReadonlySet<string>,
-  hierarchy: AcademicHierarchy,
-): Document[] {
-  return docs.filter((doc) => {
-    if (filters.favorites === 'favorites' && !favoriteDocumentIds.has(doc.id)) {
-      return false;
-    }
-    if (filters.name) {
-      const needle = normalizeForSearch(filters.name);
-      if (!normalizeForSearch(doc.title ?? '').includes(needle)) return false;
-    }
-    if (filters.status && doc.status !== filters.status) return false;
-    if (filters.academicContext) {
-      if (
-        !listRowSearchMatches(
-          hierarchy,
-          {
-            visibility_level: doc.visibility_level ?? undefined,
-            study_type_id: doc.study_type_id,
-            study_id: doc.study_id,
-            module_id: doc.module_id,
-            team_id: doc.team_id,
-            team: doc.team,
-          },
-          filters.academicContext,
-        )
-      ) {
-        return false;
-      }
-    }
-    if (filters.authorName) {
-      const needle = normalizeForSearch(filters.authorName);
-      if (!normalizeForSearch(doc.owner_name ?? '').includes(needle)) return false;
-    }
-    if (filters.date) {
-      // La validación no aplica a publicados (no mostramos plazo en columna); no mezclar con `delivery_deadline` residual del API.
-      if (doc.status === 'published') {
-        return false;
-      }
-      if (!deliveryDeadlineOnOrBefore(doc.delivery_deadline, filters.date)) {
-        return false;
-      }
-    }
-    return true;
-  });
-}
-
-
 type Props = {
   /** Filtra el listado por proceso. No se expone en el panel de filtros. */
   processId?: string;
@@ -118,14 +43,62 @@ export function DocumentsTable({ processId }: Props = {}) {
   const navigate = useNavigate();
   const { t } = useTranslation(['documents', 'common']);
   const { profile, hasPermission } = useUserProfile();
-  const canIndex = hasPermission(DMS_PERMISSIONS.documentIndex);
   const canShow = hasPermission(DMS_PERMISSIONS.documentShow);
   const { hierarchy } = useHierarchy();
   const { documentIds: favoriteDocumentIds } = useFavoritesIds();
-  const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } = useTablePreferences({
+
+  // useTablePreferences se usa SOLO para visibilidad de columnas; sort y per_page
+  // los gestiona useServerTable (server-side, en URL/localStorage).
+  const { hiddenIds, toggleHidden } = useTablePreferences({
     storageKey: 'maya:dms:documents-table',
   });
-  const { documents, loading, error } = useDocuments(processId);
+
+  const {
+    rows,
+    meta,
+    loading,
+    error,
+    canIndex,
+    filters,
+    setFilter,
+    resetFilters,
+    filtersActiveCount,
+    page,
+    onPageChange,
+    pageSize,
+    onPageSizeChange,
+    sortBy,
+    onSortChange,
+  } = useServerDocumentsTable(processId);
+
+  // Búsqueda con debounce → param server-side `search` (título del documento).
+  const [searchInput, setSearchInput] = useState(filters.search ?? '');
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    setSearchInput(filters.search ?? '');
+  }, [filters.search]);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchInput(value);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      setFilter('search', value || undefined);
+    }, 400);
+  };
+
+  const clearFilters = () => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    setSearchInput('');
+    resetFilters();
+  };
+
+  // Si la página actual queda fuera de rango (p. ej. tras filtrar), corrige a la última.
+  useEffect(() => {
+    if (meta && meta.last_page >= 1 && page > meta.last_page) {
+      onPageChange(meta.last_page);
+    }
+  }, [meta, page, onPageChange]);
 
   const statusFilterOptions = useMemo(
     () => [
@@ -138,13 +111,38 @@ export function DocumentsTable({ processId }: Props = {}) {
     [t],
   );
 
-  const favoritesFilterOptions = useMemo(
-    () => [
-      { value: '', label: t('documents:table.favoritesFilter.all') },
-      { value: 'favorites', label: t('documents:table.favoritesFilter.onlyFavorites') },
-    ],
-    [t],
-  );
+  // Expansión de filas: por cada documento, fila "live" y/o "published_fallback".
+  const displayDocuments = useMemo(() => {
+    const out: Document[] = [];
+    for (const d of rows) {
+      const hasPublishedFallback = d.status !== 'published' && !!d.latest_published_version_id;
+      const isAssignedReviewer = d.status === 'in_review' && d.is_assigned_reviewer === true;
+      const canSeeLive =
+        (profile?.id != null && (profile.id === d.created_by || profile.id === d.owner_id)) ||
+        d.share_permission === 'edit' ||
+        isAssignedReviewer;
+
+      if (!hasPublishedFallback) {
+        out.push({ ...d, list_variant: 'live', list_row_id: `${d.id}:live` });
+        continue;
+      }
+
+      const publishedFallback: Document = {
+        ...d,
+        title: d.latest_published_title ?? d.title,
+        status: 'published',
+        current_version: d.latest_published_version_number ?? d.current_version,
+        list_variant: 'published_fallback',
+        list_row_id: `${d.id}:published`,
+      };
+
+      if (canSeeLive) {
+        out.push({ ...d, list_variant: 'live', list_row_id: `${d.id}:live` });
+      }
+      out.push(publishedFallback);
+    }
+    return out;
+  }, [rows, profile?.id]);
 
   const columns: ColumnDef<Document>[] = useMemo(
     () => [
@@ -152,6 +150,7 @@ export function DocumentsTable({ processId }: Props = {}) {
         id: 'title',
         header: t('documents:table.columns.name'),
         alwaysVisible: true,
+        sortable: true,
         cell: (doc) => (
           <span className="flex items-center gap-2 min-w-0">
             {favoriteDocumentIds.has(doc.id) && <FavoriteInlineMark />}
@@ -161,12 +160,11 @@ export function DocumentsTable({ processId }: Props = {}) {
                 className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-bold bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
                 title={t('documents:table.rejectedTitle')}
               >
-                  ⚠ {t('documents:table.reviewBadge')}
+                ⚠ {t('documents:table.reviewBadge')}
               </span>
             )}
           </span>
         ),
-        sortable: true,
       },
       {
         id: 'visibility_level',
@@ -236,128 +234,6 @@ export function DocumentsTable({ processId }: Props = {}) {
     [favoriteDocumentIds, hierarchy, profile, t],
   );
 
-  const [filters, setFilters] = useState<Filters>({
-    name: '',
-    academicContext: '',
-    status: '',
-    authorName: '',
-    date: '',
-    favorites: '',
-  });
-  const [nameInput, setNameInput] = useState('');
-  const [academicContextInput, setAcademicContextInput] = useState('');
-  const [authorInput, setAuthorInput] = useState('');
-  const [page, setPage] = useState(1);
-  const nameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const academicContextDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const authorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const displayDocuments = useMemo(() => {
-    const out: Document[] = [];
-    for (const d of documents) {
-      const hasPublishedFallback =
-        d.status !== 'published' &&
-        !!d.latest_published_version_id;
-      const isAssignedReviewer =
-        d.status === 'in_review' &&
-        d.is_assigned_reviewer === true;
-      const canSeeLive =
-        (profile?.id != null && (profile.id === d.created_by || profile.id === d.owner_id)) ||
-        d.share_permission === 'edit' ||
-        isAssignedReviewer;
-
-      if (!hasPublishedFallback) {
-        out.push({ ...d, list_variant: 'live', list_row_id: `${d.id}:live` });
-        continue;
-      }
-
-      const publishedFallback: Document = {
-        ...d,
-        title: d.latest_published_title ?? d.title,
-        status: 'published',
-        current_version: d.latest_published_version_number ?? d.current_version,
-        list_variant: 'published_fallback',
-        list_row_id: `${d.id}:published`,
-      };
-
-      if (canSeeLive) {
-        out.push({ ...d, list_variant: 'live', list_row_id: `${d.id}:live` });
-      }
-      out.push(publishedFallback);
-    }
-    return out;
-  }, [documents, hasPermission, profile?.id]);
-
-  const filtered = useMemo(
-    () => applyClientFilters(displayDocuments, filters, favoriteDocumentIds, hierarchy),
-    [displayDocuments, filters, favoriteDocumentIds, hierarchy],
-  );
-
-  const sorted = useMemo(() => {
-    if (!sortBy) return filtered;
-    const { columnId, direction } = sortBy;
-    const dir = direction === 'asc' ? 1 : -1;
-
-    return [...filtered].sort((a, b) => {
-      let valA: string | number = '';
-      let valB: string | number = '';
-
-      if (columnId === 'title') {
-        return (a.title ?? '').localeCompare(b.title ?? '', 'es') * dir;
-      } else if (columnId === 'delivery_deadline') {
-        valA = a.status === 'published' ? '9999-12-31' : (a.delivery_deadline ?? '').slice(0, 10);
-        valB = b.status === 'published' ? '9999-12-31' : (b.delivery_deadline ?? '').slice(0, 10);
-      } else if (columnId === 'status') {
-        valA = a.status ?? '';
-        valB = b.status ?? '';
-      }
-
-      if (valA < valB) return -1 * dir;
-      if (valA > valB) return 1 * dir;
-      return 0;
-    });
-  }, [filtered, sortBy]);
-
-  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
-  const safePage = Math.min(page, totalPages);
-  const pageSlice = sorted.slice((safePage - 1) * pageSize, safePage * pageSize);
-
-  const filtersActiveCount =
-    (filters.favorites ? 1 : 0) +
-    [filters.name, filters.academicContext, filters.status, filters.authorName, filters.date].filter(Boolean).length;
-
-  const handleFilterChange = (patch: Partial<Filters>) => {
-    setFilters((f) => ({ ...f, ...patch }));
-    setPage(1);
-  };
-
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setNameInput(value);
-    if (nameDebounceRef.current) clearTimeout(nameDebounceRef.current);
-    nameDebounceRef.current = setTimeout(() => {
-      handleFilterChange({ name: value });
-    }, 400);
-  };
-
-  const handleAuthorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setAuthorInput(value);
-    if (authorDebounceRef.current) clearTimeout(authorDebounceRef.current);
-    authorDebounceRef.current = setTimeout(() => {
-      handleFilterChange({ authorName: value });
-    }, 400);
-  };
-
-  const handleAcademicContextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setAcademicContextInput(value);
-    if (academicContextDebounceRef.current) clearTimeout(academicContextDebounceRef.current);
-    academicContextDebounceRef.current = setTimeout(() => {
-      handleFilterChange({ academicContext: value });
-    }, 400);
-  };
-
   const canOpenDocument = (doc: Document): boolean => {
     if (canShow) {
       return true;
@@ -376,17 +252,6 @@ export function DocumentsTable({ processId }: Props = {}) {
     );
   }
 
-  const clearFilters = () => {
-    if (nameDebounceRef.current) clearTimeout(nameDebounceRef.current);
-    if (academicContextDebounceRef.current) clearTimeout(academicContextDebounceRef.current);
-    if (authorDebounceRef.current) clearTimeout(authorDebounceRef.current);
-    setNameInput('');
-    setAcademicContextInput('');
-    setAuthorInput('');
-    setFilters({ name: '', academicContext: '', status: '', authorName: '', date: '', favorites: '' });
-    setPage(1);
-  };
-
   return (
     <div className="space-y-4">
       {error && (
@@ -397,18 +262,15 @@ export function DocumentsTable({ processId }: Props = {}) {
 
       <DataTable
         columns={columns}
-        rows={pageSlice}
-        loading={loading && documents.length === 0}
+        rows={displayDocuments}
+        loading={loading && rows.length === 0}
         rowKey={(doc) => doc.list_row_id ?? doc.id}
         hiddenColumnIds={hiddenIds}
         onToggleHiddenColumn={toggleHidden}
         sortBy={sortBy}
-        onSortChange={setSortBy}
+        onSortChange={onSortChange}
         pageSize={pageSize}
-        onPageSizeChange={(size) => {
-          setPageSize(size)
-          setPage(1)
-        }}
+        onPageSizeChange={onPageSizeChange}
         filtersLabel={t('documents:table.filtersLabel')}
         columnsLabel={t('documents:table.columnsLabel')}
         clearFiltersLabel={t('documents:table.clearFiltersLabel')}
@@ -427,9 +289,7 @@ export function DocumentsTable({ processId }: Props = {}) {
             });
             return;
           }
-          const isReviewerForDoc =
-            doc.status === 'in_review' &&
-            doc.is_assigned_reviewer === true;
+          const isReviewerForDoc = doc.status === 'in_review' && doc.is_assigned_reviewer === true;
           if (isReviewerForDoc) {
             navigate(`/documents/${doc.id}/validate`, {
               state: { backTo: processId ? `/procesos/${processId}` : '/dashboard', processId },
@@ -447,73 +307,51 @@ export function DocumentsTable({ processId }: Props = {}) {
                 fieldSize="sm"
                 type="search"
                 placeholder={t('documents:wizard.searchByName')}
-                value={nameInput}
-                onChange={handleNameChange}
-              />
-            </FilterField>
-            <FilterField label={t('documents:table.filters.visibility')}>
-              <TextInput
-                fieldSize="sm"
-                type="search"
-                placeholder={t('documents:wizard.searchVisibility')}
-                value={academicContextInput}
-                onChange={handleAcademicContextChange}
+                value={searchInput}
+                onChange={handleSearchChange}
               />
             </FilterField>
             <FilterField label={t('documents:table.filters.status')}>
               <Select
                 fieldSize="sm"
-                value={filters.status}
-                onChange={(e) => handleFilterChange({ status: e.target.value })}
+                value={filters.status ?? ''}
+                onChange={(e) => setFilter('status', e.target.value || undefined)}
               >
                 {statusFilterOptions.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </Select>
             </FilterField>
-            <FilterField label={t('documents:table.filters.author')}>
-              <TextInput
-                fieldSize="sm"
-                placeholder={t('documents:wizard.authorPlaceholder')}
-                value={authorInput}
-                onChange={handleAuthorChange}
-              />
-            </FilterField>
             <FilterField label={t('documents:table.filters.favorites')}>
               <Select
                 fieldSize="sm"
-                value={filters.favorites}
-                onChange={(e) => handleFilterChange({ favorites: e.target.value })}
+                value={filters.favorites ?? ''}
+                onChange={(e) => setFilter('favorites', e.target.value || undefined)}
               >
-                {favoritesFilterOptions.map((o) => (
-                  <option key={o.value || 'all'} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
+                <option value="">{t('documents:table.favoritesFilter.all')}</option>
+                <option value="favorites">{t('documents:table.favoritesFilter.onlyFavorites')}</option>
               </Select>
-            </FilterField>
-            <FilterField label={t('documents:table.filters.validationUntil')}>
-              <DatePicker
-                value={filters.date || null}
-                onChange={(d) => handleFilterChange({ date: d ?? '' })}
-                placeholder={t('documents:wizard.deadlinePlaceholder')}
-                ariaLabel={t('documents:table.deadlineAria')}
-              />
             </FilterField>
           </>
         }
       />
 
-      <Pagination
-        currentPage={safePage}
-        totalPages={totalPages}
-        onChange={setPage}
-        info={t('documents:table.paginationInfo', {
-          page: safePage,
-          totalPages,
-          count: filtered.length,
-        })}
-      />
+      {meta && (
+        <Pagination
+          currentPage={meta.current_page}
+          totalPages={meta.last_page}
+          onChange={onPageChange}
+          info={
+            meta.total > 0
+              ? t('documents:table.paginationInfo', {
+                  page: meta.current_page,
+                  totalPages: meta.last_page,
+                  count: meta.total,
+                })
+              : undefined
+          }
+        />
+      )}
     </div>
   );
 }

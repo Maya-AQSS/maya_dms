@@ -2,9 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
-  Button,
   DataTable,
-  DatePicker,
   FilterField,
   Pagination,
   Select,
@@ -14,17 +12,15 @@ import {
   visibilityBadgeClass,
   type ColumnDef,
 } from '@ceedcv-maya/shared-ui-react';
-import { useTemplates } from '../hooks/useTemplates';
-import { buildTemplatesListMeta, sliceTemplatesPage } from '../clientTemplatePagination';
+import { useServerTemplatesTable } from '../hooks/useServerTemplatesTable';
 import type { Template, TemplateStatus, TemplateVisibilityLevel } from '../../../types/templates';
 import { useUserProfile } from '../../../features/user-profile';
 import { DMS_PERMISSIONS } from '../../../permissions';
 import { useHierarchy } from '../../../features/hierarchy';
-import { formatListRowVisibilityCaption, listRowSearchMatches } from '../../../utils/academicContextSearch';
+import { formatListRowVisibilityCaption } from '../../../utils/academicContextSearch';
 import { useFavoritesIds } from '../../../hooks/useFavoritesIds';
 import { FavoriteInlineMark } from '../../../components/FavoriteInlineMark';
 import { formatCalendarDateForBrowser } from '../../../utils/formatCalendarDate';
-import { normalizeForSearch } from '../../../utils/normalizeForSearch';
 import { shouldOpenTemplateEditorFromList } from '../templateListNavigation';
 
 function templateStatusLabel(
@@ -38,8 +34,6 @@ function templateStatusLabel(
   return label || status;
 }
 
-// Estado y visibilidad: clases en `@ceedcv-maya/shared-ui-react/badges`.
-
 type Props = {
   /** Filtra el listado por proceso. No se expone en el panel de filtros. */
   processId?: string;
@@ -49,145 +43,101 @@ export function TemplatesTable({ processId }: Props = {}) {
   const { t } = useTranslation(['common', 'templates', 'documents']);
   const navigate = useNavigate();
   const { profile, hasPermission } = useUserProfile();
-  const canIndex = hasPermission(DMS_PERMISSIONS.templateIndex);
   const canShow = hasPermission(DMS_PERMISSIONS.templateShow);
   const canReview = hasPermission(DMS_PERMISSIONS.templateReview);
   const { hierarchy } = useHierarchy();
 
-  const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } = useTablePreferences({
+  // useTablePreferences se usa SOLO para visibilidad de columnas; el sort y el
+  // per_page los gestiona useServerTable (server-side, en URL/localStorage).
+  const { hiddenIds, toggleHidden } = useTablePreferences({
     storageKey: 'maya:dms:templates-table',
   });
   const { templateIds: favoriteTemplateIds } = useFavoritesIds();
+
   const {
-    catalogSorted,
-    filters,
+    rows,
+    meta,
     loading,
     listError,
-    actionError,
-    clearActionError,
-    applyFilters,
-    goToPage,
-  } = useTemplates(processId, sortBy);
+    canIndex,
+    filters,
+    setFilter,
+    resetFilters,
+    filtersActiveCount,
+    page,
+    onPageChange,
+    pageSize,
+    onPageSizeChange,
+    sortBy,
+    onSortChange,
+  } = useServerTemplatesTable(processId);
 
-  const [nameInput, setNameInput] = useState('');
-  const [nameFilter, setNameFilter] = useState('');
-  const nameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const [favoritesFilter, setFavoritesFilter] = useState('');
-
-  const [authorInput, setAuthorInput] = useState(filters.author_name ?? '');
-  const authorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const [academicContextInput, setAcademicContextInput] = useState('');
-  const [academicContextFilter, setAcademicContextFilter] = useState('');
-  const academicContextDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const listPage = filters.page ?? 1;
-  const listPerPage = filters.per_page ?? pageSize;
-
-  const clientFilteredCatalog = useMemo(() => {
-    let list = catalogSorted;
-    if (favoritesFilter === 'favorites') {
-      list = list.filter(
-        (t) =>
-          (!!t.working_version_id && favoriteTemplateIds.has(t.working_version_id)) ||
-          (!!t.latest_published_version_id && favoriteTemplateIds.has(t.latest_published_version_id)),
-      );
-    }
-    if (nameFilter.trim()) {
-      const needle = normalizeForSearch(nameFilter.trim());
-      list = list.filter((t) => normalizeForSearch(t.name ?? '').includes(needle));
-    }
-    if (academicContextFilter.trim()) {
-      list = list.filter((t) =>
-        listRowSearchMatches(
-          hierarchy,
-          {
-            visibility_level: t.visibility_level,
-            study_type_id: t.study_type_id,
-            study_id: t.study_id,
-            module_id: t.module_id,
-            team_id: t.team_id,
-            team: t.team,
-          },
-          academicContextFilter,
-        ),
-      );
-    }
-    return list;
-  }, [catalogSorted, favoritesFilter, nameFilter, academicContextFilter, favoriteTemplateIds, hierarchy]);
-
+  // Búsqueda con debounce → param server-side `search` (nombre de plantilla o autor).
+  const [searchInput, setSearchInput] = useState(filters.search ?? '');
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Sincroniza el input cuando la URL cambia desde fuera (back/forward, limpiar).
   useEffect(() => {
-    const last = Math.max(1, Math.ceil(clientFilteredCatalog.length / Math.max(1, listPerPage)));
-    if (listPage > last) {
-      applyFilters({ page: last });
+    setSearchInput(filters.search ?? '');
+  }, [filters.search]);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchInput(value);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      setFilter('search', value || undefined);
+    }, 400);
+  };
+
+  const clearFilters = () => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    setSearchInput('');
+    resetFilters();
+  };
+
+  // Si la página actual queda fuera de rango (p. ej. tras filtrar), corrige a la última.
+  useEffect(() => {
+    if (meta && meta.last_page >= 1 && page > meta.last_page) {
+      onPageChange(meta.last_page);
     }
-  }, [clientFilteredCatalog.length, listPage, listPerPage, applyFilters]);
+  }, [meta, page, onPageChange]);
 
-  const pagedCatalog = useMemo(
-    () => sliceTemplatesPage(clientFilteredCatalog, listPage, listPerPage),
-    [clientFilteredCatalog, listPage, listPerPage],
-  );
-
-  const meta = useMemo(
-    () => buildTemplatesListMeta(clientFilteredCatalog.length, listPage, listPerPage),
-    [clientFilteredCatalog.length, listPage, listPerPage],
-  );
-
+  // Expansión de filas: por cada plantilla, fila "live" y/o "published_fallback".
   const displayTemplates = useMemo(() => {
-    /** Con filtro de estado ≠ publicada, no mostrar la fila sintética de última publicada (siempre `published`). */
     const includePublishedFallbackRow = !filters.status || filters.status === 'published';
 
     const out: Template[] = [];
-    for (const t of pagedCatalog) {
-      const hasPublishedFallback =
-        t.status !== 'published' &&
-        !!t.latest_published_version_id;
+    for (const tpl of rows) {
+      const hasPublishedFallback = tpl.status !== 'published' && !!tpl.latest_published_version_id;
       const isAssignedReviewer =
-        t.status === 'in_review' &&
+        tpl.status === 'in_review' &&
         !!profile?.id &&
-        (t.reviewers?.some((r) => r.user_id === profile.id) ?? false);
-      const canSeeLive = (!!profile?.id && t.created_by === profile.id) || isAssignedReviewer;
+        (tpl.reviewers?.some((r) => r.user_id === profile.id) ?? false);
+      const canSeeLive = (!!profile?.id && tpl.created_by === profile.id) || isAssignedReviewer;
 
       if (!hasPublishedFallback) {
-        out.push({ ...t, list_variant: 'live', list_row_id: `${t.id}:live` });
+        out.push({ ...tpl, list_variant: 'live', list_row_id: `${tpl.id}:live` });
         continue;
       }
 
       const publishedFallback: Template = {
-        ...t,
-        name: t.latest_published_name ?? t.name,
+        ...tpl,
+        name: tpl.latest_published_name ?? tpl.name,
         status: 'published',
-        version: t.latest_published_version_number ?? t.version,
+        version: tpl.latest_published_version_number ?? tpl.version,
         list_variant: 'published_fallback',
-        list_row_id: `${t.id}:published`,
+        list_row_id: `${tpl.id}:published`,
       };
 
       if (canSeeLive) {
-        out.push({ ...t, list_variant: 'live', list_row_id: `${t.id}:live` });
+        out.push({ ...tpl, list_variant: 'live', list_row_id: `${tpl.id}:live` });
       }
       if (includePublishedFallbackRow) {
         out.push(publishedFallback);
       }
     }
-    if (filters.delivery_deadline) {
-      return out.filter((row) => row.status !== 'published');
-    }
     return out;
-  }, [pagedCatalog, profile?.id, filters.delivery_deadline, filters.status]);
-
-  const filterUi = useMemo(
-    () => ({
-      status: filters.status ?? '',
-      deliveryDeadline: filters.delivery_deadline ?? '',
-    }),
-    [filters],
-  );
-
-  const filtersActiveCount =
-    (favoritesFilter ? 1 : 0) +
-    [nameFilter, academicContextFilter, filterUi.status, filterUi.deliveryDeadline, authorInput].filter((v) => v && v !== '')
-      .length;
+  }, [rows, profile?.id, filters.status]);
 
   const statusOptions = useMemo(
     () => [
@@ -201,103 +151,44 @@ export function TemplatesTable({ processId }: Props = {}) {
     [t],
   );
 
-  const favoritesFilterOptions = useMemo(
-    () => [
-      { value: '', label: t('templates:table.favoritesFilter.all') },
-      { value: 'favorites', label: t('templates:table.favoritesFilter.onlyFavorites') },
-    ],
-    [t],
-  );
-
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setNameInput(value);
-    if (nameDebounceRef.current) clearTimeout(nameDebounceRef.current);
-    nameDebounceRef.current = setTimeout(() => {
-      setNameFilter(value);
-    }, 400);
-  };
-
-  const handleAuthorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setAuthorInput(value);
-    if (authorDebounceRef.current) clearTimeout(authorDebounceRef.current);
-    authorDebounceRef.current = setTimeout(() => {
-      applyFilters({ author_name: value || undefined });
-    }, 400);
-  };
-
-  const handleAcademicContextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setAcademicContextInput(value);
-    if (academicContextDebounceRef.current) clearTimeout(academicContextDebounceRef.current);
-    academicContextDebounceRef.current = setTimeout(() => {
-      setAcademicContextFilter(value);
-    }, 400);
-  };
-
-  const clearFilters = () => {
-    if (nameDebounceRef.current) clearTimeout(nameDebounceRef.current);
-    if (academicContextDebounceRef.current) clearTimeout(academicContextDebounceRef.current);
-    if (authorDebounceRef.current) clearTimeout(authorDebounceRef.current);
-    setNameInput('');
-    setNameFilter('');
-    setAcademicContextInput('');
-    setAcademicContextFilter('');
-    setFavoritesFilter('');
-    setAuthorInput('');
-    applyFilters({
-      visibility_level: undefined,
-      status: undefined,
-      study_type_id: undefined,
-      study_id: undefined,
-      module_id: undefined,
-      team_id: undefined,
-      author_name: undefined,
-      delivery_deadline: undefined,
-    });
-  };
-
-  const canOpenTemplate = (t: Template): boolean => {
+  const canOpenTemplate = (tpl: Template): boolean => {
     if (canShow) {
       return true;
     }
-    if (profile?.id && t.created_by === profile.id) {
+    if (profile?.id && tpl.created_by === profile.id) {
       return true;
     }
-    const isAssignedReviewer =
-      t.reviewers?.some((r) => r.user_id === profile?.id) === true;
-    if (isAssignedReviewer && (t.status === 'in_review' || t.status === 'rejected')) {
+    const isAssignedReviewer = tpl.reviewers?.some((r) => r.user_id === profile?.id) === true;
+    if (isAssignedReviewer && (tpl.status === 'in_review' || tpl.status === 'rejected')) {
       return true;
     }
     return false;
   };
 
-  const handleRowClick = (t: Template) => {
-    if (!canOpenTemplate(t)) {
+  const handleRowClick = (tpl: Template) => {
+    if (!canOpenTemplate(tpl)) {
       return;
     }
 
     const backTo = processId ? `/procesos/${processId}` : '/dashboard';
-    if (t.list_variant === 'published_fallback' && t.latest_published_version_id) {
-      navigate(`/templates/${t.id}?templateVersionId=${encodeURIComponent(t.latest_published_version_id)}`, {
+    if (tpl.list_variant === 'published_fallback' && tpl.latest_published_version_id) {
+      navigate(`/templates/${tpl.id}?templateVersionId=${encodeURIComponent(tpl.latest_published_version_id)}`, {
         state: { backTo, processId },
       });
       return;
     }
-    const isAssignedReviewer =
-      t.reviewers?.some((r) => r.user_id === profile?.id) === true;
-    const openReviewView = t.status === 'in_review' && isAssignedReviewer && canReview;
+    const isAssignedReviewer = tpl.reviewers?.some((r) => r.user_id === profile?.id) === true;
+    const openReviewView = tpl.status === 'in_review' && isAssignedReviewer && canReview;
     if (openReviewView) {
-      navigate(`/templates/${t.id}/review`, { state: { backTo, processId } });
+      navigate(`/templates/${tpl.id}/review`, { state: { backTo, processId } });
       return;
     }
-    const isOwner = profile?.id != null && t.created_by === profile.id;
-    if (shouldOpenTemplateEditorFromList(t, isOwner)) {
-      navigate(`/templates/${t.id}/edit`, { state: { backTo, processId } });
+    const isOwner = profile?.id != null && tpl.created_by === profile.id;
+    if (shouldOpenTemplateEditorFromList(tpl, isOwner)) {
+      navigate(`/templates/${tpl.id}/edit`, { state: { backTo, processId } });
       return;
     }
-    navigate(`/templates/${t.id}`, { state: { backTo, processId } });
+    navigate(`/templates/${tpl.id}`, { state: { backTo, processId } });
   };
 
   const columns: ColumnDef<Template>[] = useMemo(
@@ -309,7 +200,7 @@ export function TemplatesTable({ processId }: Props = {}) {
         alwaysVisible: true,
         cell: (template) => {
           const isFavorite =
-            (template.latest_published_version_id && favoriteTemplateIds.has(template.latest_published_version_id));
+            template.latest_published_version_id && favoriteTemplateIds.has(template.latest_published_version_id);
           return (
             <span className="flex items-center gap-2 min-w-0">
               {isFavorite ? <FavoriteInlineMark /> : null}
@@ -401,36 +292,25 @@ export function TemplatesTable({ processId }: Props = {}) {
           {listError}
         </div>
       )}
-      {actionError && (
-        <div className="rounded-lg border border-odoo-purple/30 bg-odoo-purple/5 px-4 py-3 text-sm text-text-primary dark:text-text-dark-primary flex justify-between gap-4">
-          <span>{actionError}</span>
-          <Button type="button" variant="ghost" size="xs" onClick={clearActionError} className="shrink-0">
-            {t('templates:table.close')}
-          </Button>
-        </div>
-      )}
 
       <DataTable<Template>
         columns={columns}
         rows={displayTemplates}
-        loading={loading && catalogSorted.length === 0}
-        rowKey={(t) => t.list_row_id ?? t.id}
+        loading={loading && rows.length === 0}
+        rowKey={(tpl) => tpl.list_row_id ?? tpl.id}
         hiddenColumnIds={hiddenIds}
         onToggleHiddenColumn={toggleHidden}
         sortBy={sortBy}
-        onSortChange={setSortBy}
+        onSortChange={onSortChange}
         pageSize={pageSize}
-        onPageSizeChange={(size) => {
-          setPageSize(size);
-          applyFilters({ per_page: size });
-        }}
+        onPageSizeChange={onPageSizeChange}
         filtersLabel={t('templates:table.filtersLabel')}
         columnsLabel={t('templates:table.columnsLabel')}
         clearFiltersLabel={t('templates:table.clearFiltersLabel')}
         pageSizeLabel={t('templates:table.pageSizeLabel')}
         emptyMessage={t('templates:table.emptyFiltered')}
         onRowClick={handleRowClick}
-        rowClassName={(t) => (canOpenTemplate(t) ? '' : 'opacity-60 cursor-not-allowed')}
+        rowClassName={(tpl) => (canOpenTemplate(tpl) ? '' : 'opacity-60 cursor-not-allowed')}
         filtersActiveCount={filtersActiveCount}
         onClearFilters={clearFilters}
         filtersStorageKey="maya:dms:templates-table"
@@ -440,25 +320,16 @@ export function TemplatesTable({ processId }: Props = {}) {
               <TextInput
                 fieldSize="sm"
                 placeholder={t('templates:table.searchName')}
-                value={nameInput}
-                onChange={handleNameChange}
-              />
-            </FilterField>
-            <FilterField label={t('templates:table.filters.visibility')}>
-              <TextInput
-                fieldSize="sm"
-                type="search"
-                placeholder={t('templates:table.searchVisibility')}
-                value={academicContextInput}
-                onChange={handleAcademicContextChange}
+                value={searchInput}
+                onChange={handleSearchChange}
               />
             </FilterField>
             <FilterField label={t('templates:table.filters.status')}>
               <Select
                 fieldSize="sm"
-                value={filterUi.status}
+                value={filters.status ?? ''}
                 onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                  applyFilters({ status: (e.target.value as any) || undefined })
+                  setFilter('status', e.target.value || undefined)
                 }
               >
                 {statusOptions.map((o) => (
@@ -468,39 +339,17 @@ export function TemplatesTable({ processId }: Props = {}) {
                 ))}
               </Select>
             </FilterField>
-            <FilterField label={t('templates:table.filters.author')}>
-              <TextInput
-                fieldSize="sm"
-                placeholder={t('templates:table.authorPlaceholder')}
-                value={authorInput}
-                onChange={handleAuthorChange}
-              />
-            </FilterField>
             <FilterField label={t('templates:table.filters.favorites')}>
               <Select
                 fieldSize="sm"
-                value={favoritesFilter}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                  setFavoritesFilter(e.target.value);
-                  applyFilters({ page: 1 });
-                }}
-              >
-                {favoritesFilterOptions.map((o) => (
-                  <option key={o.value || 'all'} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </Select>
-            </FilterField>
-            <FilterField label={t('templates:table.filters.validationUntil')}>
-              <DatePicker
-                value={filterUi.deliveryDeadline || null}
-                onChange={(d: string | null) =>
-                  applyFilters({ delivery_deadline: d ?? undefined, page: 1 })
+                value={filters.favorites ?? ''}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                  setFilter('favorites', e.target.value || undefined)
                 }
-                placeholder={t('templates:table.deadlinePlaceholder')}
-                ariaLabel={t('templates:table.deadlineAria')}
-              />
+              >
+                <option value="">{t('templates:table.favoritesFilter.all')}</option>
+                <option value="favorites">{t('templates:table.favoritesFilter.onlyFavorites')}</option>
+              </Select>
             </FilterField>
           </>
         }
@@ -510,7 +359,7 @@ export function TemplatesTable({ processId }: Props = {}) {
         <Pagination
           currentPage={meta.current_page}
           totalPages={meta.last_page}
-          onChange={goToPage}
+          onChange={onPageChange}
           info={
             meta.total > 0
               ? t('templates:table.paginationInfo', {

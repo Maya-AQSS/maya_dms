@@ -21,6 +21,8 @@ final readonly class DocumentFilterDto extends FilterDto
         public readonly ?string $createdBy = null,
         public readonly ?string $from = null,
         public readonly ?string $to = null,
+        /** @var list<string>|null Ids de documentos marcados como favoritos por el usuario. */
+        public readonly ?array $favoriteIds = null,
         int $page = 1,
         int $perPage = 15,
         ?string $sortBy = 'created_at',

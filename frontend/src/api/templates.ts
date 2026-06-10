@@ -133,14 +133,17 @@ function buildListQuery(filters: TemplateListFilters): string {
   if (filters.team_id) {
     q.set('team_id', filters.team_id);
   }
-  if (filters.author_name) {
-    q.set('author_name', filters.author_name);
+  if (filters.search) {
+    q.set('search', filters.search);
   }
-  if (filters.delivery_deadline) {
-    q.set('delivery_deadline', filters.delivery_deadline);
+  if (filters.sort_by) {
+    q.set('sort_by', filters.sort_by);
   }
-  if (filters.published_on) {
-    q.set('published_on', filters.published_on);
+  if (filters.sort_dir) {
+    q.set('sort_dir', filters.sort_dir);
+  }
+  if (filters.favorite_ids) {
+    q.set('favorite_ids', filters.favorite_ids);
   }
   if (filters.process_id) {
     q.set('process_id', filters.process_id);
@@ -153,6 +156,26 @@ function buildListQuery(filters: TemplateListFilters): string {
   }
   const s = q.toString();
   return s ? `?${s}` : '';
+}
+
+/**
+ * GET /api/v1/templates — una sola página (server-side: filtros, sort y paginación
+ * los resuelve el backend). Usado por la tabla de plantillas vía useServerTable.
+ */
+export async function fetchTemplatesPage(
+  filters: TemplateListFilters = {},
+): Promise<TemplatesListResponse> {
+  const body = await apiGetJson<unknown>(`templates${buildListQuery(filters)}`);
+  const page = normalizePaginatedResponse<Template>(body);
+  return {
+    data: page.data,
+    meta: {
+      current_page: page.current_page,
+      last_page: page.last_page,
+      per_page: page.per_page,
+      total: page.total,
+    },
+  };
 }
 
 /** GET /api/v1/templates — agrega todas las páginas del listado paginado (ADR-C). */

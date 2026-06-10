@@ -152,6 +152,22 @@ class TemplateRepository implements TemplateRepositoryInterface
             $query->where('template_head_ev.snapshot_data->template->team_id', $filter->teamId);
         }
 
+        if ($filter->favoriteIds !== null && $filter->favoriteIds !== []) {
+            // Favoritos de plantilla se referencian por id de versión: la versión
+            // cabezal (head_entity_version_id) o cualquier versión publicada.
+            $ids = $filter->favoriteIds;
+            $query->where(function ($q) use ($ids) {
+                $q->whereIn('templates.head_entity_version_id', $ids)
+                    ->orWhereExists(function ($sub) use ($ids) {
+                        $sub->select(DB::raw(1))
+                            ->from('entity_versions as fav_ev')
+                            ->whereColumn('fav_ev.versionable_id', 'templates.id')
+                            ->where('fav_ev.versionable_type', Template::class)
+                            ->whereIn('fav_ev.id', $ids);
+                    });
+            });
+        }
+
         if ($filter->search !== null && trim($filter->search) !== '') {
             $needle = SearchAccentFold::fold($filter->search);
             if ($needle !== '') {

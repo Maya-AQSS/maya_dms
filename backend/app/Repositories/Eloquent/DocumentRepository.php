@@ -419,6 +419,11 @@ class DocumentRepository implements DocumentRepositoryInterface
             );
         }
 
+        if ($filter->favoriteIds !== null && $filter->favoriteIds !== []) {
+            // Favoritos de documento se referencian por el id del propio documento.
+            $query->whereIn('documents.id', $filter->favoriteIds);
+        }
+
         if ($filter->from !== null) {
             $query->whereDate('documents.created_at', '>=', $filter->from);
         }

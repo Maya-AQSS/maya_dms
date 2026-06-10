@@ -138,6 +138,14 @@ export type TemplateListFilters = {
   module_id?: string;
   team_id?: string;
   author_name?: string;
+  /** Búsqueda server-side por nombre de plantilla o nombre del autor. */
+  search?: string;
+  /** Columna de ordenación server-side (whitelist backend: name, delivery_deadline, created_at, updated_at). */
+  sort_by?: string;
+  /** Dirección de ordenación server-side. */
+  sort_dir?: 'asc' | 'desc';
+  /** CSV de ids de versión favoritos (filtro "solo favoritos" resuelto server-side). */
+  favorite_ids?: string;
   /** Y-m-d: plantillas con fecha límite de validación en esa fecha o anterior (inclusive). */
   delivery_deadline?: string;
   /** Filtro por día de publicación de la última versión publicada (Y-m-d). */

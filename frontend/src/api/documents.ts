@@ -15,9 +15,74 @@ export type TemplateVersionStatus = {
 
 export type DocumentListFilters = {
   process_id?: string;
+  status?: string;
+  template_id?: string;
+  created_by?: string;
+  /** Búsqueda server-side por título del documento. */
+  search?: string;
+  /** Y-m-d: documentos creados en esa fecha o después. */
+  from?: string;
+  /** Y-m-d: documentos creados en esa fecha o antes. */
+  to?: string;
+  /** Columna de ordenación server-side (whitelist backend: title, status, delivery_deadline, created_at, updated_at). */
+  sort_by?: string;
+  sort_dir?: 'asc' | 'desc';
+  /** CSV de ids de documento favoritos (filtro "solo favoritos" resuelto server-side). */
+  favorite_ids?: string;
   page?: number;
   per_page?: number;
 };
+
+/** Metadatos de paginación server-side de documentos. */
+export type DocumentsListMeta = {
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+};
+
+export type DocumentsPageResponse = {
+  data: Document[];
+  meta: DocumentsListMeta;
+};
+
+function buildDocumentsListQuery(filters: DocumentListFilters): string {
+  const q = new URLSearchParams();
+  if (filters.process_id) q.set('process_id', filters.process_id);
+  if (filters.status) q.set('status', filters.status);
+  if (filters.template_id) q.set('template_id', filters.template_id);
+  if (filters.created_by) q.set('created_by', filters.created_by);
+  if (filters.search) q.set('search', filters.search);
+  if (filters.from) q.set('from', filters.from);
+  if (filters.to) q.set('to', filters.to);
+  if (filters.sort_by) q.set('sort_by', filters.sort_by);
+  if (filters.sort_dir) q.set('sort_dir', filters.sort_dir);
+  if (filters.favorite_ids) q.set('favorite_ids', filters.favorite_ids);
+  if (filters.page) q.set('page', String(filters.page));
+  if (filters.per_page) q.set('per_page', String(filters.per_page));
+  const s = q.toString();
+  return s ? `?${s}` : '';
+}
+
+/**
+ * GET /api/v1/documents — una sola página (server-side: filtros, sort y paginación
+ * los resuelve el backend). Usado por la tabla de documentos vía useServerTable.
+ */
+export async function fetchDocumentsPage(
+  filters: DocumentListFilters = {},
+): Promise<DocumentsPageResponse> {
+  const body = await apiGetJson<unknown>(`documents${buildDocumentsListQuery(filters)}`);
+  const page = normalizePaginatedResponse<Document>(body);
+  return {
+    data: page.data,
+    meta: {
+      current_page: page.current_page,
+      last_page: page.last_page,
+      per_page: page.per_page,
+      total: page.total,
+    },
+  };
+}
 type DocumentDetailApiResponse = { data: DocumentDetail };
 type CreationMode = 'none' | 'auto' | 'select';
 
