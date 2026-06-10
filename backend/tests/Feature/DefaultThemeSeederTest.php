@@ -27,6 +27,30 @@ class DefaultThemeSeederTest extends TestCase
         $this->assertSame(DocumentConstants::DEFAULT_THEME['typography'], $theme->typography);
     }
 
+    public function test_seeds_visible_layout_regions(): void
+    {
+        $this->seed(DefaultThemeSeeder::class);
+
+        $theme = Theme::query()->find(DefaultThemeSeeder::DEFAULT_THEME_ID);
+        $regions = $theme->layout['regions'] ?? [];
+
+        $this->assertNotEmpty($regions, 'El tema por defecto debe traer regiones visibles.');
+
+        $types = array_map(static fn (array $r): string => $r['type'] ?? '', $regions);
+        $this->assertContains('content_slot', $types);
+        $this->assertContains('text', $types);
+        $this->assertContains('page_number', $types);
+
+        // Cada región debe llevar caja en mm para que el editor/preview la posicione.
+        foreach ($regions as $r) {
+            $this->assertArrayHasKey('box', $r);
+            $this->assertArrayHasKey('x', $r['box']);
+            $this->assertArrayHasKey('y', $r['box']);
+            $this->assertArrayHasKey('w', $r['box']);
+            $this->assertArrayHasKey('h', $r['box']);
+        }
+    }
+
     public function test_is_idempotent(): void
     {
         $this->seed(DefaultThemeSeeder::class);
