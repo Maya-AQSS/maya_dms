@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\BlockState;
+use App\Enums\BlockType;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -21,11 +22,19 @@ return new class extends Migration
         Schema::create('template_blocks', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('template_id')->constrained('templates')->cascadeOnDelete();
+            $table->enum('block_type', BlockType::values())
+                ->default(BlockType::Content->value);
+            $table->foreignUuid('theme_id')
+                ->nullable()
+                ->constrained('themes')
+                ->nullOnDelete();
+            $table->boolean('apply_theme')->default(true);
             $table->string('title')->nullable();
             $table->json('default_content')->nullable(); // contenido BlockNote inicial
             $table->text('description')->nullable();
             $table->enum('block_state', BlockState::values())
                 ->default(BlockState::Editable->value);
+            $table->boolean('page_break_after')->default(false);
             $table->integer('sort_order')->default(0);
             $table->timestamps();
             $table->softDeletes();

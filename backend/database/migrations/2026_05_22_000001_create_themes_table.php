@@ -43,14 +43,14 @@ return new class extends Migration
             // layout: regions (header/footer/sidebar/content_slots) serializado por Puck.
             $table->json('layout')->nullable();
 
-            // assets: logo, background_image, watermark — paths relativos al disco 'themes'.
-            $table->json('assets')->nullable();
-
             // accessibility: metadatos para WeasyPrint --pdf-variant pdf/ua-1.
             $table->json('accessibility')->nullable();
 
             // Origen del clon (auditoría): theme padre del que se derivó.
             $table->uuid('cloned_from_id')->nullable();
+
+            // is_system: marca un theme como de sistema (siempre presente, no borrable).
+            $table->boolean('is_system')->default(false)->index();
 
             $table->timestamps();
             $table->softDeletes();
