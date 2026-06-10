@@ -15,6 +15,7 @@ use App\DTOs\Documents\DocumentFilterDto;
 use App\DTOs\Documents\DocumentMigrationPayloadDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
 use App\Enums\TemplateVisibilityLevel;
+use App\Events\OwnershipTransferred;
 use App\Models\Document;
 use App\Models\DocumentBlock;
 use App\Models\DocumentReview;
@@ -1499,7 +1500,21 @@ class DocumentService implements DocumentServiceInterface
             ]);
         }
 
-        return $this->documentRepository->updateOwner($document, $newOwnerId);
+        $previousOwnerId = (string) $document->owner_id;
+        $updated = $this->documentRepository->updateOwner($document, $newOwnerId);
+
+        $request = request();
+        OwnershipTransferred::dispatch(
+            'document',
+            (string) $updated->getKey(),
+            $previousOwnerId,
+            $newOwnerId,
+            $actorId,
+            $request?->ip(),
+            $request?->userAgent(),
+        );
+
+        return $updated;
     }
 
     /**

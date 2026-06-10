@@ -11,6 +11,7 @@ use App\DTOs\Templates\TemplateDto;
 use App\DTOs\Templates\TemplateFilterDto;
 use App\DTOs\Templates\UpdateTemplateDto;
 use App\Enums\TemplateVisibilityLevel;
+use App\Events\OwnershipTransferred;
 use App\Models\EntityVersion;
 use App\Models\Template;
 use App\Repositories\Contracts\AcademicHierarchyRepositoryInterface;
@@ -292,6 +293,7 @@ class TemplateService implements TemplateServiceInterface
      */
     public function update(Template $template, UpdateTemplateDto $dto): Template
     {
+        $previousCreatedBy = (string) $template->created_by;
         $attributes = [];
 
         if ($dto->setName) {
@@ -339,7 +341,22 @@ class TemplateService implements TemplateServiceInterface
             $attributes['visibility_level'] ?? $template->visibility_level,
         );
 
-        return $this->templateRepository->update($template, $attributes);
+        $updated = $this->templateRepository->update($template, $attributes);
+
+        if ($dto->setCreatedBy && $dto->createdBy !== null && (string) $dto->createdBy !== $previousCreatedBy) {
+            $request = request();
+            OwnershipTransferred::dispatch(
+                'template',
+                (string) $updated->getKey(),
+                $previousCreatedBy,
+                (string) $dto->createdBy,
+                (string) (Auth::id() ?? ''),
+                $request?->ip(),
+                $request?->userAgent(),
+            );
+        }
+
+        return $updated;
     }
 
     /**
