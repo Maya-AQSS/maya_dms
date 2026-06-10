@@ -23,12 +23,12 @@ class DocumentExportService implements DocumentExportServiceInterface
         private readonly DocumentRepositoryInterface $documentRepository,
     ) {}
 
-    public function startPdfExport(string $documentId, string $userId): DocumentPdfExportStatusDto
+    public function startPdfExport(string $documentId, string $userId, ?string $versionId = null): DocumentPdfExportStatusDto
     {
         // Verify document exists (throws if not found).
         $this->documentRepository->findOrFail($documentId);
 
-        $cacheKey = GenerateDocumentPdf::keyFor($documentId);
+        $cacheKey = GenerateDocumentPdf::keyFor($documentId, $versionId);
         $current = Cache::get($cacheKey);
 
         // If already processing, return current state without re-enqueuing.
@@ -39,30 +39,31 @@ class DocumentExportService implements DocumentExportServiceInterface
         $payload = [
             'state' => 'queued',
             'document_id' => $documentId,
+            'version_id' => $versionId,
             'queued_at' => now()->toIso8601String(),
         ];
 
         Cache::put($cacheKey, $payload, self::CACHE_TTL);
-        GenerateDocumentPdf::dispatch($documentId, $userId);
+        GenerateDocumentPdf::dispatch($documentId, $userId, $versionId);
 
         return DocumentPdfExportStatusDto::fromArray($payload);
     }
 
-    public function getPdfExportStatus(string $documentId): DocumentPdfExportStatusDto
+    public function getPdfExportStatus(string $documentId, ?string $versionId = null): DocumentPdfExportStatusDto
     {
         // Verify document exists.
         $this->documentRepository->findOrFail($documentId);
 
-        $payload = Cache::get(GenerateDocumentPdf::keyFor($documentId));
+        $payload = Cache::get(GenerateDocumentPdf::keyFor($documentId, $versionId));
 
         return DocumentPdfExportStatusDto::fromArray(
-            $payload ?: ['state' => 'none', 'document_id' => $documentId]
+            $payload ?: ['state' => 'none', 'document_id' => $documentId, 'version_id' => $versionId]
         );
     }
 
-    public function getPdfExportPath(string $documentId): ?string
+    public function getPdfExportPath(string $documentId, ?string $versionId = null): ?string
     {
-        $payload = Cache::get(GenerateDocumentPdf::keyFor($documentId));
+        $payload = Cache::get(GenerateDocumentPdf::keyFor($documentId, $versionId));
 
         if (! is_array($payload) || ($payload['state'] ?? null) !== 'ready' || empty($payload['path'])) {
             return null;

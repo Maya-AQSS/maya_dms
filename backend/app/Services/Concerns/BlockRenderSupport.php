@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Concerns;
 
 use App\Repositories\Contracts\ThemeRepositoryInterface;
+use Maya\Editor\Renderers\TiptapHtmlRenderer;
 
 /**
  * Lógica de render de bloques compartida por DocumentRenderService y
@@ -94,5 +95,29 @@ trait BlockRenderSupport
             $pageBreakAfter ? ' data-page-break-after="true"' : '',
             $inner,
         );
+    }
+
+    /**
+     * Renderiza contenido tiptap aceptando las DOS formas que conviven en el
+     * sistema:
+     *  - documento completo `{ type:'doc', content:[...] }` → es lo que guarda
+     *    `template_blocks.default_content`.
+     *  - lista pelada de nodos `[ {...}, {...} ]` → es lo que guarda el editor en
+     *    `document_blocks.content` cuando el redactor edita el bloque.
+     *
+     * `TiptapHtmlRenderer::renderDoc()` SÓLO acepta la primera (exige
+     * `type === 'doc'`). Sin envolver/derivar la lista pelada, los bloques
+     * EDITADOS se renderizaban vacíos en el PDF mientras que los no editados
+     * (que caen al `default_content` de la plantilla) sí aparecían.
+     *
+     * @param  array<mixed>  $content
+     */
+    protected function renderTiptapContent(array $content): string
+    {
+        if (array_is_list($content)) {
+            return TiptapHtmlRenderer::renderNodes($content);
+        }
+
+        return TiptapHtmlRenderer::renderDoc($content);
     }
 }

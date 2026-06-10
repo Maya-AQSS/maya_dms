@@ -12,7 +12,6 @@ use App\Repositories\Contracts\ThemeRepositoryInterface;
 use App\Services\Concerns\BlockRenderSupport;
 use App\Services\Contracts\DocumentRenderServiceInterface;
 use Illuminate\Support\Facades\View;
-use Maya\Editor\Renderers\TiptapHtmlRenderer;
 
 /**
  * Resuelve theme + bloques de un documento y produce HTML themed. El mismo
@@ -41,6 +40,53 @@ class DocumentRenderService implements DocumentRenderServiceInterface
     {
         $document = $this->documentRepository->findWithBlocksAndThemeOrFail($documentId);
 
+        return $this->assembleHtml($document, $previewMode);
+    }
+
+    /**
+     * Renderiza el HTML de una versión histórica del documento a partir del
+     * contenido CONGELADO en su snapshot, manteniendo tema + geometría
+     * estructural de la plantilla VIVA (igual que hace el frontend al previsualizar
+     * una versión). Se carga el documento vivo y se sobrescribe el `content` de
+     * cada bloque con el del snapshot (emparejando por `template_block_id`); los
+     * bloques sin entrada en el snapshot caen a su `default_content`, como hoy.
+     *
+     * @param  list<array<string, mixed>>  $snapshotBlocks  Bloques resueltos del snapshot
+     *                                                       (con `template_block_id` y `content`).
+     */
+    public function renderHtmlForVersion(string $documentId, array $snapshotBlocks, bool $previewMode = false): string
+    {
+        $document = $this->documentRepository->findWithBlocksAndThemeOrFail($documentId);
+
+        $frozenContentByTemplateBlockId = [];
+        foreach ($snapshotBlocks as $snapBlock) {
+            if (! is_array($snapBlock)) {
+                continue;
+            }
+            $tplBlockId = isset($snapBlock['template_block_id']) ? (string) $snapBlock['template_block_id'] : '';
+            if ($tplBlockId === '' || ! array_key_exists('content', $snapBlock)) {
+                continue;
+            }
+            $frozenContentByTemplateBlockId[$tplBlockId] = $snapBlock['content'];
+        }
+
+        foreach ($document->blocks as $block) {
+            $tplBlockId = (string) ($block->template_block_id ?? '');
+            if ($tplBlockId !== '' && array_key_exists($tplBlockId, $frozenContentByTemplateBlockId)) {
+                $block->content = $frozenContentByTemplateBlockId[$tplBlockId];
+            }
+        }
+
+        return $this->assembleHtml($document, $previewMode);
+    }
+
+    /**
+     * Ensambla el HTML themed final a partir de un Document ya cargado (con
+     * bloques + tema). Compartido por {@see renderHtml} (HEAD vivo) y
+     * {@see renderHtmlForVersion} (snapshot congelado).
+     */
+    private function assembleHtml(Document $document, bool $previewMode = false): string
+    {
         $theme = $this->extractThemeData($document);
         $defaultThemeId = $document->template?->theme_id !== null ? (string) $document->template->theme_id : '';
 
@@ -197,30 +243,6 @@ class DocumentRenderService implements DocumentRenderServiceInterface
         }
 
         return $blockHtmlParts;
-    }
-
-    /**
-     * Renderiza contenido tiptap aceptando las DOS formas que conviven en el
-     * sistema:
-     *  - documento completo `{ type:'doc', content:[...] }` → es lo que guarda
-     *    `template_blocks.default_content`.
-     *  - lista pelada de nodos `[ {...}, {...} ]` → es lo que guarda el editor en
-     *    `document_blocks.content` cuando el redactor edita el bloque.
-     *
-     * `TiptapHtmlRenderer::renderDoc()` SÓLO acepta la primera (exige
-     * `type === 'doc'`). Sin envolver/derivar la lista pelada, los bloques
-     * EDITADOS se renderizaban vacíos en el PDF mientras que los no editados
-     * (que caen al `default_content` de la plantilla) sí aparecían.
-     *
-     * @param  array<mixed>  $content
-     */
-    private function renderTiptapContent(array $content): string
-    {
-        if (array_is_list($content)) {
-            return TiptapHtmlRenderer::renderNodes($content);
-        }
-
-        return TiptapHtmlRenderer::renderDoc($content);
     }
 
     /**

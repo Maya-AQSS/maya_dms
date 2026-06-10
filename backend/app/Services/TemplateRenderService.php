@@ -10,7 +10,6 @@ use App\Repositories\Contracts\ThemeRepositoryInterface;
 use App\Services\Concerns\BlockRenderSupport;
 use App\Services\Contracts\TemplateRenderServiceInterface;
 use Illuminate\Support\Facades\View;
-use Maya\Editor\Renderers\TiptapHtmlRenderer;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
@@ -87,7 +86,7 @@ class TemplateRenderService implements TemplateRenderServiceInterface
                 // trae sus propios encabezados; imprimirlo duplicaba cada cabecera.
                 $default = $block['default_content'];
                 if (is_array($default) && count($default) > 0) {
-                    $inner .= TiptapHtmlRenderer::renderDoc($default);
+                    $inner .= $this->renderTiptapContent($default);
                 } elseif (is_string($default) && $default !== '') {
                     // Backwards-compat: algún seed legacy guardaba string en lugar de array.
                     $inner .= '<p>'.e($default).'</p>';

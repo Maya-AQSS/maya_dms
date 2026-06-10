@@ -37,30 +37,34 @@ class GenerateDocumentPdf implements ShouldQueue
     public function __construct(
         public readonly string $documentId,
         public readonly string $requestedBy,
+        public readonly ?string $versionId = null,
     ) {}
 
     public function handle(DocumentPdfServiceInterface $service): void
     {
-        $this->setStatus(['state' => 'processing', 'document_id' => $this->documentId]);
+        $this->setStatus(['state' => 'processing', 'document_id' => $this->documentId, 'version_id' => $this->versionId]);
 
         try {
-            $relative = $service->generate($this->documentId);
+            $relative = $service->generate($this->documentId, $this->versionId);
 
             $this->setStatus([
                 'state' => 'ready',
                 'document_id' => $this->documentId,
+                'version_id' => $this->versionId,
                 'path' => $relative,
                 'finished_at' => now()->toIso8601String(),
             ]);
         } catch (\Throwable $e) {
             Log::error('GenerateDocumentPdf failed', [
                 'document_id' => $this->documentId,
+                'version_id' => $this->versionId,
                 'requested_by' => $this->requestedBy,
                 'error' => $e->getMessage(),
             ]);
             $this->setStatus([
                 'state' => 'failed',
                 'document_id' => $this->documentId,
+                'version_id' => $this->versionId,
                 'error' => $e->getMessage(),
                 'failed_at' => now()->toIso8601String(),
             ]);
@@ -70,12 +74,14 @@ class GenerateDocumentPdf implements ShouldQueue
 
     public function statusCacheKey(): string
     {
-        return self::keyFor($this->documentId);
+        return self::keyFor($this->documentId, $this->versionId);
     }
 
-    public static function keyFor(string $documentId): string
+    public static function keyFor(string $documentId, ?string $versionId = null): string
     {
-        return 'pdf-export:'.$documentId;
+        return $versionId !== null
+            ? 'pdf-export:'.$documentId.':v'.$versionId
+            : 'pdf-export:'.$documentId;
     }
 
     /**

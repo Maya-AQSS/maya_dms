@@ -8,6 +8,7 @@ use App\Models\Document;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Services\Contracts\DocumentPdfServiceInterface;
 use App\Services\Contracts\DocumentRenderServiceInterface;
+use App\Services\Contracts\DocumentServiceInterface;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
@@ -39,16 +40,30 @@ class DocumentPdfService implements DocumentPdfServiceInterface
     public function __construct(
         private readonly DocumentRenderServiceInterface $renderer,
         private readonly DocumentRepositoryInterface $documentRepository,
+        private readonly DocumentServiceInterface $documentService,
     ) {}
 
-    public function generate(string $documentId): string
+    public function generate(string $documentId, ?string $versionId = null): string
     {
         $document = $this->documentRepository->findOrFail($documentId);
 
-        $html = $this->renderer->renderHtml($documentId);
-        // current_version (alias seleccionado en el join del head EV) o 1 como fallback.
-        // Extract as scalar, not model attribute reference.
-        $version = (int) $this->extractCurrentVersion($document);
+        if ($versionId !== null) {
+            // Versión histórica: renderiza el snapshot congelado. El detalle ya
+            // reconstruye `snapshot_data.blocks` (capas + fallback al JSON) para
+            // filas en entity_versions y document_versions.
+            $detail = $this->documentService->findDocumentVersionDetailOrFail($documentId, $versionId);
+            $snapshotBlocks = is_array($detail['snapshot_data']['blocks'] ?? null)
+                ? $detail['snapshot_data']['blocks']
+                : [];
+            $html = $this->renderer->renderHtmlForVersion($documentId, $snapshotBlocks);
+            $version = (int) ($detail['version_number'] ?? 1);
+        } else {
+            $html = $this->renderer->renderHtml($documentId);
+            // current_version (alias seleccionado en el join del head EV) o 1 como fallback.
+            // Extract as scalar, not model attribute reference.
+            $version = (int) $this->extractCurrentVersion($document);
+        }
+
         $relative = sprintf('%s/%s/v%d/document.pdf', self::PREFIX, $documentId, $version);
         $absolute = Storage::disk(self::DISK)->path($relative);
 

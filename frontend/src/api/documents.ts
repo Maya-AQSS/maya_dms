@@ -400,19 +400,28 @@ export interface DocumentExportPayload {
   ready_at?: string;
 }
 
-/** POST /api/v1/documents/{id}/export-pdf — encola la generación (idempotente). */
-export async function exportDocumentPdf(documentId: string): Promise<DocumentExportPayload> {
+/**
+ * Prefijo de ruta del export: el HEAD vivo cuelga de `documents/{id}`; una
+ * versión histórica cuelga de `documents/{id}/versions/{versionId}`.
+ */
+function exportBasePath(documentId: string, versionId?: string): string {
+  const base = `documents/${encodeURIComponent(documentId)}`;
+  return versionId ? `${base}/versions/${encodeURIComponent(versionId)}` : base;
+}
+
+/** POST /api/v1/documents/{id}[/versions/{versionId}]/export-pdf — encola la generación (idempotente). */
+export async function exportDocumentPdf(documentId: string, versionId?: string): Promise<DocumentExportPayload> {
   const res = await apiFetchJson<{ data: DocumentExportPayload }>(
-    `documents/${encodeURIComponent(documentId)}/export-pdf`,
+    `${exportBasePath(documentId, versionId)}/export-pdf`,
     { method: 'POST' },
   );
   return res.data;
 }
 
-/** GET /api/v1/documents/{id}/export-status — polling del estado. */
-export async function getDocumentExportStatus(documentId: string): Promise<DocumentExportPayload> {
+/** GET /api/v1/documents/{id}[/versions/{versionId}]/export-status — polling del estado. */
+export async function getDocumentExportStatus(documentId: string, versionId?: string): Promise<DocumentExportPayload> {
   const res = await apiGetJson<{ data: DocumentExportPayload }>(
-    `documents/${encodeURIComponent(documentId)}/export-status`,
+    `${exportBasePath(documentId, versionId)}/export-status`,
   );
   return res.data;
 }
@@ -424,9 +433,9 @@ export async function getDocumentExportStatus(documentId: string): Promise<Docum
  * un header, usamos fetch + blob y disparamos la descarga con un `<a>`
  * sintético (mismo patrón que las demás descargas autenticadas del proyecto).
  */
-export async function downloadDocumentPdf(documentId: string, filename: string): Promise<void> {
+export async function downloadDocumentPdf(documentId: string, filename: string, versionId?: string): Promise<void> {
   const token = await getBearerToken();
-  const response = await fetch(buildApiUrl(`documents/${encodeURIComponent(documentId)}/pdf`), {
+  const response = await fetch(buildApiUrl(`${exportBasePath(documentId, versionId)}/pdf`), {
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
   if (!response.ok) {

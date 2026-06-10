@@ -19,4 +19,13 @@ interface DocumentRenderServiceInterface
      * Lanza NotFoundHttpException si el documento no existe o no es visible.
      */
     public function renderHtml(string $documentId, bool $previewMode = false): string;
+
+    /**
+     * HTML de una versión histórica: contenido congelado del snapshot sobre la
+     * estructura/tema de la plantilla viva. Ver implementación para el algoritmo
+     * de fusión.
+     *
+     * @param  list<array<string, mixed>>  $snapshotBlocks  Bloques resueltos del snapshot.
+     */
+    public function renderHtmlForVersion(string $documentId, array $snapshotBlocks, bool $previewMode = false): string;
 }

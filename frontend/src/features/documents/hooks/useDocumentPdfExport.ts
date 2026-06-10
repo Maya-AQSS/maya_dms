@@ -33,6 +33,7 @@ export interface UseDocumentPdfExportResult {
 export function useDocumentPdfExport(
   documentId: string | undefined,
   documentName: string | undefined,
+  versionId?: string,
 ): UseDocumentPdfExportResult {
   const [state, setState] = useState<DocumentExportState | 'idle' | 'downloading'>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -61,19 +62,19 @@ export function useDocumentPdfExport(
     if (!documentId) return;
     setState('downloading');
     try {
-      await downloadDocumentPdf(documentId, documentName ?? 'documento');
+      await downloadDocumentPdf(documentId, documentName ?? 'documento', versionId);
       if (mountedRef.current) {
         setState('ready');
       }
     } catch (e) {
       finishWithError(e instanceof Error ? e.message : 'No se pudo descargar el PDF.');
     }
-  }, [documentId, documentName, finishWithError]);
+  }, [documentId, documentName, versionId, finishWithError]);
 
   const pollOnce = useCallback(async () => {
     if (!documentId || !mountedRef.current) return;
     try {
-      const payload = await getDocumentExportStatus(documentId);
+      const payload = await getDocumentExportStatus(documentId, versionId);
       if (!mountedRef.current) return;
       setState(payload.state);
       if (payload.state === 'ready') {
@@ -93,7 +94,7 @@ export function useDocumentPdfExport(
     } catch (e) {
       finishWithError(e instanceof Error ? e.message : 'No se pudo consultar el estado del PDF.');
     }
-  }, [documentId, triggerDownload, finishWithError]);
+  }, [documentId, versionId, triggerDownload, finishWithError]);
 
   const start = useCallback(async () => {
     if (!documentId) return;
@@ -101,7 +102,7 @@ export function useDocumentPdfExport(
     setError(null);
     pollAttemptsRef.current = 0;
     try {
-      const initial = await exportDocumentPdf(documentId);
+      const initial = await exportDocumentPdf(documentId, versionId);
       if (!mountedRef.current) return;
       setState(initial.state);
       if (initial.state === 'ready') {
@@ -117,7 +118,7 @@ export function useDocumentPdfExport(
     } catch (e) {
       finishWithError(e instanceof Error ? e.message : 'No se pudo iniciar la exportación.');
     }
-  }, [documentId, state, pollOnce, triggerDownload, finishWithError]);
+  }, [documentId, versionId, state, pollOnce, triggerDownload, finishWithError]);
 
   const reset = useCallback(() => {
     if (timerRef.current) {

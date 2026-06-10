@@ -438,8 +438,13 @@
         }
         pre { background: #f4f4f4; padding: 0.3cm; border-radius: 3px; overflow-x: auto; }
         code { font-family: ui-monospace, "Courier New", monospace; font-size: 10pt; }
-        table { width: 100%; border-collapse: collapse; margin: 0.4cm 0; }
+        /* Las tablas pueden partirse entre páginas (page-break-inside: auto),
+           pero NUNCA dentro de una fila (tr): así WeasyPrint no deja una página
+           en blanco intentando encajar una tabla entera que no cabe. El `<thead>`
+           (table-header-group) repite la cabecera en cada página de la tabla. */
+        table { width: 100%; border-collapse: collapse; margin: 0.4cm 0; page-break-inside: auto; }
         thead { display: table-header-group; }
+        tr { page-break-inside: avoid; break-inside: avoid; }
         th, td { border: 1px solid var(--color-secondary); padding: 0.2cm 0.3cm; text-align: left; font-size: 10pt; }
         th { background: var(--color-primary); color: var(--color-bg); font-family: var(--font-heading); }
         img, figure { max-width: 100%; }

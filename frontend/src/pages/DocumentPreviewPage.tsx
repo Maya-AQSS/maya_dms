@@ -42,8 +42,7 @@ import { BlockContentHtml } from '../features/templates/components/BlockContentH
 import { StructuralBlockPreview } from '../features/documents/components/StructuralBlockPreview';
 import { computeChangedBlocks } from '../features/documents/components/DocumentDiffModal';
 import { listUnresolvedEditableBlockTitles } from '../features/documents/lib/blockContentEquals';
-import { DocumentDiffPanel } from '../features/documents/components/DocumentDiffPanel';
-import { DocumentBlockHistoryPanel } from '../features/documents/components/DocumentBlockHistoryPanel';
+import { BlockChangesPanel } from '../features/documents/components/BlockChangesPanel';
 import { apiFetchJson, ApiHttpError } from '../api/http';
 import type { Process } from '../types/processes';
 import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
@@ -163,7 +162,6 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
    */
   const [viewMode, setViewMode] = useState<'edit' | 'themed'>('edit');
   const [diffBlockId, setDiffBlockId] = useState<string | null>(null);
-  const [historyBlockId, setHistoryBlockId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [versionSnapshot, setVersionSnapshot] = useState<{
     versionNumber: number;
@@ -290,7 +288,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const isDraft = detail?.status === 'draft' || detail?.status === 'rejected';
   const isPublished = detail?.status === 'published';
   // Hook que orquesta el flujo de descarga PDF/UA (POST → poll → blob → save-as).
-  const pdfExport = useDocumentPdfExport(documentId, detail?.title);
+  const pdfExport = useDocumentPdfExport(documentId, detail?.title, documentVersionId ?? undefined);
   const isDocumentReviewer = allReviews.some((r) => r.reviewer_id === profile?.id);
   const myDocumentReview = allReviews.find((r) => r.reviewer_id === profile?.id) ?? null;
   const changedBlocks = useMemo(
@@ -301,6 +299,17 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     () => (diffBlockId ? changedBlocks.filter((b) => b.template_block_id === diffBlockId) : []),
     [changedBlocks, diffBlockId],
   );
+  // Datos del panel unificado «Ver cambios» (pestañas Cambiado / Histórico) para el bloque activo.
+  const reviewHistory = useMemo(() => detail?.review_history ?? [], [detail]);
+  const hasReviewHistory = reviewHistory.length > 0;
+  const changesBlock = useMemo(
+    () => (diffBlockId ? (detail?.blocks?.find((b) => b.template_block_id === diffBlockId) ?? null) : null),
+    [diffBlockId, detail],
+  );
+  const changesDocBlockId = changesBlock?.document_block_id ?? null;
+  const changesBlockNumber = changesBlock ? ((detail?.blocks?.indexOf(changesBlock) ?? -1) + 1) || '?' : '?';
+  const changesHasDiff = !!diffBlockId && changedBlocks.some((b) => b.template_block_id === diffBlockId);
+  const changesHasHistory = hasReviewHistory && !!changesDocBlockId;
   const isOwner = profile?.id === detail?.owner_id || profile?.id === detail?.created_by;
   const uid = profile?.id;
   /** Paridad con `DocumentPolicy::update`. */
@@ -822,7 +831,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           </Button>
         )
       )}
-      {!isValidateMode && isPublished && !isHistoricalSnapshot && (
+      {!isValidateMode && (isPublished || isHistoricalSnapshot) && (
         <Button
           type="button"
           variant="outline"
@@ -833,7 +842,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
             pdfExport.state === 'downloading'
           }
           onClick={() => void pdfExport.start()}
-          title={pdfExport.error ?? 'Generar y descargar el PDF firmable del documento'}
+          title={pdfExport.error ?? (isHistoricalSnapshot ? 'Generar y descargar el PDF de esta versión' : 'Generar y descargar el PDF firmable del documento')}
         >
           {pdfExport.state === 'queued' || pdfExport.state === 'processing'
             ? 'Generando…'
@@ -963,15 +972,6 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     const validateBlockComments = validateSelectedBlock
       ? getCommentsForBlock(validateSelectedBlock.document_block_id, validateComments)
       : [];
-    const historySelectedBlock = historyBlockId
-      ? (validateBlocks.find(b => b.template_block_id === historyBlockId) ?? null)
-      : null;
-    const historyDocBlockId = historySelectedBlock?.document_block_id ?? null;
-    const historyBlockNumber = historySelectedBlock
-      ? validateBlocks.indexOf(historySelectedBlock) + 1
-      : '?';
-    const hasReviewHistory = (detail?.review_history?.length ?? 0) > 0;
-
     return (
       <>
         <PaperPreviewLayout
@@ -1082,24 +1082,21 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                       </div>
                     )
                   )
-              : historyBlockId !== null && historyDocBlockId
+              : diffBlockId !== null
                 ? (
-                    <DocumentBlockHistoryPanel
-                      blockId={historyDocBlockId}
-                      blockNumber={historyBlockNumber}
-                      history={detail?.review_history ?? []}
-                      onClose={() => setHistoryBlockId(null)}
+                    <BlockChangesPanel
+                      key={diffBlockId}
+                      diffBlocks={diffPanelBlocks}
+                      allBlocks={detail?.blocks}
+                      showChangedTab={changesHasDiff}
+                      historyBlockId={changesDocBlockId}
+                      historyBlockNumber={changesBlockNumber}
+                      reviewHistory={reviewHistory}
+                      showHistoryTab={changesHasHistory}
+                      onClose={() => setDiffBlockId(null)}
                     />
                   )
-                : diffBlockId !== null
-                  ? (
-                      <DocumentDiffPanel
-                        blocks={diffPanelBlocks}
-                        allBlocks={detail?.blocks}
-                        onClose={() => setDiffBlockId(null)}
-                      />
-                    )
-                  : undefined
+                : undefined
           }
         >
           {isValidateMode && !canReviewDocument && (
@@ -1183,12 +1180,12 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                             Bloque {(detail.blocks.findIndex((b) => b.template_block_id === block.template_block_id) + 1)}: {block.title ?? 'Sin título'}
                           </h4>
                           <div className="flex items-center gap-2">
-                            {/* Diff button */}
-                            {changedBlocks.some(b => b.template_block_id === blockId) && (
+                            {/* Unified changes button (Cambiado / Histórico tabs) */}
+                            {(changedBlocks.some(b => b.template_block_id === blockId) || (hasReviewHistory && !!block.document_block_id)) && (
                               <button
                                 type="button"
                                 aria-label={`Ver cambios del bloque ${block.sort_order}`}
-                                onClick={(e) => { e.stopPropagation(); setValidateActiveView(null); setHistoryBlockId(null); setDiffBlockId(prev => prev === blockId ? null : blockId); }}
+                                onClick={(e) => { e.stopPropagation(); setValidateActiveView(null); setDiffBlockId(prev => prev === blockId ? null : blockId); }}
                                 className={[btnBase, diffBlockId === blockId ? btnActive : btnIdle].join(' ')}
                                 title={t('preview.viewBlockChangesTitle')}
                               >
@@ -1196,21 +1193,6 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                                 </svg>
                                 <span>Ver cambios</span>
-                              </button>
-                            )}
-                            {/* History button */}
-                            {hasReviewHistory && !!block.document_block_id && (
-                              <button
-                                type="button"
-                                aria-label={`Ver historial de cambios del bloque ${block.sort_order}`}
-                                onClick={(e) => { e.stopPropagation(); setValidateActiveView(null); setDiffBlockId(null); setHistoryBlockId(prev => prev === blockId ? null : blockId); }}
-                                className={[btnBase, historyBlockId === blockId ? btnActive : btnIdle].join(' ')}
-                                title={t('preview.viewBlockHistoryTitle')}
-                              >
-                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
-                                </svg>
-                                <span>Historial</span>
                               </button>
                             )}
                             {/* Info button */}
@@ -1323,9 +1305,15 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
         sidebar={
           diffBlockId !== null && !selectedReviewView
             ? (
-                <DocumentDiffPanel
-                  blocks={diffPanelBlocks}
+                <BlockChangesPanel
+                  key={diffBlockId}
+                  diffBlocks={diffPanelBlocks}
                   allBlocks={detail?.blocks}
+                  showChangedTab={changesHasDiff}
+                  historyBlockId={changesDocBlockId}
+                  historyBlockNumber={changesBlockNumber}
+                  reviewHistory={reviewHistory}
+                  showHistoryTab={changesHasHistory}
                   onClose={() => setDiffBlockId(null)}
                 />
               )
@@ -1451,7 +1439,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                           Bloque {(detail.blocks.findIndex((b) => b.template_block_id === block.template_block_id) + 1)}: {block.title ?? 'Sin título'}
                         </h4>
                         <div className="flex items-center gap-2">
-                          {changedBlocks.some(b => b.template_block_id === block.template_block_id) && (
+                          {(changedBlocks.some(b => b.template_block_id === block.template_block_id) || (hasReviewHistory && !!block.document_block_id)) && (
                             <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); setSelectedReviewView(null); setDiffBlockId(prev => prev === block.template_block_id ? null : block.template_block_id); }}

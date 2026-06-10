@@ -213,6 +213,18 @@ Route::prefix('v1')->group(function () {
         Route::get('documents/{document}/versions/{version}', [DocumentVersionController::class, 'show'])
             ->whereUuid('document')
             ->whereUuid('version');
+
+        // Export PDF de una versión histórica (snapshot congelado). Gate viewHistory.
+        Route::post('documents/{document}/versions/{version}/export-pdf', [DocumentExportController::class, 'startVersion'])
+            ->whereUuid('document')
+            ->whereUuid('version');
+        Route::get('documents/{document}/versions/{version}/export-status', [DocumentExportController::class, 'statusVersion'])
+            ->whereUuid('document')
+            ->whereUuid('version');
+        Route::get('documents/{document}/versions/{version}/pdf', [DocumentExportController::class, 'downloadVersion'])
+            ->whereUuid('document')
+            ->whereUuid('version');
+
         Route::delete('documents/{document}/versions/{version}', [DocumentStateController::class, 'destroyVersion'])
             ->whereUuid('document')
             ->whereUuid('version');
