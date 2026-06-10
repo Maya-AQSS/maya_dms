@@ -15,6 +15,7 @@ use App\DTOs\Documents\DocumentFilterDto;
 use App\DTOs\Documents\DocumentMigrationPayloadDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
 use App\Enums\TemplateVisibilityLevel;
+use App\Events\DocumentSubmittedForReview;
 use App\Events\OwnershipTransferred;
 use App\Models\Document;
 use App\Models\DocumentBlock;
@@ -1270,6 +1271,22 @@ class DocumentService implements DocumentServiceInterface
             $this->documentRepository->createPendingReviews($documentId, $candidates);
 
             $this->notifyReviewersOfValidationRequest($document, $candidates, $reviewMode);
+
+            DocumentSubmittedForReview::dispatch(
+                $documentId,
+                $actorId,
+                $reviewMode,
+                array_map(fn (array $c) => [
+                    'id' => $c['reviewer_id'],
+                    'name' => $this->userDirectoryRepository->findNameById($c['reviewer_id']),
+                    'stage' => $c['stage'],
+                ], $candidates),
+                $document->title,
+                $document->study_type_id,
+                $document->study_id,
+                $document->module_id,
+                $normalizedChangelog,
+            );
 
             return $document;
         });
