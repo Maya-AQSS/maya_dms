@@ -78,6 +78,32 @@ export async function fetchDocument(documentId: string): Promise<DocumentDetail>
   return body.data;
 }
 
+/** Validador del pool de un documento (`GET documents/{id}/reviewers`). */
+export type DocumentReviewerEntry = {
+  id: string;
+  name: string | null;
+  stage: number | null;
+};
+
+/** Respuesta de `GET documents/{id}/reviewers`. */
+export type DocumentReviewerPool = {
+  kind: 'document' | 'template_fallback' | 'none';
+  review_mode: 'sequential' | 'parallel';
+  reviewers: DocumentReviewerEntry[];
+};
+
+/**
+ * GET /api/v1/documents/{id}/reviewers — pool de validadores del documento,
+ * resuelto en backend desde la versión de plantilla anclada (misma fuente que
+ * el envío a validar). No requiere acceso de lectura a la plantilla.
+ */
+export async function fetchDocumentReviewers(documentId: string): Promise<DocumentReviewerPool> {
+  const body = await apiGetJson<{ data: DocumentReviewerPool }>(
+    `documents/${encodeURIComponent(documentId)}/reviewers`,
+  );
+  return body.data;
+}
+
 /** Metadatos de una fila del historial (`GET documents/{id}/versions`). */
 export type DocumentVersionSummary = {
   id: string;

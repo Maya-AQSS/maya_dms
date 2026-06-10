@@ -58,7 +58,7 @@ class DocumentPolicy
     {
         $userId = (string) $user->getAuthIdentifier();
 
-        if ((string) $document->created_by === $userId || (string) $document->owner_id === $userId) {
+        if ($this->isTitular($user, $document)) {
             return true;
         }
 
@@ -103,7 +103,7 @@ class DocumentPolicy
     {
         $userId = (string) $user->getAuthIdentifier();
 
-        if ($userId === (string) $document->created_by || $userId === (string) $document->owner_id) {
+        if ($this->isTitular($user, $document)) {
             return true;
         }
 
@@ -157,9 +157,7 @@ class DocumentPolicy
      */
     public function delete(JwtUser $user, Document $document): bool
     {
-        $userId = (string) $user->getAuthIdentifier();
-
-        if ($userId === (string) $document->owner_id || $userId === (string) $document->created_by) {
+        if ($this->isTitular($user, $document)) {
             return true;
         }
 
@@ -278,9 +276,7 @@ class DocumentPolicy
             return false;
         }
 
-        $id = $user->getAuthIdentifier();
-
-        return $id === $document->created_by || $id === $document->owner_id;
+        return $this->isTitular($user, $document);
     }
 
     /**
@@ -317,10 +313,22 @@ class DocumentPolicy
         return $this->isTitular($user, $document) || $user->hasPermission('document.version');
     }
 
+    /**
+     * Titular efectivo del documento.
+     *
+     * Si existe un titular operativo (`owner_id`), solo ese usuario lo es. El autor
+     * (`created_by`) conserva la titularidad únicamente mientras no exista un titular
+     * distinto; tras una cesión deja de tener acceso por autoría (queda solo como atribución).
+     */
     private function isTitular(JwtUser $user, Document $document): bool
     {
         $userId = (string) $user->getAuthIdentifier();
+        $ownerId = (string) $document->owner_id;
 
-        return $userId === (string) $document->created_by || $userId === (string) $document->owner_id;
+        if ($ownerId !== '') {
+            return $userId === $ownerId;
+        }
+
+        return $userId === (string) $document->created_by;
     }
 }

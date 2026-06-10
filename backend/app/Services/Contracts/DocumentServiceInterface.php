@@ -313,4 +313,16 @@ interface DocumentServiceInterface
      * @return array{serve_published_snapshot: bool, is_assigned_reviewer: bool}
      */
     public function resolveDocumentViewerContext(Document $resolved, string $documentId, string $viewerId): array;
+
+    /**
+     * Pool de validadores efectivo del documento (misma fuente que el envío a revisión),
+     * para mostrar en el wizard sin requerir acceso de lectura a la plantilla.
+     *
+     * @return array{
+     *   kind: 'document'|'template_fallback'|'none',
+     *   review_mode: string,
+     *   reviewers: list<array{id: string, name: ?string, stage: ?int}>
+     * }
+     */
+    public function getDocumentReviewerPool(Document $document): array;
 }
