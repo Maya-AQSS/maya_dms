@@ -280,4 +280,47 @@ final class TemplateBlockDescriptionNormalizerTest extends TestCase
 
         $this->assertSame('Desde JSON', $doc['content'][0]['content'][0]['text']);
     }
+
+    public function test_to_tiptap_doc_preserves_peeled_tiptap_node_list(): void
+    {
+        // Forma EXACTA que emite MayaEditorPanel por el cable: el array `content`
+        // pelado (sin envoltorio `{type:doc}`). Antes caía en la rama legacy y se
+        // aplanaba a texto plano, perdiendo marcas, imágenes, tablas e iframes.
+        $peeled = [
+            [
+                'type' => 'paragraph',
+                'attrs' => ['textAlign' => 'left'],
+                'content' => [['type' => 'text', 'text' => 'Negrita', 'marks' => [['type' => 'bold']]]],
+            ],
+            ['type' => 'image', 'attrs' => ['src' => 'https://x/y.png', 'alt' => 'img']],
+            ['type' => 'iframe', 'attrs' => ['src' => 'https://youtube.com/embed/abc', 'width' => '100%', 'height' => '400']],
+        ];
+
+        $doc = TemplateBlockDescriptionNormalizer::toTiptapDoc($peeled);
+
+        $this->assertSame('doc', $doc['type']);
+        $this->assertSame(['paragraph', 'image', 'iframe'], array_column($doc['content'], 'type'));
+        // La marca bold y los nodos no textuales sobreviven (no se aplanan).
+        $this->assertSame('bold', $doc['content'][0]['content'][0]['marks'][0]['type']);
+        $this->assertSame('https://youtube.com/embed/abc', $doc['content'][2]['attrs']['src']);
+    }
+
+    public function test_to_tiptap_doc_flattens_peeled_blocknote_node_list(): void
+    {
+        // Una lista pelada BlockNote (props/styles/children) SIGUE aplanándose.
+        $blocknoteList = [
+            [
+                'type' => 'paragraph',
+                'props' => ['textAlignment' => 'left'],
+                'content' => [['type' => 'text', 'text' => 'Legado', 'styles' => []]],
+                'children' => [],
+            ],
+        ];
+
+        $doc = TemplateBlockDescriptionNormalizer::toTiptapDoc($blocknoteList);
+
+        $this->assertSame('Legado', $doc['content'][0]['content'][0]['text']);
+        $this->assertArrayNotHasKey('props', $doc['content'][0]);
+        $this->assertArrayNotHasKey('children', $doc['content'][0]);
+    }
 }
