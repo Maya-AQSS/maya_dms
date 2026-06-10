@@ -66,8 +66,14 @@ export function WizardStep1Properties({ errors, templateStatus, isCreator, curre
   const studyId = useWatch({ control, name: 'studyId' });
 
   const canCreateShared = hasPermission(DMS_PERMISSIONS.templateCreate);
+  // Un propietario sin `template.create` (p. ej. una plantilla compartida cedida) no puede
+  // cambiar el NIVEL de visibilidad, pero sí debe verlo real (y, si su contexto difiere,
+  // podrá adaptar el ámbito académico en los selects de abajo, validado contra su contexto).
+  const visibilityLocked = !canCreateShared && visibility !== 'personal';
+  // Incluir siempre el nivel actual aunque no se tenga `template.create`, para no mostrar
+  // el selector vacío ni forzar una degradación a "Personal".
   const visibilityOptions = VISIBILITY_OPTIONS.filter(
-    (o) => o.value === 'personal' || canCreateShared,
+    (o) => o.value === 'personal' || canCreateShared || o.value === visibility,
   );
 
   const allStudies = hierarchy.flatMap((t) => t.studies);
@@ -172,6 +178,7 @@ export function WizardStep1Properties({ errors, templateStatus, isCreator, curre
                 <Select
                   fieldSize="comfortable"
                   value={field.value}
+                  disabled={visibilityLocked}
                   onChange={(e) => {
                     const v = e.target.value as TemplateVisibilityLevel;
                     field.onChange(v);
@@ -188,6 +195,11 @@ export function WizardStep1Properties({ errors, templateStatus, isCreator, curre
                 </Select>
               )}
             />
+            {visibilityLocked && (
+              <p className="mt-1 text-xs text-text-muted italic">
+                No puedes cambiar el nivel de visibilidad de esta plantilla.
+              </p>
+            )}
           </div>
 
           <div>
