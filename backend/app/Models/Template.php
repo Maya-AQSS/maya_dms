@@ -71,7 +71,7 @@ class Template extends Model
                             ->where('template_head_ev.created_by', $userId);
                     })
                     ->orWhere(function (Builder $reviewScope) use ($userId) {
-                        $reviewScope->whereIn('template_head_ev.snapshot_data->template->status', ['in_review', 'rejected'])
+                        $reviewScope->where('template_head_ev.snapshot_data->template->status', 'in_review')
                             ->whereExists(function ($subQuery) use ($userId) {
                                 $subQuery->select(DB::raw(1))
                                     ->from('template_reviewers')
