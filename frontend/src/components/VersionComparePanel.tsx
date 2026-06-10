@@ -33,11 +33,12 @@ function useComparableVersion(
   entityType: VersionEntityType,
   entityId: string,
   versionId: string | null,
+  enabled: boolean,
 ) {
   return useQuery({
     queryKey: ['version-compare', entityType, entityId, versionId],
     queryFn: () => loadVersionComparable(entityType, entityId, versionId as string),
-    enabled: !!versionId,
+    enabled: enabled && !!versionId,
     staleTime: 60_000,
   });
 }
@@ -48,10 +49,13 @@ export function VersionComparePanel({ entityType, entityId, versions }: Props) {
   const [aId, setAId] = useState<string | null>(() => versions[1]?.id ?? null);
   const [bId, setBId] = useState<string | null>(() => versions[0]?.id ?? null);
 
-  const aQuery = useComparableVersion(entityType, entityId, aId);
-  const bQuery = useComparableVersion(entityType, entityId, bId);
-
   const distinct = !!aId && !!bId && aId !== bId;
+
+  // Solo cargamos cuando hay dos versiones distintas seleccionadas: evita un
+  // fetch inútil con <2 versiones o cuando ambos selects coinciden.
+  const aQuery = useComparableVersion(entityType, entityId, aId, distinct);
+  const bQuery = useComparableVersion(entityType, entityId, bId, distinct);
+
   const loading = distinct && (aQuery.isLoading || bQuery.isLoading);
   const failed = distinct && (aQuery.isError || bQuery.isError);
   const ready = distinct && aQuery.data && bQuery.data;
