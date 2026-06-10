@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "972e1b0bcfcb52fae5b4739a65606c15",
+    "content-hash": "3b098cced9f4e7787238d614e057710a",
     "packages": [
         {
             "name": "brick/math",
@@ -137,7 +137,7 @@
         },
         {
             "name": "ceedcv-maya/shared-auth-laravel",
-            "version": "v0.8.0",
+            "version": "v0.13.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Maya-AQSS/shared-auth-laravel.git",
@@ -209,16 +209,16 @@
         },
         {
             "name": "ceedcv-maya/shared-editor-laravel",
-            "version": "v0.10.0",
+            "version": "v0.13.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Maya-AQSS/shared-editor-laravel.git",
-                "reference": "9724241dca445123f0e76409107e5e7ee79e9948"
+                "reference": "a8e3a88e3bc495e269bc62ce16b8751211c46475"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Maya-AQSS/shared-editor-laravel/zipball/9724241dca445123f0e76409107e5e7ee79e9948",
-                "reference": "9724241dca445123f0e76409107e5e7ee79e9948",
+                "url": "https://api.github.com/repos/Maya-AQSS/shared-editor-laravel/zipball/a8e3a88e3bc495e269bc62ce16b8751211c46475",
+                "reference": "a8e3a88e3bc495e269bc62ce16b8751211c46475",
                 "shasum": ""
             },
             "require": {
@@ -286,11 +286,11 @@
                 "issues": "https://github.com/Maya-AQSS/maya_platform/issues",
                 "source": "https://github.com/Maya-AQSS/shared-editor-laravel"
             },
-            "time": "2026-06-07T08:21:39+00:00"
+            "time": "2026-06-10T15:05:33+00:00"
         },
         {
             "name": "ceedcv-maya/shared-http-laravel",
-            "version": "v0.8.0",
+            "version": "v0.13.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Maya-AQSS/shared-http-laravel.git",
@@ -346,7 +346,7 @@
         },
         {
             "name": "ceedcv-maya/shared-messaging-laravel",
-            "version": "v0.8.0",
+            "version": "v0.13.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Maya-AQSS/shared-messaging-laravel.git",
@@ -419,7 +419,7 @@
         },
         {
             "name": "ceedcv-maya/shared-platform-laravel",
-            "version": "v0.8.0",
+            "version": "v0.13.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Maya-AQSS/shared-platform-laravel.git",
@@ -472,16 +472,16 @@
         },
         {
             "name": "ceedcv-maya/shared-profile-laravel",
-            "version": "v0.8.0",
+            "version": "v0.13.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Maya-AQSS/shared-profile-laravel.git",
-                "reference": "12fe4bd61f60cef5597499c8728b42e2205acfd4"
+                "reference": "dfc7131cc9fbfe7d2c1b7177d1270222095935b8"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Maya-AQSS/shared-profile-laravel/zipball/12fe4bd61f60cef5597499c8728b42e2205acfd4",
-                "reference": "12fe4bd61f60cef5597499c8728b42e2205acfd4",
+                "url": "https://api.github.com/repos/Maya-AQSS/shared-profile-laravel/zipball/dfc7131cc9fbfe7d2c1b7177d1270222095935b8",
+                "reference": "dfc7131cc9fbfe7d2c1b7177d1270222095935b8",
                 "shasum": ""
             },
             "require": {
@@ -531,7 +531,7 @@
                 "issues": "https://github.com/Maya-AQSS/maya_platform/issues",
                 "source": "https://github.com/Maya-AQSS/shared-profile-laravel"
             },
-            "time": "2026-06-01T13:49:34+00:00"
+            "time": "2026-06-10T09:55:40+00:00"
         },
         {
             "name": "clue/redis-protocol",
