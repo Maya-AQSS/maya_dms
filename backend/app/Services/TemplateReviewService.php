@@ -8,7 +8,6 @@ use App\DTOs\Templates\TemplateBlockPayloadDto;
 use App\Enums\BlockType;
 use App\Enums\TemplateVisibilityLevel;
 use App\Events\TemplateReviewApproved;
-use App\Events\TemplateReviewRejected;
 use App\Events\TemplateSubmittedForReview;
 use App\Models\Template;
 use App\Models\TemplateReviewer;
@@ -215,14 +214,14 @@ class TemplateReviewService
                 ->where('user_id', $actorId)
                 ->update(['status' => 'rejected']);
 
-            TemplateReviewRejected::dispatch(
-                $templateId,
-                $reviewer,
+            
+            $rejected = $this->templatePublishingService->transitionStatus(
+                $template,
+                'rejected',
                 $actorId,
-                $this->userDirectoryRepository->findNameById($actorId),
+                reviewerStage: (int) $reviewer->stage,
+                reviewerName: $this->userDirectoryRepository->findNameById($actorId),
             );
-
-            $rejected = $this->templatePublishingService->transitionStatus($template, 'rejected', $actorId);
 
             $createdBy = is_string($rejected->created_by) && $rejected->created_by !== '' ? $rejected->created_by : null;
             if ($createdBy !== null) {
@@ -291,24 +290,28 @@ class TemplateReviewService
                 ->where('user_id', $actorId)
                 ->update(['status' => 'approved']);
 
-            TemplateReviewApproved::dispatch(
-                $templateId,
-                $reviewer,
-                $actorId,
-                $this->userDirectoryRepository->findNameById($actorId),
-            );
-
             $allApproved = ! $template->reviewers()
                 ->where('status', '!=', 'approved')
                 ->exists();
 
             if ($allApproved) {
+                // Aprobación final: provoca la publicación, que ya se audita como
+                // state_changed(published) enriquecido en publishWithSnapshot.
                 return $this->templatePublishingService->publishWithSnapshot(
                     $templateId,
                     null,
                     $actorId,
                 );
             }
+
+            // Aprobación intermedia: no hay cambio de estado (sigue in_review), así que
+            // este evento es la única traza de la decisión del validador.
+            TemplateReviewApproved::dispatch(
+                $templateId,
+                $reviewer,
+                $actorId,
+                $this->userDirectoryRepository->findNameById($actorId),
+            );
 
             $fresh = $template->fresh();
             if ($fresh !== null && $fresh->review_mode === 'sequential') {
