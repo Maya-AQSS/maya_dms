@@ -45,7 +45,15 @@ final class TemplateBlockDescriptionNormalizer
                 return ['type' => 'doc', 'content' => array_values($value['content'])];
             }
 
-            // BlockNote / lista / prosa estructurada → aplanar a texto y reenvolver.
+            // Array pelado de nodos Tiptap (`[{type,attrs,marks,content}, …]`) — la
+            // forma que emite `MayaEditorPanel` por el cable. Es rich text válido:
+            // se envuelve en un doc en lugar de aplanarlo a texto (que perdía
+            // estilos, imágenes, tablas e iframes).
+            if (self::looksLikeTiptapNodeList($value)) {
+                return ['type' => 'doc', 'content' => array_values($value)];
+            }
+
+            // BlockNote / prosa estructurada legada → aplanar a texto y reenvolver.
             $text = self::toPlainString($value);
 
             return $text === null ? null : self::wrapProse($text);
@@ -61,6 +69,28 @@ final class TemplateBlockDescriptionNormalizer
 
         return $json !== false
             && (str_contains($json, '"props"') || str_contains($json, '"styles"') || str_contains($json, '"children"'));
+    }
+
+    /**
+     * ¿Es una lista pelada de nodos Tiptap (`[{type:…}, …]`)? Cada elemento debe
+     * ser un nodo con clave `type` de tipo string. Excluye listas BlockNote
+     * (que se detectan por `props`/`styles`/`children`) para que sigan aplanándose.
+     *
+     * @param  array<mixed>  $value
+     */
+    private static function looksLikeTiptapNodeList(array $value): bool
+    {
+        if ($value === [] || ! array_is_list($value) || self::looksLikeBlockNote($value)) {
+            return false;
+        }
+
+        foreach ($value as $node) {
+            if (! is_array($node) || ! is_string($node['type'] ?? null)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
