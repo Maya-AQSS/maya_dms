@@ -7,6 +7,8 @@ namespace App\Services;
 use App\DTOs\Templates\TemplateBlockPayloadDto;
 use App\Enums\BlockType;
 use App\Enums\TemplateVisibilityLevel;
+use App\Events\TemplateReviewApproved;
+use App\Events\TemplateReviewRejected;
 use App\Events\TemplateSubmittedForReview;
 use App\Models\Template;
 use App\Models\TemplateReviewer;
@@ -213,6 +215,13 @@ class TemplateReviewService
                 ->where('user_id', $actorId)
                 ->update(['status' => 'rejected']);
 
+            TemplateReviewRejected::dispatch(
+                $templateId,
+                $reviewer,
+                $actorId,
+                $this->userDirectoryRepository->findNameById($actorId),
+            );
+
             $rejected = $this->templatePublishingService->transitionStatus($template, 'rejected', $actorId);
 
             $createdBy = is_string($rejected->created_by) && $rejected->created_by !== '' ? $rejected->created_by : null;
@@ -281,6 +290,13 @@ class TemplateReviewService
             $template->reviewers()
                 ->where('user_id', $actorId)
                 ->update(['status' => 'approved']);
+
+            TemplateReviewApproved::dispatch(
+                $templateId,
+                $reviewer,
+                $actorId,
+                $this->userDirectoryRepository->findNameById($actorId),
+            );
 
             $allApproved = ! $template->reviewers()
                 ->where('status', '!=', 'approved')
