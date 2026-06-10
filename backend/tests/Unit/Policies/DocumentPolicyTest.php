@@ -305,7 +305,7 @@ class DocumentPolicyTest extends TestCase
         $this->assertTrue($this->policy->delete($user, $doc));
     }
 
-    public function test_delete_allows_creator_without_global_permission(): void
+    public function test_delete_denied_for_former_creator_no_longer_owner(): void
     {
         $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
         $user = $this->makeJwtUser($creatorId);
@@ -314,7 +314,7 @@ class DocumentPolicyTest extends TestCase
             ownerId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
         );
 
-        $this->assertTrue($this->policy->delete($user, $doc));
+        $this->assertFalse($this->policy->delete($user, $doc));
     }
 
     public function test_delete_denied_for_stranger_with_document_delete_outside_context(): void

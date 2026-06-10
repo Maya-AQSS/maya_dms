@@ -123,7 +123,7 @@ class DocumentBlockPolicyTest extends TestCase
         $this->assertFalse($this->policy->delete($user, $block));
     }
 
-    public function test_creator_can_delete_when_not_owner(): void
+    public function test_former_creator_no_longer_owner_cannot_delete_block(): void
     {
         $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
         $ownerId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
@@ -131,6 +131,6 @@ class DocumentBlockPolicyTest extends TestCase
         $user = $this->makeJwtUser($creatorId);
         $block = $this->makeDocumentBlock($creatorId, $ownerId);
 
-        $this->assertTrue($this->policy->delete($user, $block));
+        $this->assertFalse($this->policy->delete($user, $block));
     }
 }
