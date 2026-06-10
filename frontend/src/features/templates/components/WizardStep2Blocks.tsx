@@ -361,7 +361,9 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
         node.type === 'image' ||
         node.type === 'table' ||
         node.type === 'bulletList' ||
-        node.type === 'orderedList'
+        node.type === 'orderedList' ||
+        node.type === 'iframe' ||
+        node.type === 'alert'
       ) {
         return true;
       }
