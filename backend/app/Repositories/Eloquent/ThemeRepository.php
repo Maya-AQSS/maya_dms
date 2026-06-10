@@ -187,6 +187,7 @@ class ThemeRepository implements ThemeRepositoryInterface
             clonedFromId: $theme->cloned_from_id,
             createdAt: (string) $theme->created_at,
             updatedAt: (string) $theme->updated_at,
+            isSystem: (bool) $theme->is_system,
         );
     }
 

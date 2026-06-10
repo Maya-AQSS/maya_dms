@@ -369,6 +369,10 @@ class TemplateRepository implements TemplateRepositoryInterface
                 $template->setAttribute('id', $attributes['id']);
             }
             $template->process_id = $attributes['process_id'];
+            // theme_id es columna física (no va en el snapshot); persistir si viene.
+            if (! empty($attributes['theme_id'])) {
+                $template->theme_id = (string) $attributes['theme_id'];
+            }
             $template->save();
 
             $row = array_merge($attributes, [

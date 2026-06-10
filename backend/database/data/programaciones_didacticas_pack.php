@@ -53,6 +53,9 @@ return (static function (): array {
     $uJefeEFp = $u('jefe_e_fp');
     $uJefeEBach = $u('jefe_e_bach');
 
+    // Theme de sistema sembrado por DefaultThemeSeeder (UUID fijo, single source of truth).
+    $defaultThemeId = \Database\Seeders\DefaultThemeSeeder::DEFAULT_THEME_ID;
+
     // --- Helpers Tiptap (ProseMirror) ---
     $para = static function (string $text): array {
         $content = [];
@@ -185,6 +188,7 @@ return (static function (): array {
             'study_id' => null,
             'module_id' => null,
             'team_id' => null,
+            'theme_id' => $defaultThemeId,
             'delivery_deadline' => $deadline,
             'created_by' => $uDir,
             'status' => 'published',
@@ -201,6 +205,7 @@ return (static function (): array {
             'study_id' => null,
             'module_id' => null,
             'team_id' => null,
+            'theme_id' => $defaultThemeId,
             'delivery_deadline' => $deadline,
             'created_by' => $uDir,
             'status' => 'published',
@@ -217,6 +222,7 @@ return (static function (): array {
             'study_id' => null,
             'module_id' => null,
             'team_id' => null,
+            'theme_id' => $defaultThemeId,
             'delivery_deadline' => $deadline,
             'created_by' => $uDir,
             'status' => 'published',

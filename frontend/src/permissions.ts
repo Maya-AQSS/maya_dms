@@ -80,12 +80,19 @@ export function canCloneTheme(hasPermission: (slug: string) => boolean): boolean
 
 /**
  * Eliminar un theme: creador o `theme.delete` (admin).
+ * Los themes de sistema (`is_system`) nunca se borran — espeja {@see ThemePolicy::delete}
+ * del backend, que bloquea el borrado incluso para creador/admin.
  */
 export function canDeleteTheme(
   hasPermission: (slug: string) => boolean,
   profileId: string | undefined,
   createdBy: string | undefined,
+  isSystem?: boolean,
 ): boolean {
+  if (isSystem) {
+    return false;
+  }
+
   if (profileId && createdBy && profileId === createdBy) {
     return true;
   }

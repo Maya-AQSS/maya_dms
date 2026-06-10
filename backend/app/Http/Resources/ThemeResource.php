@@ -29,6 +29,7 @@ class ThemeResource extends JsonResource
             'name' => $t->name,
             'description' => $t->description,
             'status' => $t->status,
+            'is_system' => $t->isSystem,
             'created_by' => $t->createdBy,
             'team_id' => $t->teamId,
             'palette' => $t->palette,
