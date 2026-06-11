@@ -19,6 +19,7 @@ use App\Support\ReviewValidationNotifier;
 use App\Support\VersionSubmissionChangelog;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Maya\Messaging\Events\BroadcastNotificationCreated;
 use Maya\Messaging\Publishers\NotificationPublisher;
 
 class TemplateReviewService
@@ -263,6 +264,23 @@ class TemplateReviewService
                     );
                 } catch (\Throwable $e) {
                     Log::warning('notification.publish_failed', [
+                        'error' => $e->getMessage(),
+                        'type' => 'template.rejected',
+                        'template_id' => (string) $rejected->id,
+                    ]);
+                }
+
+                try {
+                    BroadcastNotificationCreated::dispatch(
+                        recipientId: $createdBy,
+                        app: 'maya-dms',
+                        type: 'template.rejected',
+                        title: 'Revisión de plantilla rechazada',
+                        body: 'La revisión de la plantilla "'.$rejected->name.'" ha sido rechazada',
+                        metadata: ['template_id' => (string) $rejected->id],
+                    );
+                } catch (\Throwable $e) {
+                    Log::warning('broadcast.dispatch_failed', [
                         'error' => $e->getMessage(),
                         'type' => 'template.rejected',
                         'template_id' => (string) $rejected->id,
