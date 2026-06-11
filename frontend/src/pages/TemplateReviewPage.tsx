@@ -11,7 +11,7 @@ import { DMS_PERMISSIONS } from '../permissions';
 export function TemplateReviewPage() {
   const { id } = useParams<{ id: string }>();
   const { t } = useTranslation('common');
-  const { goBack } = useBackNavigation({ fallback: '/procesos' });
+  const { goBack } = useBackNavigation({ fallback: '/processes' });
   const { profile, hasPermission } = useUserProfile();
   const [template, setTemplate] = useState<Template | null>(null);
   const [loading, setLoading] = useState(true);

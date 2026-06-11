@@ -517,7 +517,7 @@ export function TemplatePreviewPage() {
             type="button"
             variant="primary"
             size="sm"
-            onClick={() => navigate(`/documentos/nuevo/${id}/wizard`, {
+            onClick={() => navigate(`/documents/new/${id}/wizard`, {
               state: {
                 moduleId: locationState?.moduleId,
                 processId: locationState?.processId,

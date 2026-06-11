@@ -114,7 +114,7 @@ export function ProcesosPage() {
               type="button"
               variant="primary"
               size="sm"
-              onClick={() => navigate('/documentos/nuevo', { state: { ...navState, ...buildBackState(location) } })}
+              onClick={() => navigate('/documents/new', { state: { ...navState, ...buildBackState(location) } })}
             >
               Nuevo Documento
             </Button>

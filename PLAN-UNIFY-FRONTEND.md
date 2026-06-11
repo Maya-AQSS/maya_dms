@@ -100,14 +100,18 @@ verificar antes que la otra sesión no los tenga modificados; si los tiene, posp
 - typecheck: por-archivo (tsc -b completo OOMea en el contenedor — gotcha conocido).
 - Gate final: code-reviewer sobre el diff frontend completo.
 
-## Preguntas abiertas al usuario (bloquean partes concretas)
+## Decisiones del usuario (2026-06-11) — preguntas RESUELTAS
 
-| # | Pregunta | Bloquea |
-|---|---|---|
-| Q-A | ¿Asignación de revisores de documentos debe tener permiso granular `document.assign-review` (como template) o basta `document.update`? | F3 |
-| Q-B | ¿Documents tendrá estado `archived` como templates? (faltarían i18n key + badge) | F1.11 |
-| Q-C | El changelog del wizard de documentos empieza en blanco en cada envío (la preview sí pre-rellena, y templates pre-rellena en ambos sitios). ¿Olvido a corregir o intencional? | F1 |
-| Q-D | Tabs de TemplateReviewView usan indicador TEAL (shared Tabs es morado): ¿cambiar a morado estándar o parametrizar color en shared-ui (toca maya_platform)? | F4 |
-| Q-E | Modal centrado: ¿promovemos un `Modal` genérico a shared-ui-react (release de maya_platform) o seguimos con copias locales en dms? | F4 |
-| Q-F | Ruta `/documentos/nuevo` (español) vs resto en inglés: ¿renombrar a `/documents/new`? (rompe bookmarks/deeplinks existentes) | F1 |
-| Q-G | ¿F5 entero (DocumentValidateView + trocear DocumentWizard) dentro de esta tarea o rama aparte? | F5 |
+| # | Decisión |
+|---|---|
+| Q-A | La asignación de revisores SOLO existe en plantillas: OCULTAR ese paso/UI en documentos. Simétricamente, el paso de migración SOLO existe en documentos (nueva versión de plantilla): NO debe verse en plantillas. Verificar ambas direcciones. |
+| Q-B | SÍ — documents tendrá `archived`: añadir i18n key + badge (mismo tratamiento que templates). |
+| Q-C | Olvido — corregir: el changelog del wizard de documentos debe pre-rellenar igual que preview y que templates. Todo debe ser igual. |
+| Q-D | Tabs de TemplateReviewView a MORADO, el mismo tono que los botones de cabecera (token estándar). Sin parametrizar shared. |
+| Q-E | PROMOVER `Modal` genérico a shared-ui-react (toca maya_platform + release). Hasta entonces no crear más copias locales. |
+| Q-F | TODAS las rutas en inglés: renombrar `/documentos/nuevo` → `/documents/new` y cualquier otra ruta en español que exista. |
+| Q-G | F5 (DocumentValidateView + trocear DocumentWizard) en RAMA APARTE — fuera de esta tarea. |
+
+> Nota operativa: la otra sesión YA COMMITEÓ (c25f4852, 96ffd63f + merges
+> f749b90e/c4ae07ec). El bloqueo de archivos queda levantado. En el merge
+> c4ae07ec se perdió 3a10a2d4 (lista→preview, no editor); reaplicado en 146232fb.

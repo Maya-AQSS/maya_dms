@@ -165,7 +165,7 @@ export function ProcessesTable() {
         filtersActiveCount={filtersActiveCount}
         onClearFilters={clearFilters}
         filtersStorageKey="maya:dms:processes-table"
-        onRowClick={(p) => navigate(`/admin/procesos/${p.id}`, { state: buildBackState(location) })}
+        onRowClick={(p) => navigate(`/admin/processes/${p.id}`, { state: buildBackState(location) })}
         filtersPanel={
           <>
             <FilterField label="Buscar">

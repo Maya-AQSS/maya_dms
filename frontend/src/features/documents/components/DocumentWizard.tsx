@@ -412,7 +412,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
     : null;
   const processBackTo = useMemo(() => {
     const effectiveProcessId = locationProcessId ?? template?.process_id ?? null;
-    return effectiveProcessId ? `/procesos/${effectiveProcessId}` : '/dashboard';
+    return effectiveProcessId ? `/processes/${effectiveProcessId}` : '/dashboard';
   }, [locationProcessId, template?.process_id]);
   // Salida del asistente: pila backTo del listado de origen, o proceso/dashboard.
   const { goBack } = useBackNavigation({ fallback: processBackTo });
@@ -1772,7 +1772,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                   </span>
                   <button
                     type="button"
-                    onClick={() => navigate('/documentos/nuevo', { state: location.state })}
+                    onClick={() => navigate('/documents/new', { state: location.state })}
                     className="text-xs text-odoo-purple dark:text-odoo-dark-purple hover:underline cursor-pointer shrink-0"
                   >
                     Cambiar plantilla

@@ -49,7 +49,7 @@ export function ProcessShowPage() {
   const { t } = useTranslation('common');
   const navigate = useNavigate();
   const location = useLocation();
-  const { goBack } = useBackNavigation({ fallback: '/admin/procesos' });
+  const { goBack } = useBackNavigation({ fallback: '/admin/processes' });
   const queryClient = useQueryClient();
   const { hasPermission } = useUserProfile();
   const {
@@ -130,7 +130,7 @@ export function ProcessShowPage() {
       if (isCreate) {
         const res = await createProcess(payload);
         invalidate();
-        navigate(`/admin/procesos/${res.data.id}`, { replace: true, state: location.state });
+        navigate(`/admin/processes/${res.data.id}`, { replace: true, state: location.state });
       } else {
         await updateProcess(data!.id, payload);
         invalidate();
@@ -395,8 +395,8 @@ export function ProcessShowPage() {
                 <div className={displayClass}>
                   {parentProcess ? (
                     <a
-                      href={`/admin/procesos/${parentProcess.id}`}
-                      onClick={(e) => { e.preventDefault(); navigate(`/admin/procesos/${parentProcess.id}`); }}
+                      href={`/admin/processes/${parentProcess.id}`}
+                      onClick={(e) => { e.preventDefault(); navigate(`/admin/processes/${parentProcess.id}`); }}
                       className="flex items-center gap-2 text-odoo-purple dark:text-odoo-dark-purple hover:underline"
                     >
                       <span className="font-mono text-xs">{parentProcess.code}</span>

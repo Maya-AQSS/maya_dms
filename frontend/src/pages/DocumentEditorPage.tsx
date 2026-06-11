@@ -25,7 +25,7 @@ export function DocumentEditorPage() {
         <BackButton
           variant="outline"
           label={t('navigation.backToProcesses')}
-          onClick={() => navigate('/procesos', { state: { tab: 'documents' } })}
+          onClick={() => navigate('/processes', { state: { tab: 'documents' } })}
         />
       </div>
     );

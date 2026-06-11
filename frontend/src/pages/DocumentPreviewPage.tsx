@@ -251,7 +251,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     : t('common:actions.back');
 
   const { goBack, backTarget, hasBackState } = useBackNavigation({
-    fallback: selectedProcessId ? `/procesos/${selectedProcessId}` : '/dashboard',
+    fallback: selectedProcessId ? `/processes/${selectedProcessId}` : '/dashboard',
   });
 
   const handleBack = () => {
@@ -260,7 +260,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       return;
     }
     // Sin pila de retorno (acceso directo): destino canónico con la pestaña activa.
-    navigate(selectedProcessId ? `/procesos/${selectedProcessId}` : '/dashboard', {
+    navigate(selectedProcessId ? `/processes/${selectedProcessId}` : '/dashboard', {
       state: { tab: 'documents' },
     });
   };
@@ -654,7 +654,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       }
 
       if (hasUpdate && detail?.template_id) {
-        navigate(`/documentos/nuevo/${detail.template_id}/wizard`, {
+        navigate(`/documents/new/${detail.template_id}/wizard`, {
           state: { sourceDocumentId: documentId },
         });
         return;

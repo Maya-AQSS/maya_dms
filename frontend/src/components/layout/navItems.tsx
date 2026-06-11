@@ -34,7 +34,7 @@ export function useNavItems({ onOpenProcessesDrawer }: UseNavItemsOptions = {}):
         id: 'procesos',
         label: t('procesos', { defaultValue: 'Procesos' }),
         icon: FolderIcon,
-        path: '/procesos',
+        path: '/processes',
         onClick: (event) => {
           if (isDesktop && onOpenProcessesDrawer) {
             event.preventDefault();
@@ -49,7 +49,7 @@ export function useNavItems({ onOpenProcessesDrawer }: UseNavItemsOptions = {}):
         id: 'admin-procesos',
         label: t('adminProcesos', { defaultValue: 'Gestión Procesos' }),
         icon: GridIcon,
-        path: '/admin/procesos',
+        path: '/admin/processes',
       });
     }
 

@@ -22,7 +22,7 @@ export function ProcessesManagePage() {
               type="button"
               variant="primary"
               size="sm"
-              onClick={() => navigate('/admin/procesos/new', { state: buildBackState(location) })}
+              onClick={() => navigate('/admin/processes/new', { state: buildBackState(location) })}
             >
               + Crear
             </Button>

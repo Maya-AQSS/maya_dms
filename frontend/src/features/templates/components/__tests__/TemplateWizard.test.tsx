@@ -280,7 +280,7 @@ describe('TemplateWizard Integration', () => {
 
     await waitFor(() => {
       expect(submitTemplateForReview).toHaveBeenCalledWith('t123', 'Primera publicación con changelog.');
-      expect(mockNavigate).toHaveBeenCalledWith('/procesos/proc-test-1', {
+      expect(mockNavigate).toHaveBeenCalledWith('/processes/proc-test-1', {
         replace: false,
         state: undefined,
       });

@@ -45,7 +45,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   const initial = templateProp || initialTemplate;
   const processBackTo = useMemo(() => {
     const effectiveProcessId = processId ?? templateProp?.process_id ?? initialTemplate?.process_id ?? null;
-    return effectiveProcessId ? `/procesos/${effectiveProcessId}` : '/dashboard';
+    return effectiveProcessId ? `/processes/${effectiveProcessId}` : '/dashboard';
   }, [initialTemplate?.process_id, processId, templateProp?.process_id]);
   // Salida del asistente: usa la pila backTo del listado de origen si existe,
   // o el proceso/dashboard como destino canónico.

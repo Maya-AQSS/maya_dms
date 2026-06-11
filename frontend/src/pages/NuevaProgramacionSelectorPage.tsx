@@ -31,7 +31,7 @@ export function NuevaProgramacionSelectorPage() {
   const selectedModuleId = locationState?.moduleId;
   const selectedProcessId = locationState?.processId;
   const { goBack, hasBackState } = useBackNavigation({
-    fallback: selectedProcessId ? `/procesos/${selectedProcessId}` : '/dashboard',
+    fallback: selectedProcessId ? `/processes/${selectedProcessId}` : '/dashboard',
   });
   const { templateIds: favoriteTemplateIds } = useFavoritesIds();
 
@@ -194,7 +194,7 @@ export function NuevaProgramacionSelectorPage() {
             goBack();
             return;
           }
-          navigate(selectedProcessId ? `/procesos/${selectedProcessId}` : '/dashboard', {
+          navigate(selectedProcessId ? `/processes/${selectedProcessId}` : '/dashboard', {
             state: { tab: 'documents' },
           });
         }}
@@ -225,7 +225,7 @@ export function NuevaProgramacionSelectorPage() {
             t.list_variant === 'published_fallback'
               ? (t.latest_published_version_id ?? null)
               : null;
-          navigate(`/documentos/nuevo/${t.id}/wizard`, {
+          navigate(`/documents/new/${t.id}/wizard`, {
             state: {
               moduleId: selectedModuleId,
               processId: selectedProcessId,

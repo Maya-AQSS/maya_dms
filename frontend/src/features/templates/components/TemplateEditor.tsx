@@ -485,7 +485,7 @@ export function TemplateEditor({ template }: Props) {
         <Button
           variant="ghost"
           size="xs"
-          onClick={() => navigate('/procesos')}
+          onClick={() => navigate('/processes')}
           aria-label={t('blocks.backToTemplates')}
           className="!w-9 !h-9 !p-0 !rounded-full active:scale-95"
         >

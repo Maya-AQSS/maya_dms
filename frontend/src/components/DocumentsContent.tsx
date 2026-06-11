@@ -406,7 +406,7 @@ export function DocumentsContent() {
     if (creationMode === 'auto') {
       const templateId = creationOptions[0]?.template_id;
       const templateVersionId = creationOptions[0]?.template_version_id;
-      navigate(`/documentos/nuevo/${templateId}/wizard`, {
+      navigate(`/documents/new/${templateId}/wizard`, {
         state: {
           moduleId: selectedModuleId,
           templateVersionId: templateVersionId ?? null,
@@ -415,7 +415,7 @@ export function DocumentsContent() {
       });
       return;
     }
-    navigate('/documentos/nuevo', {
+    navigate('/documents/new', {
       state: { moduleId: selectedModuleId, ...buildBackState(location) }
     });
   };

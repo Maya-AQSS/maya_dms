@@ -81,7 +81,7 @@ function ProcessRow({ process, variant, canShow, onNavigate }: ProcessRowProps) 
 
   return (
     <NavLink
-      to={`/procesos/${process.id}`}
+      to={`/processes/${process.id}`}
       title={title}
       onClick={onNavigate}
       className={({ isActive }) =>
@@ -108,7 +108,7 @@ function withAlpha(hex: string, alpha = 0x33): string {
  * - Lista plana ordenada alfabéticamente por alias (locale es-ES).
  * - Buscador arriba (filtra por alias, name o code).
  * - `Esc` cierra el drawer; el overlay también es clickable para cerrar.
- * - Click en un proceso navega a `/procesos/:id` y cierra el drawer.
+ * - Click en un proceso navega a `/processes/:id` y cierra el drawer.
  *
  * El consumer es responsable de abrir/cerrar (estado externo) — esto lo
  * mantiene flexible para activarlo desde un NavLink, un atajo, etc.

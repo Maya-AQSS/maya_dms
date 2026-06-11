@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Spinner } from '@ceedcv-maya/shared-ui-react';
 import { useTranslation } from 'react-i18next';
-import { Route, Routes, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Route, Routes, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AppLayout } from '@ceedcv-maya/shared-layout-react';
 import { NotificationsBell, SidebarFavorites } from '@ceedcv-maya/shared-sidebar-react';
 import { useKeycloakLocaleSync } from '@ceedcv-maya/shared-i18n-react';
@@ -40,16 +40,31 @@ const DASHBOARD_API_URL = resolveServiceUrl(
   'dashboard-api',
 );
 
+/** Redirige las rutas antiguas en español a sus equivalentes en inglés. */
+function LegacyProcesoRedirect() {
+  const { processId } = useParams();
+  return <Navigate to={processId ? `/processes/${processId}` : '/processes'} replace />;
+}
+
+function LegacyAdminProcesosRedirect() {
+  const location = useLocation();
+  return <Navigate to={location.pathname.replace('/admin/procesos', '/admin/processes')} replace />;
+}
+
 function AppRoutes() {
   return (
     <Suspense fallback={<div className="p-8 flex justify-center"><Spinner /></div>}>
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/procesos" element={<ProcesosPage />} />
-        <Route path="/procesos/:processId" element={<ProcesosPage />} />
-        <Route path="/documentos/nuevo" element={<NuevaProgramacionSelectorPage />} />
-        <Route path="/documentos/nuevo/:templateId/wizard" element={<DocumentEditorPage />} />
+        <Route path="/processes" element={<ProcesosPage />} />
+        <Route path="/processes/:processId" element={<ProcesosPage />} />
+        <Route path="/documents/new" element={<NuevaProgramacionSelectorPage />} />
+        <Route path="/documents/new/:templateId/wizard" element={<DocumentEditorPage />} />
+        {/* Redirecciones legacy: rutas antiguas en español */}
+        <Route path="/procesos" element={<Navigate to="/processes" replace />} />
+        <Route path="/procesos/:processId" element={<LegacyProcesoRedirect />} />
+        <Route path="/documentos/nuevo" element={<Navigate to="/documents/new" replace />} />
         <Route path="/documents/:documentId/editor" element={<DocumentEditorPage />} />
         <Route path="/documents/:documentId/validate" element={<DocumentValidationPage />} />
         <Route path="/documents/:documentId" element={<DocumentPreviewPage />} />
@@ -63,9 +78,10 @@ function AppRoutes() {
         <Route path="/themes/:id/edit" element={<ThemeEditPage />} />
         <Route path="/themes/:id" element={<ThemeShowPage />} />
         <Route path="/themes/:id/layout" element={<ThemeLayoutPage />} />
-        <Route path="/admin/procesos" element={<ProcessesManagePage />} />
-        <Route path="/admin/procesos/new" element={<ProcessShowPage />} />
-        <Route path="/admin/procesos/:processId" element={<ProcessShowPage />} />
+        <Route path="/admin/processes" element={<ProcessesManagePage />} />
+        <Route path="/admin/processes/new" element={<ProcessShowPage />} />
+        <Route path="/admin/processes/:processId" element={<ProcessShowPage />} />
+        <Route path="/admin/procesos/*" element={<LegacyAdminProcesosRedirect />} />
         <Route path="*" element={<PlaceholderPage />} />
       </Routes>
     </Suspense>
@@ -94,7 +110,7 @@ function AppWithLayout() {
     setProcessesDrawerOpen(false);
     const wasAuthenticated = wasAuthenticatedRef.current;
     if (!wasAuthenticated && isOidcSignedIn) {
-      if (previousPathRef.current === '/templates/new' || previousPathRef.current === '/documentos/nuevo') {
+      if (previousPathRef.current === '/templates/new' || previousPathRef.current === '/documents/new') {
         navigate('/dashboard', { replace: true });
         return;
       }
