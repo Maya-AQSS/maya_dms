@@ -17,8 +17,14 @@ import {
   discardDocumentWorkingVersion,
   type DocumentReview,
 } from '../api/documents';
-import { fetchMe } from '../api/users';
-import { useDocumentCommentsQuery } from '../features/documents/hooks/useDocumentComments';
+import { fetchTemplate } from '../api/templates';
+import { useDocumentCommentsQuery, documentCommentsKey } from '../features/documents/hooks/useDocumentComments';
+import {
+  DOCUMENT_STATUS_LABELS,
+  effectiveDocumentReviewMode,
+  pickActionableDocumentReview,
+  validationSuccessBannerMessage,
+} from '../features/documents/components/documentWizardUtils';
 import { useTemplateQuery } from '../features/templates/hooks/useTemplate';
 import { useProcessesQuery } from '../hooks/useProcesses';
 import { normalizeBlockContentForEditor } from '../features/documents/lib/normalizeBlockContent';
@@ -50,21 +56,15 @@ import { StructuralBlockPreview } from '../features/documents/components/Structu
 import { computeChangedBlocks } from '../features/documents/components/DocumentDiffModal';
 import { listUnresolvedEditableBlockTitles } from '../features/documents/lib/blockContentEquals';
 import { BlockChangesPanel } from '../features/documents/components/BlockChangesPanel';
-import { apiFetchJson, ApiHttpError } from '../api/http';
+import { apiFetchJson } from '../api/http';
 import type { Process } from '../types/processes';
 import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
 import { getCommentsForBlock, countUnreadCommentsForBlock, resolveCommentBlockableId } from '../utils/blockComments';
-import { markCommentAsReadInDocumentCache, markCommentDeletedInDocumentCache, markBlockCommentsAsReadInDocumentCache } from '../features/comments/commentCache';
+import { addCommentToCache, markCommentAsReadInDocumentCache, markCommentDeletedInDocumentCache, markBlockCommentsAsReadInDocumentCache, patchDocumentCommentCache } from '../features/comments/commentCache';
 import { SequentialValidatorBadge } from '../features/documents/components/SequentialValidatorBadge';
 
-// Estado: clases en `statusBadgeClass` (módulo `@ceedcv-maya/shared-ui-react/badges`).
-
-const STATUS_LABEL: Record<string, string> = {
-  draft: 'Borrador',
-  in_review: 'En revisión',
-  published: 'Publicado',
-  rejected: 'Rechazado',
-};
+// Estado: clases en `statusBadgeClass` (módulo `@ceedcv-maya/shared-ui-react/badges`);
+// etiquetas en `DOCUMENT_STATUS_LABELS` (documentWizardUtils).
 
 function blockContentForPreview(block: DocumentDisplayBlock): unknown[] {
   const fromContent = normalizeBlockContentForEditor(block.content);
@@ -84,33 +84,6 @@ function snapshotDocumentTitle(snapshotData: Record<string, unknown>): string | 
   if (!doc || typeof doc !== 'object') return undefined;
   const t = (doc as Record<string, unknown>).title;
   return typeof t === 'string' ? t : undefined;
-}
-
-function pickActionableDocumentReview(
-  reviews: DocumentReview[],
-  reviewerUserId: string,
-  reviewMode: 'sequential' | 'parallel',
-): DocumentReview | null {
-  const pending = reviews.filter((r) => r.status === 'pending');
-  if (pending.length === 0) return null;
-  const mine = pending.filter((r) => r.reviewer_id === reviewerUserId);
-  if (mine.length === 0) return null;
-  if (reviewMode !== 'sequential') return mine[0] ?? null;
-  const minStage = Math.min(...pending.map((r) => r.stage));
-  return mine.find((r) => r.stage === minStage) ?? null;
-}
-
-function validationSuccessBannerMessage(
-  updated: { title: string; status: string },
-  action: 'approve' | 'reject',
-): string {
-  if (action === 'reject') {
-    return 'Rechazo registrado. El documento ha vuelto a borrador para que el titular pueda corregirlo.';
-  }
-  if (updated.status === 'published') {
-    return `Validación realizada. El documento «${updated.title}» ha sido publicado.`;
-  }
-  return 'Validación realizada. Este documento se ha pasado al siguiente validador.';
 }
 
 type Props = {
@@ -251,7 +224,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     : t('common:actions.back');
 
   const { goBack, backTarget, hasBackState } = useBackNavigation({
-    fallback: selectedProcessId ? `/processes/${selectedProcessId}` : '/dashboard',
+    fallback: selectedProcessId ? `/processes/${selectedProcessId}` : '/processes',
   });
 
   const handleBack = () => {
@@ -260,7 +233,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       return;
     }
     // Sin pila de retorno (acceso directo): destino canónico con la pestaña activa.
-    navigate(selectedProcessId ? `/processes/${selectedProcessId}` : '/dashboard', {
+    navigate(selectedProcessId ? `/processes/${selectedProcessId}` : '/processes', {
       state: { tab: 'documents' },
     });
   };
@@ -375,6 +348,10 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       return;
     }
 
+    // En modo validación el usuario sale del perfil compartido (useUserProfile);
+    // si aún no se ha resuelto, el efecto se relanza cuando llegue (dep `uid`).
+    if (isValidateMode && !uid) return;
+
     let cancelled = false;
     if (isValidateMode) {
       setValidationReviewLoading(true);
@@ -384,15 +361,16 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
 
     void (async () => {
       try {
-        const [reviews, meRes] = await Promise.all([
-          fetchDocumentReviews(detail.id),
-          fetchMe(),
-        ]);
+        const reviews = await fetchDocumentReviews(detail.id);
         if (cancelled) return;
         setAllReviews(reviews);
-        if (isValidateMode) {
-          const reviewMode = detail.review_mode === 'sequential' ? 'sequential' : 'parallel';
-          const actionable = pickActionableDocumentReview(reviews, meRes.data.id, reviewMode);
+        if (isValidateMode && uid) {
+          // Mismo origen que el wizard: el modo efectivo sale de la plantilla
+          // (document_review_mode ?? review_mode), no del review_mode pelado.
+          const templateResp = await fetchTemplate(detail.template_id);
+          if (cancelled) return;
+          const reviewMode = effectiveDocumentReviewMode(templateResp.data);
+          const actionable = pickActionableDocumentReview(reviews, uid, reviewMode);
           if (!actionable) {
             setValidationSetupError(
               'No tienes una revisión pendiente que puedas tramitar para este documento.',
@@ -420,7 +398,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     return () => {
       cancelled = true;
     };
-  }, [isValidateMode, detail?.id, detail?.status, detail?.template_id]);
+  }, [isValidateMode, detail?.id, detail?.status, detail?.template_id, uid]);
 
   const templateForLabelQuery = useTemplateQuery(detail?.template_id ?? '', {
     enabled: !!detail?.template_id,
@@ -461,13 +439,6 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     );
   };
 
-  const appendCommentToCache = (id: string, comment: BlockComment) => {
-    queryClient.setQueryData<{ data: BlockComment[] }>(
-      ['documents', id, 'comments'],
-      (prev) => ({ data: [...(prev?.data ?? []), comment] }),
-    );
-  };
-
   const handlePreviewSendMessage = async (parentId: string | null, body: string) => {
     if (!documentId || !selectedReviewView?.blockId) return;
     setPreviewCommentSubmitError(null);
@@ -489,7 +460,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           blockable_id: blockableId,
         },
       });
-      appendCommentToCache(documentId, res.data);
+      addCommentToCache(queryClient, documentCommentsKey(documentId), res.data);
     } catch {
       setPreviewCommentSubmitError('No se pudo guardar el comentario.');
       throw new Error('comment-send-failed');
@@ -498,20 +469,15 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     }
   };
 
-  const updateCommentInCache = (docId: string, commentId: string, updated: BlockComment) => {
-    queryClient.setQueryData<{ data: BlockComment[] }>(
-      ['documents', docId, 'comments'],
-      (prev) => ({ data: (prev?.data ?? []).map(c => c.id === commentId ? updated : c) }),
-    );
-  };
-
   const handleEditComment = async (commentId: string, newBody: string) => {
     if (!documentId) return;
     const res = await apiFetchJson<{ data: BlockComment }>(`comments/${commentId}`, {
       method: 'PATCH',
       body: { body: newBody },
     });
-    updateCommentInCache(documentId, commentId, res.data);
+    patchDocumentCommentCache(queryClient, documentId, (comments) =>
+      comments.map((c) => (c.id === commentId ? res.data : c)),
+    );
   };
 
   const handleDeleteComment = async (commentId: string) => {
@@ -563,7 +529,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
         method: 'POST',
         body: { body, parent_id: parentId, blockable_id: blockableId },
       });
-      appendCommentToCache(documentId, res.data);
+      addCommentToCache(queryClient, documentCommentsKey(documentId), res.data);
     } catch {
       setValidateCommentSubmitError('No se pudo guardar el comentario.');
       throw new Error('comment-send-failed');
@@ -764,7 +730,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       ) : (
         <>
           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadgeClass(detail.status)}`}>
-            {STATUS_LABEL[detail.status] ?? detail.status}
+            {DOCUMENT_STATUS_LABELS[detail.status] ?? detail.status}
           </span>
           {detail.status !== 'draft' && (
           <span className="text-xs font-mono bg-ui-body dark:bg-ui-dark-bg border border-ui-border dark:border-ui-dark-border px-2 py-0.5 rounded-full text-text-secondary dark:text-text-dark-secondary">

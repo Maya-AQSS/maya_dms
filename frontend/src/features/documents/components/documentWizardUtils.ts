@@ -1,8 +1,6 @@
-import { isSemanticallyEmptyTiptapContent } from '@ceedcv-maya/shared-editor-react';
-import type { DocumentDisplayBlock, DocumentStatus } from '../../../types/documents';
+import type { DocumentStatus } from '../../../types/documents';
 import type { DocumentReview } from '../../../api/documents';
 import type { Template } from '../../../types/templates';
-import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
 
 export type Step = 'properties' | 'migration' | 'blocks' | 'summary';
 export type SummaryConfirmAction = 'save' | 'submit' | null;
@@ -27,6 +25,7 @@ export const DOCUMENT_STATUS_LABELS: Record<DocumentStatus, string> = {
   in_review: 'En revisión',
   published: 'Publicado',
   rejected: 'Rechazado',
+  archived: 'Archivado',
 };
 
 export function dateIsoToInput(value: string | null | undefined): string {

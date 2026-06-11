@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { buildBackState, useBackNavigation } from '@ceedcv-maya/shared-hooks-react';
 import { useTranslation } from 'react-i18next';
-import { fetchProcesses } from '../api/processes';
+import { useProcessesQuery } from '../hooks/useProcesses';
 import type { Template } from '../types/templates';
 import { useFavoritesIds } from '../hooks/useFavoritesIds';
 import { FavoriteInlineMark } from '../components/FavoriteInlineMark';
@@ -31,36 +31,22 @@ export function NuevaProgramacionSelectorPage() {
   const selectedModuleId = locationState?.moduleId;
   const selectedProcessId = locationState?.processId;
   const { goBack, hasBackState } = useBackNavigation({
-    fallback: selectedProcessId ? `/processes/${selectedProcessId}` : '/dashboard',
+    fallback: selectedProcessId ? `/processes/${selectedProcessId}` : '/processes',
   });
   const { templateIds: favoriteTemplateIds } = useFavoritesIds();
 
   const { rows: allTemplates, meta, loading, error: listError, filters, setFilter, resetFilters,
-          filtersActiveCount, page, onPageChange, pageSize, onPageSizeChange,
+          filtersActiveCount, onPageChange, pageSize, onPageSizeChange,
           sortBy, onSortChange } = useServerNuevaProgramacionTable({
     processId: selectedProcessId,
   });
 
-  const [process, setProcess] = useState<Process | null>(null);
-
-  useEffect(() => {
-    if (!selectedProcessId) {
-      setProcess(null);
-      return;
-    }
-    let cancelled = false;
-    void fetchProcesses()
-      .then((res) => {
-        if (cancelled) return;
-        setProcess(res.data.find((p) => p.id === selectedProcessId) ?? null);
-      })
-      .catch(() => {
-        if (!cancelled) setProcess(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedProcessId]);
+  // Catálogo cacheado de procesos (TanStack Query) en lugar de fetch manual.
+  const processesQuery = useProcessesQuery(undefined, { enabled: !!selectedProcessId });
+  const process = useMemo<Process | null>(() => {
+    if (!selectedProcessId) return null;
+    return processesQuery.data?.data.find((p) => p.id === selectedProcessId) ?? null;
+  }, [selectedProcessId, processesQuery.data]);
 
   const mappedTemplates = useMemo(() => {
     return allTemplates.map((template) => {
@@ -194,7 +180,7 @@ export function NuevaProgramacionSelectorPage() {
             goBack();
             return;
           }
-          navigate(selectedProcessId ? `/processes/${selectedProcessId}` : '/dashboard', {
+          navigate(selectedProcessId ? `/processes/${selectedProcessId}` : '/processes', {
             state: { tab: 'documents' },
           });
         }}
@@ -203,7 +189,7 @@ export function NuevaProgramacionSelectorPage() {
 
       {listError && (
         <div className="rounded-lg border border-warning/40 bg-warning-light/40 dark:bg-warning-dark/10 px-4 py-3 text-sm text-warning-dark dark:text-warning-light">
-          {listError}
+          {listError.message}
         </div>
       )}
 

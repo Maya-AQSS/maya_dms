@@ -5,9 +5,24 @@ import {
   templateCommentsKey,
   type TemplateCommentsResponse,
 } from '../templates/hooks/useTemplateComments';
+import { documentCommentsKey } from '../documents/hooks/useDocumentComments';
 
-export const documentCommentsKey = (documentId: string) =>
-  ['documents', documentId, 'comments'] as const;
+export { documentCommentsKey };
+
+/**
+ * Añade un comentario al final de la lista cacheada bajo `key`, preservando
+ * el resto de la respuesta (p. ej. `meta`). Patrón add-comment unificado.
+ */
+export function addCommentToCache(
+  queryClient: QueryClient,
+  key: readonly unknown[],
+  comment: BlockComment,
+): void {
+  queryClient.setQueryData<{ data: BlockComment[] }>(key, (current) => ({
+    ...current,
+    data: [...(current?.data ?? []), comment],
+  }));
+}
 
 export function patchDocumentCommentCache(
   queryClient: QueryClient,
@@ -36,7 +51,7 @@ export function appendCommentToTemplateCache(
   templateId: string,
   comment: BlockComment,
 ): void {
-  patchTemplateCommentCache(queryClient, templateId, (comments) => [...comments, comment]);
+  addCommentToCache(queryClient, templateCommentsKey(templateId), comment);
 }
 
 export async function markCommentAsReadInDocumentCache(

@@ -44,13 +44,13 @@ import { refreshDmsDashboardQuery } from '../../dashboard/hooks/useDmsDashboard'
 import { ApiHttpError, apiFetchJson } from '../../../api/http';
 import { useUserProfile } from '../../user-profile';
 import { canDeleteBlockComment } from '../../../permissions';
-import { fetchProcesses } from '../../../api/processes';
+import { useProcessesQuery } from '../../../hooks/useProcesses';
 import { fetchTemplate } from '../../../api/templates';
 import { useDocumentCommentsQuery } from '../hooks/useDocumentComments';
 import { useCompletedBlocks } from '../hooks/useCompletedBlocks';
 import { BlockCommentsCard } from '../../templates/components/BlockCommentsCard';
 import type { BlockComment } from '../../templates/components/BlockCommentsCard';
-import { fetchMe, searchOwnerCandidates } from '../../../api/users';
+import { searchOwnerCandidates } from '../../../api/users';
 import { useAutoSave, useBackNavigation, useFlushOnPageLeave } from '@ceedcv-maya/shared-hooks-react';
 import {
   normalizeTiptapContentForPersistence,
@@ -88,7 +88,7 @@ import { SubmissionChangelogReadonly, VersionChangelogModal } from '../../../com
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
 import { BlockListItem } from '../../blocks-ui/BlockListItem';
 import { getCommentsForBlock, countUnreadCommentsForBlock, resolveCommentBlockableId } from '../../../utils/blockComments';
-import { markCommentAsReadInDocumentCache, markCommentDeletedInDocumentCache, markBlockCommentsAsReadInDocumentCache } from '../../comments/commentCache';
+import { addCommentToCache, documentCommentsKey, patchDocumentCommentCache, markCommentAsReadInDocumentCache, markCommentDeletedInDocumentCache, markBlockCommentsAsReadInDocumentCache } from '../../comments/commentCache';
 import { uploadMedia } from '../../../api/media';
 import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
 
@@ -305,7 +305,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
   const setStudyId = useCallback((v: string) => setStep1Value('studyId', v, { shouldDirty: true, shouldValidate: false }), [setStep1Value]);
   const setModuleId = useCallback((v: string) => setStep1Value('moduleId', v, { shouldDirty: true, shouldValidate: false }), [setStep1Value]);
   const setTeamId = useCallback((v: string) => setStep1Value('teamId', v, { shouldDirty: true, shouldValidate: false }), [setStep1Value]);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  // currentUserId sale del perfil compartido (useUserProfile) — sin fetchMe() redundante.
+  const currentUserId = profile?.id ?? null;
   const [newOwnerForDoc, setNewOwnerForDoc] = useState<{ id: string; name: string } | null>(null);
   const [ownerQuery, setOwnerQuery] = useState('');
   const [ownerResults, setOwnerResults] = useState<import('../../../types/users').User[]>([]);
@@ -361,7 +362,6 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
   const [, setLocalContent] = useState<unknown>(null);
   const [showDeleteBlockConfirm, setShowDeleteBlockConfirm] = useState(false);
   const [emptyEditableBlocksModal, setEmptyEditableBlocksModal] = useState<string[] | null>(null);
-  const [processSubtitle, setProcessSubtitle] = useState<string | null>(null);
   const activeBlockRef = useRef<DocumentDisplayBlock | null>(null);
   const detailRef = useRef<DocumentDetail | null>(null);
   detailRef.current = detail;
@@ -412,9 +412,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
     : null;
   const processBackTo = useMemo(() => {
     const effectiveProcessId = locationProcessId ?? template?.process_id ?? null;
-    return effectiveProcessId ? `/processes/${effectiveProcessId}` : '/dashboard';
+    return effectiveProcessId ? `/processes/${effectiveProcessId}` : '/processes';
   }, [locationProcessId, template?.process_id]);
-  // Salida del asistente: pila backTo del listado de origen, o proceso/dashboard.
+  // Salida del asistente: pila backTo del listado de origen, o proceso/listado de procesos.
   const { goBack } = useBackNavigation({ fallback: processBackTo });
 
   const reload = useCallback(async () => {
@@ -463,10 +463,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
         method: 'POST',
         body: { body, parent_id: parentId, blockable_id: blockableId },
       });
-      queryClient.setQueryData<{ data: BlockComment[] }>(
-        ['documents', documentId, 'comments'],
-        (current) => ({ data: [...(current?.data ?? []), res.data] }),
-      );
+      addCommentToCache(queryClient, documentCommentsKey(documentId), res.data);
     } catch {
       setDocumentCommentSubmitError('No se pudo guardar el comentario.');
       throw new Error('comment-send-failed');
@@ -481,10 +478,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
       method: 'PATCH',
       body: { body: newBody },
     });
-    queryClient.setQueryData<{ data: BlockComment[] }>(
-      ['documents', documentId, 'comments'],
-      (current) => ({ data: (current?.data ?? []).map(c => c.id === commentId ? res.data : c) }),
-    );
+    patchDocumentCommentCache(queryClient, documentId, (comments) =>
+      comments.map(c => c.id === commentId ? res.data : c));
   }, [documentId, queryClient]);
 
   const handleDocumentCommentDelete = useCallback(async (commentId: string) => {
@@ -557,25 +552,6 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
     void reload();
   }, [reload]);
 
-  // currentUserId viene de /me; los equipos disponibles vienen del contexto
-  // académico jerárquico (HierarchyProvider) — /me solo expone team_ids.
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const me = await fetchMe();
-        if (!cancelled) {
-          setCurrentUserId(me.data.id);
-        }
-      } catch {
-        // currentUserId queda en su valor inicial; UI degrada con gracia.
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   useEffect(() => {
     setFormError(null);
     setBlockSaveError(null);
@@ -645,22 +621,24 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
     if (!detail || detail.status !== 'in_review') {
       return;
     }
+    // El usuario actual sale del perfil compartido; si aún no se ha resuelto,
+    // el efecto se relanza cuando llegue (dep `currentUserId`).
+    if (!currentUserId) {
+      return;
+    }
     let cancelled = false;
     setValidationReviewLoading(true);
     setValidationSetupError(null);
     setActionableReviewId(null);
     void (async () => {
       try {
-        const [reviews, meRes, templateResp] = await Promise.all([
+        const [reviews, templateResp] = await Promise.all([
           fetchDocumentReviews(detail.id),
-          fetchMe(),
           fetchTemplate(detail.template_id),
         ]);
         if (cancelled) return;
-        const userId = meRes.data.id;
-        setCurrentUserId(userId);
         const reviewMode = effectiveDocumentReviewMode(templateResp.data);
-        const actionable = pickActionableDocumentReview(reviews, userId, reviewMode);
+        const actionable = pickActionableDocumentReview(reviews, currentUserId, reviewMode);
         if (!actionable) {
           setValidationSetupError(
             'No tienes una revisión pendiente que puedas tramitar para este documento.',
@@ -684,7 +662,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
     return () => {
       cancelled = true;
     };
-  }, [isValidateMode, detail?.id, detail?.status]);
+  }, [isValidateMode, detail?.id, detail?.status, currentUserId]);
 
   // Auto-selección si solo hay una opción disponible
   useEffect(() => {
@@ -908,30 +886,15 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
     };
   }, [detail?.template_id, templateId]);
 
-  useEffect(() => {
-    const effectiveProcessId = template?.process_id ?? locationProcessId ?? null;
-    if (!effectiveProcessId) {
-      setProcessSubtitle(null);
-      return;
-    }
-    let cancelled = false;
-    void fetchProcesses()
-      .then((res) => {
-        if (cancelled) return;
-        const selectedProcess = res.data.find((p) => p.id === effectiveProcessId) ?? null;
-        if (!selectedProcess) {
-          setProcessSubtitle(null);
-          return;
-        }
-        setProcessSubtitle(`Proceso: ${selectedProcess.code} — ${selectedProcess.name}`);
-      })
-      .catch(() => {
-        if (!cancelled) setProcessSubtitle(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [locationProcessId, template?.process_id]);
+  // Catálogo cacheado de procesos (TanStack Query, staleTime 60s) en lugar de fetch manual.
+  const wizardProcessId = template?.process_id ?? locationProcessId ?? null;
+  const processesQuery = useProcessesQuery(undefined, { enabled: !!wizardProcessId });
+  const processSubtitle = useMemo<string | null>(() => {
+    if (!wizardProcessId) return null;
+    const selectedProcess = processesQuery.data?.data.find((p) => p.id === wizardProcessId) ?? null;
+    if (!selectedProcess) return null;
+    return `Proceso: ${selectedProcess.code} — ${selectedProcess.name}`;
+  }, [wizardProcessId, processesQuery.data]);
 
   useEffect(() => {
     const q = ownerQuery.trim();
