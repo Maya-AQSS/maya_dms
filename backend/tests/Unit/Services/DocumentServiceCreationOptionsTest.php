@@ -95,9 +95,9 @@ class DocumentServiceCreationOptionsTest extends TestCase
         $out = $service->creationOptionsForModule('MOD-1');
 
         $this->assertCount(1, $out);
-        $this->assertSame('tpl-1', $out[0]['template_id']);
-        $this->assertSame('ev-1', $out[0]['template_version_id']);
-        $this->assertSame('00000000-0000-0000-0000-000000000001', $out[0]['process_id']);
+        $this->assertSame('tpl-1', $out[0]->templateId);
+        $this->assertSame('ev-1', $out[0]->templateVersionId);
+        $this->assertSame('00000000-0000-0000-0000-000000000001', $out[0]->processId);
     }
 
     public function test_create_from_module_throws_validation_when_no_template_options_exist(): void

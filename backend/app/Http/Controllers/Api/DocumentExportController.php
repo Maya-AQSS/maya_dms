@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\DTOs\Versioning\DocumentVersionDetailDto;
 use App\Events\DocumentDownloaded;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Documents\ExportPdfRequest;
@@ -152,10 +153,8 @@ class DocumentExportController extends Controller
     /**
      * Valida que la versión pertenece al documento (lanza 404 si no) y devuelve
      * su detalle resuelto.
-     *
-     * @return array<string, mixed>
      */
-    private function assertVersionBelongs(string $document, string $version): array
+    private function assertVersionBelongs(string $document, string $version): DocumentVersionDetailDto
     {
         return $this->documentService->findDocumentVersionDetailOrFail($document, $version);
     }

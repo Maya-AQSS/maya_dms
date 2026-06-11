@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DTOs\Versioning\DocumentVersionDetailDto;
+use App\DTOs\Versioning\DocumentVersionDto;
+use App\DTOs\Versioning\DocumentVersionSummaryDto;
 use App\Models\Document;
 use App\Models\DocumentVersion;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
@@ -26,24 +29,18 @@ class DocumentVersionService
 
     /**
      * Localiza una versión snapshot del documento por id.
-     *
-     * @return array{
-     *   id: string,
-     *   document_id: string,
-     *   version_number: int,
-     * }
      */
-    public function findDocumentVersionOrFail(string $documentId, string $versionId): array
+    public function findDocumentVersionOrFail(string $documentId, string $versionId): DocumentVersionDto
     {
         $this->documentRepository->findOrFail($documentId);
 
         $version = $this->documentRepository->findDocumentVersionInDocumentOrFail($documentId, $versionId);
 
-        return [
-            'id' => $version->id,
-            'document_id' => $version->document_id,
-            'version_number' => (int) $version->version_number,
-        ];
+        return new DocumentVersionDto(
+            id: (string) $version->id,
+            documentId: (string) $version->document_id,
+            versionNumber: (int) $version->version_number,
+        );
     }
 
     /**
@@ -51,19 +48,8 @@ class DocumentVersionService
      *
      * Para filas en `document_versions`, `snapshot_data.blocks` se reconstruye con
      * {@see DocumentVersionBlockLayerResolver} (capas + fallback al JSON guardado).
-     *
-     * @return array{
-     *   id: string,
-     *   document_id: string,
-     *   version_number: int,
-     *   trigger_event: string,
-     *   triggered_by: string,
-     *   changelog: ?string,
-     *   snapshot_data: array<string, mixed>,
-     *   created_at: ?string
-     * }
      */
-    public function findDocumentVersionDetailOrFail(string $documentId, string $versionId): array
+    public function findDocumentVersionDetailOrFail(string $documentId, string $versionId): DocumentVersionDetailDto
     {
         $this->documentRepository->findOrFail($documentId);
 
@@ -84,20 +70,20 @@ class DocumentVersionService
                 : null;
             $publishedBy = is_string($version->triggered_by) && $version->triggered_by !== '' ? $version->triggered_by : null;
 
-            return [
-                'id' => $version->id,
-                'document_id' => $version->document_id,
-                'version_number' => (int) $version->version_number,
-                'trigger_event' => (string) $version->trigger_event,
-                'triggered_by' => (string) $version->triggered_by,
-                'published_by_name' => $publishedBy !== null ? $this->resolveUserNameById($publishedBy) : null,
-                'author_name' => $authorId !== null ? $this->resolveUserNameById($authorId) : null,
-                'owner_name' => $ownerId !== null ? $this->resolveUserNameById($ownerId) : null,
-                'reviewer_names' => $this->extractReviewerNamesFromSnapshot($snapshotData),
-                'changelog' => $version->notes,
-                'snapshot_data' => $snapshotData,
-                'created_at' => $version->created_at?->toIso8601String(),
-            ];
+            return new DocumentVersionDetailDto(
+                id: (string) $version->id,
+                documentId: (string) $version->document_id,
+                versionNumber: (int) $version->version_number,
+                triggerEvent: (string) $version->trigger_event,
+                triggeredBy: (string) $version->triggered_by,
+                publishedByName: $publishedBy !== null ? $this->resolveUserNameById($publishedBy) : null,
+                authorName: $authorId !== null ? $this->resolveUserNameById($authorId) : null,
+                ownerName: $ownerId !== null ? $this->resolveUserNameById($ownerId) : null,
+                reviewerNames: $this->extractReviewerNamesFromSnapshot($snapshotData),
+                changelog: $version->notes,
+                snapshotData: $snapshotData,
+                createdAt: $version->created_at?->toIso8601String(),
+            );
         } catch (ModelNotFoundException) {
             $entityVersion = $this->entityVersionRepository->findOrFail($versionId);
 
@@ -119,20 +105,20 @@ class DocumentVersionService
                 ? $entityVersion->published_by
                 : (is_string($entityVersion->created_by) && $entityVersion->created_by !== '' ? $entityVersion->created_by : null);
 
-            return [
-                'id' => $entityVersion->id,
-                'document_id' => (string) $entityVersion->versionable_id,
-                'version_number' => (int) $entityVersion->version_number,
-                'trigger_event' => 'published',
-                'triggered_by' => (string) ($entityVersion->published_by ?? $entityVersion->created_by),
-                'published_by_name' => $publishedBy !== null ? $this->resolveUserNameById($publishedBy) : null,
-                'author_name' => $authorId !== null ? $this->resolveUserNameById($authorId) : null,
-                'owner_name' => $ownerId !== null ? $this->resolveUserNameById($ownerId) : null,
-                'reviewer_names' => $this->extractReviewerNamesFromSnapshot($snapshotData),
-                'changelog' => $entityVersion->changelog,
-                'snapshot_data' => $snapshotData,
-                'created_at' => ($entityVersion->published_at ?? $entityVersion->created_at)?->toIso8601String(),
-            ];
+            return new DocumentVersionDetailDto(
+                id: (string) $entityVersion->id,
+                documentId: (string) $entityVersion->versionable_id,
+                versionNumber: (int) $entityVersion->version_number,
+                triggerEvent: 'published',
+                triggeredBy: (string) ($entityVersion->published_by ?? $entityVersion->created_by),
+                publishedByName: $publishedBy !== null ? $this->resolveUserNameById($publishedBy) : null,
+                authorName: $authorId !== null ? $this->resolveUserNameById($authorId) : null,
+                ownerName: $ownerId !== null ? $this->resolveUserNameById($ownerId) : null,
+                reviewerNames: $this->extractReviewerNamesFromSnapshot($snapshotData),
+                changelog: $entityVersion->changelog,
+                snapshotData: $snapshotData,
+                createdAt: ($entityVersion->published_at ?? $entityVersion->created_at)?->toIso8601String(),
+            );
         }
     }
 
@@ -140,48 +126,39 @@ class DocumentVersionService
      * Metadatos de versiones del documento ordenados descendentemente.
      * No incluye el snapshot completo en el listado.
      *
-     * @return list<array{
-     *   id: string,
-     *   document_id: string,
-     *   version_number: int,
-     *   trigger_event: string,
-     *   triggered_by: string,
-     *   changelog: ?string,
-     *   notes: ?string,
-     *   created_at: ?string
-     * }>
+     * @return list<DocumentVersionSummaryDto>
      */
     public function listDocumentVersions(string $documentId): array
     {
-        $document = $this->documentRepository->findOrFail($documentId);
+        $this->documentRepository->findOrFail($documentId);
 
         $entityVersions = $this->entityVersionRepository->listPublishedForEntityOrdered(
             Document::class,
             $documentId,
-        )->map(function ($v): array {
+        )->map(function ($v): DocumentVersionSummaryDto {
             $snapshot = is_array($v->snapshot_data) ? $v->snapshot_data : [];
             $authorId = data_get($snapshot, 'document.created_by');
             $authorId = is_string($authorId) && $authorId !== '' ? $authorId : (is_string($v->created_by) ? $v->created_by : null);
             $publishedBy = is_string($v->published_by) && $v->published_by !== '' ? $v->published_by : (is_string($v->created_by) ? $v->created_by : null);
             $reviewerNames = $this->extractReviewerNamesFromSnapshot($snapshot);
 
-            return [
-                'id' => $v->id,
-                'document_id' => $v->versionable_id,
-                'version_number' => (int) $v->version_number,
-                'trigger_event' => 'published',
-                'triggered_by' => (string) ($v->published_by ?? $v->created_by),
-                'published_by_name' => $publishedBy !== null ? $this->resolveUserNameById($publishedBy) : null,
-                'author_name' => $authorId !== null ? $this->resolveUserNameById($authorId) : null,
-                'reviewer_names' => $reviewerNames,
-                'changelog' => $v->changelog,
-                'notes' => $v->changelog,
-                'created_at' => ($v->published_at ?? $v->created_at)?->toIso8601String(),
-            ];
+            return new DocumentVersionSummaryDto(
+                id: (string) $v->id,
+                documentId: (string) $v->versionable_id,
+                versionNumber: (int) $v->version_number,
+                triggerEvent: 'published',
+                triggeredBy: (string) ($v->published_by ?? $v->created_by),
+                publishedByName: $publishedBy !== null ? $this->resolveUserNameById($publishedBy) : null,
+                authorName: $authorId !== null ? $this->resolveUserNameById($authorId) : null,
+                reviewerNames: $reviewerNames,
+                changelog: $v->changelog,
+                notes: $v->changelog,
+                createdAt: ($v->published_at ?? $v->created_at)?->toIso8601String(),
+            );
         });
 
         $legacyVersions = $this->documentRepository->findLegacyDocumentVersionsOrderedDesc($documentId)
-            ->map(function (DocumentVersion $v): array {
+            ->map(function (DocumentVersion $v): DocumentVersionSummaryDto {
                 $snapshot = $v->snapshot_data;
                 if (is_string($snapshot)) {
                     $decoded = json_decode($snapshot, true);
@@ -194,19 +171,19 @@ class DocumentVersionService
 
                 $reviewerNamesLegacy = $this->extractReviewerNamesFromSnapshot($snapshot);
 
-                return [
-                    'id' => $v->id,
-                    'document_id' => $v->document_id,
-                    'version_number' => $v->version_number,
-                    'trigger_event' => $v->trigger_event,
-                    'triggered_by' => $v->triggered_by,
-                    'published_by_name' => $publishedBy !== null ? $this->resolveUserNameById($publishedBy) : null,
-                    'author_name' => $authorId !== null ? $this->resolveUserNameById($authorId) : null,
-                    'reviewer_names' => $reviewerNamesLegacy,
-                    'changelog' => $v->notes,
-                    'notes' => $v->notes,
-                    'created_at' => $v->created_at?->toIso8601String(),
-                ];
+                return new DocumentVersionSummaryDto(
+                    id: (string) $v->id,
+                    documentId: (string) $v->document_id,
+                    versionNumber: (int) $v->version_number,
+                    triggerEvent: $v->trigger_event,
+                    triggeredBy: $v->triggered_by,
+                    publishedByName: $publishedBy !== null ? $this->resolveUserNameById($publishedBy) : null,
+                    authorName: $authorId !== null ? $this->resolveUserNameById($authorId) : null,
+                    reviewerNames: $reviewerNamesLegacy,
+                    changelog: $v->notes,
+                    notes: $v->notes,
+                    createdAt: $v->created_at?->toIso8601String(),
+                );
             });
 
         if ($entityVersions->isEmpty()) {
@@ -225,26 +202,25 @@ class DocumentVersionService
     /**
      * Lista combinada por número de versión; si existe fila en entity_versions y en document_versions, conserva entity.
      *
-     * @param  Collection<int, array<string, mixed>>  $entityRows
-     * @param  Collection<int, array<string, mixed>>  $legacyRows
-     * @return list<array<string, mixed>>
+     * @param  Collection<int, DocumentVersionSummaryDto>  $entityRows
+     * @param  Collection<int, DocumentVersionSummaryDto>  $legacyRows
+     * @return list<DocumentVersionSummaryDto>
      */
     private function mergeDocumentVersionListRowsPreferringEntity(Collection $entityRows, Collection $legacyRows): array
     {
-        /** @var array<int, array<string, mixed>> $byNumber */
+        /** @var array<int, DocumentVersionSummaryDto> $byNumber */
         $byNumber = [];
         foreach ($entityRows as $row) {
-            $byNumber[(int) $row['version_number']] = $row;
+            $byNumber[$row->versionNumber] = $row;
         }
         foreach ($legacyRows as $row) {
-            $n = (int) $row['version_number'];
-            if (! array_key_exists($n, $byNumber)) {
-                $byNumber[$n] = $row;
+            if (! array_key_exists($row->versionNumber, $byNumber)) {
+                $byNumber[$row->versionNumber] = $row;
             }
         }
 
         return collect($byNumber)
-            ->sortByDesc(static fn (array $row): int => (int) $row['version_number'])
+            ->sortByDesc(static fn (DocumentVersionSummaryDto $row): int => $row->versionNumber)
             ->values()
             ->all();
     }

@@ -8,11 +8,17 @@ use App\DTOs\Documents\ApplyTemplateMigrationDto;
 use App\DTOs\Documents\BlockDisplayDto;
 use App\DTOs\Documents\BlockUpdateDto;
 use App\DTOs\Documents\CreateDocumentDto;
+use App\DTOs\Documents\CreationOptionDto;
 use App\DTOs\Documents\DeleteDocumentBlockDto;
+use App\DTOs\Documents\ReviewerPoolDto;
+use App\DTOs\Documents\TemplateVersionStatusDto;
 use App\DTOs\Documents\DocumentDto;
 use App\DTOs\Documents\DocumentFilterDto;
 use App\DTOs\Documents\DocumentMigrationPayloadDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
+use App\DTOs\Versioning\DocumentVersionDetailDto;
+use App\DTOs\Versioning\DocumentVersionDto;
+use App\DTOs\Versioning\DocumentVersionSummaryDto;
 use App\DTOs\Versioning\WorkingRevisionConflictDto;
 use App\Http\Controllers\Api\DocumentController;
 use App\Models\Document;
@@ -163,45 +169,18 @@ interface DocumentServiceInterface
 
     /**
      * Localiza una versión snapshot del documento por id (legacy o polimórfico).
-     * Devuelve datos de render; la lógica de versión vive en el Service, no en el Controller.
-     *
-     * @return array{
-     *   id: string,
-     *   document_id: string,
-     *   version_number: int,
-     * }
      */
-    public function findDocumentVersionOrFail(string $documentId, string $versionId): array;
+    public function findDocumentVersionOrFail(string $documentId, string $versionId): DocumentVersionDto;
 
     /**
      * Detalle de versión del documento aceptando id legacy o id polimórfico.
-     *
-     * @return array{
-     *   id: string,
-     *   document_id: string,
-     *   version_number: int,
-     *   trigger_event: string,
-     *   triggered_by: string,
-     *   changelog: ?string,
-     *   snapshot_data: array<string, mixed>,
-     *   created_at: ?string
-     * }
      */
-    public function findDocumentVersionDetailOrFail(string $documentId, string $versionId): array;
+    public function findDocumentVersionDetailOrFail(string $documentId, string $versionId): DocumentVersionDetailDto;
 
     /**
      * Metadatos de versiones del documento ordenados descendentemente.
      *
-     * @return list<array{
-     *   id: string,
-     *   document_id: string,
-     *   version_number: int,
-     *   trigger_event: string,
-     *   triggered_by: string,
-     *   changelog: ?string,
-     *   notes: ?string,
-     *   created_at: ?string
-     * }>
+     * @return list<DocumentVersionSummaryDto>
      */
     public function listDocumentVersions(string $documentId): array;
 
@@ -234,16 +213,7 @@ interface DocumentServiceInterface
     /**
      * Opciones de creación de documento disponibles para un módulo.
      *
-     * @return list<array{
-     *   template_id: string,
-     *   template_version_id: string,
-     *   process_id: string,
-     *   name: string,
-     *   description: ?string,
-     *   visibility_level: string,
-     *   team_id: ?string,
-     *   team_name: ?string
-     * }>
+     * @return list<CreationOptionDto>
      */
     public function creationOptionsForModule(string $moduleId): array;
 
@@ -260,15 +230,8 @@ interface DocumentServiceInterface
 
     /**
      * Comparación ligera entre la versión de plantilla anclada al documento y la última publicada.
-     *
-     * @return array{
-     *   current_version: ?array{id: string, version_number: int},
-     *   latest_version: ?array{id: string, version_number: int, changelog: string},
-     *   has_update: bool,
-     *   changelog: ?string
-     * }
      */
-    public function templateVersionStatus(string $documentId): array;
+    public function templateVersionStatus(string $documentId): TemplateVersionStatusDto;
 
     /**
      * Payload del paso de migración del wizard: bloques de la última versión de
@@ -337,12 +300,6 @@ interface DocumentServiceInterface
     /**
      * Pool de validadores efectivo del documento (misma fuente que el envío a revisión),
      * para mostrar en el wizard sin requerir acceso de lectura a la plantilla.
-     *
-     * @return array{
-     *   kind: 'document'|'template_fallback'|'none',
-     *   review_mode: string,
-     *   reviewers: list<array{id: string, name: ?string, stage: ?int}>
-     * }
      */
-    public function getDocumentReviewerPool(Document $document): array;
+    public function getDocumentReviewerPool(Document $document): ReviewerPoolDto;
 }

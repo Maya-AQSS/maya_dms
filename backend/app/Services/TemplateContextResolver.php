@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DTOs\Documents\CreateDocumentDto;
+use App\DTOs\Documents\TemplateContextDto;
 use App\Enums\TemplateVisibilityLevel;
 use App\Repositories\Contracts\AcademicHierarchyRepositoryInterface;
 use App\Repositories\Contracts\TeamReadRepositoryInterface;
@@ -23,17 +24,16 @@ class TemplateContextResolver
 
     /**
      * @param  array<string, mixed>|null  $templateMeta
-     * @return array{studyTypeId: ?string, studyId: ?string, moduleId: ?string, teamId: ?string}
      */
-    public function resolve(CreateDocumentDto $dto, ?array $templateMeta): array
+    public function resolve(CreateDocumentDto $dto, ?array $templateMeta): TemplateContextDto
     {
         if ($templateMeta === null) {
-            return [
-                'studyTypeId' => $dto->studyTypeId,
-                'studyId' => $dto->studyId,
-                'moduleId' => $dto->moduleId,
-                'teamId' => $dto->teamId,
-            ];
+            return new TemplateContextDto(
+                studyTypeId: $dto->studyTypeId,
+                studyId: $dto->studyId,
+                moduleId: $dto->moduleId,
+                teamId: $dto->teamId,
+            );
         }
 
         $visibility = $templateMeta['visibility_level'] ?? null;
@@ -56,7 +56,7 @@ class TemplateContextResolver
                 ]);
             }
 
-            return ['studyTypeId' => null, 'studyId' => null, 'moduleId' => null, 'teamId' => $templateTeamId];
+            return new TemplateContextDto(studyTypeId: null, studyId: null, moduleId: null, teamId: $templateTeamId);
         }
 
         if ($visibility === TemplateVisibilityLevel::Personal->value) {
@@ -71,12 +71,12 @@ class TemplateContextResolver
                 ]);
             }
 
-            return [
-                'studyTypeId' => $templateStudyTypeId,
-                'studyId' => $templateStudyId,
-                'moduleId' => $templateModuleId,
-                'teamId' => null,
-            ];
+            return new TemplateContextDto(
+                studyTypeId: $templateStudyTypeId,
+                studyId: $templateStudyId,
+                moduleId: $templateModuleId,
+                teamId: null,
+            );
         }
 
         if ($visibility === TemplateVisibilityLevel::Module->value) {
@@ -96,12 +96,12 @@ class TemplateContextResolver
                 ]);
             }
 
-            return [
-                'studyTypeId' => $templateStudyTypeId,
-                'studyId' => $templateStudyId,
-                'moduleId' => $templateModuleId,
-                'teamId' => null,
-            ];
+            return new TemplateContextDto(
+                studyTypeId: $templateStudyTypeId,
+                studyId: $templateStudyId,
+                moduleId: $templateModuleId,
+                teamId: null,
+            );
         }
 
         if ($visibility === TemplateVisibilityLevel::Study->value) {
@@ -116,11 +116,15 @@ class TemplateContextResolver
             return $this->resolveGlobalContext($dto);
         }
 
-        return compact('studyTypeId', 'studyId', 'moduleId', 'teamId');
+        return new TemplateContextDto(
+            studyTypeId: $studyTypeId,
+            studyId: $studyId,
+            moduleId: $moduleId,
+            teamId: $teamId,
+        );
     }
 
-    /** @return array{studyTypeId: ?string, studyId: ?string, moduleId: ?string, teamId: ?string} */
-    private function resolveStudyContext(CreateDocumentDto $dto, ?string $templateStudyTypeId, ?string $templateStudyId): array
+    private function resolveStudyContext(CreateDocumentDto $dto, ?string $templateStudyTypeId, ?string $templateStudyId): TemplateContextDto
     {
         if ($dto->teamId !== null) {
             throw ValidationException::withMessages([
@@ -151,16 +155,15 @@ class TemplateContextResolver
             $moduleId = $dto->moduleId;
         }
 
-        return [
-            'studyTypeId' => $templateStudyTypeId,
-            'studyId' => $studyId,
-            'moduleId' => $moduleId,
-            'teamId' => null,
-        ];
+        return new TemplateContextDto(
+            studyTypeId: $templateStudyTypeId,
+            studyId: $studyId,
+            moduleId: $moduleId,
+            teamId: null,
+        );
     }
 
-    /** @return array{studyTypeId: ?string, studyId: ?string, moduleId: ?string, teamId: ?string} */
-    private function resolveStudyTypeContext(CreateDocumentDto $dto, ?string $templateStudyTypeId): array
+    private function resolveStudyTypeContext(CreateDocumentDto $dto, ?string $templateStudyTypeId): TemplateContextDto
     {
         if ($dto->teamId !== null) {
             throw ValidationException::withMessages([
@@ -191,12 +194,12 @@ class TemplateContextResolver
                 ]);
             }
 
-            return [
-                'studyTypeId' => $templateStudyTypeId,
-                'studyId' => $module['study_id'],
-                'moduleId' => $dto->moduleId,
-                'teamId' => null,
-            ];
+            return new TemplateContextDto(
+                studyTypeId: $templateStudyTypeId,
+                studyId: $module['study_id'],
+                moduleId: $dto->moduleId,
+                teamId: null,
+            );
         }
 
         if ($dto->studyId !== null) {
@@ -207,19 +210,18 @@ class TemplateContextResolver
                 ]);
             }
 
-            return [
-                'studyTypeId' => $templateStudyTypeId,
-                'studyId' => $dto->studyId,
-                'moduleId' => null,
-                'teamId' => null,
-            ];
+            return new TemplateContextDto(
+                studyTypeId: $templateStudyTypeId,
+                studyId: $dto->studyId,
+                moduleId: null,
+                teamId: null,
+            );
         }
 
-        return ['studyTypeId' => $templateStudyTypeId, 'studyId' => null, 'moduleId' => null, 'teamId' => null];
+        return new TemplateContextDto(studyTypeId: $templateStudyTypeId, studyId: null, moduleId: null, teamId: null);
     }
 
-    /** @return array{studyTypeId: ?string, studyId: ?string, moduleId: ?string, teamId: ?string} */
-    private function resolveGlobalContext(CreateDocumentDto $dto): array
+    private function resolveGlobalContext(CreateDocumentDto $dto): TemplateContextDto
     {
         if ($dto->teamId !== null) {
             if ($dto->studyTypeId !== null || $dto->studyId !== null || $dto->moduleId !== null) {
@@ -233,7 +235,7 @@ class TemplateContextResolver
                 ]);
             }
 
-            return ['studyTypeId' => null, 'studyId' => null, 'moduleId' => null, 'teamId' => $dto->teamId];
+            return new TemplateContextDto(studyTypeId: null, studyId: null, moduleId: null, teamId: $dto->teamId);
         }
 
         if ($dto->moduleId !== null) {
@@ -254,12 +256,12 @@ class TemplateContextResolver
                 ]);
             }
 
-            return [
-                'studyTypeId' => $module['study_type_id'],
-                'studyId' => $module['study_id'],
-                'moduleId' => $dto->moduleId,
-                'teamId' => null,
-            ];
+            return new TemplateContextDto(
+                studyTypeId: $module['study_type_id'],
+                studyId: $module['study_id'],
+                moduleId: $dto->moduleId,
+                teamId: null,
+            );
         }
 
         if ($dto->studyId !== null) {
@@ -275,19 +277,19 @@ class TemplateContextResolver
                 ]);
             }
 
-            return [
-                'studyTypeId' => $studyTypeFromStudy,
-                'studyId' => $dto->studyId,
-                'moduleId' => null,
-                'teamId' => null,
-            ];
+            return new TemplateContextDto(
+                studyTypeId: $studyTypeFromStudy,
+                studyId: $dto->studyId,
+                moduleId: null,
+                teamId: null,
+            );
         }
 
         if ($dto->studyTypeId !== null) {
-            return ['studyTypeId' => $dto->studyTypeId, 'studyId' => null, 'moduleId' => null, 'teamId' => null];
+            return new TemplateContextDto(studyTypeId: $dto->studyTypeId, studyId: null, moduleId: null, teamId: null);
         }
 
-        return ['studyTypeId' => null, 'studyId' => null, 'moduleId' => null, 'teamId' => null];
+        return new TemplateContextDto(studyTypeId: null, studyId: null, moduleId: null, teamId: null);
     }
 
     private function nullableString(mixed $value): ?string

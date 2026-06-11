@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DTOs\Versioning\DocumentVersionDetailDto;
 use App\Models\Document;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Services\Contracts\DocumentPdfServiceInterface;
@@ -84,14 +85,15 @@ class DocumentPdfService implements DocumentPdfServiceInterface
             // Versión histórica: renderiza el snapshot congelado. El detalle ya
             // reconstruye `snapshot_data.blocks` (capas + fallback al JSON) para
             // filas en entity_versions y document_versions.
+            /** @var DocumentVersionDetailDto $detail */
             $detail = $this->documentService->findDocumentVersionDetailOrFail($documentId, $versionId);
-            $snapshotBlocks = is_array($detail['snapshot_data']['blocks'] ?? null)
-                ? $detail['snapshot_data']['blocks']
+            $snapshotBlocks = is_array($detail->snapshotData['blocks'] ?? null)
+                ? $detail->snapshotData['blocks']
                 : [];
 
             return [
                 $this->renderer->renderHtmlForVersion($documentId, $snapshotBlocks),
-                (int) ($detail['version_number'] ?? 1),
+                $detail->versionNumber,
             ];
         }
 

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\DTOs\Versioning\DocumentVersionDetailDto;
+use App\DTOs\Versioning\DocumentVersionSummaryDto;
 use App\Services\DocumentVersionService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -13,6 +15,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * {@see DocumentVersionService::listDocumentVersions()} y la
  * forma detallada de
  * {@see DocumentVersionService::findDocumentVersionDetailOrFail()}.
+ *
+ * Acepta DocumentVersionSummaryDto (listado) o DocumentVersionDetailDto (detalle).
  */
 class DocumentVersionResource extends JsonResource
 {
@@ -21,8 +25,49 @@ class DocumentVersionResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $resource = $this->resource;
+
+        if ($resource instanceof DocumentVersionDetailDto) {
+            return [
+                'id' => $resource->id,
+                'document_id' => $resource->documentId,
+                'version_number' => $resource->versionNumber,
+                'trigger_event' => $resource->triggerEvent,
+                'triggered_by' => $resource->triggeredBy,
+                'changelog' => $resource->changelog,
+                'notes' => null,
+                'snapshot' => null,
+                'snapshot_data' => $resource->snapshotData,
+                'published_by_name' => $resource->publishedByName,
+                'author_name' => $resource->authorName,
+                'owner_name' => $resource->ownerName,
+                'reviewer_names' => $resource->reviewerNames,
+                'created_at' => $resource->createdAt,
+            ];
+        }
+
+        if ($resource instanceof DocumentVersionSummaryDto) {
+            return [
+                'id' => $resource->id,
+                'document_id' => $resource->documentId,
+                'version_number' => $resource->versionNumber,
+                'trigger_event' => $resource->triggerEvent,
+                'triggered_by' => $resource->triggeredBy,
+                'changelog' => $resource->changelog,
+                'notes' => $resource->notes,
+                'snapshot' => null,
+                'snapshot_data' => null,
+                'published_by_name' => $resource->publishedByName,
+                'author_name' => $resource->authorName,
+                'owner_name' => null,
+                'reviewer_names' => $resource->reviewerNames,
+                'created_at' => $resource->createdAt,
+            ];
+        }
+
+        // Fallback: legacy array shape (should not happen after migration).
         /** @var array<string, mixed> $row */
-        $row = $this->resource;
+        $row = $resource;
 
         return [
             'id' => $row['id'] ?? null,

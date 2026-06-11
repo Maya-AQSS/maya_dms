@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Services;
 
 use App\DTOs\Documents\CreateDocumentDto;
+use App\DTOs\Documents\TemplateContextDto;
 use App\Enums\TemplateVisibilityLevel;
 use App\Services\TemplateContextResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -77,7 +78,11 @@ class TemplateContextResolverTest extends TestCase
 
         $result = $this->resolver->resolve($dto, null);
 
-        $this->assertSame(['studyTypeId' => 'st-1', 'studyId' => 's-1', 'moduleId' => 'm-1', 'teamId' => 't-1'], $result);
+        $this->assertInstanceOf(TemplateContextDto::class, $result);
+        $this->assertSame('st-1', $result->studyTypeId);
+        $this->assertSame('s-1', $result->studyId);
+        $this->assertSame('m-1', $result->moduleId);
+        $this->assertSame('t-1', $result->teamId);
     }
 
     // ── Team ───────────────────────────────────────────────────────────────
@@ -89,7 +94,11 @@ class TemplateContextResolverTest extends TestCase
             $this->meta(['visibility_level' => TemplateVisibilityLevel::Team->value, 'team_id' => 'team-42']),
         );
 
-        $this->assertSame(['studyTypeId' => null, 'studyId' => null, 'moduleId' => null, 'teamId' => 'team-42'], $result);
+        $this->assertInstanceOf(TemplateContextDto::class, $result);
+        $this->assertNull($result->studyTypeId);
+        $this->assertNull($result->studyId);
+        $this->assertNull($result->moduleId);
+        $this->assertSame('team-42', $result->teamId);
     }
 
     public function test_team_visibility_throws_if_template_has_no_team(): void
@@ -116,7 +125,11 @@ class TemplateContextResolverTest extends TestCase
             ]),
         );
 
-        $this->assertSame(['studyTypeId' => 'st-1', 'studyId' => 's-1', 'moduleId' => 'm-1', 'teamId' => null], $result);
+        $this->assertInstanceOf(TemplateContextDto::class, $result);
+        $this->assertSame('st-1', $result->studyTypeId);
+        $this->assertSame('s-1', $result->studyId);
+        $this->assertSame('m-1', $result->moduleId);
+        $this->assertNull($result->teamId);
     }
 
     public function test_personal_visibility_throws_on_mismatched_study_type(): void
@@ -153,7 +166,11 @@ class TemplateContextResolverTest extends TestCase
             ]),
         );
 
-        $this->assertSame(['studyTypeId' => 'st-1', 'studyId' => 's-1', 'moduleId' => 'm-1', 'teamId' => null], $result);
+        $this->assertInstanceOf(TemplateContextDto::class, $result);
+        $this->assertSame('st-1', $result->studyTypeId);
+        $this->assertSame('s-1', $result->studyId);
+        $this->assertSame('m-1', $result->moduleId);
+        $this->assertNull($result->teamId);
     }
 
     public function test_module_visibility_throws_if_dto_has_team(): void
@@ -189,7 +206,11 @@ class TemplateContextResolverTest extends TestCase
             ]),
         );
 
-        $this->assertSame(['studyTypeId' => 'st-1', 'studyId' => 's-1', 'moduleId' => null, 'teamId' => null], $result);
+        $this->assertInstanceOf(TemplateContextDto::class, $result);
+        $this->assertSame('st-1', $result->studyTypeId);
+        $this->assertSame('s-1', $result->studyId);
+        $this->assertNull($result->moduleId);
+        $this->assertNull($result->teamId);
     }
 
     public function test_study_visibility_throws_if_dto_has_team(): void
@@ -221,8 +242,8 @@ class TemplateContextResolverTest extends TestCase
             $this->meta(['visibility_level' => TemplateVisibilityLevel::Study->value, 'study_type_id' => 'st-1', 'study_id' => 's-1']),
         );
 
-        $this->assertSame('m-1', $result['moduleId']);
-        $this->assertSame('s-1', $result['studyId']);
+        $this->assertSame('m-1', $result->moduleId);
+        $this->assertSame('s-1', $result->studyId);
     }
 
     public function test_study_visibility_throws_if_module_belongs_to_different_study(): void
@@ -246,7 +267,11 @@ class TemplateContextResolverTest extends TestCase
             $this->meta(['visibility_level' => TemplateVisibilityLevel::StudyType->value, 'study_type_id' => 'st-1']),
         );
 
-        $this->assertSame(['studyTypeId' => 'st-1', 'studyId' => null, 'moduleId' => null, 'teamId' => null], $result);
+        $this->assertInstanceOf(TemplateContextDto::class, $result);
+        $this->assertSame('st-1', $result->studyTypeId);
+        $this->assertNull($result->studyId);
+        $this->assertNull($result->moduleId);
+        $this->assertNull($result->teamId);
     }
 
     public function test_study_type_visibility_throws_if_dto_has_team(): void
@@ -270,9 +295,9 @@ class TemplateContextResolverTest extends TestCase
             $this->meta(['visibility_level' => TemplateVisibilityLevel::StudyType->value, 'study_type_id' => 'st-1']),
         );
 
-        $this->assertSame('st-1', $result['studyTypeId']);
-        $this->assertSame('s-1', $result['studyId']);
-        $this->assertSame('m-1', $result['moduleId']);
+        $this->assertSame('st-1', $result->studyTypeId);
+        $this->assertSame('s-1', $result->studyId);
+        $this->assertSame('m-1', $result->moduleId);
     }
 
     // ── Global ─────────────────────────────────────────────────────────────
@@ -285,9 +310,9 @@ class TemplateContextResolverTest extends TestCase
             $this->meta(['visibility_level' => TemplateVisibilityLevel::Global->value]),
         );
 
-        $this->assertNull($result['teamId']);
-        $this->assertSame('st-1', $result['studyTypeId']);
-        $this->assertNull($result['studyId']);
+        $this->assertNull($result->teamId);
+        $this->assertSame('st-1', $result->studyTypeId);
+        $this->assertNull($result->studyId);
     }
 
     public function test_global_visibility_with_no_context_returns_all_null(): void
@@ -297,7 +322,11 @@ class TemplateContextResolverTest extends TestCase
             $this->meta(['visibility_level' => TemplateVisibilityLevel::Global->value]),
         );
 
-        $this->assertSame(['studyTypeId' => null, 'studyId' => null, 'moduleId' => null, 'teamId' => null], $result);
+        $this->assertInstanceOf(TemplateContextDto::class, $result);
+        $this->assertNull($result->studyTypeId);
+        $this->assertNull($result->studyId);
+        $this->assertNull($result->moduleId);
+        $this->assertNull($result->teamId);
     }
 
     public function test_global_visibility_with_seeded_study_returns_study_context(): void
@@ -309,8 +338,8 @@ class TemplateContextResolverTest extends TestCase
             $this->meta(['visibility_level' => TemplateVisibilityLevel::Global->value]),
         );
 
-        $this->assertSame('s-1', $result['studyId']);
-        $this->assertSame('st-1', $result['studyTypeId']);
+        $this->assertSame('s-1', $result->studyId);
+        $this->assertSame('st-1', $result->studyTypeId);
     }
 
     public function test_global_visibility_throws_if_both_team_and_academic_context(): void
@@ -331,8 +360,8 @@ class TemplateContextResolverTest extends TestCase
 
         $result = $this->resolver->resolve($dto, $this->meta(['visibility_level' => 'unknown_level']));
 
-        $this->assertSame('st-x', $result['studyTypeId']);
-        $this->assertSame('s-x', $result['studyId']);
-        $this->assertSame('t-x', $result['teamId']);
+        $this->assertSame('st-x', $result->studyTypeId);
+        $this->assertSame('s-x', $result->studyId);
+        $this->assertSame('t-x', $result->teamId);
     }
 }

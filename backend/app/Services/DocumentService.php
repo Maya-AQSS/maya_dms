@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DTOs\Documents\ApplyTemplateMigrationDto;
+use App\DTOs\Documents\CreationOptionDto;
 use App\DTOs\Documents\BlockDisplayDto;
 use App\DTOs\Documents\BlockUpdateDto;
 use App\DTOs\Documents\CreateDocumentDto;
@@ -13,7 +14,12 @@ use App\DTOs\Documents\DeleteDocumentBlockDto;
 use App\DTOs\Documents\DocumentDto;
 use App\DTOs\Documents\DocumentFilterDto;
 use App\DTOs\Documents\DocumentMigrationPayloadDto;
+use App\DTOs\Documents\ReviewerPoolDto;
+use App\DTOs\Documents\TemplateVersionStatusDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
+use App\DTOs\Versioning\DocumentVersionDetailDto;
+use App\DTOs\Versioning\DocumentVersionDto;
+use App\DTOs\Versioning\DocumentVersionSummaryDto;
 use App\DTOs\Versioning\WorkingRevisionConflictDto;
 use App\Enums\TemplateVisibilityLevel;
 use App\Events\DocumentSubmittedForReview;
@@ -189,10 +195,10 @@ class DocumentService implements DocumentServiceInterface
             'template_id' => $dto->templateId,
             'template_version_id' => (string) $ev->id,
             'title' => $dto->title,
-            'study_type_id' => $ctx['studyTypeId'],
-            'study_id' => $ctx['studyId'],
-            'module_id' => $ctx['moduleId'],
-            'team_id' => $ctx['teamId'],
+            'study_type_id' => $ctx->studyTypeId,
+            'study_id' => $ctx->studyId,
+            'module_id' => $ctx->moduleId,
+            'team_id' => $ctx->teamId,
             'delivery_deadline' => $dto->deliveryDeadline,
             'created_by' => $dto->createdBy,
             'owner_id' => $dto->ownerId,
@@ -436,16 +442,7 @@ class DocumentService implements DocumentServiceInterface
     /**
      * Opciones de creación de documento disponibles para un módulo.
      *
-     * @return list<array{
-     *   template_id: string,
-     *   template_version_id: string,
-     *   process_id: string,
-     *   name: string,
-     *   description: ?string,
-     *   visibility_level: string,
-     *   team_id: ?string,
-     *   team_name: ?string
-     * }>
+     * @return list<CreationOptionDto>
      */
     public function creationOptionsForModule(string $moduleId): array
     {
@@ -474,20 +471,20 @@ class DocumentService implements DocumentServiceInterface
                 continue;
             }
 
-            $options[] = [
-                'template_id' => $template->id,
-                'template_version_id' => $publishedVersionId,
-                'process_id' => (string) $template->process_id,
-                'name' => (string) $template->name,
-                'description' => $template->description,
-                'visibility_level' => $template->visibility_level instanceof TemplateVisibilityLevel
+            $options[] = new CreationOptionDto(
+                templateId: (string) $template->id,
+                templateVersionId: $publishedVersionId,
+                processId: (string) $template->process_id,
+                name: (string) $template->name,
+                description: $template->description,
+                visibilityLevel: $template->visibility_level instanceof TemplateVisibilityLevel
                     ? $template->visibility_level->value
                     : (string) $template->visibility_level,
-                'team_id' => $template->team_id !== null ? (string) $template->team_id : null,
-                'team_name' => $template->team_id !== null
+                teamId: $template->team_id !== null ? (string) $template->team_id : null,
+                teamName: $template->team_id !== null
                     ? ($teamNames[(string) $template->team_id] ?? null)
                     : null,
-            ];
+            );
         }
 
         return $options;
@@ -513,7 +510,7 @@ class DocumentService implements DocumentServiceInterface
         $selected = null;
         if ($templateVersionId !== null) {
             foreach ($options as $option) {
-                if ($option['template_version_id'] === $templateVersionId) {
+                if ($option->templateVersionId === $templateVersionId) {
                     $selected = $option;
                     break;
                 }
@@ -532,7 +529,7 @@ class DocumentService implements DocumentServiceInterface
             ]);
         }
 
-        if ($selected['process_id'] !== $processId) {
+        if ($selected->processId !== $processId) {
             throw ValidationException::withMessages([
                 'process_id' => ['El proceso no corresponde a la plantilla seleccionada para el módulo.'],
             ]);
@@ -546,7 +543,7 @@ class DocumentService implements DocumentServiceInterface
         }
 
         return $this->create(new CreateDocumentDto(
-            templateId: $selected['template_id'],
+            templateId: $selected->templateId,
             title: 'Nueva Programación Didáctica',
             createdBy: $creatorId,
             ownerId: $creatorId,
@@ -555,21 +552,14 @@ class DocumentService implements DocumentServiceInterface
             studyId: $moduleContext['study_id'],
             moduleId: $moduleContext['module_id'],
             deliveryDeadline: $deliveryDeadline,
-            templateVersionId: $selected['template_version_id'],
+            templateVersionId: $selected->templateVersionId,
         ));
     }
 
     /**
      * Comparación ligera entre la versión de plantilla anclada al documento y la última publicada.
-     *
-     * @return array{
-     *   current_version: ?array{id: string, version_number: int},
-     *   latest_version: ?array{id: string, version_number: int, changelog: string},
-     *   has_update: bool,
-     *   changelog: ?string
-     * }
      */
-    public function templateVersionStatus(string $documentId): array
+    public function templateVersionStatus(string $documentId): TemplateVersionStatusDto
     {
         $document = $this->documentRepository->findOrFail($documentId);
 
@@ -587,12 +577,12 @@ class DocumentService implements DocumentServiceInterface
             && $latestFull !== null
             && $latestFull['version_number'] > $currentFull['version_number'];
 
-        return [
-            'current_version' => $current,
-            'latest_version' => $latestFull,
-            'has_update' => $hasUpdate,
-            'changelog' => $hasUpdate ? $latestFull['changelog'] : null,
-        ];
+        return new TemplateVersionStatusDto(
+            currentVersion: $current,
+            latestVersion: $latestFull,
+            hasUpdate: $hasUpdate,
+            changelog: $hasUpdate ? $latestFull['changelog'] : null,
+        );
     }
 
     public function migrationPayload(string $sourceDocumentId): DocumentMigrationPayloadDto
@@ -1352,47 +1342,42 @@ class DocumentService implements DocumentServiceInterface
      * se devuelven estos últimos como información (`template_fallback`): no participan en
      * la validación del documento, que se publicará directamente.
      *
-     * @return array{
-     *   kind: 'document'|'template_fallback'|'none',
-     *   review_mode: string,
-     *   reviewers: list<array{id: string, name: ?string, stage: ?int}>
-     * }
      */
-    public function getDocumentReviewerPool(Document $document): array
+    public function getDocumentReviewerPool(Document $document): ReviewerPoolDto
     {
         $reviewMode = $this->documentReviewModeResolver->resolve($document);
 
         $candidates = $this->resolveReviewCandidatesFromTemplateVersion($document);
         if ($candidates !== []) {
-            return [
-                'kind' => 'document',
-                'review_mode' => $reviewMode,
-                'reviewers' => array_map(fn (array $c) => [
+            return new ReviewerPoolDto(
+                kind: 'document',
+                reviewMode: $reviewMode,
+                reviewers: array_map(fn (array $c) => [
                     'id' => $c['reviewer_id'],
                     'name' => $this->userDirectoryRepository->findNameById($c['reviewer_id']),
                     'stage' => $c['stage'],
                 ], $candidates),
-            ];
+            );
         }
 
         $templateReviewerIds = $this->resolveTemplateReviewerIdsFromAnchoredVersion($document);
         if ($templateReviewerIds !== []) {
-            return [
-                'kind' => 'template_fallback',
-                'review_mode' => $reviewMode,
-                'reviewers' => array_map(fn (string $id) => [
+            return new ReviewerPoolDto(
+                kind: 'template_fallback',
+                reviewMode: $reviewMode,
+                reviewers: array_map(fn (string $id) => [
                     'id' => $id,
                     'name' => $this->userDirectoryRepository->findNameById($id),
                     'stage' => null,
                 ], $templateReviewerIds),
-            ];
+            );
         }
 
-        return [
-            'kind' => 'none',
-            'review_mode' => $reviewMode,
-            'reviewers' => [],
-        ];
+        return new ReviewerPoolDto(
+            kind: 'none',
+            reviewMode: $reviewMode,
+            reviewers: [],
+        );
     }
 
     /**
@@ -1580,33 +1565,16 @@ class DocumentService implements DocumentServiceInterface
 
     /**
      * Localiza una versión de documento por su ID.
-     *
-     * @return array{
-     *   id: string,
-     *   document_id: string,
-     *   version_number: int,
-     * }
      */
-    public function findDocumentVersionOrFail(string $documentId, string $versionId): array
+    public function findDocumentVersionOrFail(string $documentId, string $versionId): DocumentVersionDto
     {
         return $this->documentVersionService->findDocumentVersionOrFail($documentId, $versionId);
     }
 
     /**
      * Detalle de versión del documento aceptando id legacy o id polimórfico.
-     *
-     * @return array{
-     *   id: string,
-     *   document_id: string,
-     *   version_number: int,
-     *   trigger_event: string,
-     *   triggered_by: string,
-     *   changelog: ?string,
-     *   snapshot_data: array<string, mixed>,
-     *   created_at: ?string
-     * }
      */
-    public function findDocumentVersionDetailOrFail(string $documentId, string $versionId): array
+    public function findDocumentVersionDetailOrFail(string $documentId, string $versionId): DocumentVersionDetailDto
     {
         return $this->documentVersionService->findDocumentVersionDetailOrFail($documentId, $versionId);
     }
@@ -1614,16 +1582,7 @@ class DocumentService implements DocumentServiceInterface
     /**
      * Metadatos de versiones del documento (sin snapshot completo).
      *
-     * @return list<array{
-     *   id: string,
-     *   document_id: string,
-     *   version_number: int,
-     *   trigger_event: string,
-     *   triggered_by: string,
-     *   changelog: ?string,
-     *   notes: ?string,
-     *   created_at: ?string
-     * }>
+     * @return list<DocumentVersionSummaryDto>
      */
     public function listDocumentVersions(string $documentId): array
     {
