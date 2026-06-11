@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Services;
 
 use App\DTOs\Versioning\EntityVersionSnapshotDto;
-use App\DTOs\Templates\TemplateVersionBlockLayerDto;
+use App\DTOs\Versioning\VersionBlockLayerDto;
 use App\Models\Template;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateBlockRepositoryInterface;
@@ -20,7 +20,7 @@ use Tests\TestCase;
  *
  * The resolver consumes DTOs via the repositories' *AsSnapshot / *AsDto methods,
  * not Eloquent models, so the mocks return EntityVersionSnapshotDto and
- * TemplateVersionBlockLayerDto instances.
+ * VersionBlockLayerDto instances.
  *
  * Covers uncovered branches (75% → target ≥80%):
  *   - resolveBlocksSnapshot: layer.removed=true is skipped (line 38)
@@ -59,22 +59,22 @@ final class TemplateVersionBlockLayerResolverTest extends TestCase
         );
     }
 
-    private function makeLayer(array $attributes = []): TemplateVersionBlockLayerDto
+    private function makeLayer(array $attributes = []): VersionBlockLayerDto
     {
         $a = array_merge([
             'id' => 'layer-uuid-1',
-            'entityVersionId' => 'ev-uuid-1',
-            'templateBlockId' => 'block-1',
+            'versionId' => 'ev-uuid-1',
+            'blockId' => 'block-1',
             'removed' => false,
             'overridePayload' => ['id' => 'block-1', 'type' => 'paragraph'],
             'inheritsFromPreviousPublication' => false,
             'sortOrder' => 0,
         ], $attributes);
 
-        return new TemplateVersionBlockLayerDto(
+        return new VersionBlockLayerDto(
             id: $a['id'],
-            entityVersionId: $a['entityVersionId'],
-            templateBlockId: $a['templateBlockId'],
+            versionId: $a['versionId'],
+            blockId: $a['blockId'],
             removed: $a['removed'],
             overridePayload: $a['overridePayload'],
             inheritsFromPreviousPublication: $a['inheritsFromPreviousPublication'],
@@ -125,7 +125,7 @@ final class TemplateVersionBlockLayerResolverTest extends TestCase
     public function test_resolve_skips_removed_layers(): void
     {
         $version = $this->makeSnapshot();
-        $removedLayer = $this->makeLayer(['removed' => true, 'templateBlockId' => 'block-rm']);
+        $removedLayer = $this->makeLayer(['removed' => true, 'blockId' => 'block-rm']);
 
         $evRepo = Mockery::mock(EntityVersionRepositoryInterface::class);
         $layerRepo = Mockery::mock(TemplateVersionBlockLayerRepositoryInterface::class);
@@ -150,7 +150,7 @@ final class TemplateVersionBlockLayerResolverTest extends TestCase
     {
         $version = $this->makeSnapshot();
         $activeLayer = $this->makeLayer([
-            'templateBlockId' => 'block-1',
+            'blockId' => 'block-1',
             'removed' => false,
             'inheritsFromPreviousPublication' => false,
             'overridePayload' => ['id' => 'block-1', 'content' => 'hello'],
@@ -185,7 +185,7 @@ final class TemplateVersionBlockLayerResolverTest extends TestCase
         ]);
 
         // A non-removed layer in the list so the loop calls effectiveBlockPayload
-        $listLayer = $this->makeLayer(['templateBlockId' => 'block-1', 'removed' => false]);
+        $listLayer = $this->makeLayer(['blockId' => 'block-1', 'removed' => false]);
 
         $evRepo = Mockery::mock(EntityVersionRepositoryInterface::class);
         $layerRepo = Mockery::mock(TemplateVersionBlockLayerRepositoryInterface::class);
@@ -212,8 +212,8 @@ final class TemplateVersionBlockLayerResolverTest extends TestCase
     public function test_effective_block_returns_null_when_found_layer_is_removed(): void
     {
         $version = $this->makeSnapshot();
-        $listLayer = $this->makeLayer(['templateBlockId' => 'block-1', 'removed' => false]);
-        $removedLayer = $this->makeLayer(['templateBlockId' => 'block-1', 'removed' => true]);
+        $listLayer = $this->makeLayer(['blockId' => 'block-1', 'removed' => false]);
+        $removedLayer = $this->makeLayer(['blockId' => 'block-1', 'removed' => true]);
 
         $evRepo = Mockery::mock(EntityVersionRepositoryInterface::class);
         $layerRepo = Mockery::mock(TemplateVersionBlockLayerRepositoryInterface::class);
@@ -241,10 +241,10 @@ final class TemplateVersionBlockLayerResolverTest extends TestCase
     {
         // version_number = 1 → no parent to look up; returns override_payload directly
         $version = $this->makeSnapshot(['versionNumber' => 1]);
-        $listLayer = $this->makeLayer(['templateBlockId' => 'block-1', 'removed' => false]);
+        $listLayer = $this->makeLayer(['blockId' => 'block-1', 'removed' => false]);
 
         $inheritsLayer = $this->makeLayer([
-            'templateBlockId' => 'block-1',
+            'blockId' => 'block-1',
             'removed' => false,
             'inheritsFromPreviousPublication' => true,
             'overridePayload' => ['id' => 'block-1', 'content' => 'v1-payload'],
@@ -283,14 +283,14 @@ final class TemplateVersionBlockLayerResolverTest extends TestCase
             'versionNumber' => 3,
         ]);
         $listLayer = $this->makeLayer([
-            'entityVersionId' => 'ev-uuid-3',
-            'templateBlockId' => 'block-1',
+            'versionId' => 'ev-uuid-3',
+            'blockId' => 'block-1',
             'removed' => false,
         ]);
 
         $inheritsLayer = $this->makeLayer([
-            'entityVersionId' => 'ev-uuid-3',
-            'templateBlockId' => 'block-1',
+            'versionId' => 'ev-uuid-3',
+            'blockId' => 'block-1',
             'removed' => false,
             'inheritsFromPreviousPublication' => true,
             'overridePayload' => null,
@@ -349,7 +349,7 @@ final class TemplateVersionBlockLayerResolverTest extends TestCase
                 ['id' => 'block-other', 'content' => 'other'],
             ],
         ]);
-        $listLayer = $this->makeLayer(['templateBlockId' => 'block-missing', 'removed' => false]);
+        $listLayer = $this->makeLayer(['blockId' => 'block-missing', 'removed' => false]);
 
         $evRepo = Mockery::mock(EntityVersionRepositoryInterface::class);
         $layerRepo = Mockery::mock(TemplateVersionBlockLayerRepositoryInterface::class);
@@ -373,9 +373,9 @@ final class TemplateVersionBlockLayerResolverTest extends TestCase
     public function test_non_array_override_payload_produces_null_and_is_excluded(): void
     {
         $version = $this->makeSnapshot();
-        $listLayer = $this->makeLayer(['templateBlockId' => 'block-1', 'removed' => false]);
+        $listLayer = $this->makeLayer(['blockId' => 'block-1', 'removed' => false]);
         $badLayer = $this->makeLayer([
-            'templateBlockId' => 'block-1',
+            'blockId' => 'block-1',
             'removed' => false,
             'inheritsFromPreviousPublication' => false,
             'overridePayload' => null, // null payload → null returned

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services;
 
-use App\DTOs\Documents\DocumentVersionBlockLayerDto;
 use App\DTOs\Documents\DocumentVersionSnapshotDto;
+use App\DTOs\Versioning\VersionBlockLayerDto;
 use App\Repositories\Contracts\DocumentVersionBlockLayerRepositoryInterface;
 use App\Repositories\Contracts\DocumentVersionRepositoryInterface;
 use App\Services\DocumentVersionBlockLayerResolver;
@@ -74,22 +74,22 @@ final class DocumentVersionBlockLayerResolverTest extends TestCase
         );
     }
 
-    private function makeLayer(array $attributes = []): DocumentVersionBlockLayerDto
+    private function makeLayer(array $attributes = []): VersionBlockLayerDto
     {
         $a = array_merge([
             'id' => 'layer-uuid-1',
-            'documentVersionId' => 'dv-uuid-1',
-            'documentBlockId' => 'block-1',
+            'versionId' => 'dv-uuid-1',
+            'blockId' => 'block-1',
             'removed' => false,
             'overridePayload' => ['id' => 'block-1', 'type' => 'paragraph'],
             'inheritsFromPreviousPublication' => false,
             'sortOrder' => 0,
         ], $attributes);
 
-        return new DocumentVersionBlockLayerDto(
+        return new VersionBlockLayerDto(
             id: $a['id'],
-            documentVersionId: $a['documentVersionId'],
-            documentBlockId: $a['documentBlockId'],
+            versionId: $a['versionId'],
+            blockId: $a['blockId'],
             removed: $a['removed'],
             overridePayload: $a['overridePayload'],
             inheritsFromPreviousPublication: $a['inheritsFromPreviousPublication'],
@@ -148,7 +148,7 @@ final class DocumentVersionBlockLayerResolverTest extends TestCase
     public function test_resolve_skips_removed_layers(): void
     {
         $version = $this->makeSnapshot();
-        $removedLayer = $this->makeLayer(['removed' => true, 'documentBlockId' => 'block-rm']);
+        $removedLayer = $this->makeLayer(['removed' => true, 'blockId' => 'block-rm']);
 
         $versionRepo = Mockery::mock(DocumentVersionRepositoryInterface::class);
         $layerRepo = Mockery::mock(DocumentVersionBlockLayerRepositoryInterface::class);
@@ -168,7 +168,7 @@ final class DocumentVersionBlockLayerResolverTest extends TestCase
     {
         $version = $this->makeSnapshot();
         $activeLayer = $this->makeLayer([
-            'documentBlockId' => 'block-1',
+            'blockId' => 'block-1',
             'removed' => false,
             'inheritsFromPreviousPublication' => false,
             'overridePayload' => ['id' => 'block-1', 'content' => 'hello'],
@@ -197,7 +197,7 @@ final class DocumentVersionBlockLayerResolverTest extends TestCase
         $snapshotBlock = ['id' => 'block-1', 'type' => 'paragraph', 'data' => 'snap'];
         $version = $this->makeSnapshot(['blocks' => [$snapshotBlock]]);
 
-        $listLayer = $this->makeLayer(['documentBlockId' => 'block-1', 'removed' => false]);
+        $listLayer = $this->makeLayer(['blockId' => 'block-1', 'removed' => false]);
 
         $versionRepo = Mockery::mock(DocumentVersionRepositoryInterface::class);
         $layerRepo = Mockery::mock(DocumentVersionBlockLayerRepositoryInterface::class);
@@ -220,8 +220,8 @@ final class DocumentVersionBlockLayerResolverTest extends TestCase
     public function test_effective_block_returns_null_when_found_layer_is_removed(): void
     {
         $version = $this->makeSnapshot();
-        $listLayer = $this->makeLayer(['documentBlockId' => 'block-1', 'removed' => false]);
-        $removedLayer = $this->makeLayer(['documentBlockId' => 'block-1', 'removed' => true]);
+        $listLayer = $this->makeLayer(['blockId' => 'block-1', 'removed' => false]);
+        $removedLayer = $this->makeLayer(['blockId' => 'block-1', 'removed' => true]);
 
         $versionRepo = Mockery::mock(DocumentVersionRepositoryInterface::class);
         $layerRepo = Mockery::mock(DocumentVersionBlockLayerRepositoryInterface::class);
@@ -243,10 +243,10 @@ final class DocumentVersionBlockLayerResolverTest extends TestCase
     public function test_effective_block_inherits_from_previous_with_version_number_1_returns_override_payload(): void
     {
         $version = $this->makeSnapshot(['versionNumber' => 1]);
-        $listLayer = $this->makeLayer(['documentBlockId' => 'block-1', 'removed' => false]);
+        $listLayer = $this->makeLayer(['blockId' => 'block-1', 'removed' => false]);
 
         $inheritsLayer = $this->makeLayer([
-            'documentBlockId' => 'block-1',
+            'blockId' => 'block-1',
             'removed' => false,
             'inheritsFromPreviousPublication' => true,
             'overridePayload' => ['id' => 'block-1', 'content' => 'v1-payload'],
@@ -280,14 +280,14 @@ final class DocumentVersionBlockLayerResolverTest extends TestCase
             'versionNumber' => 3,
         ]);
         $listLayer = $this->makeLayer([
-            'documentVersionId' => 'dv-uuid-3',
-            'documentBlockId' => 'block-1',
+            'versionId' => 'dv-uuid-3',
+            'blockId' => 'block-1',
             'removed' => false,
         ]);
 
         $inheritsLayer = $this->makeLayer([
-            'documentVersionId' => 'dv-uuid-3',
-            'documentBlockId' => 'block-1',
+            'versionId' => 'dv-uuid-3',
+            'blockId' => 'block-1',
             'removed' => false,
             'inheritsFromPreviousPublication' => true,
             'overridePayload' => null,
@@ -339,7 +339,7 @@ final class DocumentVersionBlockLayerResolverTest extends TestCase
                 ['id' => 'block-other', 'content' => 'other'],
             ],
         ]);
-        $listLayer = $this->makeLayer(['documentBlockId' => 'block-missing', 'removed' => false]);
+        $listLayer = $this->makeLayer(['blockId' => 'block-missing', 'removed' => false]);
 
         $versionRepo = Mockery::mock(DocumentVersionRepositoryInterface::class);
         $layerRepo = Mockery::mock(DocumentVersionBlockLayerRepositoryInterface::class);
@@ -361,9 +361,9 @@ final class DocumentVersionBlockLayerResolverTest extends TestCase
     public function test_non_array_override_payload_produces_null_and_is_excluded(): void
     {
         $version = $this->makeSnapshot();
-        $listLayer = $this->makeLayer(['documentBlockId' => 'block-1', 'removed' => false]);
+        $listLayer = $this->makeLayer(['blockId' => 'block-1', 'removed' => false]);
         $badLayer = $this->makeLayer([
-            'documentBlockId' => 'block-1',
+            'blockId' => 'block-1',
             'removed' => false,
             'inheritsFromPreviousPublication' => false,
             'overridePayload' => null,
@@ -389,10 +389,10 @@ final class DocumentVersionBlockLayerResolverTest extends TestCase
     public function test_effective_block_inherits_parent_null_returns_override_payload(): void
     {
         $version = $this->makeSnapshot(['versionNumber' => 2]);
-        $listLayer = $this->makeLayer(['documentBlockId' => 'block-1', 'removed' => false]);
+        $listLayer = $this->makeLayer(['blockId' => 'block-1', 'removed' => false]);
 
         $inheritsLayer = $this->makeLayer([
-            'documentBlockId' => 'block-1',
+            'blockId' => 'block-1',
             'removed' => false,
             'inheritsFromPreviousPublication' => true,
             'overridePayload' => ['id' => 'block-1', 'content' => 'fallback'],

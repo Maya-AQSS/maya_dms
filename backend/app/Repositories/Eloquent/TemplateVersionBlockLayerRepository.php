@@ -4,67 +4,46 @@ declare(strict_types=1);
 
 namespace App\Repositories\Eloquent;
 
-use App\DTOs\Templates\TemplateVersionBlockLayerDto;
+use App\DTOs\Versioning\VersionBlockLayerDto;
 use App\Models\TemplateVersionBlockLayer;
 use App\Repositories\Contracts\TemplateVersionBlockLayerRepositoryInterface;
 use Illuminate\Support\Collection;
 
-class TemplateVersionBlockLayerRepository implements TemplateVersionBlockLayerRepositoryInterface
+class TemplateVersionBlockLayerRepository extends AbstractVersionBlockLayerRepository implements TemplateVersionBlockLayerRepositoryInterface
 {
+    protected string $modelClass = TemplateVersionBlockLayer::class;
+
+    protected string $versionFkColumn = 'entity_version_id';
+
+    protected string $blockFkColumn = 'template_block_id';
+
     public function listForVersion(string $entityVersionId): Collection
     {
-        return TemplateVersionBlockLayer::query()
-            ->where('entity_version_id', $entityVersionId)
-            ->orderBy('sort_order')
-            ->orderBy('template_block_id')
-            ->get();
+        return $this->baseListForVersion($entityVersionId);
     }
 
     /**
-     * @return Collection<int, TemplateVersionBlockLayerDto>
+     * @return Collection<int, VersionBlockLayerDto>
      */
     public function listForVersionAsDto(string $entityVersionId): Collection
     {
-        return $this->listForVersion($entityVersionId)
-            ->map(fn (TemplateVersionBlockLayer $layer) => new TemplateVersionBlockLayerDto(
-                id: (string) $layer->id,
-                entityVersionId: (string) $layer->entity_version_id,
-                templateBlockId: (string) $layer->template_block_id,
-                removed: (bool) $layer->removed,
-                overridePayload: is_array($layer->override_payload) ? $layer->override_payload : null,
-                inheritsFromPreviousPublication: (bool) $layer->inherits_from_previous_publication,
-                sortOrder: (int) $layer->sort_order,
-            ));
+        return $this->baseListForVersionAsDto($entityVersionId);
     }
 
     public function findForVersionAndBlock(string $entityVersionId, string $templateBlockId): ?TemplateVersionBlockLayer
     {
-        return TemplateVersionBlockLayer::query()
-            ->where('entity_version_id', $entityVersionId)
-            ->where('template_block_id', $templateBlockId)
-            ->first();
+        /** @var TemplateVersionBlockLayer|null */
+        return $this->baseFindForVersionAndBlock($entityVersionId, $templateBlockId);
     }
 
-    public function findForVersionAndBlockAsDto(string $entityVersionId, string $templateBlockId): ?TemplateVersionBlockLayerDto
+    public function findForVersionAndBlockAsDto(string $entityVersionId, string $templateBlockId): ?VersionBlockLayerDto
     {
-        $layer = $this->findForVersionAndBlock($entityVersionId, $templateBlockId);
-        if ($layer === null) {
-            return null;
-        }
-
-        return new TemplateVersionBlockLayerDto(
-            id: (string) $layer->id,
-            entityVersionId: (string) $layer->entity_version_id,
-            templateBlockId: (string) $layer->template_block_id,
-            removed: (bool) $layer->removed,
-            overridePayload: is_array($layer->override_payload) ? $layer->override_payload : null,
-            inheritsFromPreviousPublication: (bool) $layer->inherits_from_previous_publication,
-            sortOrder: (int) $layer->sort_order,
-        );
+        return $this->baseFindForVersionAndBlockAsDto($entityVersionId, $templateBlockId);
     }
 
     public function create(array $attributes): TemplateVersionBlockLayer
     {
-        return TemplateVersionBlockLayer::query()->create($attributes);
+        /** @var TemplateVersionBlockLayer */
+        return $this->baseCreate($attributes);
     }
 }

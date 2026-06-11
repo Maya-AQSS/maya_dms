@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Concerns;
 
-use App\DTOs\Templates\TemplateVersionBlockLayerDto;
-use App\DTOs\Documents\DocumentVersionBlockLayerDto;
-
 /**
  * Shared resolution algorithm for block layers across versioning domains
  * (template entity versions and document versions).

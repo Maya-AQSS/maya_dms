@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\DTOs\Documents\DocumentVersionBlockLayerDto;
 use App\DTOs\Documents\DocumentVersionSnapshotDto;
+use App\DTOs\Versioning\VersionBlockLayerDto;
 use App\Repositories\Contracts\DocumentVersionBlockLayerRepositoryInterface;
 use App\Repositories\Contracts\DocumentVersionRepositoryInterface;
 use App\Services\Concerns\AbstractBlockLayerResolver;
@@ -15,7 +15,7 @@ use Illuminate\Support\Collection;
  * Reconstruye la lista efectiva de bloques del snapshot solo desde capas incrementales.
  * Accepts DTOs and scalar IDs, not Eloquent models.
  *
- * @extends AbstractBlockLayerResolver<DocumentVersionSnapshotDto, DocumentVersionBlockLayerDto>
+ * @extends AbstractBlockLayerResolver<DocumentVersionSnapshotDto, VersionBlockLayerDto>
  */
 final class DocumentVersionBlockLayerResolver extends AbstractBlockLayerResolver
 {
@@ -44,7 +44,7 @@ final class DocumentVersionBlockLayerResolver extends AbstractBlockLayerResolver
         return $this->layerRepository->listForVersionAsDto($versionId);
     }
 
-    protected function loadLayerForVersionAndBlock(string $versionId, string $blockId): ?DocumentVersionBlockLayerDto
+    protected function loadLayerForVersionAndBlock(string $versionId, string $blockId): ?VersionBlockLayerDto
     {
         return $this->layerRepository->findForVersionAndBlockAsDto($versionId, $blockId);
     }
@@ -73,7 +73,7 @@ final class DocumentVersionBlockLayerResolver extends AbstractBlockLayerResolver
 
     protected function layerBlockId(mixed $layerDto): string
     {
-        return $layerDto->documentBlockId;
+        return $layerDto->blockId;
     }
 
     protected function layerRemoved(mixed $layerDto): bool

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\DTOs\Templates\TemplateVersionBlockLayerDto;
 use App\DTOs\Versioning\EntityVersionSnapshotDto;
+use App\DTOs\Versioning\VersionBlockLayerDto;
 use App\Enums\BlockType;
 use App\Models\Template;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
@@ -18,7 +18,7 @@ use Illuminate\Support\Collection;
  * Reconstruye el snapshot efectivo de bloques desde capas incrementales.
  * Accepts scalar IDs and DTOs, not Eloquent models.
  *
- * @extends AbstractBlockLayerResolver<EntityVersionSnapshotDto, TemplateVersionBlockLayerDto>
+ * @extends AbstractBlockLayerResolver<EntityVersionSnapshotDto, VersionBlockLayerDto>
  */
 final class TemplateVersionBlockLayerResolver extends AbstractBlockLayerResolver
 {
@@ -49,7 +49,7 @@ final class TemplateVersionBlockLayerResolver extends AbstractBlockLayerResolver
         return $this->layerRepository->listForVersionAsDto($versionId);
     }
 
-    protected function loadLayerForVersionAndBlock(string $versionId, string $blockId): ?TemplateVersionBlockLayerDto
+    protected function loadLayerForVersionAndBlock(string $versionId, string $blockId): ?VersionBlockLayerDto
     {
         return $this->layerRepository->findForVersionAndBlockAsDto($versionId, $blockId);
     }
@@ -71,7 +71,7 @@ final class TemplateVersionBlockLayerResolver extends AbstractBlockLayerResolver
 
     protected function layerBlockId(mixed $layerDto): string
     {
-        return $layerDto->templateBlockId;
+        return $layerDto->blockId;
     }
 
     protected function layerRemoved(mixed $layerDto): bool
