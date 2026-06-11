@@ -10,9 +10,9 @@ use App\DTOs\Themes\ThemeDto;
 use App\DTOs\Themes\UpdateThemeDto;
 use App\Enums\ThemeStatus;
 use App\Repositories\Contracts\ThemeRepositoryInterface;
+use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Services\Contracts\ThemeServiceInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -20,6 +20,7 @@ class ThemeService implements ThemeServiceInterface
 {
     public function __construct(
         private readonly ThemeRepositoryInterface $repository,
+        private readonly UserDirectoryRepositoryInterface $userDirectoryRepository,
     ) {}
 
     /**
@@ -127,8 +128,8 @@ class ThemeService implements ThemeServiceInterface
      */
     private function resolveAuthorName(string $userId): string
     {
-        $name = DB::table('users')->where('id', $userId)->value('name');
+        $name = $this->userDirectoryRepository->findNameById($userId);
 
-        return is_string($name) && trim($name) !== '' ? trim($name) : 'CEEDCV';
+        return $name !== null ? $name : 'CEEDCV';
     }
 }

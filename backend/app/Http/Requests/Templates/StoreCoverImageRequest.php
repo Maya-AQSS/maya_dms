@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Templates;
 
-use App\Models\Template;
+use App\Services\Contracts\TemplateServiceInterface;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -16,7 +16,7 @@ class StoreCoverImageRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        $template = Template::query()->findOrFail($this->route('template'));
+        $template = app(TemplateServiceInterface::class)->findModelOrFail($this->route('template'));
 
         return $this->user()->can('update', $template);
     }

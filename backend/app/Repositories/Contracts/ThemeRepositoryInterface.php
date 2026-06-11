@@ -8,6 +8,7 @@ use App\DTOs\Themes\CreateThemeDto;
 use App\DTOs\Themes\ThemeDto;
 use App\DTOs\Themes\ThemeResolvedDto;
 use App\DTOs\Themes\UpdateThemeDto;
+use App\Models\Theme;
 use App\Services\ThemeStateTransitions;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
@@ -23,6 +24,12 @@ interface ThemeRepositoryInterface
     public function paginate(array $filters, int $perPage = 15): LengthAwarePaginator;
 
     public function findById(string $id): ?ThemeDto;
+
+    /**
+     * Localiza el modelo Theme por su ID o lanza ModelNotFoundException (→ 404).
+     * Para uso exclusivo de FormRequests que necesitan el modelo para la policy.
+     */
+    public function findModelOrFail(string $id): Theme;
 
     public function create(CreateThemeDto $dto, string $createdBy): ThemeDto;
 

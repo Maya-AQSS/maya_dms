@@ -6,13 +6,15 @@ namespace App\Http\Requests\Templates;
 
 use App\DTOs\Templates\UpdateTemplateDto;
 use App\Enums\TemplateVisibilityLevel;
-use App\Models\Template;
+use App\Http\Requests\Templates\Concerns\ResolvesTemplateForAuthorization;
+use App\Repositories\Contracts\TeamReadRepositoryInterface;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class UpdateTemplateRequest extends FormRequest
 {
+    use ResolvesTemplateForAuthorization;
+
     /**
      * Verifica si el usuario puede actualizar la plantilla.
      */
@@ -86,10 +88,8 @@ class UpdateTemplateRequest extends FormRequest
                 'required_if:visibility_level,team',
                 function (string $attribute, mixed $value, \Closure $fail): void {
                     if ($value !== null) {
-                        $isMember = DB::table('team_members')
-                            ->where('team_id', $value)
-                            ->where('user_id', $this->user()->getAuthIdentifier())
-                            ->exists();
+                        $isMember = app(TeamReadRepositoryInterface::class)
+                            ->isMember($value, (string) $this->user()->getAuthIdentifier());
                         if (! $isMember) {
                             $fail('No eres miembro del equipo indicado.');
                         }
@@ -142,13 +142,4 @@ class UpdateTemplateRequest extends FormRequest
         );
     }
 
-    /**
-     * Obtiene la plantilla a partir del UUID en la ruta.
-     */
-    private function resolveTemplate(): Template
-    {
-        $id = $this->route('template');
-
-        return Template::query()->findOrFail($id);
-    }
 }

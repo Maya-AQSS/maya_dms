@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Themes;
 
-use App\Models\Theme;
+use App\Repositories\Contracts\ThemeRepositoryInterface;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreThemeImageRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        $theme = Theme::query()->findOrFail($this->route('theme'));
+        $theme = app(ThemeRepositoryInterface::class)->findModelOrFail($this->route('theme'));
 
         return $this->user()->can('update', $theme);
     }

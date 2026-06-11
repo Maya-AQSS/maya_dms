@@ -71,6 +71,11 @@ class ThemeRepository implements ThemeRepositoryInterface
         return $model ? $this->toDto($model) : null;
     }
 
+    public function findModelOrFail(string $id): Theme
+    {
+        return Theme::query()->findOrFail($id);
+    }
+
     public function create(CreateThemeDto $dto, string $createdBy): ThemeDto
     {
         $theme = new Theme;

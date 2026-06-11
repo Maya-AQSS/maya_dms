@@ -19,7 +19,6 @@ use App\Support\VersionSubmissionChangelog;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Maya\Messaging\Events\BroadcastNotificationCreated;
@@ -52,7 +51,7 @@ class DocumentReviewService
      */
     public function approveReview(string $documentId, string $reviewId, string $actorId, ?string $publicationChangelog = null): Document
     {
-        return DB::transaction(function () use ($documentId, $reviewId, $actorId, $publicationChangelog) {
+        return $this->documentRepository->transaction(function () use ($documentId, $reviewId, $actorId, $publicationChangelog) {
             $document = $this->documentRepository->findOrFail($documentId);
 
             if ($document->status !== 'in_review') {
@@ -279,7 +278,7 @@ class DocumentReviewService
      */
     public function rejectReview(string $documentId, string $reviewId, string $actorId, ?string $reason = null): Document
     {
-        return DB::transaction(function () use ($documentId, $reviewId, $actorId, $reason) {
+        return $this->documentRepository->transaction(function () use ($documentId, $reviewId, $actorId, $reason) {
             $document = $this->documentRepository->findOrFail($documentId);
 
             if ($document->status !== 'in_review') {

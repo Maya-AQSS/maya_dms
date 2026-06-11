@@ -20,7 +20,6 @@ use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Support\TiptapContentSemantics;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class DocumentBlockService
@@ -129,7 +128,7 @@ class DocumentBlockService
      */
     public function updateBlock(UpdateDocumentBlockDto $dto): BlockUpdateDto
     {
-        return DB::transaction(function () use ($dto): BlockUpdateDto {
+        return $this->documentRepository->transaction(function () use ($dto): BlockUpdateDto {
             $document = $this->documentRepository->findOrFail($dto->documentId);
             if (! in_array($document->status, ['draft', 'rejected'], true)) {
                 throw new AuthorizationException('Solo se pueden editar bloques de documentos en borrador o rechazados.');
@@ -496,7 +495,7 @@ class DocumentBlockService
      */
     public function deleteOptionalBlock(DeleteDocumentBlockDto $dto): void
     {
-        DB::transaction(function () use ($dto) {
+        $this->documentRepository->transaction(function () use ($dto) {
             $document = $this->documentRepository->findOrFail($dto->documentId);
 
             if (! in_array($document->status, ['draft', 'rejected'], true)) {

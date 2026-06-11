@@ -6,7 +6,7 @@ namespace App\Http\Requests\Themes;
 
 use App\DTOs\Themes\UpdateThemeDto;
 use App\Http\Requests\Themes\Concerns\SanitizesThemeLayout;
-use App\Models\Theme;
+use App\Repositories\Contracts\ThemeRepositoryInterface;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateThemeRequest extends FormRequest
@@ -15,7 +15,7 @@ class UpdateThemeRequest extends FormRequest
 
     public function authorize(): bool
     {
-        $theme = Theme::query()->findOrFail($this->route('theme'));
+        $theme = app(ThemeRepositoryInterface::class)->findModelOrFail($this->route('theme'));
 
         return $this->user()->can('update', $theme);
     }

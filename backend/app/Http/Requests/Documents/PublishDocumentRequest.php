@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Documents;
 
-use App\Models\Document;
+use App\Http\Requests\Documents\Concerns\ResolvesDocumentForAuthorization;
 use App\Support\VersionSubmissionChangelog;
 use Illuminate\Foundation\Http\FormRequest;
 
 class PublishDocumentRequest extends FormRequest
 {
-    private ?Document $resolvedDocument = null;
+    use ResolvesDocumentForAuthorization;
 
     public function authorize(): bool
     {
@@ -43,14 +43,5 @@ class PublishDocumentRequest extends FormRequest
             'changelog.required' => 'El changelog es obligatorio al publicar un documento.',
             'changelog.min' => 'El changelog es obligatorio al publicar un documento.',
         ];
-    }
-
-    private function resolveDocument(): Document
-    {
-        if ($this->resolvedDocument === null) {
-            $this->resolvedDocument = Document::query()->findOrFail($this->route('document'));
-        }
-
-        return $this->resolvedDocument;
     }
 }
