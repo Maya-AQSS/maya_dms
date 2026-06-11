@@ -22,7 +22,7 @@ class TemplatePolicyTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->policy = new TemplatePolicy;
+        $this->policy = app(TemplatePolicy::class);
     }
 
     public function test_assign_review_on_personal_allows_creator_in_draft(): void

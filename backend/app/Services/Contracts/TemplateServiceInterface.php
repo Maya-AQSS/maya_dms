@@ -10,6 +10,7 @@ use App\DTOs\Templates\SyncUsersDto;
 use App\DTOs\Templates\TemplateDto;
 use App\DTOs\Templates\TemplateFilterDto;
 use App\DTOs\Templates\UpdateTemplateDto;
+use App\DTOs\Versioning\WorkingRevisionConflictDto;
 use App\Http\Controllers\Api\TemplateController;
 use App\Models\EntityVersion;
 use App\Models\Template;
@@ -113,6 +114,10 @@ interface TemplateServiceInterface
      * @param  Collection<int, Template>  $templates
      */
     public function attachLatestPublishedVersionMeta(Collection $templates): void;
+
+    public function resolveWorkingRevisionConflict(Template $template): WorkingRevisionConflictDto;
+
+    public function attachWorkingRevisionPresentationMeta(Template $template): void;
 
     /**
      * Para plantillas en borrador visibles al viewer que NO son su creador ni su revisor activo,

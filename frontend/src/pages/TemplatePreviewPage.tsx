@@ -13,7 +13,7 @@ import {
   downloadTemplatePdf,
 } from '../api/templates';
 import { fetchBlocks } from '../api/blocks';
-import { apiFetchJson, ApiHttpError } from '../api/http';
+import { apiFetchJson } from '../api/http';
 import { useTemplateVersionSummariesQuery } from '../features/templates/hooks/useTemplateVersionSummaries';
 import { useProcessesQuery } from '../hooks/useProcesses';
 import { normalizeBlockContentForEditor } from '../features/documents/lib/normalizeBlockContent';
@@ -28,7 +28,11 @@ import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
 import { canListTemplateBlocks, canDeleteBlockComment, DMS_PERMISSIONS } from '../permissions';
-import { isDiscardWorkingVersionAllowed } from '../utils/versionableEntityActions';
+import {
+  canShowVersionHistoryButton,
+  isDiscardWorkingVersionAllowed,
+} from '../utils/versionableEntityActions';
+import { useNewVersionFlow } from '../features/versioning/hooks/useNewVersionFlow';
 import { useHierarchy } from '../features/hierarchy';
 import { BlockCommentsCard, ViewCardHeader } from '../features/templates/components/BlockCommentsCard';
 import type { BlockComment } from '../features/templates/components/BlockCommentsCard';
@@ -138,10 +142,6 @@ export function TemplatePreviewPage() {
   const [showDiscardVersionModal, setShowDiscardVersionModal] = useState(false);
   const [discardVersionLoading, setDiscardVersionLoading] = useState(false);
   const [discardVersionError, setDiscardVersionError] = useState<string | null>(null);
-  const [draftBlockedBy, setDraftBlockedBy] = useState<string | null>(null);
-  const [showNewVersionConfirm, setShowNewVersionConfirm] = useState(false);
-  const [newVersionLoading, setNewVersionLoading] = useState(false);
-  const [newVersionError, setNewVersionError] = useState<string | null>(null);
   const [showChangelogModal, setShowChangelogModal] = useState(false);
   const [changelogModalError, setChangelogModalError] = useState<string | null>(null);
   // processLabel derived from useProcessesQuery + template.process_id below.
@@ -153,17 +153,10 @@ export function TemplatePreviewPage() {
   const [reviewCommentsLoading, setReviewCommentsLoading] = useState(false);
   const [reviewCommentSubmitError, setReviewCommentSubmitError] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<{ blockId: string; mode: 'comments' | 'info' } | null>(null);
-  // publishedVersionCount derived from useTemplateVersionSummariesQuery below.
-
   // Ref for the comment card header.
   const commentCardHeaderRef = useRef<HTMLDivElement>(null);
 
   // Dynamic top position for the fixed comment panel — no longer needed with PaperPreviewLayout
-
-  const versionSummariesQuery = useTemplateVersionSummariesQuery(id ?? '', {
-    enabled: !!id,
-  });
-  const publishedVersionCount = versionSummariesQuery.data?.length ?? null;
 
   useEffect(() => {
     if (!id) {
@@ -312,12 +305,21 @@ export function TemplatePreviewPage() {
       ? snapshotTemplate.name
       : template?.name)
     : template?.name;
-  // Con una sola versión publicada no hay historial que mostrar (ni comparación
-  // posible): ocultamos el botón hasta que existan al menos dos.
-  const showVersionHistory =
-    publishedVersionCount !== null
-    && publishedVersionCount > 1
-    && (isOwner || hasPermission(DMS_PERMISSIONS.templateHistoryView));
+  const versionHistoryGatesOpen = !viewingPublishedSnapshot && !selectionMode;
+  const canCreateNewVersion =
+    versionHistoryGatesOpen && template?.can_create_new_version === true;
+  const versionSummariesQuery = useTemplateVersionSummariesQuery(id ?? '', {
+    enabled:
+      !!id
+      && template?.can_view_history === true
+      && !canCreateNewVersion,
+  });
+  const publishedVersionCount = versionSummariesQuery.data?.length ?? null;
+  const showVersionHistory = canShowVersionHistoryButton(
+    template,
+    publishedVersionCount,
+    canCreateNewVersion,
+  );
 
   const canEdit = isOwner && isDraft && !viewingPublishedSnapshot;
   /** Eliminar solo si nunca hubo versión publicada (alta o clon sin publicar). */
@@ -330,12 +332,6 @@ export function TemplatePreviewPage() {
   const canClone = template?.can_clone === true;
   const canSubmit =
     !viewingPublishedSnapshot && isOwner && isDraft && hasReviewers && !template.has_review_comments;
-  /** Alineado con `TemplatePolicy::startRevision`: creador o `template.version` en publicada. */
-  const canStartNewVersion =
-    !viewingPublishedSnapshot &&
-    isPublished &&
-    !selectionMode &&
-    (isOwner || hasPermission(DMS_PERMISSIONS.templateVersion));
   /** Alineado con `TemplatePolicy::discard`: solo el creador. */
   const canDiscardWorkingVersion =
     !viewingPublishedSnapshot &&
@@ -347,6 +343,18 @@ export function TemplatePreviewPage() {
       template.status,
       ['draft', 'in_review', 'rejected'],
     );
+  const newVersionFlow = useNewVersionFlow({
+    t,
+    entity: template,
+    entityId: id,
+    gatesOpen: !viewingPublishedSnapshot && !selectionMode,
+    startNewVersion: startTemplateNewVersion,
+    onSuccess: async (result) => {
+      const res = result as Awaited<ReturnType<typeof startTemplateNewVersion>>;
+      setTemplate(res.data);
+      navigate(`/templates/${id}/edit`);
+    },
+  });
 
   const processesQuery = useProcessesQuery(undefined, {
     enabled: !!template?.process_id,
@@ -402,27 +410,6 @@ export function TemplatePreviewPage() {
       setActionError(e instanceof Error ? e.message : 'No se pudo clonar la plantilla.');
     } finally {
       setActionLoading(false);
-    }
-  };
-
-  const handleStartNewVersion = async () => {
-    if (!id) return;
-    setNewVersionLoading(true);
-    setNewVersionError(null);
-    try {
-      const res = await startTemplateNewVersion(id);
-      setTemplate(res.data);
-      setShowNewVersionConfirm(false);
-      navigate(`/templates/${id}/edit`);
-    } catch (e) {
-      if (e instanceof ApiHttpError && e.status === 409) {
-        setShowNewVersionConfirm(false);
-        setDraftBlockedBy(e.message);
-        return;
-      }
-      setNewVersionError(e instanceof Error ? e.message : 'No se pudo abrir una nueva versión.');
-    } finally {
-      setNewVersionLoading(false);
     }
   };
 
@@ -809,32 +796,32 @@ export function TemplatePreviewPage() {
           entityType="template"
           entityId={id}
           onClose={() => setShowHistory(false)}
-          canStartNewVersion={canStartNewVersion}
-          onNewVersion={() => setShowNewVersionConfirm(true)}
+          showNewVersionButton={newVersionFlow.showNewVersionButton}
+          onNewVersion={newVersionFlow.handleRequestNewVersion}
         />
       )}
 
       <ConfirmDialog
-        open={showNewVersionConfirm}
+        open={newVersionFlow.showConfirm}
         title={t('preview.createNewVersionTitle')}
         description="Se creará un nuevo borrador editable a partir de la plantilla publicada actual. Podrás modificarla y volver a enviarla a validar."
         confirmLabel="Crear nueva versión"
         cancelLabel="Cancelar"
-        loading={newVersionLoading}
-        error={newVersionError}
-        onConfirm={() => void handleStartNewVersion()}
-        onCancel={() => { setShowNewVersionConfirm(false); setNewVersionError(null); }}
+        loading={newVersionFlow.confirmLoading}
+        error={newVersionFlow.confirmError}
+        onConfirm={() => void newVersionFlow.handleConfirmNewVersion()}
+        onCancel={newVersionFlow.dismissConfirm}
       />
 
       <ConfirmDialog
-        open={draftBlockedBy !== null}
+        open={newVersionFlow.draftBlockedBy !== null}
         variant="teal"
         title={t('preview.draftAlreadyExistsTitle')}
         icon="🔒"
-        description={draftBlockedBy ?? ''}
+        description={newVersionFlow.draftBlockedBy ?? ''}
         confirmLabel="Entendido"
-        onConfirm={() => setDraftBlockedBy(null)}
-        onCancel={() => setDraftBlockedBy(null)}
+        onConfirm={newVersionFlow.dismissBlockedModal}
+        onCancel={newVersionFlow.dismissBlockedModal}
       />
 
       <ConfirmDialog

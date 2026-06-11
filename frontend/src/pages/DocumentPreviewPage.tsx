@@ -18,7 +18,6 @@ import {
 } from '../api/documents';
 import { fetchMe } from '../api/users';
 import { useDocumentCommentsQuery } from '../features/documents/hooks/useDocumentComments';
-import { useDocumentVersionSummariesQuery } from '../features/documents/hooks/useDocumentVersionSummaries';
 import { useTemplateQuery } from '../features/templates/hooks/useTemplate';
 import { useProcessesQuery } from '../hooks/useProcesses';
 import { normalizeBlockContentForEditor } from '../features/documents/lib/normalizeBlockContent';
@@ -32,7 +31,13 @@ import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { refreshDmsDashboardQuery } from '../features/dashboard/hooks/useDmsDashboard';
 import { useUserProfile } from '../features/user-profile';
 import { canCreateBlockComment, canDeleteBlockComment, DMS_PERMISSIONS } from '../permissions';
-import { canDeleteUnpublishedEntity, isDiscardWorkingVersionAllowed } from '../utils/versionableEntityActions';
+import { useDocumentVersionSummariesQuery } from '../features/documents/hooks/useDocumentVersionSummaries';
+import {
+  canDeleteUnpublishedEntity,
+  canShowVersionHistoryButton,
+  isDiscardWorkingVersionAllowed,
+} from '../utils/versionableEntityActions';
+import { useNewVersionFlow } from '../features/versioning/hooks/useNewVersionFlow';
 import { PaperPreviewLayout } from '../features/documents/components/PaperPreviewLayout';
 import { PagedThemedPreview } from '../features/documents/components/PagedThemedPreview';
 import { useDocumentPdfExport } from '../features/documents/hooks/useDocumentPdfExport';
@@ -150,10 +155,6 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const [showDiscardVersionModal, setShowDiscardVersionModal] = useState(false);
   const [discardVersionLoading, setDiscardVersionLoading] = useState(false);
   const [discardVersionError, setDiscardVersionError] = useState<string | null>(null);
-  const [draftBlockedBy, setDraftBlockedBy] = useState<string | null>(null);
-  const [showNewVersionConfirm, setShowNewVersionConfirm] = useState(false);
-  const [newVersionLoading, setNewVersionLoading] = useState(false);
-  const [newVersionError, setNewVersionError] = useState<string | null>(null);
   const [autoPublishBanner, setAutoPublishBanner] = useState(false);
   const [validationReviewLoading, setValidationReviewLoading] = useState(false);
   const [validationSetupError, setValidationSetupError] = useState<string | null>(null);
@@ -304,20 +305,21 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       isOwner || hasPermission(DMS_PERMISSIONS.documentDelete),
     );
   const canEditDraft = isDraft && canUpdate;
-  const canViewVersionHistory = isOwner || hasPermission(DMS_PERMISSIONS.documentHistoryView);
+  const versionHistoryGatesOpen = !isValidateMode && !isHistoricalSnapshot;
+  const canCreateNewVersion =
+    versionHistoryGatesOpen && detail?.can_create_new_version === true;
   const versionSummariesQuery = useDocumentVersionSummariesQuery(documentId ?? '', {
-    enabled: !!documentId && canViewVersionHistory,
+    enabled:
+      !!documentId
+      && detail?.can_view_history === true
+      && !canCreateNewVersion,
   });
   const publishedVersionCount = versionSummariesQuery.data?.length ?? null;
-  // Con una sola versión publicada no hay historial que mostrar (ni comparación
-  // posible): ocultamos el botón hasta que existan al menos dos.
-  const showVersionHistory =
-    canViewVersionHistory && publishedVersionCount !== null && publishedVersionCount > 1;
-  const canStartNewVersion =
-    !isValidateMode &&
-    isPublished &&
-    !isHistoricalSnapshot &&
-    (isOwner || hasPermission(DMS_PERMISSIONS.documentVersion));
+  const showVersionHistory = canShowVersionHistoryButton(
+    detail,
+    publishedVersionCount,
+    canCreateNewVersion,
+  );
   const canClone =
     !isValidateMode &&
     detail?.can_clone === true;
@@ -331,6 +333,29 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       detail?.status,
       ['draft', 'in_review', 'rejected'],
     );
+  const newVersionFlow = useNewVersionFlow({
+    t,
+    entity: detail,
+    entityId: documentId,
+    gatesOpen: !isValidateMode && !isHistoricalSnapshot,
+    startNewVersion: startDocumentNewVersion,
+    onSuccess: async (result) => {
+      const data = result as Awaited<ReturnType<typeof startDocumentNewVersion>>;
+      setDetail(data);
+
+      let hasUpdate = false;
+      try {
+        const status = await fetchTemplateVersionStatus(documentId!);
+        hasUpdate = status.has_update === true;
+      } catch {
+        hasUpdate = false;
+      }
+
+      navigate(`/documents/${documentId}/editor`, {
+        state: hasUpdate ? { step: 'properties', migrationMode: 'upgrade' } : { step: 'properties' },
+      });
+    },
+  });
 
   useEffect(() => {
     if (!isValidateMode) {
@@ -579,41 +604,6 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       return false;
     } finally {
       setActionLoading(false);
-    }
-  };
-
-  const handleStartNewVersion = async () => {
-    if (!documentId) return;
-    setNewVersionLoading(true);
-    setNewVersionError(null);
-    try {
-      const data = await startDocumentNewVersion(documentId);
-      setDetail(data);
-      setShowNewVersionConfirm(false);
-
-      // Si la plantilla tiene una versión más nueva, el wizard muestra el paso de
-      // migración para actualizar el documento in-situ a la versión nueva.
-      let hasUpdate = false;
-      try {
-        const status = await fetchTemplateVersionStatus(documentId);
-        hasUpdate = status.has_update === true;
-      } catch {
-        hasUpdate = false;
-      }
-
-      navigate(`/documents/${documentId}/editor`, {
-        // Siempre a propiedades; en upgrade el wizard intercala el paso de migración.
-        state: hasUpdate ? { step: 'properties', migrationMode: 'upgrade' } : { step: 'properties' },
-      });
-    } catch (e) {
-      if (e instanceof ApiHttpError && e.status === 409) {
-        setShowNewVersionConfirm(false);
-        setDraftBlockedBy(e.message);
-        return;
-      }
-      setNewVersionError(e instanceof Error ? e.message : 'No se pudo abrir una nueva versión.');
-    } finally {
-      setNewVersionLoading(false);
     }
   };
 
@@ -1499,8 +1489,8 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           entityType="document"
           entityId={documentId}
           onClose={() => setShowHistory(false)}
-          canStartNewVersion={canStartNewVersion}
-          onNewVersion={() => setShowNewVersionConfirm(true)}
+          showNewVersionButton={newVersionFlow.showNewVersionButton}
+          onNewVersion={newVersionFlow.handleRequestNewVersion}
         />
       )}
 
@@ -1518,26 +1508,26 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       />
 
       <ConfirmDialog
-        open={showNewVersionConfirm}
+        open={newVersionFlow.showConfirm}
         title={t('preview.createNewVersionTitle')}
         description="Se creará un nuevo borrador editable a partir del documento publicado actual. Podrás modificarlo y volver a enviarlo a validar."
         confirmLabel="Crear nueva versión"
         cancelLabel="Cancelar"
-        loading={newVersionLoading}
-        error={newVersionError}
-        onConfirm={() => void handleStartNewVersion()}
-        onCancel={() => { setShowNewVersionConfirm(false); setNewVersionError(null); }}
+        loading={newVersionFlow.confirmLoading}
+        error={newVersionFlow.confirmError}
+        onConfirm={() => void newVersionFlow.handleConfirmNewVersion()}
+        onCancel={newVersionFlow.dismissConfirm}
       />
 
       <ConfirmDialog
-        open={draftBlockedBy !== null}
+        open={newVersionFlow.draftBlockedBy !== null}
         variant="teal"
         title={t('preview.draftAlreadyExistsTitle')}
         icon="🔒"
-        description={draftBlockedBy ?? ''}
+        description={newVersionFlow.draftBlockedBy ?? ''}
         confirmLabel="Entendido"
-        onConfirm={() => setDraftBlockedBy(null)}
-        onCancel={() => setDraftBlockedBy(null)}
+        onConfirm={newVersionFlow.dismissBlockedModal}
+        onCancel={newVersionFlow.dismissBlockedModal}
       />
 
       <ConfirmDialog

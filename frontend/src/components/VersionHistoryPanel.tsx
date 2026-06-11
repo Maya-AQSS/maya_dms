@@ -16,7 +16,7 @@ type Props = {
   entityType: 'template' | 'document';
   entityId: string;
   onClose: () => void;
-  canStartNewVersion?: boolean;
+  showNewVersionButton?: boolean;
   onNewVersion?: () => void;
 };
 
@@ -90,7 +90,14 @@ function MetaRow({ icon, label, value }: { icon: ReactNode; label: string; value
   );
 }
 
-export function VersionHistoryPanel({ open, entityType, entityId, onClose, canStartNewVersion, onNewVersion }: Props) {
+export function VersionHistoryPanel({
+  open,
+  entityType,
+  entityId,
+  onClose,
+  showNewVersionButton,
+  onNewVersion,
+}: Props) {
   const { t, i18n } = useTranslation('common');
   const navigate = useNavigate();
 
@@ -173,7 +180,7 @@ export function VersionHistoryPanel({ open, entityType, entityId, onClose, canSt
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {canStartNewVersion && onNewVersion ? (
+            {showNewVersionButton && onNewVersion ? (
               <Button type="button" variant="primary" size="xs" onClick={() => { onNewVersion(); onClose(); }}>
                 + Nueva versión
               </Button>

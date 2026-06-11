@@ -25,7 +25,7 @@ class DocumentPolicyTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->policy = new DocumentPolicy;
+        $this->policy = app(DocumentPolicy::class);
     }
 
     /**

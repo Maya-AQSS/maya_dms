@@ -181,7 +181,15 @@
     "viewBlockDescriptionTitle": "Ver descripción del bloque",
     "unresolvedCommentsBlocked": "No puedes enviar a validar mientras haya comentarios de revisión sin resolver",
     "createNewVersionTitle": "¿Crear nueva versión?",
-    "draftAlreadyExistsTitle": "Ya existe una versión en borrador",
+    "draftAlreadyExistsTitle": "Nueva versión no disponible",
+    "draftAlreadyExistsDescription": "No puedes crear una nueva versión de este documento porque {{author}} está realizando una.",
+    "draftAlreadyExistsDuration_minutes_one": "Lleva {{count}} minuto trabajando en el borrador.",
+    "draftAlreadyExistsDuration_minutes_other": "Lleva {{count}} minutos trabajando en el borrador.",
+    "draftAlreadyExistsDuration_hours_one": "Lleva {{count}} hora trabajando en el borrador.",
+    "draftAlreadyExistsDuration_hours_other": "Lleva {{count}} horas trabajando en el borrador.",
+    "draftAlreadyExistsDuration_days_one": "Lleva {{count}} día trabajando en el borrador.",
+    "draftAlreadyExistsDuration_days_other": "Lleva {{count}} días trabajando en el borrador.",
+    "draftAlreadyExistsUnknownAuthor": "otro usuario",
     "discardNewVersionTitle": "¿Descartar nueva versión?"
   },
   "fields": {

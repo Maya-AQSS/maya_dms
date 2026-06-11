@@ -47,7 +47,7 @@ class BlockPolicy
             return false;
         }
 
-        return (new TemplatePolicy)->view($user, $template);
+        return app(TemplatePolicy::class)->view($user, $template);
     }
 
     /**
@@ -59,7 +59,7 @@ class BlockPolicy
             return false;
         }
 
-        return (new TemplatePolicy)->view($user, $template);
+        return app(TemplatePolicy::class)->view($user, $template);
     }
 
     /**
@@ -71,7 +71,7 @@ class BlockPolicy
             return false;
         }
 
-        return (new DocumentPolicy)->view($user, $document);
+        return app(DocumentPolicy::class)->view($user, $document);
     }
 
     /**
@@ -83,7 +83,7 @@ class BlockPolicy
             return false;
         }
 
-        return (new TemplatePolicy)->update($user, $template);
+        return app(TemplatePolicy::class)->update($user, $template);
     }
 
     /**
@@ -95,7 +95,7 @@ class BlockPolicy
             return false;
         }
 
-        return (new TemplatePolicy)->update($user, $template);
+        return app(TemplatePolicy::class)->update($user, $template);
     }
 
     /**
@@ -107,7 +107,7 @@ class BlockPolicy
             return false;
         }
 
-        return (new TemplatePolicy)->update($user, $template);
+        return app(TemplatePolicy::class)->update($user, $template);
     }
 
     /**
@@ -119,7 +119,7 @@ class BlockPolicy
             return false;
         }
 
-        return (new DocumentPolicy)->update($user, $document);
+        return app(DocumentPolicy::class)->update($user, $document);
     }
 
     /**
@@ -133,7 +133,7 @@ class BlockPolicy
             return false;
         }
 
-        return (new DocumentPolicy)->update($user, $document);
+        return app(DocumentPolicy::class)->update($user, $document);
     }
 
     private function hasCompanionMutationSlug(JwtUser $user): bool

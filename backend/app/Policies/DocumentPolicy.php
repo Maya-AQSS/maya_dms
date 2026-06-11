@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Policies;
 
 use App\Models\Document;
-use App\Models\EntityVersion;
 use App\Models\JwtUser;
+use App\Services\Contracts\DocumentServiceInterface;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -37,6 +37,10 @@ use Illuminate\Support\Facades\DB;
  */
 class DocumentPolicy
 {
+    public function __construct(
+        private readonly DocumentServiceInterface $documentService,
+    ) {}
+
     /**
      * Listar documentos: requiere `document.index`; el scope `user_access` acota filas visibles.
      */
@@ -240,14 +244,7 @@ class DocumentPolicy
             return false;
         }
 
-        $hasPublishedSnapshot = EntityVersion::query()
-            ->where('versionable_type', Document::class)
-            ->where('versionable_id', $documentId)
-            ->where('version_number', '>', 0)
-            ->where('status', 'published')
-            ->exists();
-
-        if (! $hasPublishedSnapshot) {
+        if (! $this->documentService->hasPublishedSnapshot($documentId)) {
             return false;
         }
 
@@ -272,7 +269,7 @@ class DocumentPolicy
      */
     public function discard(JwtUser $user, Document $document): bool
     {
-        if (! in_array($document->status, ['draft', 'in_review'], true)) {
+        if (! in_array($document->status, ['draft', 'in_review', 'rejected'], true)) {
             return false;
         }
 
@@ -296,6 +293,19 @@ class DocumentPolicy
     }
 
     /**
+     * Puede solicitar una nueva versión (permiso de entrada al endpoint).
+     * La disponibilidad concreta (p. ej. borrador en curso) la resuelve el controller con 409.
+     */
+    public function attemptStartRevision(JwtUser $user, Document $document): bool
+    {
+        if (! $this->view($user, $document)) {
+            return false;
+        }
+
+        return $this->isTitular($user, $document) || $user->hasPermission('document.version');
+    }
+
+    /**
      * Publicado → borrador para preparar una nueva versión publicada del mismo expediente.
      *
      * Titular o permiso `document.version`, siempre que pueda ver el documento.
@@ -306,11 +316,7 @@ class DocumentPolicy
             return false;
         }
 
-        if (! $this->view($user, $document)) {
-            return false;
-        }
-
-        return $this->isTitular($user, $document) || $user->hasPermission('document.version');
+        return $this->attemptStartRevision($user, $document);
     }
 
     /**

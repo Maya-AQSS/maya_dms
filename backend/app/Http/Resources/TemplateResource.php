@@ -48,12 +48,17 @@ class TemplateResource extends JsonResource
             'latest_published_version_id' => $dto->latestPublishedVersionId,
             'latest_published_version_number' => $dto->latestPublishedVersionNumber,
             'can_clone' => $dto->canClone,
+            'can_view_history' => $dto->canViewHistory,
+            'can_create_new_version' => $dto->canCreateNewVersion,
             'working_version_id' => $dto->workingVersionId,
             'latest_published_name' => $dto->latestPublishedName,
             'latest_published_at' => $dto->latestPublishedAt,
             'blocks_at_previous_submission' => $dto->blocksAtPreviousSubmission,
             'review_history' => $dto->reviewHistory,
             'submission_changelog' => $dto->submissionChangelog,
+            'working_revision_in_progress' => $dto->workingRevisionInProgress,
+            'working_revision_editor_name' => $dto->workingRevisionEditorName,
+            'working_revision_started_at' => $dto->workingRevisionStartedAt,
         ];
 
         if ($dto->reviewersLoaded) {

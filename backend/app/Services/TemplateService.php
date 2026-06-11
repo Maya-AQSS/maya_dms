@@ -10,6 +10,7 @@ use App\DTOs\Templates\SyncUsersDto;
 use App\DTOs\Templates\TemplateDto;
 use App\DTOs\Templates\TemplateFilterDto;
 use App\DTOs\Templates\UpdateTemplateDto;
+use App\DTOs\Versioning\WorkingRevisionConflictDto;
 use App\Enums\TemplateVisibilityLevel;
 use App\Events\OwnershipTransferred;
 use App\Models\EntityVersion;
@@ -23,6 +24,7 @@ use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Services\Contracts\TemplateServiceInterface;
 use App\Support\TemplateHeadSnapshot;
+use App\Support\WorkingRevisionConflictResolver;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -203,6 +205,35 @@ class TemplateService implements TemplateServiceInterface
     public function attachLatestPublishedVersionMeta(Collection $templates): void
     {
         $this->templateRepository->attachLatestPublishedVersionMeta($templates);
+    }
+
+    public function resolveWorkingRevisionConflict(Template $template): WorkingRevisionConflictDto
+    {
+        $template->loadMissing('headVersion');
+        $realHead = $template->headVersion;
+        $editorId = (string) (
+            data_get($realHead?->snapshot_data, TemplateHeadSnapshot::JSON_TEMPLATE_KEY.'.created_by')
+            ?? $realHead?->created_by
+            ?? ''
+        );
+        $editorName = $editorId !== ''
+            ? ($this->templateRepository->getUserNameById($editorId) ?? null)
+            : null;
+
+        return WorkingRevisionConflictResolver::resolve(
+            (string) $template->status,
+            $this->findLatestPublishedVersion($template->id),
+            $realHead,
+            $editorName,
+        );
+    }
+
+    public function attachWorkingRevisionPresentationMeta(Template $template): void
+    {
+        WorkingRevisionConflictResolver::attachToModel(
+            $template,
+            $this->resolveWorkingRevisionConflict($template),
+        );
     }
 
     public function overlayPublishedSnapshotForNonOwners(Collection $templates, string $viewerId): void

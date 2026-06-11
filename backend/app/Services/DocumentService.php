@@ -14,6 +14,7 @@ use App\DTOs\Documents\DocumentDto;
 use App\DTOs\Documents\DocumentFilterDto;
 use App\DTOs\Documents\DocumentMigrationPayloadDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
+use App\DTOs\Versioning\WorkingRevisionConflictDto;
 use App\Enums\TemplateVisibilityLevel;
 use App\Events\DocumentSubmittedForReview;
 use App\Events\OwnershipTransferred;
@@ -36,6 +37,7 @@ use App\Support\CloneDeadlinePolicy;
 use App\Support\DocumentReviewModeResolver;
 use App\Support\ReviewValidationNotificationRecipients;
 use App\Support\VersionSubmissionChangelog;
+use App\Support\WorkingRevisionConflictResolver;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
@@ -1082,9 +1084,9 @@ class DocumentService implements DocumentServiceInterface
                 ]);
             }
 
-            if (! in_array((string) $head->status, ['draft', 'in_review'], true)) {
+            if (! in_array((string) $head->status, ['draft', 'in_review', 'rejected'], true)) {
                 throw ValidationException::withMessages([
-                    'version' => ['Solo se pueden descartar versiones no publicadas (draft/in_review).'],
+                    'version' => ['Solo se pueden descartar versiones no publicadas (draft/in_review/rejected).'],
                 ]);
             }
 
@@ -1864,6 +1866,30 @@ class DocumentService implements DocumentServiceInterface
         $ownerName = $this->userDirectoryRepository->findNameById($document->owner_id);
 
         return $ownerName ?? 'otro usuario';
+    }
+
+    public function resolveWorkingRevisionConflict(Document $document): WorkingRevisionConflictDto
+    {
+        $document->loadMissing(['headVersion', 'owner']);
+        $editorName = $document->owner?->name;
+        if (($editorName === null || $editorName === '') && $document->owner_id !== null) {
+            $editorName = $this->userDirectoryRepository->findNameById($document->owner_id);
+        }
+
+        return WorkingRevisionConflictResolver::resolve(
+            (string) $document->status,
+            $this->findLatestPublishedVersion($document->id),
+            $document->headVersion,
+            is_string($editorName) && $editorName !== '' ? $editorName : null,
+        );
+    }
+
+    public function attachWorkingRevisionPresentationMeta(Document $document): void
+    {
+        WorkingRevisionConflictResolver::attachToModel(
+            $document,
+            $this->resolveWorkingRevisionConflict($document),
+        );
     }
 
     /**

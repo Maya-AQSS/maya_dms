@@ -75,7 +75,12 @@ export type Template = {
   list_row_id?: string;
   /** Alineado con `TemplatePolicy::clone` en el servidor. */
   can_clone?: boolean;
+  can_view_history?: boolean;
+  can_create_new_version?: boolean;
   working_version_id?: string | null;
+  working_revision_in_progress?: boolean;
+  working_revision_editor_name?: string | null;
+  working_revision_started_at?: string | null;
   review_history?: ReviewCycleSnapshot[] | null;
   created_at?: string;
   updated_at?: string;

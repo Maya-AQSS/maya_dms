@@ -14,7 +14,7 @@ class StartNewDocumentRevisionRequest extends FormRequest
 
     public function authorize(): bool
     {
-        return $this->user()->can('startRevision', $this->resolveDocument());
+        return $this->user()->can('attemptStartRevision', $this->resolveDocument());
     }
 
     protected function failedAuthorization(): void
