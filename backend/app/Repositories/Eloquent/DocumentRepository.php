@@ -1019,4 +1019,44 @@ class DocumentRepository implements DocumentRepositoryInterface
         $document->headVersion->changelog = null;
         $document->headVersion->save();
     }
+
+    /**
+     * Carga los bloques y revisiones del documento para construcción de snapshot.
+     *
+     * @return array{
+     *     blocks: list<array{id: mixed, template_block_id: mixed, content: mixed, is_filled: bool, sort_order: int, last_edited_by: mixed, locked_by: mixed, locked_at: ?string}>,
+     *     reviews: list<array{reviewer_id: string, stage: int|null, status: string}>
+     * }
+     */
+    public function loadBlocksAndReviewsData(string $documentId): array
+    {
+        $document = $this->findOrFailForRefreshAfterMutation($documentId);
+        $document->load([
+            'blocks' => fn ($q) => $q->orderBy('sort_order'),
+            'reviews' => fn ($q) => $q->orderBy('stage')->orderBy('created_at'),
+        ]);
+
+        $blocks = $document->blocks->map(static function ($b): array {
+            return [
+                'id' => $b->id,
+                'template_block_id' => $b->template_block_id,
+                'content' => $b->content,
+                'is_filled' => (bool) $b->is_filled,
+                'sort_order' => (int) $b->sort_order,
+                'last_edited_by' => $b->last_edited_by,
+                'locked_by' => $b->locked_by,
+                'locked_at' => $b->locked_at?->toIso8601String(),
+            ];
+        })->values()->all();
+
+        $reviews = $document->reviews->map(static function ($r): array {
+            return [
+                'reviewer_id' => (string) $r->reviewer_id,
+                'stage' => $r->stage !== null ? (int) $r->stage : null,
+                'status' => (string) ($r->status ?? 'pending'),
+            ];
+        })->values()->all();
+
+        return ['blocks' => $blocks, 'reviews' => $reviews];
+    }
 }

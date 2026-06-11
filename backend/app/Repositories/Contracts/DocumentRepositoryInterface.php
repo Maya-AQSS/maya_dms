@@ -320,4 +320,15 @@ interface DocumentRepositoryInterface
      * Elimina el changelog de envío de la versión de trabajo (head).
      */
     public function clearHeadVersionChangelog(string $documentId): void;
+
+    /**
+     * Carga los bloques y revisiones del documento para construcción de snapshot.
+     * Los bloques se devuelven ordenados por sort_order; las revisiones por stage, created_at.
+     *
+     * @return array{
+     *     blocks: list<array{id: mixed, template_block_id: mixed, content: mixed, is_filled: bool, sort_order: int, last_edited_by: mixed, locked_by: mixed, locked_at: ?string}>,
+     *     reviews: list<array{reviewer_id: string, stage: int|null, status: string}>
+     * }
+     */
+    public function loadBlocksAndReviewsData(string $documentId): array;
 }
