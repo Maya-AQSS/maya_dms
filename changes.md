@@ -46,3 +46,30 @@ capa Service/Repo sin cambiar la respuesta) NO se registran aquí.
 ---
 
 <!-- Entradas de cambios a partir de aquí, en orden cronológico -->
+
+## [FASE 4.1] Formato unificado del mensaje de error de WeasyPrint (solo logs)
+
+- **Fecha**: 2026-06-11
+- **Severidad**: MEDIUM (solo observable en logs internos)
+- **Qué cambió**: los 3 mensajes de RuntimeException por fallo de WeasyPrint
+  ("WeasyPrint falló al generar el PDF de la plantilla/del theme/para documento {id}")
+  se normalizan a "WeasyPrint falló al generar el PDF {contexto}: {stderr}" con
+  contexto por caller ("de la plantilla {id}", "de muestra del theme {id}",
+  "para documento {id}"). Los timeouts NO se igualan (template/document 60s, theme 30s).
+- **Por qué**: extracción de `Support/WeasyPrintRunner` compartido por los 3 PdfServices.
+- **Endpoint(s) afectado(s)**: ninguno en respuesta (RuntimeException → 500 genérico; el mensaje no llega al cliente).
+- **Impacto en cliente**: ninguno. Solo cambia el texto en logs para triage.
+- **Decidido por**: plan Fase 4.1 (timeouts preservados por decisión explícita).
+
+## [FASE 4.5] Divergencia de normalización académica preservada vía parámetro
+
+- **Fecha**: 2026-06-11
+- **Severidad**: N/A (sin cambio de comportamiento — registro de asimetría parametrizada)
+- **Qué cambió**: nada funcional. La lógica duplicada de nulificación de scope
+  académico se unificó en `Support/AcademicScopeNormalizer` con flag
+  `strictTemplateIds`: Template (true) SIEMPRE escribe `study_type_id/study_id/module_id`
+  del template (incluso null); Document (false) solo los escribe cuando el valor
+  del template no es null. Ambos comportamientos previos se conservan tal cual.
+- **Por qué**: la divergencia es real en el código original; igualarla cambiaría
+  qué campos se pisan en updates de documentos. Queda parametrizada y documentada.
+- **Decidido por**: plan Fase 4.5 (no igualar a ciegas).

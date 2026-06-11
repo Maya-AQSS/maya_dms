@@ -6,8 +6,7 @@ namespace App\Services;
 
 use App\Services\Contracts\ThemePdfServiceInterface;
 use App\Services\Contracts\ThemeRenderServiceInterface;
-use Illuminate\Support\Facades\Process;
-use RuntimeException;
+use App\Support\WeasyPrintRunner;
 
 /**
  * Genera el PDF/UA-1 de muestra de un theme con WeasyPrint, reutilizando el
@@ -23,6 +22,7 @@ class ThemePdfService implements ThemePdfServiceInterface
 
     public function __construct(
         private readonly ThemeRenderServiceInterface $renderer,
+        private readonly WeasyPrintRunner $runner,
     ) {}
 
     public function generateSample(string $themeId): string
@@ -31,23 +31,11 @@ class ThemePdfService implements ThemePdfServiceInterface
         $html = $this->renderer->renderHtml($themeId, previewMode: false);
 
         // `weasyprint - -` lee el HTML por stdin y escribe el PDF por stdout.
-        $result = Process::input($html)
-            ->timeout(self::PROCESS_TIMEOUT)
-            ->run([
-                'weasyprint',
-                '--encoding', 'utf-8',
-                '--pdf-variant', 'pdf/ua-1',
-                '-',
-                '-',
-            ]);
-
-        if ($result->failed()) {
-            throw new RuntimeException(
-                'WeasyPrint falló al generar el PDF de muestra del theme '.$themeId.': '
-                    .$result->errorOutput()
-            );
-        }
-
-        return $result->output();
+        return $this->runner->run(
+            $html,
+            self::PROCESS_TIMEOUT,
+            '-',
+            'de muestra del theme '.$themeId,
+        );
     }
 }

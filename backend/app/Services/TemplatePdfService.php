@@ -6,8 +6,7 @@ namespace App\Services;
 
 use App\Services\Contracts\TemplatePdfServiceInterface;
 use App\Services\Contracts\TemplateRenderServiceInterface;
-use Illuminate\Support\Facades\Process;
-use RuntimeException;
+use App\Support\WeasyPrintRunner;
 
 /**
  * Genera el PDF/UA-1 de una plantilla con WeasyPrint, reutilizando el mismo HTML
@@ -23,6 +22,7 @@ class TemplatePdfService implements TemplatePdfServiceInterface
 
     public function __construct(
         private readonly TemplateRenderServiceInterface $renderer,
+        private readonly WeasyPrintRunner $runner,
     ) {}
 
     public function generateSample(string $templateId): string
@@ -31,23 +31,11 @@ class TemplatePdfService implements TemplatePdfServiceInterface
         $html = $this->renderer->renderHtml($templateId, previewMode: false);
 
         // `weasyprint - -` lee el HTML por stdin y escribe el PDF por stdout.
-        $result = Process::input($html)
-            ->timeout(self::PROCESS_TIMEOUT)
-            ->run([
-                'weasyprint',
-                '--encoding', 'utf-8',
-                '--pdf-variant', 'pdf/ua-1',
-                '-',
-                '-',
-            ]);
-
-        if ($result->failed()) {
-            throw new RuntimeException(
-                'WeasyPrint falló al generar el PDF de la plantilla '.$templateId.': '
-                    .$result->errorOutput()
-            );
-        }
-
-        return $result->output();
+        return $this->runner->run(
+            $html,
+            self::PROCESS_TIMEOUT,
+            '-',
+            'de la plantilla '.$templateId,
+        );
     }
 }

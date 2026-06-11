@@ -9,9 +9,8 @@ use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Services\Contracts\DocumentPdfServiceInterface;
 use App\Services\Contracts\DocumentRenderServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
-use Illuminate\Support\Facades\Process;
+use App\Support\WeasyPrintRunner;
 use Illuminate\Support\Facades\Storage;
-use RuntimeException;
 
 /**
  * Genera PDF/UA-1 tagged usando el binario WeasyPrint instalado en el container
@@ -41,6 +40,7 @@ class DocumentPdfService implements DocumentPdfServiceInterface
         private readonly DocumentRenderServiceInterface $renderer,
         private readonly DocumentRepositoryInterface $documentRepository,
         private readonly DocumentServiceInterface $documentService,
+        private readonly WeasyPrintRunner $runner,
     ) {}
 
     public function generate(string $documentId, ?string $versionId = null): string
@@ -55,7 +55,7 @@ class DocumentPdfService implements DocumentPdfServiceInterface
         );
 
         // weasyprint - <out> : lee HTML por stdin y escribe a $absolute.
-        $this->runWeasyprint($html, $absolute, $documentId);
+        $this->runner->run($html, self::PROCESS_TIMEOUT, $absolute, 'para documento '.$documentId);
 
         return $relative;
     }
@@ -67,7 +67,7 @@ class DocumentPdfService implements DocumentPdfServiceInterface
         // `weasyprint - -` lee el HTML por stdin y escribe el PDF por stdout:
         // generación SÍNCRONA en memoria (igual que el PDF de muestra de themes),
         // sin tocar disco ni la infraestructura de colas/estado del export real.
-        return $this->runWeasyprint($html, '-', $documentId);
+        return $this->runner->run($html, self::PROCESS_TIMEOUT, '-', 'para documento '.$documentId);
     }
 
     /**
@@ -100,33 +100,6 @@ class DocumentPdfService implements DocumentPdfServiceInterface
             $this->renderer->renderHtml($documentId),
             (int) $this->extractCurrentVersion($document),
         ];
-    }
-
-    /**
-     * Invoca WeasyPrint con `--pdf-variant pdf/ua-1` (estructura tagged + metadatos
-     * PDF/UA, requisito legal). `$out` es ruta absoluta o `-` (stdout). Devuelve
-     * los bytes del PDF cuando `$out === '-'`, o '' cuando escribe a fichero.
-     */
-    private function runWeasyprint(string $html, string $out, string $documentId): string
-    {
-        $result = Process::input($html)
-            ->timeout(self::PROCESS_TIMEOUT)
-            ->run([
-                'weasyprint',
-                '--encoding', 'utf-8',
-                '--pdf-variant', 'pdf/ua-1',
-                '-',
-                $out,
-            ]);
-
-        if ($result->failed()) {
-            throw new RuntimeException(
-                'WeasyPrint falló al generar PDF para documento '.$documentId.': '
-                    .$result->errorOutput()
-            );
-        }
-
-        return $out === '-' ? $result->output() : '';
     }
 
     /**
