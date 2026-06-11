@@ -43,8 +43,7 @@ import {
   getCommentsForBlock,
   resolveCommentBlockableId,
 } from '../../../utils/blockComments';
-import { appendCommentToTemplateCache, patchTemplateCommentCache } from '../../comments/commentCache';
-import { markCommentAsReadInTemplateCache, markCommentDeletedInTemplateCache } from '../../comments/commentCache';
+import { appendCommentToTemplateCache, patchTemplateCommentCache, markCommentAsReadInTemplateCache, markCommentDeletedInTemplateCache, markBlockCommentsAsReadInTemplateCache } from '../../comments/commentCache';
 import { useUserProfile } from '../../user-profile';
 import { canCreateBlockComment, canDeleteBlockComment } from '../../../permissions';
 import { useQueryClient } from '@tanstack/react-query';
@@ -765,6 +764,11 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     await markCommentAsReadInTemplateCache(queryClient, template.id, commentId);
   }, [queryClient, template.id]);
 
+  const handleMarkAllBlockCommentsAsRead = useCallback(async () => {
+    if (!activeSingleId) return;
+    await markBlockCommentsAsReadInTemplateCache(queryClient, template.id, activeSingleId);
+  }, [activeSingleId, queryClient, template.id]);
+
   const renderSaveStatus = () => {
     if (saveStatus === 'saving') return <span className="text-xs text-text-muted italic">Guardando…</span>;
     if (saveStatus === 'saved') return <span className="text-xs text-success-dark flex items-center gap-1">✓ Guardado</span>;
@@ -1286,6 +1290,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
             onEditComment={handleEditComment}
             onDeleteComment={handleDeleteComment}
             onMarkAsRead={handleMarkCommentAsRead}
+            onMarkAllBlockAsRead={handleMarkAllBlockCommentsAsRead}
           />
         </div>
       )}

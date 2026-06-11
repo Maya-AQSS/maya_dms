@@ -88,7 +88,7 @@ import { SubmissionChangelogReadonly, VersionChangelogModal } from '../../../com
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
 import { BlockListItem } from '../../blocks-ui/BlockListItem';
 import { getCommentsForBlock, countUnreadCommentsForBlock, resolveCommentBlockableId } from '../../../utils/blockComments';
-import { markCommentAsReadInDocumentCache, markCommentDeletedInDocumentCache } from '../../comments/commentCache';
+import { markCommentAsReadInDocumentCache, markCommentDeletedInDocumentCache, markBlockCommentsAsReadInDocumentCache } from '../../comments/commentCache';
 import { uploadMedia } from '../../../api/media';
 
 const BlockNoteEditorPanel = lazy(() =>
@@ -494,6 +494,13 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
   const handleDocumentCommentMarkAsRead = useCallback(async (commentId: string) => {
     if (!documentId) return;
     await markCommentAsReadInDocumentCache(queryClient, documentId, commentId);
+  }, [documentId, queryClient]);
+
+  const handleDocumentCommentMarkAllBlockAsRead = useCallback(async () => {
+    if (!documentId) return;
+    const blockId = activeBlockRef.current?.document_block_id;
+    if (!blockId) return;
+    await markBlockCommentsAsReadInDocumentCache(queryClient, documentId, blockId);
   }, [documentId, queryClient]);
 
   const refreshDetail = useCallback(async () => {
@@ -2234,6 +2241,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                               onEditComment={handleDocumentCommentEdit}
                               onDeleteComment={handleDocumentCommentDelete}
                               onMarkAsRead={handleDocumentCommentMarkAsRead}
+                              onMarkAllBlockAsRead={handleDocumentCommentMarkAllBlockAsRead}
                             />
                           )
                         )}
@@ -2533,6 +2541,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                 onEditComment={handleDocumentCommentEdit}
                 onDeleteComment={handleDocumentCommentDelete}
                 onMarkAsRead={handleDocumentCommentMarkAsRead}
+                onMarkAllBlockAsRead={handleDocumentCommentMarkAllBlockAsRead}
               />
             </div>
           )}

@@ -1,5 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query';
-import { markCommentAsRead } from '../../api/comments';
+import { markCommentAsRead, markBlockCommentsAsRead } from '../../api/comments';
 import type { BlockComment } from '../templates/components/BlockCommentsCard';
 import {
   templateCommentsKey,
@@ -58,6 +58,42 @@ export async function markCommentAsReadInTemplateCache(
   const updated = await markCommentAsRead(commentId);
   patchTemplateCommentCache(queryClient, templateId, (comments) =>
     comments.map((c) => (c.id === commentId ? updated : c)),
+  );
+}
+
+function mergeBlockCommentsIntoList(
+  comments: BlockComment[],
+  blockComments: BlockComment[],
+): BlockComment[] {
+  const updatedById = new Map(blockComments.map((c) => [c.id, c]));
+  return comments.map((c) => updatedById.get(c.id) ?? c);
+}
+
+export async function markBlockCommentsAsReadInTemplateCache(
+  queryClient: QueryClient,
+  templateId: string,
+  blockableId: string,
+): Promise<void> {
+  const res = await markBlockCommentsAsRead(
+    `templates/${templateId}/comments/mark-block-read`,
+    blockableId,
+  );
+  patchTemplateCommentCache(queryClient, templateId, (comments) =>
+    mergeBlockCommentsIntoList(comments, res.data),
+  );
+}
+
+export async function markBlockCommentsAsReadInDocumentCache(
+  queryClient: QueryClient,
+  documentId: string,
+  blockableId: string,
+): Promise<void> {
+  const res = await markBlockCommentsAsRead(
+    `documents/${documentId}/comments/mark-block-read`,
+    blockableId,
+  );
+  patchDocumentCommentCache(queryClient, documentId, (comments) =>
+    mergeBlockCommentsIntoList(comments, res.data),
   );
 }
 

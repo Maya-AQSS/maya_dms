@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api;
 use App\DTOs\Comments\CommentableResource;
 use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Comments\MarkBlockCommentsReadRequest;
 use App\Http\Requests\Comments\StoreCommentRequest;
 use App\Http\Requests\Comments\UpdateCommentRequest;
 use App\Http\Resources\CommentResource;
@@ -130,6 +131,39 @@ class CommentController extends Controller
         $commentDto = $this->commentService->markAsRead($comment, $readerUserId);
 
         return (new CommentResource($commentDto))->response();
+    }
+
+    public function markBlockRead(MarkBlockCommentsReadRequest $request): JsonResponse
+    {
+        $resource = $this->resolveAndAuthorizeResource($request, 'view');
+
+        if ($resource === null) {
+            abort(404);
+        }
+
+        if (! $resource->model->isCommentingOpen()) {
+            abort(404);
+        }
+
+        $blockableId = $request->blockableId();
+        $blockableType = $resource->blockableClass($blockableId);
+        if ($blockableType === null) {
+            abort(422, 'El bloque indicado no es válido para este recurso.');
+        }
+
+        $readerUserId = (string) Auth::id();
+        $comments = $this->commentService->markBlockCommentsAsRead(
+            commentableType: $resource->class,
+            commentableId: (string) $resource->model->id,
+            commentableVersion: $resource->version,
+            blockableType: $blockableType,
+            blockableId: $blockableId,
+            userId: $readerUserId,
+        );
+
+        return response()->json([
+            'data' => CommentResource::collection($comments),
+        ]);
     }
 
     public function destroy(string $comment): JsonResponse

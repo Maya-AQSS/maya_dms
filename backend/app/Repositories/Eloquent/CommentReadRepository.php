@@ -41,6 +41,7 @@ class CommentReadRepository implements CommentReadRepositoryInterface
             ->where('commentable_version', $commentableVersion)
             ->where('blockable_type', $blockableType)
             ->where('blockable_id', $blockableId)
+            ->where('comments.author_id', '!=', $userId)
             ->whereNotExists(function ($query) use ($userId): void {
                 $query->select(DB::raw(1))
                     ->from('comment_reads')

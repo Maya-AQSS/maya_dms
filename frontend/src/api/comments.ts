@@ -48,3 +48,17 @@ export async function markCommentAsRead(commentId: string): Promise<BlockComment
   });
   return res.data;
 }
+
+export type MarkBlockCommentsReadResponse = {
+  data: BlockComment[];
+};
+
+export async function markBlockCommentsAsRead(
+  resourcePath: `templates/${string}/comments/mark-block-read` | `documents/${string}/comments/mark-block-read`,
+  blockableId: string,
+): Promise<MarkBlockCommentsReadResponse> {
+  return apiFetchJson<MarkBlockCommentsReadResponse>(resourcePath, {
+    method: 'POST',
+    body: { blockable_id: blockableId },
+  });
+}

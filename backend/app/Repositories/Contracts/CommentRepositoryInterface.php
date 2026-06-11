@@ -26,6 +26,20 @@ interface CommentRepositoryInterface
     ): LengthAwarePaginator;
 
     /**
+     * Comentarios de un bloque concretos (incluye soft-deleted), con estado de lectura del lector.
+     *
+     * @return \Illuminate\Support\Collection<int, Comment>
+     */
+    public function listForBlock(
+        string $commentableType,
+        string $commentableId,
+        int $commentableVersion,
+        string $blockableType,
+        string $blockableId,
+        ?string $readerUserId = null,
+    ): \Illuminate\Support\Collection;
+
+    /**
      * Crea un comentario.
      *
      * @param  array<string, mixed>  $attributes

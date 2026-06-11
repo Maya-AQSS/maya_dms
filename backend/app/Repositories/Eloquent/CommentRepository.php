@@ -58,6 +58,33 @@ class CommentRepository implements CommentRepositoryInterface
     }
 
     /**
+     * @return \Illuminate\Support\Collection<int, Comment>
+     */
+    public function listForBlock(
+        string $commentableType,
+        string $commentableId,
+        int $commentableVersion,
+        string $blockableType,
+        string $blockableId,
+        ?string $readerUserId = null,
+    ): \Illuminate\Support\Collection {
+        $query = Comment::withTrashed()
+            ->select('comments.*')
+            ->where('commentable_type', $commentableType)
+            ->where('commentable_id', $commentableId)
+            ->where('commentable_version', $commentableVersion)
+            ->where('blockable_type', $blockableType)
+            ->where('blockable_id', $blockableId)
+            ->with('author:id,name')
+            ->withCount('edits')
+            ->orderBy('created_at', 'asc');
+
+        $this->applyReaderState($query, $readerUserId);
+
+        return $query->get();
+    }
+
+    /**
      * Crea un comentario.
      */
     public function create(array $attributes): Comment

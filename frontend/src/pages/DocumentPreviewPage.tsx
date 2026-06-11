@@ -53,7 +53,7 @@ import { apiFetchJson, ApiHttpError } from '../api/http';
 import type { Process } from '../types/processes';
 import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
 import { getCommentsForBlock, countUnreadCommentsForBlock, resolveCommentBlockableId } from '../utils/blockComments';
-import { markCommentAsReadInDocumentCache, markCommentDeletedInDocumentCache } from '../features/comments/commentCache';
+import { markCommentAsReadInDocumentCache, markCommentDeletedInDocumentCache, markBlockCommentsAsReadInDocumentCache } from '../features/comments/commentCache';
 import { SequentialValidatorBadge } from '../features/documents/components/SequentialValidatorBadge';
 
 // Estado: clases en `statusBadgeClass` (módulo `@ceedcv-maya/shared-ui-react/badges`).
@@ -516,6 +516,30 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const handleMarkCommentAsRead = async (commentId: string) => {
     if (!documentId) return;
     await markCommentAsReadInDocumentCache(queryClient, documentId, commentId);
+  };
+
+  const handleMarkAllValidateBlockCommentsAsRead = async () => {
+    if (!documentId || !validateActiveBlockId) return;
+    const block = detail?.blocks?.find((b) => b.template_block_id === validateActiveBlockId);
+    if (!block?.document_block_id) return;
+    await markBlockCommentsAsReadInDocumentCache(
+      queryClient,
+      documentId,
+      block.document_block_id,
+    );
+  };
+
+  const handleMarkAllPreviewBlockCommentsAsRead = async () => {
+    if (!documentId || !selectedReviewView?.blockId) return;
+    const block = detail?.blocks?.find(
+      (b) => (b.document_block_id || b.template_block_id) === selectedReviewView.blockId,
+    );
+    if (!block?.document_block_id) return;
+    await markBlockCommentsAsReadInDocumentCache(
+      queryClient,
+      documentId,
+      block.document_block_id,
+    );
   };
 
   const handleValidateSendMessage = async (parentId: string | null, body: string) => {
@@ -1032,6 +1056,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                         onEditComment={handleEditComment}
                         onDeleteComment={handleDeleteComment}
                         onMarkAsRead={handleMarkCommentAsRead}
+                        onMarkAllBlockAsRead={handleMarkAllValidateBlockCommentsAsRead}
                       />
                     ) : (
                       <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-xl flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">
@@ -1317,6 +1342,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                 onEditComment={handleEditComment}
                 onDeleteComment={handleDeleteComment}
                 onMarkAsRead={handleMarkCommentAsRead}
+                onMarkAllBlockAsRead={handleMarkAllPreviewBlockCommentsAsRead}
               />
             );
           }

@@ -30,7 +30,7 @@ import {
 import { BlockCommentsCard, ViewCardHeader } from './BlockCommentsCard';
 import type { BlockComment, CommentMode } from './BlockCommentsCard';
 import { getCommentsForBlock, countUnreadCommentsForBlock, resolveCommentBlockableId } from '../../../utils/blockComments';
-import { appendCommentToTemplateCache, markCommentAsReadInTemplateCache, markCommentDeletedInTemplateCache } from '../../comments/commentCache';
+import { appendCommentToTemplateCache, markCommentAsReadInTemplateCache, markCommentDeletedInTemplateCache, markBlockCommentsAsReadInTemplateCache } from '../../comments/commentCache';
 
 type Props = { template: Template };
 
@@ -345,6 +345,11 @@ export function TemplateReviewView({ template }: Props) {
     await markCommentAsReadInTemplateCache(queryClient, template.id, commentId);
   };
 
+  const handleMarkAllBlockCommentsAsRead = async () => {
+    if (!activeView?.blockId) return;
+    await markBlockCommentsAsReadInTemplateCache(queryClient, template.id, activeView.blockId);
+  };
+
   const openView = (blockId: string, mode: 'comments' | 'info') => {
     setDiffBlockId(null);
     setActiveView({ blockId, mode });
@@ -485,6 +490,7 @@ export function TemplateReviewView({ template }: Props) {
                   onEditComment={handleEditComment}
                   onDeleteComment={handleDeleteComment}
                   onMarkAsRead={handleMarkCommentAsRead}
+                  onMarkAllBlockAsRead={handleMarkAllBlockCommentsAsRead}
                 />
               ) : (
                 <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-xl flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">

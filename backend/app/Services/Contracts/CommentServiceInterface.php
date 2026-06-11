@@ -78,4 +78,18 @@ interface CommentServiceInterface
         string $blockableId,
         string $userId,
     ): int;
+
+    /**
+     * Marca como leídos los comentarios de un bloque y devuelve el listado actualizado del bloque.
+     *
+     * @return list<CommentDto>
+     */
+    public function markBlockCommentsAsRead(
+        string $commentableType,
+        string $commentableId,
+        int $commentableVersion,
+        string $blockableType,
+        string $blockableId,
+        string $userId,
+    ): array;
 }

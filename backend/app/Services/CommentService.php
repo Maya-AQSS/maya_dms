@@ -144,6 +144,46 @@ class CommentService implements CommentServiceInterface
         );
     }
 
+    /**
+     * @return list<CommentDto>
+     */
+    public function markBlockCommentsAsRead(
+        string $commentableType,
+        string $commentableId,
+        int $commentableVersion,
+        string $blockableType,
+        string $blockableId,
+        string $userId,
+    ): array {
+        $this->assertBlockBelongsToResource(
+            $commentableType,
+            $commentableId,
+            $blockableType,
+            $blockableId,
+        );
+
+        $this->commentReadRepository->markBlockAsRead(
+            $userId,
+            $commentableType,
+            $commentableId,
+            $commentableVersion,
+            $blockableType,
+            $blockableId,
+        );
+
+        return $this->commentRepository
+            ->listForBlock(
+                $commentableType,
+                $commentableId,
+                $commentableVersion,
+                $blockableType,
+                $blockableId,
+                $userId,
+            )
+            ->map(static fn (Comment $comment): CommentDto => CommentDto::fromModel($comment))
+            ->all();
+    }
+
     private function assertBlockBelongsToResource(
         string $commentableType,
         string $commentableId,

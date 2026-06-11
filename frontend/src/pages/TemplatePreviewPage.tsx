@@ -47,6 +47,7 @@ import {
   appendCommentToTemplateCache,
   markCommentAsReadInTemplateCache,
   markCommentDeletedInTemplateCache,
+  markBlockCommentsAsReadInTemplateCache,
   patchTemplateCommentCache,
 } from '../features/comments/commentCache';
 
@@ -269,6 +270,11 @@ export function TemplatePreviewPage() {
   const handleMarkCommentAsRead = async (commentId: string) => {
     if (!id) return;
     await markCommentAsReadInTemplateCache(queryClient, id, commentId);
+  };
+
+  const handleMarkAllBlockCommentsAsRead = async () => {
+    if (!id || !activeView?.blockId) return;
+    await markBlockCommentsAsReadInTemplateCache(queryClient, id, activeView.blockId);
   };
   const isDraft = template?.status === 'draft' || template?.status === 'rejected';
   const isOwner = profile?.id === template?.created_by;
@@ -660,6 +666,7 @@ export function TemplatePreviewPage() {
                 onEditComment={handleEditComment}
                 onDeleteComment={handleDeleteComment}
                 onMarkAsRead={handleMarkCommentAsRead}
+                onMarkAllBlockAsRead={handleMarkAllBlockCommentsAsRead}
               />
             );
           }

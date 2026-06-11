@@ -399,6 +399,8 @@ type BlockCommentsCardProps = {
   onEditComment?: (commentId: string, newBody: string) => Promise<void>;
   onDeleteComment?: (commentId: string) => Promise<void>;
   onMarkAsRead?: (commentId: string) => Promise<void>;
+  /** Marca en bloque (1 petición API) los no leídos del bloque activo. */
+  onMarkAllBlockAsRead?: () => Promise<void>;
 };
 
 export function BlockCommentsCard({
@@ -418,6 +420,7 @@ export function BlockCommentsCard({
   onEditComment,
   onDeleteComment,
   onMarkAsRead,
+  onMarkAllBlockAsRead,
 }: BlockCommentsCardProps) {
   const { t } = useTranslation(['templates', 'documents']);
   const [replyingTo, setReplyingTo] = useState<{ id: string; name: string } | null>(null);
@@ -440,15 +443,16 @@ export function BlockCommentsCard({
   );
 
   const handleMarkAllAsRead = async () => {
-    if (!onMarkAsRead) return;
-    const unreadIds = activeComments
-      .filter((c) => c.is_read_by_me !== true && c.author_id !== currentUserId)
-      .map((c) => c.id);
-    if (unreadIds.length === 0) return;
+    if (unreadFromOthers.length === 0) return;
     setMarkAllLoading(true);
     try {
-      for (const commentId of unreadIds) {
-        await onMarkAsRead(commentId);
+      if (onMarkAllBlockAsRead) {
+        await onMarkAllBlockAsRead();
+      } else if (onMarkAsRead) {
+        const unreadIds = unreadFromOthers.map((c) => c.id);
+        for (const commentId of unreadIds) {
+          await onMarkAsRead(commentId);
+        }
       }
     } finally {
       setMarkAllLoading(false);
@@ -504,7 +508,7 @@ export function BlockCommentsCard({
         </div>
       )}
 
-      {onMarkAsRead && unreadFromOthers.length > 0 && (
+      {(onMarkAsRead || onMarkAllBlockAsRead) && unreadFromOthers.length > 0 && (
         <div className="px-4 py-2 border-b border-ui-border dark:border-ui-dark-border bg-ui-body/20 dark:bg-ui-dark-bg/30 shrink-0 flex justify-end">
           <button
             type="button"
