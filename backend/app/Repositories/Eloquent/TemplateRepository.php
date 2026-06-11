@@ -26,8 +26,21 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
 
-class TemplateRepository implements TemplateRepositoryInterface
+class TemplateRepository extends AbstractVersionableEntityRepository implements TemplateRepositoryInterface
 {
+    // ─── AbstractVersionableEntityRepository helpers ──────────────────────────
+
+    protected function pendingReviewModelClass(): string
+    {
+        return TemplateReviewer::class;
+    }
+
+    protected function pendingReviewForeignKey(): string
+    {
+        return 'template_id';
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     /**
      * Localiza una plantilla por su ID o lanza una excepción.
      */
@@ -735,17 +748,7 @@ class TemplateRepository implements TemplateRepositoryInterface
 
     public function minPendingReviewStageForTemplate(string $templateId): ?int
     {
-        $min = TemplateReviewer::query()
-            ->where('template_id', $templateId)
-            ->where('status', 'pending')
-            ->min('stage');
-
-        return $min !== null ? (int) $min : null;
-    }
-
-    public function transaction(callable $callback): mixed
-    {
-        return DB::transaction($callback);
+        return $this->minPendingReviewStage($templateId);
     }
 
     /**
@@ -867,32 +870,6 @@ class TemplateRepository implements TemplateRepositoryInterface
             $ev->changelog = null;
             $ev->save();
         }
-    }
-
-    public function updateHeadVersionChangelog(string $templateId, string $changelog): void
-    {
-        $template = $this->findOrFail($templateId);
-        $template->loadMissing('headVersion');
-
-        if ($template->headVersion === null) {
-            throw new RuntimeException('Plantilla sin versión cabezal en entity_versions.');
-        }
-
-        $template->headVersion->changelog = $changelog;
-        $template->headVersion->save();
-    }
-
-    public function clearHeadVersionChangelog(string $templateId): void
-    {
-        $template = $this->findOrFail($templateId);
-        $template->loadMissing('headVersion');
-
-        if ($template->headVersion === null) {
-            return;
-        }
-
-        $template->headVersion->changelog = null;
-        $template->headVersion->save();
     }
 
     /**

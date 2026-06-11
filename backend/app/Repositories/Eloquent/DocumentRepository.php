@@ -25,8 +25,21 @@ use Illuminate\Support\Str;
 use JsonException;
 use RuntimeException;
 
-class DocumentRepository implements DocumentRepositoryInterface
+class DocumentRepository extends AbstractVersionableEntityRepository implements DocumentRepositoryInterface
 {
+    // ─── AbstractVersionableEntityRepository helpers ──────────────────────────
+
+    protected function pendingReviewModelClass(): string
+    {
+        return DocumentReview::class;
+    }
+
+    protected function pendingReviewForeignKey(): string
+    {
+        return 'document_id';
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     /**
      * Busca un documento por su ID aplicando el scope `user_access`, o lanza ModelNotFoundException.
      *
@@ -326,12 +339,7 @@ class DocumentRepository implements DocumentRepositoryInterface
 
     public function minPendingReviewStageForDocument(string $documentId): ?int
     {
-        $min = DocumentReview::query()
-            ->where('document_id', $documentId)
-            ->where('status', 'pending')
-            ->min('stage');
-
-        return $min !== null ? (int) $min : null;
+        return $this->minPendingReviewStage($documentId);
     }
 
     public function firstReviewCreatedAt(string $documentId): mixed
@@ -886,14 +894,6 @@ class DocumentRepository implements DocumentRepositoryInterface
         return json_encode($content, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
     }
 
-    /**
-     * Ejecuta una operación dentro de transacción.
-     */
-    public function transaction(callable $callback): mixed
-    {
-        return DB::transaction($callback);
-    }
-
     public function findAssignedReviewerDocumentIds(array $documentIds, string $reviewerId): array
     {
         if ($documentIds === []) {
@@ -992,32 +992,6 @@ class DocumentRepository implements DocumentRepositoryInterface
                     lockedAt: $block->locked_at ? $block->locked_at->toIso8601String() : null,
                 );
             });
-    }
-
-    public function updateHeadVersionChangelog(string $documentId, string $changelog): void
-    {
-        $document = $this->findOrFail($documentId);
-        $document->loadMissing('headVersion');
-
-        if ($document->headVersion === null) {
-            throw new RuntimeException('Documento sin versión cabezal en entity_versions.');
-        }
-
-        $document->headVersion->changelog = $changelog;
-        $document->headVersion->save();
-    }
-
-    public function clearHeadVersionChangelog(string $documentId): void
-    {
-        $document = $this->findOrFail($documentId);
-        $document->loadMissing('headVersion');
-
-        if ($document->headVersion === null) {
-            return;
-        }
-
-        $document->headVersion->changelog = null;
-        $document->headVersion->save();
     }
 
     /**

@@ -27,16 +27,7 @@ class TemplateVersionRepository implements TemplateVersionRepositoryInterface
 
     public function findOptional(string $id): ?EntityVersion
     {
-        $ev = EntityVersion::query()->whereKey($id)->first();
-        if ($ev === null) {
-            return null;
-        }
-
-        if ($ev->versionable_type !== Template::class || $ev->status !== 'published') {
-            return null;
-        }
-
-        return $ev;
+        return $this->entityVersionRepository->findPublishedByIdAndType($id, Template::class);
     }
 
     public function findLatestPublishedForTemplate(string $templateId): ?EntityVersion
@@ -55,11 +46,7 @@ class TemplateVersionRepository implements TemplateVersionRepositoryInterface
 
     public function findPublishedMetaById(string $versionId): ?array
     {
-        $ev = EntityVersion::query()
-            ->whereKey($versionId)
-            ->where('versionable_type', Template::class)
-            ->where('status', 'published')
-            ->first();
+        $ev = $this->entityVersionRepository->findPublishedByIdAndType($versionId, Template::class);
 
         if ($ev === null) {
             return null;

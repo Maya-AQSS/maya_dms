@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repositories\Contracts;
 
+use App\DTOs\TemplateBlocks\TemplateBlockPayloadDto;
 use App\DTOs\Templates\FilterTemplatesDto;
 use App\DTOs\Templates\TemplateFilterDto;
 use App\DTOs\Templates\TemplateRenderDto;
@@ -202,4 +203,12 @@ interface TemplateRepositoryInterface
      * Without global catalog scope; caller must authorize.
      */
     public function findForRenderingWithoutCatalogScope(string $id): ?TemplateRenderDto;
+
+    /**
+     * Obtiene los bloques de la plantilla como DTOs, ordenados por sort_order.
+     * Encapsula el acceso al modelo y expone solo los datos necesarios.
+     *
+     * @return Collection<int, TemplateBlockPayloadDto>
+     */
+    public function findBlocksAsPayloadDtosForTemplate(string $templateId): Collection;
 }

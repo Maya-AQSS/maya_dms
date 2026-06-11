@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repositories\Contracts;
 
+use App\DTOs\Documents\DocumentBlockPayloadDto;
 use App\DTOs\Documents\DocumentFilterDto;
 use App\Models\Document;
 use App\Models\DocumentBlock;
@@ -310,6 +311,14 @@ interface DocumentRepositoryInterface
      * @return Collection<int, DocumentBlock>
      */
     public function findBlocksForExport(string $documentId): Collection;
+
+    /**
+     * Obtiene los bloques del documento como DTOs, ordenados por sort_order.
+     * Encapsula el acceso al modelo y expone solo los datos necesarios.
+     *
+     * @return Collection<int, DocumentBlockPayloadDto>
+     */
+    public function findBlocksAsPayloadDtosForDocument(string $documentId): Collection;
 
     /**
      * Persiste el changelog de envío a validación en la versión de trabajo (head).
