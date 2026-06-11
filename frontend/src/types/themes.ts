@@ -110,6 +110,8 @@ export interface ThemeListFilters {
   search?: string;
   page?: number;
   per_page?: number;
+  sort_by?: string;
+  sort_dir?: 'asc' | 'desc';
 }
 
 export interface ThemesListResponse {

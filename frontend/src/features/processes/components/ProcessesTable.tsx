@@ -71,7 +71,7 @@ export function ProcessesTable() {
   }, [meta, page, onPageChange]);
 
   // Obtener procesos raíz para el selector (usamos la API sin paginar para la lista desplegable).
-  const processesQuery = useProcessesQuery({ enabled: canIndex && rows.length > 0 });
+  const processesQuery = useProcessesQuery(undefined, { enabled: canIndex && rows.length > 0 });
   const topLevelProcesses = useMemo(
     () => (processesQuery.data?.data ?? []).filter((p) => p.process_parent_id === null),
     [processesQuery.data?.data],

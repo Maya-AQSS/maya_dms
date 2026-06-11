@@ -47,6 +47,8 @@ function buildListQuery(filters: ThemeListFilters): string {
   if (filters.search) q.set('search', filters.search);
   if (filters.page) q.set('page', String(filters.page));
   if (filters.per_page) q.set('per_page', String(filters.per_page));
+  if (filters.sort_by) q.set('sort_by', filters.sort_by);
+  if (filters.sort_dir) q.set('sort_dir', filters.sort_dir);
   const s = q.toString();
   return s ? `?${s}` : '';
 }

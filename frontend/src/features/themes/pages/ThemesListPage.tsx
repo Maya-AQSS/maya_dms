@@ -44,7 +44,7 @@ export function ThemesListPage() {
   });
 
   const { rows, meta, loading, error, filters, setFilter, resetFilters,
-          filtersActiveCount, page, onPageChange, pageSize, onPageSizeChange,
+          filtersActiveCount, onPageChange, pageSize, onPageSizeChange,
           sortBy, onSortChange } = useServerThemesTable();
 
   const columns: ColumnDef<Theme>[] = useMemo(

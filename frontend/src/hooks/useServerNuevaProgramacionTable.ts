@@ -12,6 +12,8 @@ const NUEVA_PROGRAMACION_FILTER_DEFAULTS = {
   search: '',
   author_name: '',
   published_on: '',
+  /** Filtro client-side de favoritos (no viaja a la API; ver apiParams). */
+  favorite_ids: '',
 } as const;
 
 type NuevaProgramacionFilterKeys = keyof typeof NUEVA_PROGRAMACION_FILTER_DEFAULTS;
