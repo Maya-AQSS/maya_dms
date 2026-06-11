@@ -24,7 +24,7 @@
      "props": {
       "key": "campo_1",
       "label": "Campo 1",
-      "defaultText": "OK",
+      "defaultText": "Curso 20XX-XX",
       "size": 14,
       "color": "#1a1a1a",
       "align": "left",
@@ -42,7 +42,7 @@
       "z": 1
      },
      "props": {
-      "text": "Texto",
+      "text": "Documento de demostración",
       "size": 33,
       "color": "#1a1a1a",
       "align": "left",
@@ -130,7 +130,7 @@
      "content": [
       {
        "type": "text",
-       "text": "contenido editable"
+       "text": "Bloque de estado «editable»: su contenido puede modificarse libremente al rellenar el documento."
       }
      ]
     }
@@ -155,7 +155,7 @@
      "content": [
       {
        "type": "text",
-       "text": "contenido bloqueado"
+       "text": "Bloque de estado «bloqueado»: su contenido es fijo y no puede editarse al rellenar el documento."
       }
      ]
     }
@@ -180,7 +180,7 @@
      "content": [
       {
        "type": "text",
-       "text": "contenido OpcionaContenido"
+       "text": "Bloque de estado «opcional»: puede conservarse o eliminarse al rellenar el documento."
       }
      ]
     }
@@ -213,7 +213,7 @@
      "content": [
       {
        "type": "text",
-       "text": "Contenido ModificablePárrafo"
+       "text": "Este es un párrafo de texto normal, el bloque básico de contenido del editor."
       }
      ]
     },
@@ -226,7 +226,7 @@
      "content": [
       {
        "type": "text",
-       "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+       "text": "Los párrafos agrupan frases relacionadas y son el punto de partida de cualquier documento."
       }
      ]
     },
@@ -239,7 +239,7 @@
      "content": [
       {
        "type": "text",
-       "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+       "text": "Sobre ellos puedes aplicar marcas como negrita o cursiva, o cambiar la alineación."
       }
      ]
     },
@@ -252,7 +252,7 @@
      "content": [
       {
        "type": "text",
-       "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+       "text": "Cada salto de párrafo crea un nuevo bloque editable independiente."
       }
      ]
     }
@@ -282,7 +282,7 @@
          "type": "bold"
         }
        ],
-       "text": "Contenido ModificableNegrita"
+       "text": "Este texto está en negrita."
       }
      ]
     },
@@ -300,7 +300,7 @@
          "type": "bold"
         }
        ],
-       "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+       "text": " La negrita aumenta el grosor del texto para destacarlo."
       }
      ]
     },
@@ -318,7 +318,7 @@
          "type": "bold"
         }
        ],
-       "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+       "text": " Se usa para resaltar términos o ideas importantes."
       }
      ]
     },
@@ -336,7 +336,7 @@
          "type": "bold"
         }
        ],
-       "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+       "text": " Es una de las marcas básicas de formato del editor TipTap."
       }
      ]
     }
@@ -366,7 +366,7 @@
          "type": "italic"
         }
        ],
-       "text": "Contenido ModificableCursiva"
+       "text": "Este texto está en cursiva."
       }
      ]
     },
@@ -384,7 +384,7 @@
          "type": "italic"
         }
        ],
-       "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+       "text": " La cursiva inclina las letras para dar un énfasis sutil."
       }
      ]
     },
@@ -402,7 +402,7 @@
          "type": "italic"
         }
        ],
-       "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+       "text": " Suele emplearse en títulos de obras o en extranjerismos."
       }
      ]
     },
@@ -420,7 +420,7 @@
          "type": "italic"
         }
        ],
-       "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+       "text": " Es otra de las marcas de formato de carácter del editor."
       }
      ]
     }
@@ -450,7 +450,7 @@
          "type": "underline"
         }
        ],
-       "text": "Contenido ModificableSubrayado"
+       "text": "Este texto está subrayado."
       }
      ]
     },
@@ -468,7 +468,7 @@
          "type": "underline"
         }
        ],
-       "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+       "text": " El subrayado traza una línea bajo el texto."
       }
      ]
     },
@@ -486,7 +486,7 @@
          "type": "underline"
         }
        ],
-       "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+       "text": " Sirve para llamar la atención sobre una palabra o frase."
       }
      ]
     },
@@ -504,7 +504,7 @@
          "type": "underline"
         }
        ],
-       "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+       "text": " Puede combinarse con otras marcas para enfatizar más."
       }
      ]
     }
@@ -534,7 +534,7 @@
          "type": "code"
         }
        ],
-       "text": "Contenido ModificableCodeLine"
+       "text": "Este fragmento usa código en línea."
       }
      ]
     },
@@ -552,7 +552,7 @@
          "type": "code"
         }
        ],
-       "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+       "text": " El código en línea muestra texto monoespaciado dentro de un párrafo."
       }
      ]
     },
@@ -570,7 +570,7 @@
          "type": "code"
         }
        ],
-       "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+       "text": " Es ideal para nombres de variables, comandos o rutas."
       }
      ]
     },
@@ -588,7 +588,7 @@
          "type": "code"
         }
        ],
-       "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+       "text": " Se distingue del texto normal por su tipografía de ancho fijo."
       }
      ]
     }
@@ -623,7 +623,7 @@
          }
         }
        ],
-       "text": "Contenido ModificableEnlace"
+       "text": "Este texto es un enlace a una página web."
       }
      ]
     },
@@ -646,7 +646,7 @@
          }
         }
        ],
-       "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+       "text": " Los enlaces permiten navegar a recursos externos."
       }
      ]
     },
@@ -669,7 +669,7 @@
          }
         }
        ],
-       "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+       "text": " Al hacer clic se abre la URL asociada en el navegador."
       }
      ]
     },
@@ -692,7 +692,7 @@
          }
         }
        ],
-       "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+       "text": " Aquí todos apuntan a la web del CEEDCV como ejemplo."
       }
      ]
     }
@@ -722,7 +722,7 @@
          "type": "strike"
         }
        ],
-       "text": "Contenido ModificableTachado"
+       "text": "Este texto está tachado."
       }
      ]
     },
@@ -740,7 +740,7 @@
          "type": "strike"
         }
        ],
-       "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+       "text": " El tachado dibuja una línea sobre el texto."
       }
      ]
     },
@@ -758,7 +758,7 @@
          "type": "strike"
         }
        ],
-       "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+       "text": " Se usa para marcar contenido eliminado o en revisión."
       }
      ]
     },
@@ -776,7 +776,7 @@
          "type": "strike"
         }
        ],
-       "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+       "text": " Es útil para mostrar cambios sin borrar del todo."
       }
      ]
     }
@@ -809,11 +809,11 @@
          }
         }
        ],
-       "text": "Contenido"
+       "text": "Cada "
       },
       {
        "type": "text",
-       "text": " "
+       "text": "fragmento "
       },
       {
        "type": "text",
@@ -825,7 +825,7 @@
          }
         }
        ],
-       "text": "ModificableColor"
+       "text": "de "
       }
      ]
     },
@@ -846,11 +846,11 @@
          }
         }
        ],
-       "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae f"
+       "text": "esta "
       },
       {
        "type": "text",
-       "text": "eugia"
+       "text": "frase "
       },
       {
        "type": "text",
@@ -862,7 +862,7 @@
          }
         }
        ],
-       "text": "t. Aliquam at posuere urna."
+       "text": "usa "
       }
      ]
     },
@@ -875,7 +875,7 @@
      "content": [
       {
        "type": "text",
-       "text": "Viva"
+       "text": "un "
       },
       {
        "type": "text",
@@ -887,11 +887,11 @@
          }
         }
        ],
-       "text": "mus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habita"
+       "text": "color "
       },
       {
        "type": "text",
-       "text": "sse plate"
+       "text": "distinto "
       },
       {
        "type": "text",
@@ -903,11 +903,11 @@
          }
         }
        ],
-       "text": "a dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac"
+       "text": "para "
       },
       {
        "type": "text",
-       "text": " "
+       "text": "mostrar "
       },
       {
        "type": "text",
@@ -919,11 +919,11 @@
          }
         }
        ],
-       "text": "magna"
+       "text": "la "
       },
       {
        "type": "text",
-       "text": "."
+       "text": "marca "
       }
      ]
     },
@@ -936,7 +936,7 @@
      "content": [
       {
        "type": "text",
-       "text": "Sed rh"
+       "text": "de "
       },
       {
        "type": "text",
@@ -948,11 +948,11 @@
          }
         }
        ],
-       "text": "oncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nun"
+       "text": "color "
       },
       {
        "type": "text",
-       "text": "c effici"
+       "text": "de "
       },
       {
        "type": "text",
@@ -964,11 +964,11 @@
          }
         }
        ],
-       "text": "tur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, la"
+       "text": "texto "
       },
       {
        "type": "text",
-       "text": "oreet elit."
+       "text": "que "
       },
       {
        "type": "text",
@@ -980,11 +980,11 @@
          }
         }
        ],
-       "text": " In consectetur p"
+       "text": "ofrece "
       },
       {
        "type": "text",
-       "text": "ellente"
+       "text": "el "
       },
       {
        "type": "text",
@@ -996,7 +996,7 @@
          }
         }
        ],
-       "text": "sque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+       "text": "editor"
       }
      ]
     }
@@ -1029,11 +1029,11 @@
          }
         }
        ],
-       "text": "Contenido"
+       "text": "Aquí "
       },
       {
        "type": "text",
-       "text": " "
+       "text": "el "
       },
       {
        "type": "text",
@@ -1045,7 +1045,7 @@
          }
         }
        ],
-       "text": "ModificableSubrayadoColor"
+       "text": "subrayado "
       }
      ]
     },
@@ -1058,7 +1058,7 @@
      "content": [
       {
        "type": "text",
-       "text": "Lo"
+       "text": "se "
       },
       {
        "type": "text",
@@ -1070,11 +1070,11 @@
          }
         }
        ],
-       "text": "rem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor fel"
+       "text": "combina "
       },
       {
        "type": "text",
-       "text": "is "
+       "text": "con "
       },
       {
        "type": "text",
@@ -1086,11 +1086,11 @@
          }
         }
        ],
-       "text": "pharetra urna, vel"
+       "text": "distintos "
       },
       {
        "type": "text",
-       "text": " pellen"
+       "text": "colores "
       },
       {
        "type": "text",
@@ -1102,11 +1102,11 @@
          }
         }
        ],
-       "text": "tesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at "
+       "text": "de "
       },
       {
        "type": "text",
-       "text": "pos"
+       "text": "línea "
       },
       {
        "type": "text",
@@ -1118,11 +1118,11 @@
          }
         }
        ],
-       "text": "uere"
+       "text": "para "
       },
       {
        "type": "text",
-       "text": " urna."
+       "text": "que "
       }
      ]
     },
@@ -1135,7 +1135,7 @@
      "content": [
       {
        "type": "text",
-       "text": "V"
+       "text": "cada "
       },
       {
        "type": "text",
@@ -1147,11 +1147,11 @@
          }
         }
        ],
-       "text": "ivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id male"
+       "text": "palabra "
       },
       {
        "type": "text",
-       "text": "su"
+       "text": "resaltada "
       },
       {
        "type": "text",
@@ -1163,11 +1163,11 @@
          }
         }
        ],
-       "text": "ada. In ha"
+       "text": "demuestre "
       },
       {
        "type": "text",
-       "text": "c habit"
+       "text": "cómo "
       },
       {
        "type": "text",
@@ -1179,11 +1179,11 @@
          }
         }
        ],
-       "text": "asse platea di"
+       "text": "el "
       },
       {
        "type": "text",
-       "text": "ctum"
+       "text": "editor "
       },
       {
        "type": "text",
@@ -1195,11 +1195,11 @@
          }
         }
        ],
-       "text": "st. Praesen"
+       "text": "permite "
       },
       {
        "type": "text",
-       "text": "t eu l"
+       "text": "enfatizar "
       },
       {
        "type": "text",
@@ -1211,11 +1211,11 @@
          }
         }
        ],
-       "text": "eo rutrum, tincidunt urna"
+       "text": "texto "
       },
       {
        "type": "text",
-       "text": " sit a"
+       "text": "con "
       },
       {
        "type": "text",
@@ -1227,7 +1227,7 @@
          }
         }
        ],
-       "text": "met, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+       "text": "color "
       }
      ]
     },
@@ -1240,7 +1240,7 @@
      "content": [
       {
        "type": "text",
-       "text": "Sed rhoncus lectus non sapie"
+       "text": "personalizado "
       },
       {
        "type": "text",
@@ -1252,11 +1252,11 @@
          }
         }
        ],
-       "text": "n rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctu"
+       "text": "en "
       },
       {
        "type": "text",
-       "text": "s neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+       "text": "cada"
       }
      ]
     }
@@ -1281,7 +1281,7 @@
      "content": [
       {
        "type": "text",
-       "text": "Contenido ModificableModificableJustificado"
+       "text": "Este párrafo está justificado."
       }
      ]
     },
@@ -1294,7 +1294,7 @@
      "content": [
       {
        "type": "text",
-       "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+       "text": " La alineación justificada estira el texto hasta ambos márgenes."
       }
      ]
     },
@@ -1307,7 +1307,7 @@
      "content": [
       {
        "type": "text",
-       "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+       "text": " Las líneas quedan parejas a izquierda y derecha."
       }
      ]
     },
@@ -1320,7 +1320,7 @@
      "content": [
       {
        "type": "text",
-       "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+       "text": " Aporta un acabado formal a los documentos extensos."
       }
      ]
     }
@@ -1345,7 +1345,7 @@
      "content": [
       {
        "type": "text",
-       "text": "Contenido ModificableSangría"
+       "text": "Este párrafo tiene sangría."
       }
      ]
     },
@@ -1358,7 +1358,7 @@
      "content": [
       {
        "type": "text",
-       "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+       "text": " La sangría desplaza el texto desde el margen izquierdo."
       }
      ]
     },
@@ -1371,7 +1371,7 @@
      "content": [
       {
        "type": "text",
-       "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+       "text": " Sirve para anidar o destacar visualmente un bloque."
       }
      ]
     },
@@ -1384,7 +1384,7 @@
      "content": [
       {
        "type": "text",
-       "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+       "text": " Puedes aumentar o reducir el nivel de sangría."
       }
      ]
     }
@@ -1415,7 +1415,7 @@
          "content": [
           {
            "type": "text",
-           "text": "Contenido ModificableListaBullet"
+           "text": "Las listas de viñetas agrupan elementos sin un orden concreto."
           }
          ]
         }
@@ -1433,7 +1433,7 @@
          "content": [
           {
            "type": "text",
-           "text": "ModificableListaBullet"
+           "text": "Cada elemento comienza con un punto."
           }
          ]
         }
@@ -1451,7 +1451,7 @@
          "content": [
           {
            "type": "text",
-           "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+           "text": "Son ideales para enumerar características o ideas."
           }
          ]
         }
@@ -1469,7 +1469,7 @@
          "content": [
           {
            "type": "text",
-           "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+           "text": "Se pueden anidar viñetas en varios niveles."
           }
          ]
         }
@@ -1487,7 +1487,7 @@
          "content": [
           {
            "type": "text",
-           "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+           "text": "El editor TipTap las crea con un solo clic."
           }
          ]
         }
@@ -1525,7 +1525,7 @@
          "content": [
           {
            "type": "text",
-           "text": "Contenido ModificableListaNum"
+           "text": "Las listas numeradas ordenan los elementos con cifras."
           }
          ]
         }
@@ -1543,7 +1543,7 @@
          "content": [
           {
            "type": "text",
-           "text": "ModificableListaNum"
+           "text": "Primer paso del procedimiento."
           }
          ]
         }
@@ -1561,7 +1561,7 @@
          "content": [
           {
            "type": "text",
-           "text": "orem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+           "text": "Segundo paso, después del anterior."
           }
          ]
         }
@@ -1579,7 +1579,7 @@
          "content": [
           {
            "type": "text",
-           "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+           "text": "Tercer paso de la secuencia."
           }
          ]
         }
@@ -1597,7 +1597,7 @@
          "content": [
           {
            "type": "text",
-           "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+           "text": "El orden importa cuando hay una secuencia."
           }
          ]
         }
@@ -1635,7 +1635,7 @@
          "content": [
           {
            "type": "text",
-           "text": "Contenido ModificableListaCheck"
+           "text": "Las listas de tareas muestran casillas marcables."
           }
          ]
         }
@@ -1656,7 +1656,7 @@
          "content": [
           {
            "type": "text",
-           "text": "ModificableListaCheck"
+           "text": "Tarea pendiente de completar."
           }
          ]
         }
@@ -1677,7 +1677,7 @@
          "content": [
           {
            "type": "text",
-           "text": "orem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+           "text": "Tarea ya finalizada."
           }
          ]
         }
@@ -1698,7 +1698,7 @@
          "content": [
           {
            "type": "text",
-           "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+           "text": "Permiten hacer seguimiento de acciones."
           }
          ]
         }
@@ -1719,7 +1719,7 @@
          "content": [
           {
            "type": "text",
-           "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+           "text": "Cada casilla se puede marcar o desmarcar."
           }
          ]
         }
@@ -1748,7 +1748,7 @@
      "content": [
       {
        "type": "text",
-       "text": "Contenido ModificableAlineadoCentro"
+       "text": "Este párrafo está centrado."
       }
      ]
     },
@@ -1761,7 +1761,7 @@
      "content": [
       {
        "type": "text",
-       "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+       "text": " La alineación centrada sitúa el texto en el eje central."
       }
      ]
     },
@@ -1774,7 +1774,7 @@
      "content": [
       {
        "type": "text",
-       "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+       "text": " Se usa para títulos o citas destacadas."
       }
      ]
     },
@@ -1787,7 +1787,7 @@
      "content": [
       {
        "type": "text",
-       "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+       "text": " Equilibra visualmente el contenido de la página."
       }
      ]
     }
@@ -1812,7 +1812,7 @@
      "content": [
       {
        "type": "text",
-       "text": "Contenido ModificableAlineadoCentro"
+       "text": "Este párrafo está alineado a la derecha."
       }
      ]
     },
@@ -1825,7 +1825,7 @@
      "content": [
       {
        "type": "text",
-       "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+       "text": " El texto se pega al margen derecho."
       }
      ]
     },
@@ -1838,7 +1838,7 @@
      "content": [
       {
        "type": "text",
-       "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+       "text": " Es habitual para fechas o firmas."
       }
      ]
     },
@@ -1851,7 +1851,7 @@
      "content": [
       {
        "type": "text",
-       "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+       "text": " Contrasta con la alineación a la izquierda por defecto."
       }
      ]
     }
@@ -1882,7 +1882,7 @@
        "content": [
         {
          "type": "text",
-         "text": "Contenido ModificableQuotes"
+         "text": "Las citas resaltan un fragmento destacado del texto."
         }
        ]
       }
@@ -1903,7 +1903,7 @@
        "content": [
         {
          "type": "text",
-         "text": "orem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+         "text": " Se muestran con un margen y una barra lateral."
         }
        ]
       },
@@ -1916,7 +1916,7 @@
        "content": [
         {
          "type": "text",
-         "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+         "text": "Sirven para reproducir palabras de otra fuente."
         }
        ]
       },
@@ -1929,7 +1929,7 @@
        "content": [
         {
          "type": "text",
-         "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+         "text": " Aportan énfasis y contexto a la información citada."
         }
        ]
       },
@@ -1960,7 +1960,7 @@
      "content": [
       {
        "type": "text",
-       "text": "Contenido ModificableCodeBlock\norem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna.\n\nVivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna.\n\nSed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue.\n"
+       "text": "function saludar(nombre) {\n  return `Hola, ${nombre}`;\n}\n// El bloque de código conserva el formato monoespaciado y la sangría."
       }
      ]
     }
@@ -1985,7 +1985,7 @@
      "content": [
       {
        "type": "text",
-       "text": "sin texto no se guarda"
+       "text": "El editor permite insertar líneas horizontales."
       }
      ]
     },
@@ -2001,29 +2001,7 @@
      "content": [
       {
        "type": "text",
-       "text": "orem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
-      },
-      {
-       "type": "hardBreak"
-      }
-     ]
-    },
-    {
-     "type": "horizontalRule"
-    },
-    {
-     "type": "paragraph",
-     "attrs": {
-      "textAlign": "left",
-      "indent": 0
-     },
-     "content": [
-      {
-       "type": "hardBreak"
-      },
-      {
-       "type": "text",
-       "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+       "text": "Una línea horizontal separa secciones del documento."
       },
       {
        "type": "hardBreak"
@@ -2045,7 +2023,29 @@
       },
       {
        "type": "text",
-       "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+       "text": "Se usa como divisor visual entre bloques de contenido."
+      },
+      {
+       "type": "hardBreak"
+      }
+     ]
+    },
+    {
+     "type": "horizontalRule"
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "hardBreak"
+      },
+      {
+       "type": "text",
+       "text": "Aquí ves tres separadores entre estos párrafos."
       },
       {
        "type": "hardBreak"
@@ -2074,7 +2074,7 @@
      "content": [
       {
        "type": "text",
-       "text": "Contenido ModificableH1"
+       "text": "Encabezado de nivel 1"
       }
      ]
     },
@@ -2088,7 +2088,7 @@
      "content": [
       {
        "type": "text",
-       "text": "orem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+       "text": "  el título de mayor jerarquía"
       },
       {
        "type": "hardBreak"
@@ -2098,7 +2098,7 @@
       },
       {
        "type": "text",
-       "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+       "text": "Los H1 encabezan las secciones principales"
       },
       {
        "type": "hardBreak"
@@ -2108,7 +2108,7 @@
       },
       {
        "type": "text",
-       "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+       "text": " y alimentan el índice del documento"
       },
       {
        "type": "hardBreak"
@@ -2137,7 +2137,7 @@
      "content": [
       {
        "type": "text",
-       "text": "Contenido ModificableH2"
+       "text": "Encabezado de nivel 2"
       }
      ]
     },
@@ -2151,7 +2151,7 @@
      "content": [
       {
        "type": "text",
-       "text": "rem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+       "text": "  subtítulo dentro de una sección"
       },
       {
        "type": "hardBreak"
@@ -2161,7 +2161,7 @@
       },
       {
        "type": "text",
-       "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+       "text": "Los H2 organizan los apartados"
       },
       {
        "type": "hardBreak"
@@ -2171,7 +2171,7 @@
       },
       {
        "type": "text",
-       "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+       "text": " bajo cada título principal"
       }
      ]
     }
@@ -2197,7 +2197,7 @@
      "content": [
       {
        "type": "text",
-       "text": "Contenido ModificableH3"
+       "text": "Encabezado de nivel 3"
       }
      ]
     },
@@ -2211,7 +2211,7 @@
      "content": [
       {
        "type": "text",
-       "text": "em ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+       "text": "  subapartado de detalle"
       },
       {
        "type": "hardBreak"
@@ -2221,7 +2221,7 @@
       },
       {
        "type": "text",
-       "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+       "text": "Los H3 desglosan el contenido"
       },
       {
        "type": "hardBreak"
@@ -2231,7 +2231,7 @@
       },
       {
        "type": "text",
-       "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+       "text": " dentro de cada apartado"
       }
      ]
     }
@@ -2445,7 +2445,7 @@
            "content": [
             {
              "type": "text",
-             "text": "ModificableTablaLlena"
+             "text": "Función"
             }
            ]
           }
@@ -2467,7 +2467,7 @@
            "content": [
             {
              "type": "text",
-             "text": "ModificableTablaLlena"
+             "text": "Descripción"
             }
            ]
           }
@@ -2489,7 +2489,7 @@
            "content": [
             {
              "type": "text",
-             "text": "ModificableTablaLlena"
+             "text": "Ejemplo"
             }
            ]
           }
@@ -2517,7 +2517,7 @@
            "content": [
             {
              "type": "text",
-             "text": "em ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+             "text": "Negrita"
             },
             {
              "type": "hardBreak"
@@ -2552,7 +2552,7 @@
            "content": [
             {
              "type": "text",
-             "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+             "text": "Resalta el texto"
             }
            ]
           }
@@ -2575,7 +2575,7 @@
            "content": [
             {
              "type": "text",
-             "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+             "text": "Importante"
             }
            ]
           }
@@ -2602,7 +2602,7 @@
            "content": [
             {
              "type": "text",
-             "text": "ModificableTablaLlena"
+             "text": "Cursiva"
             }
            ]
           }
@@ -2624,7 +2624,7 @@
            "content": [
             {
              "type": "text",
-             "text": "ModificableTablaLlena"
+             "text": "Enfatiza el texto"
             }
            ]
           }
@@ -2646,7 +2646,7 @@
            "content": [
             {
              "type": "text",
-             "text": "ModificableTablaLlena"
+             "text": "Énfasis"
             }
            ]
           }
