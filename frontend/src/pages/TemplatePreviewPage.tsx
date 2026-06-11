@@ -273,6 +273,15 @@ export function TemplatePreviewPage() {
   const isPublished = template?.status === 'published';
   const hasReviewers = (template?.reviewers?.length ?? 0) > 0;
   const viewingPublishedSnapshot = snapshotVersionNumber !== null;
+  /**
+   * Versión mostrada en pantalla, para excluirla del Historial (que lista solo
+   * anteriores): el snapshot si se está viendo uno; la última publicada si el
+   * cabezal está publicado; ninguna si se está viendo un borrador de trabajo
+   * (entonces todas las publicadas son anteriores).
+   */
+  const displayedVersionId = viewingPublishedSnapshot
+    ? (templateVersionId ?? historicalVersionDetail?.id ?? null)
+    : (isPublished ? template?.latest_published_version_id ?? null : null);
   const snapshotTemplate = historicalVersionDetail?.template_snapshot ?? null;
   const snapshotAuthorName = historicalVersionDetail?.author_name?.trim() ?? null;
   const authorDisplay = viewingPublishedSnapshot
@@ -571,7 +580,7 @@ export function TemplatePreviewPage() {
               onClick={() => void handleClone()}
               title="Crea una plantilla nueva e independiente (no una versión de esta). Para una versión nueva, edita y publica esta plantilla."
             >
-              Clonar como nueva plantilla
+              {t('preview.clone')}
             </Button>
           )}
           {canDiscardWorkingVersion && (
@@ -801,6 +810,7 @@ export function TemplatePreviewPage() {
           onClose={() => setShowHistory(false)}
           showNewVersionButton={newVersionFlow.showNewVersionButton}
           onNewVersion={newVersionFlow.handleRequestNewVersion}
+          currentVersionId={displayedVersionId}
         />
       )}
 

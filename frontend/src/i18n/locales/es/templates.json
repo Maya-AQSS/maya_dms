@@ -124,6 +124,7 @@
     "draftAlreadyExistsDuration_days_other": "Lleva {{count}} días trabajando en el borrador.",
     "draftAlreadyExistsUnknownAuthor": "otro usuario",
     "discardNewVersionTitle": "¿Descartar nueva versión?",
-    "rejectValidationTitle": "¿Rechazar validación?"
+    "rejectValidationTitle": "¿Rechazar validación?",
+    "clone": "Clonar"
   }
 }

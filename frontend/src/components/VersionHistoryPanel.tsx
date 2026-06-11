@@ -19,6 +19,12 @@ type Props = {
   onClose: () => void;
   showNewVersionButton?: boolean;
   onNewVersion?: () => void;
+  /**
+   * Versión actualmente mostrada en la página: se EXCLUYE del listado
+   * (el historial muestra solo versiones anteriores). La vista Comparar
+   * sigue ofreciendo todas las versiones publicadas, incluida la actual.
+   */
+  currentVersionId?: string | null;
 };
 
 const TRIGGER_EVENT_LABELS: Record<string, string> = {
@@ -98,6 +104,7 @@ export function VersionHistoryPanel({
   onClose,
   showNewVersionButton,
   onNewVersion,
+  currentVersionId,
 }: Props) {
   const { t, i18n } = useTranslation('common');
   const navigate = useNavigate();
@@ -125,6 +132,16 @@ export function VersionHistoryPanel({
     [documentQuery.data],
   );
 
+  // Historial = versiones ANTERIORES: la versión en pantalla no se lista.
+  const templateListRows = useMemo<TemplateVersionSummary[]>(
+    () => (currentVersionId ? templateRows.filter((r) => r.id !== currentVersionId) : templateRows),
+    [templateRows, currentVersionId],
+  );
+  const documentListRows = useMemo<DocumentVersionSummary[]>(
+    () => (currentVersionId ? documentRows.filter((r) => r.id !== currentVersionId) : documentRows),
+    [documentRows, currentVersionId],
+  );
+
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
@@ -135,9 +152,9 @@ export function VersionHistoryPanel({
   }, [open, onClose]);
 
   const empty = useMemo(() => {
-    if (entityType === 'template') return templateRows.length === 0;
-    return documentRows.length === 0;
-  }, [entityType, templateRows.length, documentRows.length]);
+    if (entityType === 'template') return templateListRows.length === 0;
+    return documentListRows.length === 0;
+  }, [entityType, templateListRows.length, documentListRows.length]);
 
   const [view, setView] = useState<'list' | 'compare'>('list');
   useEffect(() => {
@@ -272,9 +289,9 @@ export function VersionHistoryPanel({
             </p>
           )}
 
-          {!loading && !error && entityType === 'template' && templateRows.length > 0 && (
+          {!loading && !error && entityType === 'template' && templateListRows.length > 0 && (
             <ul className="space-y-2.5" role="list">
-              {templateRows.map((row) => (
+              {templateListRows.map((row) => (
                 <li key={row.id}>
                   <button
                     type="button"
@@ -357,9 +374,9 @@ export function VersionHistoryPanel({
             </ul>
           )}
 
-          {!loading && !error && entityType === 'document' && documentRows.length > 0 && (
+          {!loading && !error && entityType === 'document' && documentListRows.length > 0 && (
             <ul className="space-y-2.5" role="list">
-              {documentRows.map((row) => (
+              {documentListRows.map((row) => (
                 <li key={row.id}>
                   <button
                     type="button"

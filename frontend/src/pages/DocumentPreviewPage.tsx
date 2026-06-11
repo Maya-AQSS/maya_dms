@@ -240,6 +240,13 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
 
   const isDraft = detail?.status === 'draft' || detail?.status === 'rejected';
   const isPublished = detail?.status === 'published';
+  /**
+   * Versión mostrada en pantalla, para excluirla del Historial (que lista solo
+   * anteriores): el snapshot si se está viendo uno; la última publicada si el
+   * documento está publicado; ninguna con borrador en pantalla.
+   */
+  const displayedVersionId =
+    documentVersionId ?? (isPublished ? detail?.latest_published_version_id ?? null : null);
   // Hook que orquesta el flujo de descarga PDF/UA (POST → poll → blob → save-as).
   const pdfExport = useDocumentPdfExport(documentId, detail?.title, documentVersionId ?? undefined);
   const isDocumentReviewer = allReviews.some((r) => r.reviewer_id === profile?.id);
@@ -1482,6 +1489,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           onClose={() => setShowHistory(false)}
           showNewVersionButton={newVersionFlow.showNewVersionButton}
           onNewVersion={newVersionFlow.handleRequestNewVersion}
+          currentVersionId={displayedVersionId}
         />
       )}
 

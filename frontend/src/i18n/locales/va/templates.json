@@ -124,6 +124,7 @@
     "draftAlreadyExistsDuration_days_other": "Porta {{count}} dies treballant en l'esborrany.",
     "draftAlreadyExistsUnknownAuthor": "un altre usuari",
     "discardNewVersionTitle": "Descartar nova versió?",
-    "rejectValidationTitle": "Rebutjar validació?"
+    "rejectValidationTitle": "Rebutjar validació?",
+    "clone": "Clonar"
   }
 }
