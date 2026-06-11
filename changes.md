@@ -73,3 +73,22 @@ capa Service/Repo sin cambiar la respuesta) NO se registran aquí.
 - **Por qué**: la divergencia es real en el código original; igualarla cambiaría
   qué campos se pisan en updates de documentos. Queda parametrizada y documentada.
 - **Decidido por**: plan Fase 4.5 (no igualar a ciegas).
+
+## [BARRIDO FINAL] Validación de membresía de equipo vía TeamReadRepository::isMember
+
+- **Fecha**: 2026-06-11
+- **Severidad**: LOW
+- **Qué cambió**: la validación inline `DB::table('team_members')->where(...)` de
+  Store/UpdateTemplateRequest se delega a `TeamReadRepository::isMember`, cuyos
+  helpers manejan el cast UUID de pgsql (`whereTeamIdMatches`/`whereUserIdMatches`).
+  Misma semántica de pertenencia; más robusto ante el id-space del FDW.
+- **Endpoint(s) afectado(s)**: POST/PUT de templates con team_id.
+- **Impacto en cliente**: ninguno esperado (mismo resultado de validación).
+- **Decidido por**: barrido final de capa.
+
+## [CIERRE 2026-06-11] Estado de ejecución del plan
+
+- **Fases ejecutadas**: 0–6 (la 6.3 y la igualación de 3.9/6.6 NO se tocaron — pendientes de decisión, ver tabla arriba).
+- **Fase 7 (patrón PATCH UpdateTemplateDto)**: NO ejecutada — marcada opcional en el plan, riesgo ALTO, separable en rama propia.
+- **6.2**: TemplateReviewService conserva retorno `Template` documentado como excepción B4 (el controller adjunta can_clone vía setAttribute antes del DTO readonly).
+- **Verificación global**: Unit 453/453, Feature 285/285 (baseline 358 Unit/261 Feature — +119 tests nuevos, 0 regresiones); pint limpio en archivos del refactor; grep de arquitectura limpio (Eloquent/DB solo en Repositories y Models; única excepción documentada BlockRenderSupport).
