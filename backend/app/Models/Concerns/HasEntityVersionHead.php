@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models\Concerns;
 
+use App\Models\Process;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -32,9 +33,9 @@ trait HasEntityVersionHead
     /**
      * Construye el array de payload que se almacenará en `snapshot_data`.
      *
-     * @param  array<string, mixed>  $row       Atributos del modelo antes de persistir.
-     * @param  string                $modelId   UUID del modelo.
-     * @param  string                $processId UUID del proceso.
+     * @param  array<string, mixed>  $row  Atributos del modelo antes de persistir.
+     * @param  string  $modelId  UUID del modelo.
+     * @param  string  $processId  UUID del proceso.
      * @return array<string, mixed>
      */
     abstract protected static function buildHeadSnapshot(array $row, string $modelId, string $processId): array;
@@ -96,7 +97,7 @@ trait HasEntityVersionHead
 
             // Garantizar process_id.
             if (empty($model->process_id)) {
-                $model->process_id = \App\Models\Process::query()->value('id') ?? '00000000-0000-0000-0000-000000000001';
+                $model->process_id = Process::query()->value('id') ?? '00000000-0000-0000-0000-000000000001';
             }
 
             // Validaciones específicas de la clase (p.ej. template_id obligatorio en Document).

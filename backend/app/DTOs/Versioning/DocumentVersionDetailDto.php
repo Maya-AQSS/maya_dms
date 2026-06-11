@@ -12,7 +12,7 @@ final readonly class DocumentVersionDetailDto
 {
     /**
      * @param  array<string, mixed>  $snapshotData
-     * @param  list<string>          $reviewerNames
+     * @param  list<string>  $reviewerNames
      */
     public function __construct(
         public string $id,

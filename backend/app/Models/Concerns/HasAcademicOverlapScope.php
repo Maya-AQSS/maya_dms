@@ -41,9 +41,8 @@ trait HasAcademicOverlapScope
      *   - OR EXISTS user_studies JOIN snapshot head (study_id)
      *   - OR EXISTS user_course_modules JOIN snapshot head (module_id)
      *
-     * @param  Builder|QueryBuilder  $query
-     * @param  string                $userId  UUID del usuario autenticado.
-     * @param  string                $alias   Alias de la tabla del modelo (p.ej. `documents`, `templates`, `d`).
+     * @param  string  $userId  UUID del usuario autenticado.
+     * @param  string  $alias  Alias de la tabla del modelo (p.ej. `documents`, `templates`, `d`).
      */
     public static function applyAcademicOverlapForTableAlias(Builder|QueryBuilder $query, string $userId, string $alias): void
     {

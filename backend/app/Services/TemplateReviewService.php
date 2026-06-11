@@ -238,7 +238,6 @@ class TemplateReviewService
                 'rejected',
             );
 
-            
             $rejected = $this->templatePublishingService->transitionStatus(
                 $template,
                 'rejected',

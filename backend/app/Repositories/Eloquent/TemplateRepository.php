@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Repositories\Eloquent;
 
-use App\DTOs\Templates\FilterTemplatesDto;
 use App\DTOs\TemplateBlocks\TemplateBlockPayloadDto;
+use App\DTOs\Templates\FilterTemplatesDto;
 use App\DTOs\Templates\TemplateFilterDto;
 use App\DTOs\Templates\TemplateRenderDto;
 use App\Enums\BlockType;
@@ -16,6 +16,7 @@ use App\Policies\TemplatePolicy;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Support\SearchAccentFold;
 use App\Support\TemplateHeadSnapshot;
+use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -214,7 +215,7 @@ class TemplateRepository extends AbstractVersionableEntityRepository implements 
      * Columnas permitidas: updated_at, created_at, name, delivery_deadline.
      * Cualquier otro valor cae al default (updated_at desc).
      *
-     * @param  \Illuminate\Contracts\Database\Eloquent\Builder<Template>  $query
+     * @param  Builder<Template>  $query
      */
     private function applyTemplateSort($query, ?string $sortBy, string $sortDir): void
     {

@@ -16,6 +16,7 @@ use App\Models\EntityVersion;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Support\DocumentHeadSnapshot;
 use App\Support\TemplateHeadSnapshot;
+use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
@@ -484,7 +485,7 @@ class DocumentRepository extends AbstractVersionableEntityRepository implements 
      *
      * Columnas permitidas: created_at, updated_at, title, status, delivery_deadline.
      *
-     * @param  \Illuminate\Contracts\Database\Eloquent\Builder<Document>  $query
+     * @param  Builder<Document>  $query
      */
     private function applyDocumentSort($query, ?string $sortBy, string $sortDir): void
     {
@@ -998,7 +999,7 @@ class DocumentRepository extends AbstractVersionableEntityRepository implements 
      * Carga los bloques y revisiones del documento para construcción de snapshot.
      *
      * @return array{
-     *     document: \App\Models\Document,
+     *     document: Document,
      *     blocks: list<array{id: mixed, template_block_id: mixed, content: mixed, is_filled: bool, sort_order: int, last_edited_by: mixed, locked_by: mixed, locked_at: ?string}>,
      *     reviews: list<array{reviewer_id: string, stage: int|null, status: string}>
      * }

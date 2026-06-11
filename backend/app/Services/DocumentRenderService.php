@@ -52,7 +52,7 @@ class DocumentRenderService implements DocumentRenderServiceInterface
      * bloques sin entrada en el snapshot caen a su `default_content`, como hoy.
      *
      * @param  list<array<string, mixed>>  $snapshotBlocks  Bloques resueltos del snapshot
-     *                                                       (con `template_block_id` y `content`).
+     *                                                      (con `template_block_id` y `content`).
      */
     public function renderHtmlForVersion(string $documentId, array $snapshotBlocks, bool $previewMode = false): string
     {

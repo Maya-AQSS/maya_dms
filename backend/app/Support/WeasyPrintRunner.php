@@ -27,12 +27,12 @@ final class WeasyPrintRunner
     /**
      * Ejecuta WeasyPrint y devuelve el PDF.
      *
-     * @param  string  $html            HTML de entrada (se pasa por stdin).
-     * @param  int     $timeoutSeconds  Timeout duro del proceso.
-     * @param  string  $output          Ruta de salida o '-' para stdout (default).
-     * @param  string  $callerContext   Identificador del caller para el mensaje de
-     *                                  error en logs (p. ej. "plantilla abc-123").
-     * @return string  Bytes del PDF cuando $output === '-'; cadena vacía si es fichero.
+     * @param  string  $html  HTML de entrada (se pasa por stdin).
+     * @param  int  $timeoutSeconds  Timeout duro del proceso.
+     * @param  string  $output  Ruta de salida o '-' para stdout (default).
+     * @param  string  $callerContext  Identificador del caller para el mensaje de
+     *                                 error en logs (p. ej. "plantilla abc-123").
+     * @return string Bytes del PDF cuando $output === '-'; cadena vacía si es fichero.
      *
      * @throws RuntimeException si el proceso termina con código de salida ≠ 0.
      */

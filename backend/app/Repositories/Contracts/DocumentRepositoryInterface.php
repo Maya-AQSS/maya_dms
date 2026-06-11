@@ -335,7 +335,7 @@ interface DocumentRepositoryInterface
      * Los bloques se devuelven ordenados por sort_order; las revisiones por stage, created_at.
      *
      * @return array{
-     *     document: \App\Models\Document,
+     *     document: Document,
      *     blocks: list<array{id: mixed, template_block_id: mixed, content: mixed, is_filled: bool, sort_order: int, last_edited_by: mixed, locked_by: mixed, locked_at: ?string}>,
      *     reviews: list<array{reviewer_id: string, stage: int|null, status: string}>
      * }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Concerns;
 
+use Illuminate\Support\Collection;
+
 /**
  * Shared resolution algorithm for block layers across versioning domains
  * (template entity versions and document versions).
@@ -164,9 +166,9 @@ abstract class AbstractBlockLayerResolver
     /**
      * Load all layer DTOs for the given version, ordered by sort_order.
      *
-     * @return \Illuminate\Support\Collection<int, TLayer>
+     * @return Collection<int, TLayer>
      */
-    abstract protected function loadLayersForVersion(string $versionId): \Illuminate\Support\Collection;
+    abstract protected function loadLayersForVersion(string $versionId): Collection;
 
     /**
      * Load a single layer DTO for a (versionId, blockId) pair, or null.

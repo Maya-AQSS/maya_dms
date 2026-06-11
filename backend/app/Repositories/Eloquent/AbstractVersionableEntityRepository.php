@@ -35,7 +35,7 @@ abstract class AbstractVersionableEntityRepository
      * Return the Eloquent model class used to query pending review stages.
      * E.g. DocumentReview::class or TemplateReviewer::class.
      *
-     * @return class-string<\Illuminate\Database\Eloquent\Model>
+     * @return class-string<Model>
      */
     abstract protected function pendingReviewModelClass(): string;
 
@@ -92,7 +92,7 @@ abstract class AbstractVersionableEntityRepository
      */
     protected function minPendingReviewStage(string $entityId): ?int
     {
-        /** @var class-string<\Illuminate\Database\Eloquent\Model> $modelClass */
+        /** @var class-string<Model> $modelClass */
         $modelClass = $this->pendingReviewModelClass();
 
         $min = $modelClass::query()

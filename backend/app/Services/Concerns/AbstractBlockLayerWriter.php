@@ -39,7 +39,7 @@ abstract class AbstractBlockLayerWriter
      * Accepts scalar IDs; all model access is delegated to abstract methods.
      *
      * @param  string  $createdVersionId  The newly published version id.
-     * @param  string  $domainId          The owning entity / document id.
+     * @param  string  $domainId  The owning entity / document id.
      */
     final public function syncLayersForNewPublication(string $createdVersionId, string $domainId): void
     {
@@ -150,8 +150,8 @@ abstract class AbstractBlockLayerWriter
     /**
      * Build the attributes array for a layer row.
      *
-     * @param  TVersionSnapshot        $createdVersion
-     * @param  array<string, mixed>|null $payload
+     * @param  TVersionSnapshot  $createdVersion
+     * @param  array<string, mixed>|null  $payload
      * @return array<string, mixed>
      */
     abstract protected function buildLayerAttributes(

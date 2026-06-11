@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DTOs\Documents\ApplyTemplateMigrationDto;
-use App\DTOs\Documents\CreationOptionDto;
 use App\DTOs\Documents\BlockDisplayDto;
 use App\DTOs\Documents\BlockUpdateDto;
 use App\DTOs\Documents\CreateDocumentDto;
 use App\DTOs\Documents\CreateDocumentSnapshotDto;
+use App\DTOs\Documents\CreationOptionDto;
 use App\DTOs\Documents\DeleteDocumentBlockDto;
 use App\DTOs\Documents\DocumentDto;
 use App\DTOs\Documents\DocumentFilterDto;
@@ -1341,7 +1341,6 @@ class DocumentService implements DocumentServiceInterface
      * Si la plantilla no define validadores de documento pero sí revisores de plantilla,
      * se devuelven estos últimos como información (`template_fallback`): no participan en
      * la validación del documento, que se publicará directamente.
-     *
      */
     public function getDocumentReviewerPool(Document $document): ReviewerPoolDto
     {

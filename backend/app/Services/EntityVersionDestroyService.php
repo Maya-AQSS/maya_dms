@@ -39,14 +39,14 @@ final class EntityVersionDestroyService
      * Devuelve el snapshot_data de la versión publicada para que el caller
      * pueda usarlo en la restauración específica de dominio.
      *
-     * @param  class-string  $entityClass         Clase del modelo (Template::class o Document::class).
-     * @param  string        $entityId            ID de la entidad.
-     * @param  string        $targetVersionId     ID de versión que el cliente solicita descartar.
-     * @param  EntityVersion|null $head           Versión cabecera ya cargada (headVersion).
-     * @param  string        $notCurrentMessage   Mensaje cuando head no es la versión de trabajo.
-     * @param  string        $statusMessage       Mensaje cuando el status no es descartable.
-     * @param  string        $noPublishedMessage  Mensaje cuando no hay versión publicada.
-     * @return array<string, mixed>  El snapshot_data de la versión publicada restaurada.
+     * @param  class-string  $entityClass  Clase del modelo (Template::class o Document::class).
+     * @param  string  $entityId  ID de la entidad.
+     * @param  string  $targetVersionId  ID de versión que el cliente solicita descartar.
+     * @param  EntityVersion|null  $head  Versión cabecera ya cargada (headVersion).
+     * @param  string  $notCurrentMessage  Mensaje cuando head no es la versión de trabajo.
+     * @param  string  $statusMessage  Mensaje cuando el status no es descartable.
+     * @param  string  $noPublishedMessage  Mensaje cuando no hay versión publicada.
+     * @return array<string, mixed> El snapshot_data de la versión publicada restaurada.
      *
      * @throws ValidationException si alguna precondición falla.
      */
