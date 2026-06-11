@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { fetchTemplate } from '../api/templates';
 import type { Template } from '../types/templates';
 import { TemplateWizard } from '../features/templates/components/TemplateWizard';
+import { ErrorBoundaryWrapper as ErrorBoundary } from '../components/ErrorBoundaryWrapper';
 
 export function TemplateEditPage() {
   const { id } = useParams<{ id: string }>();
@@ -26,5 +27,9 @@ export function TemplateEditPage() {
     return <div className="p-6 text-sm text-warning-dark dark:text-warning-light">{error ?? 'Plantilla no encontrada.'}</div>;
   }
 
-  return <TemplateWizard template={template} />;
+  return (
+    <ErrorBoundary>
+      <TemplateWizard template={template} />
+    </ErrorBoundary>
+  );
 }

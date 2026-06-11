@@ -22,15 +22,11 @@ import { canCreateBlockComment, canDeleteBlockComment, DMS_PERMISSIONS } from '.
 import { apiFetchJson, ApiHttpError } from '../../../api/http';
 import { useUserProfile } from '../../user-profile';
 import { useProcessesQuery } from '../../../hooks/useProcesses';
-import {
-  useTemplateCommentsQuery,
-  templateCommentsKey,
-  type TemplateCommentsResponse,
-} from '../hooks/useTemplateComments';
+import { useTemplateCommentsQuery } from '../hooks/useTemplateComments';
 import { BlockCommentsCard, ViewCardHeader } from './BlockCommentsCard';
 import type { BlockComment, CommentMode } from './BlockCommentsCard';
 import { getCommentsForBlock, countUnreadCommentsForBlock, resolveCommentBlockableId } from '../../../utils/blockComments';
-import { appendCommentToTemplateCache, markCommentAsReadInTemplateCache, markCommentDeletedInTemplateCache, markBlockCommentsAsReadInTemplateCache } from '../../comments/commentCache';
+import { appendCommentToTemplateCache, patchTemplateCommentCache, markCommentAsReadInTemplateCache, markCommentDeletedInTemplateCache, markBlockCommentsAsReadInTemplateCache } from '../../comments/commentCache';
 
 type Props = { template: Template };
 
@@ -72,10 +68,11 @@ type HistoryPanelProps = {
 };
 
 function DiffLines({ lines }: { lines: DiffLine[] }) {
+  const { t } = useTranslation('templates');
   if (lines.length === 0) {
     return (
       <p className="px-2 py-1 text-text-muted italic text-2xs">
-        Sin cambios en este envío.
+        {t('history.noChangesInSubmission')}
       </p>
     );
   }
@@ -101,7 +98,7 @@ function DiffLines({ lines }: { lines: DiffLine[] }) {
 }
 
 function TemplateBlockHistoryPanel({ blockId, blockNumber, history, onClose }: HistoryPanelProps) {
-  const { t } = useTranslation(['templates', 'documents']);
+  const { t } = useTranslation('templates');
   const [ascending, setAscending] = useState(false);
   const [tab, setTab] = useState<HistoryTab>('content');
 
@@ -137,13 +134,13 @@ function TemplateBlockHistoryPanel({ blockId, blockNumber, history, onClose }: H
       {/* Header */}
       <div className="flex items-center shrink-0 border-b border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card px-4 py-3 gap-2">
         <span className="text-2xs font-black uppercase tracking-[0.15em] text-text-primary dark:text-text-dark-primary flex-1">
-          {t('documents:history.panelHeader', { n: blockNumber })}
+          {t('history.panelHeader', { n: blockNumber })}
         </span>
         <button
           type="button"
           onClick={() => setAscending((v) => !v)}
           className="flex items-center gap-1 text-2xs font-black uppercase tracking-widest text-text-muted hover:text-odoo-teal transition-colors cursor-pointer"
-          title={ascending ? t('documents:history.sortAscendingTitle') : t('documents:history.sortDescendingTitle')}
+          title={ascending ? t('history.sortAscendingTitle') : t('history.sortDescendingTitle')}
         >
           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             {ascending
@@ -164,19 +161,19 @@ function TemplateBlockHistoryPanel({ blockId, blockNumber, history, onClose }: H
 
       {/* Tabs */}
       <div className="shrink-0 flex border-b border-ui-border dark:border-ui-dark-border">
-        {(['content', 'description'] as HistoryTab[]).map((t) => (
+        {(['content', 'description'] as HistoryTab[]).map((tabKey) => (
           <button
-            key={t}
+            key={tabKey}
             type="button"
-            onClick={() => setTab(t)}
+            onClick={() => setTab(tabKey)}
             className={[
               'flex-1 py-2 text-2xs font-black uppercase tracking-widest transition-colors cursor-pointer',
-              tab === t
-                ? 'text-odoo-teal border-b-2 border-odoo-teal -mb-px bg-odoo-teal/5'
+              tab === tabKey
+                ? 'text-odoo-purple border-b-2 border-odoo-purple -mb-px bg-odoo-purple/5'
                 : 'text-text-muted hover:text-text-primary dark:hover:text-text-dark-primary',
             ].join(' ')}
           >
-            {t === 'content' ? 'Contenido' : 'Descripción'}
+            {tabKey === 'content' ? t('history.tabContent') : t('history.tabDescription')}
           </button>
         ))}
       </div>
@@ -185,14 +182,14 @@ function TemplateBlockHistoryPanel({ blockId, blockNumber, history, onClose }: H
       <div className="flex-1 overflow-y-auto divide-y divide-ui-border dark:divide-ui-dark-border">
         {entries.length === 0 ? (
           <p className="py-8 text-center text-xs text-text-muted dark:text-text-dark-muted italic">
-            Este bloque no tiene cambios registrados.
+            {t('history.noChanges')}
           </p>
         ) : (
           entries.map((entry) => (
             <div key={entry.cycle} className="px-4 py-3">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary">
-                  Revisión {entry.cycle}
+                  {t('history.revision', { n: entry.cycle })}
                 </p>
                 <span className="text-2xs text-text-muted dark:text-text-dark-muted tabular-nums">
                   {new Date(entry.submitted_at).toLocaleString('es-ES', {
@@ -217,14 +214,14 @@ function TemplateBlockHistoryPanel({ blockId, blockNumber, history, onClose }: H
         <div className="shrink-0 border-t border-ui-border dark:border-ui-dark-border px-4 py-2 flex items-center gap-3 text-2xs text-text-muted dark:text-text-dark-muted bg-ui-body/30 dark:bg-ui-dark-bg/30">
           <span className="flex items-center gap-1.5">
             <span className="inline-block w-3 h-3 rounded-sm bg-danger/25 border border-danger/40" />
-            Eliminado
+            {t('history.legendRemoved')}
           </span>
           <span className="flex items-center gap-1.5">
             <span className="inline-block w-3 h-3 rounded-sm bg-success/25 border border-success/40" />
-            Añadido
+            {t('history.legendAdded')}
           </span>
           <span className="ml-auto font-semibold">
-            {entries.length} revisión{entries.length !== 1 ? 'es' : ''}
+            {t('history.revisions', { count: entries.length })}
           </span>
         </div>
       )}
@@ -236,7 +233,9 @@ function TemplateBlockHistoryPanel({ blockId, blockNumber, history, onClose }: H
 
 export function TemplateReviewView({ template }: Props) {
   const { t } = useTranslation('templates');
-  const { goBack } = useBackNavigation({ fallback: '/dashboard' });
+  const { goBack } = useBackNavigation({
+    fallback: template.process_id ? `/processes/${template.process_id}` : '/processes',
+  });
   const { profile, hasPermission } = useUserProfile();
   const { blocks } = useTemplateBlocks(template.id, {
     created_by: template.created_by,
@@ -325,13 +324,8 @@ export function TemplateReviewView({ template }: Props) {
       method: 'PATCH',
       body: { body: newBody },
     });
-    queryClient.setQueryData<TemplateCommentsResponse>(
-      templateCommentsKey(template.id),
-      (current) => {
-        if (!current) return current;
-        return { ...current, data: current.data.map(c => c.id === commentId ? res.data : c) };
-      },
-    );
+    patchTemplateCommentCache(queryClient, template.id, (comments) =>
+      comments.map(c => c.id === commentId ? res.data : c));
   };
 
   const handleDeleteComment = async (commentId: string) => {
