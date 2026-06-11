@@ -8,7 +8,6 @@ use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\DocumentVersionResource;
 use App\Services\Contracts\DocumentServiceInterface;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Auth;
@@ -29,14 +28,7 @@ class DocumentVersionController extends Controller
      */
     public function index(string $document): AnonymousResourceCollection
     {
-        try {
-            $doc = $this->documentService->findModelOrFail($document);
-        } catch (ModelNotFoundException) {
-            $doc = $this->documentService->findModelOrFailWithoutUserAccess($document);
-            if (! $this->documentService->hasPublishedSnapshot($doc->id)) {
-                abort(404);
-            }
-        }
+        $doc = $this->documentService->resolveDocumentWithPublishedFallback($document);
 
         if (! Gate::forUser(Auth::user())->allows('viewHistory', $doc)) {
             abort(404);
@@ -55,14 +47,7 @@ class DocumentVersionController extends Controller
      */
     public function show(string $document, string $version): JsonResponse
     {
-        try {
-            $doc = $this->documentService->findModelOrFail($document);
-        } catch (ModelNotFoundException) {
-            $doc = $this->documentService->findModelOrFailWithoutUserAccess($document);
-            if (! $this->documentService->hasPublishedSnapshot($doc->id)) {
-                abort(404);
-            }
-        }
+        $doc = $this->documentService->resolveDocumentWithPublishedFallback($document);
 
         if (! Gate::forUser(Auth::user())->allows('viewHistory', $doc)) {
             abort(404);

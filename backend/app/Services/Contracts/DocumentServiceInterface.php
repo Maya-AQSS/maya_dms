@@ -20,6 +20,7 @@ use App\Models\DocumentReview;
 use App\Models\EntityVersion;
 use Illuminate\Support\Collection;
 use Maya\Http\Pagination\PaginatedDto;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
  * Excepción B4 documentada: la mayoría de métodos de mutación devuelven el
@@ -46,6 +47,20 @@ interface DocumentServiceInterface
     public function findModelOrFail(string $id): Document;
 
     public function findModelOrFailWithoutUserAccess(string $id): Document;
+
+    /**
+     * Resuelve el modelo de documento aplicando el fallback a snapshot publicado:
+     * intenta acceso normal (findModelOrFail); si no existe para el usuario actual,
+     * resuelve sin scope de acceso y lanza 404 si no tiene snapshot publicado.
+     *
+     * Encapsula el patrón try/catch repetido en DocumentVersionController (×2) y
+     * DocumentExportController::resolveDocumentForHistory(). El gate `viewHistory`
+     * y cualquier comprobación de proceso se aplican en el caller tras esta llamada.
+     *
+     * @throws HttpException 404 si no existe
+     *                       ningún snapshot publicado accesible.
+     */
+    public function resolveDocumentWithPublishedFallback(string $id): Document;
 
     public function hasPublishedSnapshot(string $id): bool;
 

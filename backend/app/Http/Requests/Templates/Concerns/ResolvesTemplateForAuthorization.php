@@ -45,7 +45,7 @@ trait ResolvesTemplateForAuthorization
         try {
             return [$service->findModelOrFail($id), true];
         } catch (ModelNotFoundException) {
-            $template = $service->findOrFailWithoutCatalogScope($id);
+            $template = $service->findModelOrFailWithoutUserAccess($id);
             if (! $service->hasPublishedSnapshot($template->id)) {
                 abort(404);
             }

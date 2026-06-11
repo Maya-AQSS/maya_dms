@@ -13,7 +13,6 @@ use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Services\Contracts\DocumentExportServiceInterface;
 use App\Services\Contracts\DocumentPdfServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -141,14 +140,7 @@ class DocumentExportController extends Controller
      */
     private function resolveDocumentForHistory(string $document): Document
     {
-        try {
-            $doc = $this->documentService->findModelOrFail($document);
-        } catch (ModelNotFoundException) {
-            $doc = $this->documentService->findModelOrFailWithoutUserAccess($document);
-            if (! $this->documentService->hasPublishedSnapshot($doc->id)) {
-                abort(404);
-            }
-        }
+        $doc = $this->documentService->resolveDocumentWithPublishedFallback($document);
 
         if (! Gate::forUser(Auth::user())->allows('viewHistory', $doc)) {
             abort(404);

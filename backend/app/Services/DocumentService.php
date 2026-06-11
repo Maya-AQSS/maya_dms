@@ -98,6 +98,20 @@ class DocumentService implements DocumentServiceInterface
         return $this->documentRepository->findOrFailForRefreshAfterMutation($id);
     }
 
+    public function resolveDocumentWithPublishedFallback(string $id): Document
+    {
+        try {
+            return $this->findModelOrFail($id);
+        } catch (ModelNotFoundException) {
+            $doc = $this->findModelOrFailWithoutUserAccess($id);
+            if (! $this->hasPublishedSnapshot($doc->id)) {
+                abort(404);
+            }
+
+            return $doc;
+        }
+    }
+
     public function hasPublishedSnapshot(string $id): bool
     {
         return $this->entityVersionRepository->findLatestPublishedMetaForVersionable(Document::class, $id) !== null;
@@ -1817,7 +1831,7 @@ class DocumentService implements DocumentServiceInterface
 
         // Determinar si hay comentarios visibles para el usuario sobre este documento.
         $hasReviewComments = $this->commentRepository->existsForCommentable(
-            \App\Models\Document::class,
+            Document::class,
             (string) $document->getKey(),
         );
         $document->setAttribute('has_review_comments', $hasReviewComments);

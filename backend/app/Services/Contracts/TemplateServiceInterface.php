@@ -58,6 +58,12 @@ interface TemplateServiceInterface
     public function findOrFailWithoutCatalogScope(string $id): Template;
 
     /**
+     * Alias canónico de {@see findOrFailWithoutCatalogScope} — nombre homogéneo
+     * con DocumentServiceInterface::findModelOrFailWithoutUserAccess.
+     */
+    public function findModelOrFailWithoutUserAccess(string $id): Template;
+
+    /**
      * Localiza una versión de plantilla por su ID.
      */
     public function findVersionOrFail(string $versionId): EntityVersion;
