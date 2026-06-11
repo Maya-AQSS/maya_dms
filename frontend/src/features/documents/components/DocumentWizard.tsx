@@ -2276,7 +2276,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                           variant={selected ? 'selected' : 'default'}
                           locked={ui === 'locked'}
                           stateLabel={BLOCK_UI_STATE_CONFIG[ui].label}
-                          hasReviewComments={reviewComments.some(c => c.blockable_id === b.document_block_id)}
+                          hasUnreadComments={countUnreadCommentsForBlock(b.document_block_id, reviewComments) > 0}
                           isEmpty={isEmptyEditable}
                           isCompleted={completedBlocks.isCompleted(b.template_block_id)}
                           onClick={() => handleBlockClick(key)}

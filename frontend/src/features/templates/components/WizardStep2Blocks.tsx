@@ -101,13 +101,13 @@ function SortableBlockItem({
   block,
   itemState,
   onClick,
-  hasReviewComments,
+  hasUnreadComments,
   isCompleted,
 }: {
   block: TemplateBlock;
   itemState: 'default' | 'selected' | 'multi-queued' | 'multi-current' | 'multi-saved';
   onClick: () => void;
-  hasReviewComments?: boolean;
+  hasUnreadComments?: boolean;
   isCompleted?: boolean;
 }) {
   const { t } = useTranslation('documents');
@@ -130,7 +130,7 @@ function SortableBlockItem({
         title={block.title || ''}
         variant={itemState}
         locked={isLocked}
-        hasReviewComments={hasReviewComments}
+        hasUnreadComments={hasUnreadComments}
         isCompleted={isCompleted}
         stateLabel={BLOCK_UI_STATE_CONFIG[ui].label}
         onClick={onClick}
@@ -814,7 +814,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                             block={block}
                             itemState={activeSingleId === block.id ? 'selected' : (selectedBlockIds.includes(block.id) ? 'multi-queued' : 'default')}
                             onClick={() => handleBlockClick(block.id)}
-                            hasReviewComments={reviewComments.some(c => c.blockable_id === block.id)}
+                            hasUnreadComments={countUnreadCommentsForBlock(block.id, reviewComments) > 0}
                             isCompleted={completedBlocks.isCompleted(block.id)}
                           />
                         ))}
