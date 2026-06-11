@@ -12,6 +12,7 @@ use App\Models\TemplateReviewer;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
+use App\Repositories\Contracts\TemplateReviewerRepositoryInterface;
 use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Repositories\Contracts\UserFavoriteRepositoryInterface;
 use App\Services\Contracts\EntityVersionLifecycleServiceInterface;
@@ -26,6 +27,7 @@ class TemplatePublishingService
 {
     public function __construct(
         private readonly TemplateRepositoryInterface $templateRepository,
+        private readonly TemplateReviewerRepositoryInterface $templateReviewerRepository,
         private readonly DocumentRepositoryInterface $documentRepository,
         private readonly EntityVersionRepositoryInterface $entityVersionRepository,
         private readonly EntityVersionLifecycleServiceInterface $entityVersionLifecycleService,
@@ -86,15 +88,11 @@ class TemplatePublishingService
                 ]);
             }
 
-            $reviewer = $template->reviewers()->where('user_id', $actorId)->first();
+            $reviewer = $this->templateReviewerRepository->findReviewerForTemplate((string) $template->getKey(), $actorId);
 
             $this->assertSequentialReviewerMayPublish($template, $reviewer);
 
-            $template->load([
-                'blocks' => fn ($q) => $q->orderBy('sort_order'),
-                'reviewers' => fn ($q) => $q->orderBy('stage')->orderBy('user_id'),
-                'documentReviewers' => fn ($q) => $q->orderBy('stage')->orderBy('user_id'),
-            ]);
+            $this->templateReviewerRepository->loadRelationsForSnapshot($template);
 
             if ($template->blocks->isEmpty()) {
                 throw ValidationException::withMessages([

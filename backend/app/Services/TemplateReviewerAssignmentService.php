@@ -9,7 +9,6 @@ use App\Models\Template;
 use App\Repositories\Contracts\ResolvedPermissionReaderInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -36,7 +35,7 @@ class TemplateReviewerAssignmentService
      */
     public function syncReviewers(string $templateId, SyncUsersDto $dto): void
     {
-        DB::transaction(function () use ($templateId, $dto): void {
+        $this->templateRepository->transaction(function () use ($templateId, $dto): void {
             $template = $this->templateRepository->findOrFail($templateId);
 
             $uniqueUserIds = array_values(array_unique($dto->userIds));
@@ -79,7 +78,7 @@ class TemplateReviewerAssignmentService
      */
     public function syncDocumentReviewers(string $templateId, SyncUsersDto $dto): void
     {
-        DB::transaction(function () use ($templateId, $dto): void {
+        $this->templateRepository->transaction(function () use ($templateId, $dto): void {
             $template = $this->templateRepository->findOrFail($templateId);
 
             $uniqueUserIds = array_values(array_unique($dto->userIds));

@@ -12,7 +12,6 @@ use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Services\ReviewerAcademicScopeResolver;
 use App\Services\TemplateReviewerAssignmentService;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Mockery;
 use Mockery\MockInterface;
@@ -84,11 +83,11 @@ final class TemplateReviewerAssignmentServiceTest extends TestCase
     }
 
     /**
-     * Wraps DB::transaction to immediately execute the callback.
+     * Wraps the repository transaction to immediately execute the callback.
      */
-    private function fakeDbTransaction(): void
+    private function fakeTransaction(MockInterface $tmplRepo): void
     {
-        DB::shouldReceive('transaction')
+        $tmplRepo->shouldReceive('transaction')
             ->once()
             ->andReturnUsing(fn (callable $cb) => $cb());
     }
@@ -97,10 +96,9 @@ final class TemplateReviewerAssignmentServiceTest extends TestCase
 
     public function test_sync_reviewers_throws_for_duplicate_user_ids_in_dto(): void
     {
-        $this->fakeDbTransaction();
-
         $template = $this->makeTemplate();
         $tmplRepo = Mockery::mock(TemplateRepositoryInterface::class);
+        $this->fakeTransaction($tmplRepo);
         $tmplRepo->shouldReceive('findOrFail')->once()->with('tmpl-uuid')->andReturn($template);
 
         $permRepo = Mockery::mock(ResolvedPermissionReaderInterface::class);
@@ -120,10 +118,9 @@ final class TemplateReviewerAssignmentServiceTest extends TestCase
 
     public function test_sync_reviewers_throws_when_sequential_stage_limit_exceeded(): void
     {
-        $this->fakeDbTransaction();
-
         $template = $this->makeTemplate('sequential', 1);
         $tmplRepo = Mockery::mock(TemplateRepositoryInterface::class);
+        $this->fakeTransaction($tmplRepo);
         $tmplRepo->shouldReceive('findOrFail')->once()->with('tmpl-uuid')->andReturn($template);
 
         $permRepo = Mockery::mock(ResolvedPermissionReaderInterface::class);
@@ -143,10 +140,9 @@ final class TemplateReviewerAssignmentServiceTest extends TestCase
 
     public function test_sync_reviewers_throws_when_user_lacks_templates_review_permission(): void
     {
-        $this->fakeDbTransaction();
-
         $template = $this->makeTemplate();
         $tmplRepo = Mockery::mock(TemplateRepositoryInterface::class);
+        $this->fakeTransaction($tmplRepo);
         $tmplRepo->shouldReceive('findOrFail')->once()->with('tmpl-uuid')->andReturn($template);
 
         $permRepo = Mockery::mock(ResolvedPermissionReaderInterface::class);
@@ -167,12 +163,9 @@ final class TemplateReviewerAssignmentServiceTest extends TestCase
 
     public function test_sync_document_reviewers_throws_for_duplicate_user_ids_in_dto(): void
     {
-        DB::shouldReceive('transaction')
-            ->once()
-            ->andReturnUsing(fn (callable $cb) => $cb());
-
         $template = $this->makeTemplate();
         $tmplRepo = Mockery::mock(TemplateRepositoryInterface::class);
+        $this->fakeTransaction($tmplRepo);
         $tmplRepo->shouldReceive('findOrFail')->once()->with('tmpl-uuid')->andReturn($template);
 
         $permRepo = Mockery::mock(ResolvedPermissionReaderInterface::class);
@@ -190,12 +183,9 @@ final class TemplateReviewerAssignmentServiceTest extends TestCase
 
     public function test_sync_document_reviewers_throws_when_user_lacks_documents_review_permission(): void
     {
-        DB::shouldReceive('transaction')
-            ->once()
-            ->andReturnUsing(fn (callable $cb) => $cb());
-
         $template = $this->makeTemplate();
         $tmplRepo = Mockery::mock(TemplateRepositoryInterface::class);
+        $this->fakeTransaction($tmplRepo);
         $tmplRepo->shouldReceive('findOrFail')->once()->with('tmpl-uuid')->andReturn($template);
 
         $permRepo = Mockery::mock(ResolvedPermissionReaderInterface::class);

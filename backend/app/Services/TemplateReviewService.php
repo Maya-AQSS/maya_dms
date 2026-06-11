@@ -12,6 +12,7 @@ use App\Events\TemplateSubmittedForReview;
 use App\Models\Template;
 use App\Models\TemplateReviewer;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
+use App\Repositories\Contracts\TemplateReviewerRepositoryInterface;
 use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Support\ReviewValidationNotificationRecipients;
 use App\Support\VersionSubmissionChangelog;
@@ -23,6 +24,7 @@ class TemplateReviewService
 {
     public function __construct(
         private readonly TemplateRepositoryInterface $templateRepository,
+        private readonly TemplateReviewerRepositoryInterface $templateReviewerRepository,
         private readonly TemplatePublishingService $templatePublishingService,
         private readonly NotificationPublisher $notificationPublisher,
         private readonly UserDirectoryRepositoryInterface $userDirectoryRepository,
@@ -44,13 +46,13 @@ class TemplateReviewService
                 ]);
             }
 
-            if ($template->blocks()->doesntExist()) {
+            if (! $this->templateReviewerRepository->templateHasBlocks((string) $template->getKey())) {
                 throw ValidationException::withMessages([
                     'blocks' => ['La plantilla debe tener al menos un bloque antes de enviarse a revisión.'],
                 ]);
             }
 
-            $template->load(['blocks' => fn ($q) => $q->orderBy('sort_order')]);
+            $this->templateReviewerRepository->loadBlocksForTemplate($template);
             $blocksSnapshot = $template->blocks
                 ->map(fn ($b) => TemplateBlockPayloadDto::fromModel($b)->toArray())
                 ->values()->all();
@@ -194,7 +196,10 @@ class TemplateReviewService
                 ]);
             }
 
-            $reviewer = $template->reviewers()->where('user_id', $actorId)->first();
+            $reviewer = $this->templateReviewerRepository->findReviewerForTemplate(
+                (string) $template->getKey(),
+                $actorId,
+            );
 
             if (! $reviewer) {
                 throw ValidationException::withMessages([
@@ -210,9 +215,11 @@ class TemplateReviewService
 
             $this->assertSequentialReviewAllowsActing($template, $reviewer);
 
-            $template->reviewers()
-                ->where('user_id', $actorId)
-                ->update(['status' => 'rejected']);
+            $this->templateReviewerRepository->updateReviewerStatus(
+                (string) $template->getKey(),
+                $actorId,
+                'rejected',
+            );
 
             
             $rejected = $this->templatePublishingService->transitionStatus(
@@ -268,9 +275,10 @@ class TemplateReviewService
                 ]);
             }
 
-            $reviewer = $template->reviewers()
-                ->where('user_id', $actorId)
-                ->first();
+            $reviewer = $this->templateReviewerRepository->findReviewerForTemplate(
+                (string) $template->getKey(),
+                $actorId,
+            );
 
             if (! $reviewer) {
                 throw ValidationException::withMessages([
@@ -286,13 +294,13 @@ class TemplateReviewService
 
             $this->assertSequentialReviewAllowsActing($template, $reviewer);
 
-            $template->reviewers()
-                ->where('user_id', $actorId)
-                ->update(['status' => 'approved']);
+            $this->templateReviewerRepository->updateReviewerStatus(
+                (string) $template->getKey(),
+                $actorId,
+                'approved',
+            );
 
-            $allApproved = ! $template->reviewers()
-                ->where('status', '!=', 'approved')
-                ->exists();
+            $allApproved = $this->templateReviewerRepository->allReviewersApproved((string) $template->getKey());
 
             if ($allApproved) {
                 // Aprobación final: provoca la publicación, que ya se audita como

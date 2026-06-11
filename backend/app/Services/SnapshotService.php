@@ -75,11 +75,10 @@ class SnapshotService implements SnapshotServiceInterface
      */
     private function buildDocumentVersionSnapshot(Document $document, int $snapshotVersionNumber): array
     {
-        $document = $this->documentRepository->findOrFailForRefreshAfterMutation((string) $document->id);
-        $document->load([
-            'blocks' => fn ($q) => $q->orderBy('sort_order'),
-            'reviews' => fn ($q) => $q->orderBy('stage')->orderBy('created_at'),
-        ]);
+        $documentId = (string) $document->id;
+        $document = $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
+
+        $data = $this->documentRepository->loadBlocksAndReviewsData($documentId);
 
         $lifecycle = $this->snapshotDocumentLifecycleIso8601($document);
 
@@ -103,25 +102,8 @@ class SnapshotService implements SnapshotServiceInterface
                 'submitted_at' => $lifecycle['submitted_at'],
                 'published_at' => $lifecycle['published_at'],
             ],
-            'blocks' => $document->blocks->map(static function ($b): array {
-                return [
-                    'id' => $b->id,
-                    'template_block_id' => $b->template_block_id,
-                    'content' => $b->content,
-                    'is_filled' => (bool) $b->is_filled,
-                    'sort_order' => (int) $b->sort_order,
-                    'last_edited_by' => $b->last_edited_by,
-                    'locked_by' => $b->locked_by,
-                    'locked_at' => $b->locked_at?->toIso8601String(),
-                ];
-            })->values()->all(),
-            'reviewers' => $document->reviews->map(static function ($r): array {
-                return [
-                    'reviewer_id' => (string) $r->reviewer_id,
-                    'stage' => $r->stage !== null ? (int) $r->stage : null,
-                    'status' => (string) ($r->status ?? 'pending'),
-                ];
-            })->values()->all(),
+            'blocks' => $data['blocks'],
+            'reviewers' => $data['reviews'],
         ];
     }
 

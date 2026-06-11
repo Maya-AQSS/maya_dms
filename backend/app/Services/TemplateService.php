@@ -20,6 +20,7 @@ use App\Repositories\Contracts\DocumentBlockRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateBlockRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
+use App\Repositories\Contracts\TemplateReviewerRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Services\Contracts\TemplateServiceInterface;
@@ -27,7 +28,6 @@ use App\Support\TemplateHeadSnapshot;
 use App\Support\WorkingRevisionConflictResolver;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Maya\Http\Pagination\PaginatedDto;
@@ -40,6 +40,7 @@ class TemplateService implements TemplateServiceInterface
         private readonly TemplateVersionRepositoryInterface $templateVersionRepository,
         private readonly EntityVersionRepositoryInterface $entityVersionRepository,
         private readonly TemplateBlockRepositoryInterface $templateBlockRepository,
+        private readonly TemplateReviewerRepositoryInterface $templateReviewerRepository,
         private readonly TemplatePublishingService $templatePublishingService,
         private readonly TemplateReviewService $templateReviewService,
         private readonly TemplateReviewerAssignmentService $templateReviewerAssignmentService,
@@ -251,13 +252,7 @@ class TemplateService implements TemplateServiceInterface
         $candidateIds = $candidates->map(fn (Template $t) => (string) $t->getKey())->all();
 
         // Exclude templates where viewer is an active reviewer (they see real content).
-        $reviewerTemplateIds = DB::table('template_reviewers')
-            ->whereIn('template_id', $candidateIds)
-            ->where('user_id', $viewerId)
-            ->pluck('template_id')
-            ->map(fn ($id) => (string) $id)
-            ->flip()
-            ->all();
+        $reviewerTemplateIds = $this->templateReviewerRepository->findTemplateIdsWithReviewer($candidateIds, $viewerId);
 
         $nonOwnerIds = array_values(array_filter(
             $candidateIds,
@@ -616,30 +611,34 @@ class TemplateService implements TemplateServiceInterface
             ? $reviewersSection['document_reviewers']
             : [];
 
-        $template->reviewers()->withTrashed()->forceDelete();
+        $templateId = (string) $template->getKey();
+
+        $filteredTemplateReviewers = [];
         foreach ($templateReviewers as $row) {
             if (! is_array($row) || ! isset($row['user_id']) || ! is_string($row['user_id']) || $row['user_id'] === '') {
                 continue;
             }
-            $template->reviewers()->create([
+            $filteredTemplateReviewers[] = [
                 'user_id' => $row['user_id'],
                 'stage' => isset($row['stage']) ? (int) $row['stage'] : 1,
                 'status' => 'pending',
-            ]);
+            ];
         }
+        $this->templateReviewerRepository->replaceTemplateReviewers($templateId, $filteredTemplateReviewers);
 
-        $template->documentReviewers()->delete();
+        $filteredDocumentReviewers = [];
         foreach ($documentReviewers as $index => $row) {
             if (! is_array($row) || ! isset($row['user_id']) || ! is_string($row['user_id']) || $row['user_id'] === '') {
                 continue;
             }
-            $template->documentReviewers()->create([
+            $filteredDocumentReviewers[] = [
                 'user_id' => $row['user_id'],
                 'stage' => isset($row['stage']) && (int) $row['stage'] > 0
                     ? (int) $row['stage']
                     : $index + 1,
-            ]);
+            ];
         }
+        $this->templateReviewerRepository->replaceDocumentReviewers($templateId, $filteredDocumentReviewers);
     }
 
     /**
@@ -687,43 +686,35 @@ class TemplateService implements TemplateServiceInterface
 
             $this->templateRepository->insertBlocksFromPublishedSnapshot((string) $target->getKey(), $published['blocks']);
 
+            $targetId = (string) $target->getKey();
             if ($published['reviewers_from_snapshot'] ?? false) {
+                $snapshotTemplateReviewers = [];
                 foreach ($published['template_reviewers'] as $row) {
                     if (! is_array($row) || ! isset($row['user_id']) || ! is_string($row['user_id']) || $row['user_id'] === '') {
                         continue;
                     }
-                    $target->reviewers()->create([
+                    $snapshotTemplateReviewers[] = [
                         'user_id' => $row['user_id'],
                         'stage' => isset($row['stage']) ? (int) $row['stage'] : 1,
                         'status' => 'pending',
-                    ]);
+                    ];
                 }
+                $snapshotDocumentReviewers = [];
                 foreach ($published['document_reviewers'] as $index => $row) {
                     if (! is_array($row) || ! isset($row['user_id']) || ! is_string($row['user_id']) || $row['user_id'] === '') {
                         continue;
                     }
-                    $target->documentReviewers()->create([
+                    $snapshotDocumentReviewers[] = [
                         'user_id' => $row['user_id'],
                         'stage' => isset($row['stage']) && (int) $row['stage'] > 0
                             ? (int) $row['stage']
                             : $index + 1,
-                    ]);
+                    ];
                 }
+                $this->templateReviewerRepository->replaceTemplateReviewers($targetId, $snapshotTemplateReviewers);
+                $this->templateReviewerRepository->replaceDocumentReviewers($targetId, $snapshotDocumentReviewers);
             } else {
-                $source->loadMissing(['reviewers', 'documentReviewers']);
-                foreach ($source->reviewers as $reviewer) {
-                    $target->reviewers()->create([
-                        'user_id' => $reviewer->user_id,
-                        'stage' => $reviewer->stage,
-                        'status' => 'pending',
-                    ]);
-                }
-                foreach ($source->documentReviewers as $docReviewer) {
-                    $target->documentReviewers()->create([
-                        'user_id' => $docReviewer->user_id,
-                        'stage' => (int) $docReviewer->stage,
-                    ]);
-                }
+                $this->templateReviewerRepository->copyReviewersFromTemplate($source, $target);
             }
 
             return $this->templateRepository->findOrFail($target->getKey());
@@ -763,19 +754,7 @@ class TemplateService implements TemplateServiceInterface
 
             $this->templateRepository->replicateBlocks($source, $target);
 
-            foreach ($source->reviewers as $reviewer) {
-                $target->reviewers()->create([
-                    'user_id' => $reviewer->user_id,
-                    'stage' => $reviewer->stage,
-                ]);
-            }
-
-            foreach ($source->documentReviewers as $docReviewer) {
-                $target->documentReviewers()->create([
-                    'user_id' => $docReviewer->user_id,
-                    'stage' => (int) $docReviewer->stage,
-                ]);
-            }
+            $this->templateReviewerRepository->copyReviewersFromTemplate($source, $target);
 
             return $this->templateRepository->findOrFail($target->getKey());
         });
@@ -1201,9 +1180,6 @@ class TemplateService implements TemplateServiceInterface
         $template = $this->templateRepository->findOrFail($templateId);
 
         return $template->status === 'in_review'
-            && DB::table('template_reviewers')
-                ->where('template_id', $templateId)
-                ->where('user_id', $userId)
-                ->exists();
+            && $this->templateReviewerRepository->existsReviewerForTemplate($templateId, $userId);
     }
 }
