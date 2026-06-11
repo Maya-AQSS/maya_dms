@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { buildBackState } from '@ceedcv-maya/shared-hooks-react';
 import {
   DataTable,
   FilterField,
@@ -42,6 +43,7 @@ type Props = {
 export function TemplatesTable({ processId }: Props = {}) {
   const { t } = useTranslation(['common', 'templates', 'documents']);
   const navigate = useNavigate();
+  const location = useLocation();
   const { profile, hasPermission } = useUserProfile();
   const canShow = hasPermission(DMS_PERMISSIONS.templateShow);
   const canReview = hasPermission(DMS_PERMISSIONS.templateReview);
@@ -170,25 +172,25 @@ export function TemplatesTable({ processId }: Props = {}) {
       return;
     }
 
-    const backTo = processId ? `/procesos/${processId}` : '/dashboard';
+    const backState = { ...buildBackState(location), processId };
     if (tpl.list_variant === 'published_fallback' && tpl.latest_published_version_id) {
       navigate(`/templates/${tpl.id}?templateVersionId=${encodeURIComponent(tpl.latest_published_version_id)}`, {
-        state: { backTo, processId },
+        state: backState,
       });
       return;
     }
     const isAssignedReviewer = tpl.reviewers?.some((r) => r.user_id === profile?.id) === true;
     const openReviewView = tpl.status === 'in_review' && isAssignedReviewer && canReview;
     if (openReviewView) {
-      navigate(`/templates/${tpl.id}/review`, { state: { backTo, processId } });
+      navigate(`/templates/${tpl.id}/review`, { state: backState });
       return;
     }
     const isOwner = profile?.id != null && tpl.created_by === profile.id;
     if (shouldOpenTemplateEditorFromList(tpl, isOwner)) {
-      navigate(`/templates/${tpl.id}/edit`, { state: { backTo, processId } });
+      navigate(`/templates/${tpl.id}/edit`, { state: backState });
       return;
     }
-    navigate(`/templates/${tpl.id}`, { state: { backTo, processId } });
+    navigate(`/templates/${tpl.id}`, { state: backState });
   };
 
   const columns: ColumnDef<Template>[] = useMemo(

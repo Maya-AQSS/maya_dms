@@ -1,10 +1,11 @@
 import { useEffect, useState, type ReactNode, type CSSProperties, type RefObject } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button, PageTitle } from '@ceedcv-maya/shared-ui-react'
 
 interface Props {
   /** Título grande centrado (mismo lugar en plantilla y documento). */
   title: ReactNode
-  /** Subtítulo bajo el título. Default: 'Previsualización'. */
+  /** Subtítulo bajo el título. Default: i18n `navigation.preview`. */
   subtitle?: ReactNode
   /** Acción al pulsar la flecha "back". */
   onBack: () => void
@@ -67,9 +68,10 @@ function FullscreenIcon({ on }: { on: boolean }) {
  */
 export function PaperPreviewLayout({
   title,
-  subtitle = 'Previsualización',
+  subtitle,
   onBack,
-  backLabel = 'Volver',
+  // Sin default: PageTitle resuelve la etiqueta vía i18n (`actions.back`).
+  backLabel,
   metaInfo,
   actions,
   asOverlay = false,
@@ -78,7 +80,9 @@ export function PaperPreviewLayout({
   children,
   viewMode
 }: Props) {
+  const { t } = useTranslation('common')
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const resolvedSubtitle = subtitle ?? t('navigation.preview')
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -136,11 +140,11 @@ export function PaperPreviewLayout({
       variant="outline"
       size="sm"
       onClick={() => setIsFullscreen((v) => !v)}
-      title={isFullscreen ? 'Salir de pantalla completa (F)' : 'Pantalla completa (F)'}
+      title={isFullscreen ? t('navigation.exitFullscreenHint') : t('navigation.fullscreen')}
     >
       <span className="inline-flex items-center gap-1.5">
         <FullscreenIcon on={isFullscreen} />
-        {isFullscreen ? 'Reducir' : 'Pantalla completa'}
+        {isFullscreen ? t('navigation.reduce') : t('navigation.fullscreenShort')}
       </span>
     </Button>
   )
@@ -150,9 +154,9 @@ export function PaperPreviewLayout({
       <div ref={headerRef}>
       <PageTitle
         title={title}
-        subtitle={subtitle}
+        subtitle={resolvedSubtitle}
         onBack={isFullscreen ? () => setIsFullscreen(false) : onBack}
-        backLabel={isFullscreen ? 'Salir de pantalla completa' : backLabel}
+        backLabel={isFullscreen ? t('navigation.exitFullscreen') : backLabel}
         meta={
           <div className="space-y-3">
             {metaInfo}

@@ -1,6 +1,7 @@
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { DocumentWizard } from '../features/documents/components/DocumentWizard';
-import { Button } from '@ceedcv-maya/shared-ui-react';
+import { BackButton } from '@ceedcv-maya/shared-ui-react';
 import { ErrorBoundaryWrapper as ErrorBoundary } from '../components/ErrorBoundaryWrapper';
 
 /**
@@ -10,7 +11,9 @@ import { ErrorBoundaryWrapper as ErrorBoundary } from '../components/ErrorBounda
  */
 export function DocumentEditorPage() {
   const { documentId, templateId } = useParams<{ documentId?: string; templateId?: string }>();
+  const { t } = useTranslation('common');
   const location = useLocation();
+  const navigate = useNavigate();
   const navState = location.state as { sourceDocumentId?: string; migrationMode?: 'clone' | 'upgrade' } | null;
   const sourceDocumentId = navState?.sourceDocumentId ?? null;
   const migrationMode = navState?.migrationMode ?? 'clone';
@@ -19,9 +22,11 @@ export function DocumentEditorPage() {
     return (
       <div className="p-6">
         <p className="text-sm text-warning-dark dark:text-warning-light mb-4">Identificador de documento o plantilla no válido.</p>
-        <Link to="/procesos" state={{ tab: 'documents' }}>
-          <Button variant="secondary">Volver a Procesos</Button>
-        </Link>
+        <BackButton
+          variant="outline"
+          label={t('navigation.backToProcesses')}
+          onClick={() => navigate('/procesos', { state: { tab: 'documents' } })}
+        />
       </div>
     );
   }

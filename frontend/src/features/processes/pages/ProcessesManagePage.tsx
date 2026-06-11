@@ -1,4 +1,5 @@
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { buildBackState } from '@ceedcv-maya/shared-hooks-react';
 import { Button, PageTitle } from '@ceedcv-maya/shared-ui-react';
 import { useUserProfile } from '../../user-profile';
 import { DMS_PERMISSIONS } from '../../../permissions';
@@ -6,6 +7,7 @@ import { ProcessesTable } from '../components/ProcessesTable';
 
 export function ProcessesManagePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { hasPermission } = useUserProfile();
   const canCreate = hasPermission(DMS_PERMISSIONS.processCreate);
 
@@ -20,7 +22,7 @@ export function ProcessesManagePage() {
               type="button"
               variant="primary"
               size="sm"
-              onClick={() => navigate('/admin/procesos/new')}
+              onClick={() => navigate('/admin/procesos/new', { state: buildBackState(location) })}
             >
               + Crear
             </Button>

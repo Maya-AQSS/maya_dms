@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { buildBackState } from '@ceedcv-maya/shared-hooks-react';
 import { useServerDocumentsTable } from '../hooks/useServerDocumentsTable';
 import {
   DataTable,
@@ -41,6 +42,7 @@ type Props = {
 
 export function DocumentsTable({ processId }: Props = {}) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation(['documents', 'common']);
   const { profile, hasPermission } = useUserProfile();
   const canShow = hasPermission(DMS_PERMISSIONS.documentShow);
@@ -286,19 +288,19 @@ export function DocumentsTable({ processId }: Props = {}) {
           }
           if (doc.list_variant === 'published_fallback' && doc.latest_published_version_id) {
             navigate(`/documents/${doc.id}?documentVersionId=${encodeURIComponent(doc.latest_published_version_id)}`, {
-              state: { backTo: processId ? `/procesos/${processId}` : '/dashboard', processId },
+              state: { ...buildBackState(location), processId },
             });
             return;
           }
           const isReviewerForDoc = doc.status === 'in_review' && doc.is_assigned_reviewer === true;
           if (isReviewerForDoc) {
             navigate(`/documents/${doc.id}/validate`, {
-              state: { backTo: processId ? `/procesos/${processId}` : '/dashboard', processId },
+              state: { ...buildBackState(location), processId },
             });
             return;
           }
           navigate(`/documents/${doc.id}`, {
-            state: { backTo: processId ? `/procesos/${processId}` : '/dashboard', processId },
+            state: { ...buildBackState(location), processId },
           });
         }}
         filtersPanel={

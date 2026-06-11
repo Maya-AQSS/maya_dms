@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { useBackNavigation } from '@ceedcv-maya/shared-hooks-react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -44,7 +46,10 @@ const displayClass =
 export function ProcessShowPage() {
   const { processId } = useParams<{ processId: string }>();
   const isCreate = !processId;
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
+  const location = useLocation();
+  const { goBack } = useBackNavigation({ fallback: '/admin/procesos' });
   const queryClient = useQueryClient();
   const { hasPermission } = useUserProfile();
   const {
@@ -125,7 +130,7 @@ export function ProcessShowPage() {
       if (isCreate) {
         const res = await createProcess(payload);
         invalidate();
-        navigate(`/admin/procesos/${res.data.id}`, { replace: true });
+        navigate(`/admin/procesos/${res.data.id}`, { replace: true, state: location.state });
       } else {
         await updateProcess(data!.id, payload);
         invalidate();
@@ -142,7 +147,7 @@ export function ProcessShowPage() {
       setActionError(null);
       await deleteProcess(data.id);
       void queryClient.invalidateQueries({ queryKey: ['processes'] });
-      navigate('/admin/procesos');
+      goBack({ replace: true });
     } catch (e) {
       setActionError(formatError(e));
     }
@@ -213,7 +218,7 @@ export function ProcessShowPage() {
 
   const handleCancelEdit = () => {
     if (isCreate) {
-      navigate('/admin/procesos');
+      goBack();
     } else {
       if (data) reset({
         code: data.code, name: data.name, alias: data.alias,
@@ -229,7 +234,7 @@ export function ProcessShowPage() {
   if (!isCreate && isError && !isLoading) {
     return (
       <div className="px-4 py-6 sm:px-6 lg:px-8">
-        <PageTitle title="Proceso" onBack={() => navigate(-1)} backLabel="Volver" />
+        <PageTitle title="Proceso" onBack={() => goBack()} backLabel={t('navigation.backToProcesses')} />
         <div className="mt-4 rounded-lg border border-dashed border-ui-border bg-ui-card p-6 text-center text-sm text-text-muted dark:border-ui-dark-border dark:bg-ui-dark-card dark:text-text-dark-muted">
           {formatError(error)}
         </div>
@@ -251,8 +256,8 @@ export function ProcessShowPage() {
       <PageTitle
         title={isCreate ? 'Nuevo proceso' : (data?.name ?? 'Proceso')}
         subtitle={isCreate ? undefined : (data ? `${data.code} · Proceso` : undefined)}
-        onBack={() => navigate('/admin/procesos')}
-        backLabel="Volver a Procesos"
+        onBack={() => goBack()}
+        backLabel={t('navigation.backToProcesses')}
         actions={
           <div className="flex gap-2">
             {editing ? (

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { buildBackState } from '@ceedcv-maya/shared-hooks-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Alert, Button, PageTitle } from '@ceedcv-maya/shared-ui-react';
 import { ErrorBoundaryWrapper as ErrorBoundary } from '../components/ErrorBoundaryWrapper';
@@ -34,20 +35,42 @@ export function ProcesosPage() {
   const canShow = hasPermission(DMS_PERMISSIONS.processShow);
   const canCreateDocument = hasPermission(DMS_PERMISSIONS.documentCreate);
   const locationState = location.state as { tab?: Tab; documentValidationBanner?: string } | null;
-  const [activeTab, setActiveTab] = useState<Tab>(locationState?.tab ?? 'templates');
+  // La pestaña activa vive en la URL (?tab=) para que el botón Volver de los
+  // detalles restaure la pestaña correcta junto con los filtros del listado.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlTab = searchParams.get('tab');
+  const activeTab: Tab =
+    urlTab === 'documents' || urlTab === 'templates'
+      ? urlTab
+      : (locationState?.tab ?? 'templates');
+  const setActiveTab = (tab: Tab) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('tab', tab);
+        return next;
+      },
+      { replace: true },
+    );
+  };
   const [validationBanner, setValidationBanner] = useState<string | null>(null);
 
   useEffect(() => {
     const banner = locationState?.documentValidationBanner;
     if (!banner) return;
     setValidationBanner(banner);
-    if (locationState?.tab) setActiveTab(locationState.tab);
     void (async () => {
       await queryClient.invalidateQueries({ queryKey: ['documents'] });
       await refreshDmsDashboardQuery(queryClient);
     })();
-    navigate(location.pathname, { replace: true, state: {} });
-  }, [location.state, location.pathname, navigate, queryClient]);
+    // Limpia el state (banner) preservando la búsqueda y fijando la pestaña pedida.
+    const nextSearch = new URLSearchParams(location.search);
+    if (locationState?.tab) nextSearch.set('tab', locationState.tab);
+    navigate(
+      { pathname: location.pathname, search: nextSearch.toString() },
+      { replace: true, state: {} },
+    );
+  }, [location.state, location.pathname, location.search, locationState, navigate, queryClient]);
   
   const processesQuery = useProcessesQuery(undefined, { enabled: !!processId && canShow });
   const process: Process | null =
@@ -91,7 +114,7 @@ export function ProcesosPage() {
               type="button"
               variant="primary"
               size="sm"
-              onClick={() => navigate('/documentos/nuevo', { state: navState })}
+              onClick={() => navigate('/documentos/nuevo', { state: { ...navState, ...buildBackState(location) } })}
             >
               Nuevo Documento
             </Button>

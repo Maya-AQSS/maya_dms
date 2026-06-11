@@ -1,4 +1,6 @@
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { buildBackState, useBackNavigation } from '@ceedcv-maya/shared-hooks-react';
 import {
   Button,
   ConfirmDialog,
@@ -29,7 +31,10 @@ const displayClass =
 
 export function ThemeShowPage() {
   const { id } = useParams<{ id: string }>();
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
+  const location = useLocation();
+  const { goBack } = useBackNavigation({ fallback: '/themes' });
   const { profile, hasPermission } = useUserProfile();
   const { confirmState, confirm, closeConfirm } = useConfirm();
 
@@ -39,7 +44,7 @@ export function ThemeShowPage() {
   if (loading && !theme) {
     return (
       <div className="px-4 py-6 sm:px-6 lg:px-8">
-        <PageTitle title="Tema" onBack={() => navigate('/themes')} backLabel="Volver a Temas" />
+        <PageTitle title="Tema" onBack={() => goBack()} backLabel={t('navigation.backToThemes')} />
         <div className="mt-4 rounded-lg border border-ui-border bg-ui-card p-6 text-center text-sm text-text-muted dark:border-ui-dark-border dark:bg-ui-dark-card dark:text-text-dark-muted">
           Cargando tema…
         </div>
@@ -50,7 +55,7 @@ export function ThemeShowPage() {
   if (error || !theme || !id) {
     return (
       <div className="px-4 py-6 sm:px-6 lg:px-8">
-        <PageTitle title="Tema" onBack={() => navigate('/themes')} backLabel="Volver a Temas" />
+        <PageTitle title="Tema" onBack={() => goBack()} backLabel={t('navigation.backToThemes')} />
         <div className="mt-4 rounded-lg border border-danger bg-danger-light p-3 text-sm text-danger-dark">
           {error || 'No se ha podido cargar el tema.'}
         </div>
@@ -67,7 +72,7 @@ export function ThemeShowPage() {
   const handleClone = async () => {
     try {
       const created = await cloneTheme(theme.id);
-      navigate(`/themes/${created.id}/edit`);
+      navigate(`/themes/${created.id}/edit`, { state: buildBackState(location) });
     } catch {
       /* el banner de actionError lo muestra */
     }
@@ -81,7 +86,7 @@ export function ThemeShowPage() {
       variant: 'danger',
       onConfirm: async () => {
         await deleteTheme(theme.id);
-        navigate('/themes');
+        goBack({ replace: true });
       },
     });
 
@@ -92,14 +97,14 @@ export function ThemeShowPage() {
       confirmLabel: 'Archivar',
       onConfirm: async () => {
         await archiveTheme(theme.id);
-        navigate('/themes');
+        goBack({ replace: true });
       },
     });
 
   const actions = (
     <div className="flex gap-2">
       {isDraft && mayEdit && (
-        <Button type="button" variant="outline" size="sm" onClick={() => navigate(`/themes/${id}/edit`)}>
+        <Button type="button" variant="outline" size="sm" onClick={() => navigate(`/themes/${id}/edit`, { state: buildBackState(location) })}>
           Editar
         </Button>
       )}
@@ -131,8 +136,8 @@ export function ThemeShowPage() {
       <PageTitle
         title={theme.name}
         subtitle="Tema · Identidad visual reutilizable"
-        onBack={() => navigate('/themes')}
-        backLabel="Volver a Temas"
+        onBack={() => goBack()}
+        backLabel={t('navigation.backToThemes')}
         actions={actions}
       />
 

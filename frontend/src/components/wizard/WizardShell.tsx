@@ -40,7 +40,8 @@ export function WizardShell<Id extends string>({
   title,
   subtitle,
   onBack,
-  backLabel = 'Volver',
+  // Sin default: PageTitle resuelve la etiqueta vía i18n (`actions.back`).
+  backLabel,
   actions,
   steps,
   currentStep,

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { buildBackState, useBackNavigation } from '@ceedcv-maya/shared-hooks-react';
 import { useTranslation } from 'react-i18next';
 import { fetchProcesses } from '../api/processes';
 import type { Template } from '../types/templates';
@@ -29,6 +30,9 @@ export function NuevaProgramacionSelectorPage() {
   const locationState = location.state as { moduleId?: string; processId?: string } | null;
   const selectedModuleId = locationState?.moduleId;
   const selectedProcessId = locationState?.processId;
+  const { goBack, hasBackState } = useBackNavigation({
+    fallback: selectedProcessId ? `/procesos/${selectedProcessId}` : '/dashboard',
+  });
   const { templateIds: favoriteTemplateIds } = useFavoritesIds();
 
   const { rows: allTemplates, meta, loading, error: listError, filters, setFilter, resetFilters,
@@ -185,12 +189,16 @@ export function NuevaProgramacionSelectorPage() {
             ? `Proceso: ${process.code} — ${process.name} · Selecciona una plantilla`
             : 'Selecciona una plantilla'
         }
-        onBack={() =>
+        onBack={() => {
+          if (hasBackState) {
+            goBack();
+            return;
+          }
           navigate(selectedProcessId ? `/procesos/${selectedProcessId}` : '/dashboard', {
             state: { tab: 'documents' },
-          })
-        }
-        backLabel="Documentos"
+          });
+        }}
+        backLabel={t('common:navigation.backToDocuments')}
       />
 
       {listError && (
@@ -222,6 +230,7 @@ export function NuevaProgramacionSelectorPage() {
               moduleId: selectedModuleId,
               processId: selectedProcessId,
               templateVersionId: selectedTemplateVersionId,
+              ...buildBackState(location),
             },
           });
         }}

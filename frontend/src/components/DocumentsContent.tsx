@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { buildBackState } from '@ceedcv-maya/shared-hooks-react';
 import {
   Button,
   Card,
@@ -409,12 +410,13 @@ export function DocumentsContent() {
         state: {
           moduleId: selectedModuleId,
           templateVersionId: templateVersionId ?? null,
+          ...buildBackState(location),
         }
       });
       return;
     }
     navigate('/documentos/nuevo', {
-      state: { moduleId: selectedModuleId }
+      state: { moduleId: selectedModuleId, ...buildBackState(location) }
     });
   };
 

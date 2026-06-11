@@ -75,5 +75,24 @@
   },
   "filters": {
     "allModules": "Todos los módulos"
+  },
+  "navigation": {
+    "backToProcesses": "Volver a Procesos",
+    "backToThemes": "Volver a Temas",
+    "backToTemplates": "Volver a Plantillas",
+    "backToDocuments": "Volver a Documentos",
+    "backToList": "Volver al listado",
+    "backToPanel": "Volver al panel",
+    "backToMainPanel": "Volver al panel principal",
+    "backToSummary": "Volver al resumen",
+    "backToValidate": "Volver a validar",
+    "selectTemplate": "Seleccionar plantilla",
+    "fullscreen": "Pantalla completa (F)",
+    "fullscreenShort": "Pantalla completa",
+    "exitFullscreen": "Salir de pantalla completa",
+    "exitFullscreenHint": "Salir de pantalla completa (F)",
+    "reduce": "Reducir",
+    "preview": "Previsualización",
+    "closePreview": "Cerrar previsualización"
   }
 }

@@ -75,5 +75,24 @@
   },
   "filters": {
     "allModules": "All modules"
+  },
+  "navigation": {
+    "backToProcesses": "Back to Processes",
+    "backToThemes": "Back to Themes",
+    "backToTemplates": "Back to Templates",
+    "backToDocuments": "Back to Documents",
+    "backToList": "Back to list",
+    "backToPanel": "Back to panel",
+    "backToMainPanel": "Back to main panel",
+    "backToSummary": "Back to summary",
+    "backToValidate": "Back to validation",
+    "selectTemplate": "Select template",
+    "fullscreen": "Fullscreen (F)",
+    "fullscreenShort": "Fullscreen",
+    "exitFullscreen": "Exit fullscreen",
+    "exitFullscreenHint": "Exit fullscreen (F)",
+    "reduce": "Reduce",
+    "preview": "Preview",
+    "closePreview": "Close preview"
   }
 }

@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useBackNavigation } from '@ceedcv-maya/shared-hooks-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Template, ReviewCycleSnapshot, ReviewCycleBlock } from '../../../types/templates';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
@@ -236,9 +236,7 @@ function TemplateBlockHistoryPanel({ blockId, blockNumber, history, onClose }: H
 
 export function TemplateReviewView({ template }: Props) {
   const { t } = useTranslation('templates');
-  const navigate = useNavigate();
-  const location = useLocation();
-  const backTo = (location.state as { backTo?: string } | null)?.backTo ?? '/dashboard';
+  const { goBack } = useBackNavigation({ fallback: '/dashboard' });
   const { profile, hasPermission } = useUserProfile();
   const { blocks } = useTemplateBlocks(template.id, {
     created_by: template.created_by,
@@ -365,7 +363,7 @@ export function TemplateReviewView({ template }: Props) {
       await approveTemplateReview(template.id);
       await queryClient.invalidateQueries({ queryKey: ['templates'] });
       await refreshDmsDashboardQuery(queryClient);
-      navigate(backTo);
+      goBack({ replace: true });
     } catch (e) {
       setError(e instanceof ApiHttpError ? e.message : e instanceof Error ? e.message : 'Error al aprobar la plantilla');
     } finally {
@@ -389,7 +387,7 @@ export function TemplateReviewView({ template }: Props) {
       await rejectTemplateReview(template.id);
       await queryClient.invalidateQueries({ queryKey: ['templates'] });
       await refreshDmsDashboardQuery(queryClient);
-      navigate(backTo);
+      goBack({ replace: true });
     } catch (e) {
       setError(e instanceof ApiHttpError ? e.message : e instanceof Error ? e.message : 'Error al rechazar la plantilla');
     } finally {
@@ -404,8 +402,8 @@ export function TemplateReviewView({ template }: Props) {
       title={template.name}
       subtitle={processLabel}
       viewMode="default"
-      onBack={() => navigate('/templates')}
-      backLabel="Volver a plantillas"
+      onBack={() => goBack()}
+      backLabel={t('common:navigation.backToTemplates')}
       metaInfo={
         <div className="flex flex-wrap gap-4 text-xs font-bold uppercase tracking-widest text-text-muted justify-center">
           <span>{visibilityLabel(template.visibility_level)}</span>

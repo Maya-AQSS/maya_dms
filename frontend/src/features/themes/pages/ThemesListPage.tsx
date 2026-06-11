@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { buildBackState } from '@ceedcv-maya/shared-hooks-react';
 import { useTranslation } from 'react-i18next';
 import {
   Button,
@@ -33,6 +34,7 @@ const STATUS_OPTIONS: { value: '' | ThemeStatus; label: string }[] = [
 
 export function ThemesListPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation(['themes', 'common']);
   const { hasPermission } = useUserProfile();
   const mayCreate = canCreateTheme(hasPermission);
@@ -114,7 +116,7 @@ export function ThemesListPage() {
               type="button"
               variant="primary"
               size="sm"
-              onClick={() => navigate('/themes/new')}
+              onClick={() => navigate('/themes/new', { state: buildBackState(location) })}
             >
               + {t('common:actions.create')}
             </Button>
@@ -134,7 +136,7 @@ export function ThemesListPage() {
         rowKey={(theme) => theme.id}
         loading={loading}
         emptyMessage={t('themes:emptyMessage')}
-        onRowClick={(theme) => navigate(`/themes/${theme.id}`)}
+        onRowClick={(theme) => navigate(`/themes/${theme.id}`, { state: buildBackState(location) })}
         hiddenColumnIds={hiddenIds}
         onToggleHiddenColumn={toggleHidden}
         sortBy={sortBy}

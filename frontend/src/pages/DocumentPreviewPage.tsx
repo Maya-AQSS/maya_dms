@@ -245,8 +245,10 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const cameFromValidate = previewState?.returnToValidate === true;
 
   const backLabel = cameFromSummary
-    ? cameFromValidate ? 'Volver a validar' : 'Volver al resumen'
-    : 'Volver';
+    ? cameFromValidate
+      ? t('common:navigation.backToValidate')
+      : t('common:navigation.backToSummary')
+    : t('common:actions.back');
 
   const { goBack, backTarget, hasBackState } = useBackNavigation({
     fallback: selectedProcessId ? `/procesos/${selectedProcessId}` : '/dashboard',
@@ -944,7 +946,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           title={t('validateTitle')}
           subtitle={headerSubtitle}
           onBack={handleBack}
-          backLabel="Volver"
+          backLabel={t('common:actions.back')}
           viewMode={viewMode}
           metaInfo={
             <div className="flex flex-col items-center">

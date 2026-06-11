@@ -1,7 +1,8 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate, useBlocker } from 'react-router-dom';
+import { useBlocker } from 'react-router-dom';
+import { useBackNavigation } from '@ceedcv-maya/shared-hooks-react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
@@ -46,7 +47,6 @@ type Props = {
 
 export function TemplateWizard({ template: templateProp, initialTemplate, processId }: Props) {
   const { t } = useTranslation(['templates', 'common']);
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { profile } = useUserProfile();
   const initial = templateProp || initialTemplate;
@@ -54,6 +54,9 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     const effectiveProcessId = processId ?? templateProp?.process_id ?? initialTemplate?.process_id ?? null;
     return effectiveProcessId ? `/procesos/${effectiveProcessId}` : '/dashboard';
   }, [initialTemplate?.process_id, processId, templateProp?.process_id]);
+  // Salida del asistente: usa la pila backTo del listado de origen si existe,
+  // o el proceso/dashboard como destino canónico.
+  const { goBack } = useBackNavigation({ fallback: processBackTo });
 
   // Rejected templates start on the blocks step so the creator sees comment badges immediately.
   const [step, setStep] = useState<Step>(
@@ -227,11 +230,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
         setLeaveGuard(true);
         return;
       }
-      if (window.history.length <= 1) {
-        navigate("/dashboard");
-      } else {
-        navigate(-1);
-      }
+      goBack();
     }
   };
 
@@ -314,7 +313,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       const res = await apiSubmitTemplateForReview(template.id, changelog);
       setTemplate(res.data);
       setShowChangelogModal(false);
-      navigate(processBackTo);
+      goBack();
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Error al enviar la plantilla a validación';
       setChangelogModalError(message);
@@ -396,7 +395,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     setErrors({});
     try {
       await apiUpdateTemplate(template.id, { created_by: pendingOwnerTransfer });
-      navigate(processBackTo);
+      goBack();
     } catch (e) {
       const detail =
         e instanceof ApiHttpError
@@ -510,7 +509,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       void saveUsers();
 
     } else if (step === 'summary') {
-      navigate(processBackTo);
+      goBack();
     }
   };
 
@@ -546,7 +545,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
         <Button
           variant="outline"
           size="sm"
-          onClick={() => navigate(processBackTo)}
+          onClick={() => goBack()}
           className="border-odoo-teal text-odoo-teal hover:bg-odoo-teal/10 dark:border-odoo-dark-teal dark:text-odoo-dark-teal dark:hover:bg-odoo-dark-teal/10"
         >
           Guardar y salir
@@ -610,7 +609,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
             ⚠️ Tienes cambios sin guardar en este paso. ¿Seguro que quieres salir?
           </span>
           <div className="flex gap-2">
-            <Button variant="outlineWarning" size="xs" onClick={() => navigate(processBackTo)}>
+            <Button variant="outlineWarning" size="xs" onClick={() => goBack()}>
               Salir sin guardar
             </Button>
             <Button variant="secondary" size="xs" onClick={() => setLeaveGuard(false)}>

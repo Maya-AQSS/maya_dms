@@ -280,7 +280,10 @@ describe('TemplateWizard Integration', () => {
 
     await waitFor(() => {
       expect(submitTemplateForReview).toHaveBeenCalledWith('t123', 'Primera publicación con changelog.');
-      expect(mockNavigate).toHaveBeenCalledWith('/procesos/proc-test-1');
+      expect(mockNavigate).toHaveBeenCalledWith('/procesos/proc-test-1', {
+        replace: false,
+        state: undefined,
+      });
     }, { timeout: 10000 });
   }, 15000);
 
@@ -344,9 +347,14 @@ describe('TemplateWizard Integration', () => {
     const nameInput = screen.getAllByPlaceholderText(/Nombre de la plantilla/i)[0];
     fireEvent.input(nameInput, { target: { value: 'Some change' } });
 
-    // Wait for RHF to flush the dirty flag before triggering the leave action
+    // Wait for RHF to flush the dirty flag before triggering the leave action.
+    // El value del input se actualiza síncrono, pero `formState.isDirty` llega
+    // en el siguiente render: hay que ceder un macrotask dentro de act().
     await waitFor(() => {
       expect((nameInput as HTMLInputElement).value).toBe('Some change');
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
     fireEvent.click(screen.getByLabelText('Volver'));

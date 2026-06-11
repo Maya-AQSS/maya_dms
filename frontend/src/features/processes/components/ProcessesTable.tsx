@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { buildBackState } from '@ceedcv-maya/shared-hooks-react';
 import {
   DataTable,
   FilterField,
@@ -17,6 +18,7 @@ import type { Process } from '../../../types/processes';
 
 export function ProcessesTable() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { hiddenIds, toggleHidden } = useTablePreferences({
     storageKey: 'maya:dms:processes-table',
   });
@@ -163,7 +165,7 @@ export function ProcessesTable() {
         filtersActiveCount={filtersActiveCount}
         onClearFilters={clearFilters}
         filtersStorageKey="maya:dms:processes-table"
-        onRowClick={(p) => navigate(`/admin/procesos/${p.id}`)}
+        onRowClick={(p) => navigate(`/admin/procesos/${p.id}`, { state: buildBackState(location) })}
         filtersPanel={
           <>
             <FilterField label="Buscar">

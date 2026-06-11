@@ -67,5 +67,24 @@
   },
   "filters": {
     "allModules": "Tots els mòduls"
+  },
+  "navigation": {
+    "backToProcesses": "Tornar a Processos",
+    "backToThemes": "Tornar a Temes",
+    "backToTemplates": "Tornar a Plantilles",
+    "backToDocuments": "Tornar a Documents",
+    "backToList": "Tornar al llistat",
+    "backToPanel": "Tornar al panell",
+    "backToMainPanel": "Tornar al panell principal",
+    "backToSummary": "Tornar al resum",
+    "backToValidate": "Tornar a validar",
+    "selectTemplate": "Seleccionar plantilla",
+    "fullscreen": "Pantalla completa (F)",
+    "fullscreenShort": "Pantalla completa",
+    "exitFullscreen": "Eixir de pantalla completa",
+    "exitFullscreenHint": "Eixir de pantalla completa (F)",
+    "reduce": "Reduir",
+    "preview": "Previsualització",
+    "closePreview": "Tancar previsualització"
   }
 }

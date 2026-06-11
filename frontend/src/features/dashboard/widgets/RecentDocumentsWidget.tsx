@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import { buildBackState } from '@ceedcv-maya/shared-hooks-react';
 import { useUserProfile } from '../../user-profile';
 import { DMS_PERMISSIONS } from '../../../permissions';
 import { useDmsDashboard } from '../hooks/useDmsDashboard';
@@ -23,6 +24,7 @@ type PendingReviewItem =
 /** Widget compacto: pendientes de validar (plantillas + documentos). */
 export default function RecentDocumentsWidget() {
   const { t } = useTranslation('common');
+  const location = useLocation();
   const { hasPermission } = useUserProfile();
   const canViewDashboard = hasPermission(DMS_PERMISSIONS.index);
   const canOpenFromDashboard = hasPermission(DMS_PERMISSIONS.show);
@@ -171,7 +173,7 @@ export default function RecentDocumentsWidget() {
           <li key={`${item.kind}:${item.id}`}>
             <Link
               to={target}
-              state={{ backTo: '/dashboard' }}
+              state={buildBackState(location)}
               className={`${rowClass} hover:bg-ui-body dark:hover:bg-ui-dark-bg`}
             >
               {content}

@@ -1,6 +1,7 @@
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { DocumentPreviewPage } from './DocumentPreviewPage';
-import { Button } from '@ceedcv-maya/shared-ui-react';
+import { BackButton, Button } from '@ceedcv-maya/shared-ui-react';
 import { useUserProfile } from '../features/user-profile';
 import { DMS_PERMISSIONS } from '../permissions';
 
@@ -9,6 +10,8 @@ import { DMS_PERMISSIONS } from '../permissions';
  */
 export function DocumentValidationPage() {
   const { documentId } = useParams<{ documentId: string }>();
+  const { t } = useTranslation('common');
+  const navigate = useNavigate();
   const { hasPermission, loading: profileLoading } = useUserProfile();
   const canReview = hasPermission(DMS_PERMISSIONS.documentReview);
 
@@ -16,9 +19,11 @@ export function DocumentValidationPage() {
     return (
       <div className="p-6">
         <p className="text-sm text-warning-dark dark:text-warning-light mb-4">Identificador de documento no válido.</p>
-        <Link to="/procesos" state={{ tab: 'documents' }}>
-          <Button variant="secondary">Volver a Procesos</Button>
-        </Link>
+        <BackButton
+          variant="outline"
+          label={t('navigation.backToProcesses')}
+          onClick={() => navigate('/procesos', { state: { tab: 'documents' } })}
+        />
       </div>
     );
   }

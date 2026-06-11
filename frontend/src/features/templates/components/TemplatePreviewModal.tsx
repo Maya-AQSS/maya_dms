@@ -83,7 +83,7 @@ export function TemplatePreviewModal({ template, blocks, onClose }: Props) {
       title={template.name}
       subtitle={processLabel}
       onBack={onClose}
-      backLabel="Cerrar previsualización"
+      backLabel={t('common:navigation.closePreview')}
       viewMode="default"
       metaInfo={headerMetaInfo}
       actions={headerActions}

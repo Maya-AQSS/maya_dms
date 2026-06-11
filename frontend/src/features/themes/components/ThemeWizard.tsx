@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useBackNavigation } from '@ceedcv-maya/shared-hooks-react';
 import { Button } from '@ceedcv-maya/shared-ui-react';
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
 import { ThemeWizardStepIdentity, type ThemeIdentityValue } from './ThemeWizardStepIdentity';
@@ -63,6 +64,8 @@ function themeToIdentity(t: Theme): ThemeIdentityValue {
 export function ThemeWizard({ initial }: ThemeWizardProps) {
   const { t } = useTranslation('themes');
   const navigate = useNavigate();
+  const location = useLocation();
+  const { goBack } = useBackNavigation({ fallback: '/themes' });
   const {
     createTheme,
     updateTheme,
@@ -112,8 +115,9 @@ export function ThemeWizard({ initial }: ThemeWizardProps) {
         accessibility: identity.accessibility,
       });
       setTheme(created);
-      // Sincroniza la URL con el ID real ahora que el theme existe.
-      navigate(`/themes/${created.id}/edit`, { replace: true });
+      // Sincroniza la URL con el ID real ahora que el theme existe. Reenvía el
+      // state para no perder la pila backTo del listado de origen.
+      navigate(`/themes/${created.id}/edit`, { replace: true, state: location.state });
       return created;
     } catch {
       // El error ya queda en `actionError` del hook compartido — el banner lo muestra.
@@ -145,7 +149,7 @@ export function ThemeWizard({ initial }: ThemeWizardProps) {
     setSaving(true);
     try {
       await publishTheme(theme.id);
-      navigate('/themes');
+      goBack({ replace: true });
     } finally {
       setSaving(false);
     }
@@ -158,7 +162,7 @@ export function ThemeWizard({ initial }: ThemeWizardProps) {
     setSaving(true);
     try {
       await archiveTheme(theme.id);
-      navigate('/themes');
+      goBack({ replace: true });
     } finally {
       setSaving(false);
     }
@@ -202,7 +206,7 @@ export function ThemeWizard({ initial }: ThemeWizardProps) {
       setStep('identity');
       return;
     }
-    navigate('/themes');
+    goBack();
   };
 
   const headerActions = (

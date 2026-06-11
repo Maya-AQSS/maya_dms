@@ -257,7 +257,12 @@ describe('DocumentsContent creation flow', () => {
 
     await waitFor(() =>
       expect(mockNavigate).toHaveBeenCalledWith('/documentos/nuevo/tpl-1/wizard', {
-        state: { moduleId: 'm1', templateVersionId: 'ver-1' },
+        state: {
+          moduleId: 'm1',
+          templateVersionId: 'ver-1',
+          // Pila de retorno: la URL actual del listado (con sus filtros).
+          backTo: [expect.stringMatching(/^\//)],
+        },
       }),
     );
   });
@@ -321,7 +326,7 @@ describe('DocumentsContent creation flow', () => {
 
     await waitFor(() =>
       expect(mockNavigate).toHaveBeenCalledWith('/documentos/nuevo', {
-        state: { moduleId: 'm1' },
+        state: { moduleId: 'm1', backTo: [expect.stringMatching(/^\//)] },
       }),
     );
   });
@@ -365,7 +370,7 @@ describe('DocumentsContent creation flow', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Nueva Programación' }));
     expect(mockNavigate).toHaveBeenCalledWith('/documentos/nuevo', {
-      state: { moduleId: 'm1' },
+      state: { moduleId: 'm1', backTo: [expect.stringMatching(/^\//)] },
     });
   });
 });

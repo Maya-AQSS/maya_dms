@@ -51,7 +51,7 @@ import { useCompletedBlocks } from '../hooks/useCompletedBlocks';
 import { BlockCommentsCard } from '../../templates/components/BlockCommentsCard';
 import type { BlockComment } from '../../templates/components/BlockCommentsCard';
 import { fetchMe, searchOwnerCandidates } from '../../../api/users';
-import { useAutoSave, useFlushOnPageLeave } from '@ceedcv-maya/shared-hooks-react';
+import { useAutoSave, useBackNavigation, useFlushOnPageLeave } from '@ceedcv-maya/shared-hooks-react';
 import {
   normalizeTiptapContentForPersistence,
   type TiptapDoc,
@@ -414,6 +414,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
     const effectiveProcessId = locationProcessId ?? template?.process_id ?? null;
     return effectiveProcessId ? `/procesos/${effectiveProcessId}` : '/dashboard';
   }, [locationProcessId, template?.process_id]);
+  // Salida del asistente: pila backTo del listado de origen, o proceso/dashboard.
+  const { goBack } = useBackNavigation({ fallback: processBackTo });
 
   const reload = useCallback(async () => {
     if (!documentId) return;
@@ -1355,11 +1357,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
       return;
     }
     if (step === 'summary') {
-      if (window.history.length <= 1) {
-        navigate("/dashboard");
-      } else {
-        navigate(-1);
-      }
+      goBack();
     }
   };
 
@@ -1535,7 +1533,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
             })
           }
         >
-          {isValidateMode ? 'Volver al panel' : 'Volver al listado'}
+          {isValidateMode
+            ? t('common:navigation.backToPanel')
+            : t('common:navigation.backToList')}
         </Button>
       </div>
     );
@@ -1548,7 +1548,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
           Este documento no está en revisión. Solo puedes validar programaciones enviadas a revisión.
         </p>
         <Button type="button" variant="secondary" onClick={() => navigate('/dashboard')}>
-          Volver al panel
+          {t('common:navigation.backToPanel')}
         </Button>
       </div>
     );
@@ -1564,7 +1564,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
           </Button>
         )}
         <Button type="button" variant="secondary" onClick={() => navigate('/dashboard')}>
-          Volver al panel
+          {t('common:navigation.backToPanel')}
         </Button>
       </div>
     );
@@ -1683,11 +1683,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
       }
       setStep(order[idx - 1]!);
     } else {
-      if (window.history.length <= 1) {
-        navigate("/dashboard");
-      } else {
-        navigate(-1);
-      }
+      goBack();
     }
   };
 
@@ -1701,7 +1697,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
       }
       subtitle={processSubtitle}
       onBack={handleWizardBack}
-      backLabel={isValidateMode ? 'Volver al panel principal' : 'Volver'}
+      backLabel={
+        isValidateMode ? t('common:navigation.backToMainPanel') : t('common:actions.back')
+      }
       actions={headerActions}
       steps={stepsData}
       currentStep={step}
@@ -1767,7 +1765,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                   </span>
                   <button
                     type="button"
-                    onClick={() => navigate('/documentos/nuevo')}
+                    onClick={() => navigate('/documentos/nuevo', { state: location.state })}
                     className="text-xs text-odoo-purple dark:text-odoo-dark-purple hover:underline cursor-pointer shrink-0"
                   >
                     Cambiar plantilla

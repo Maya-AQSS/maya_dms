@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useBackNavigation } from '@ceedcv-maya/shared-hooks-react';
 import {
   fetchTemplate,
   type TemplateVersionDetail,
@@ -104,21 +105,14 @@ export function TemplatePreviewPage() {
   const location = useLocation();
   const locationState = location.state as {
     selectionMode?: boolean;
-    backTo?: string;
+    backTo?: string | string[];
     moduleId?: string;
     processId?: string;
     templateVersionId?: string | null;
   } | null;
   const selectionMode = locationState?.selectionMode === true;
-  //const backTo = locationState?.backTo ?? '/documentos/nuevo';
-  const defaultBackTo = locationState?.backTo ?? '/dashboard';
-  const handleBack = () => {
-    if (window.history.length <= 1) {
-      navigate("/dashboard");
-    } else {
-      navigate(-1);
-    }
-  };
+  const { goBack } = useBackNavigation({ fallback: '/dashboard' });
+  const handleBack = () => goBack();
 
   const { profile, hasPermission } = useUserProfile();
 
@@ -419,7 +413,7 @@ export function TemplatePreviewPage() {
     setDeleteError(null);
     try {
       await deleteTemplate(id);
-      navigate(defaultBackTo);
+      goBack({ replace: true });
     } catch (e) {
       setDeleteError(e instanceof Error ? e.message : 'No se pudo eliminar la plantilla.');
       setDeleteLoading(false);
@@ -634,7 +628,9 @@ export function TemplatePreviewPage() {
         title={displayTitle ?? template?.name ?? 'Plantilla'}
         subtitle={processLabel}
         onBack={handleBack}
-        backLabel={selectionMode ? 'Seleccionar plantilla' : 'Volver'}
+        backLabel={
+          selectionMode ? t('common:navigation.selectTemplate') : t('common:actions.back')
+        }
         metaInfo={headerMeta}
         actions={headerToolbar}
         viewMode={viewMode}
