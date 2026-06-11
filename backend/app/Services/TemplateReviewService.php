@@ -15,6 +15,7 @@ use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateReviewerRepositoryInterface;
 use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Support\ReviewValidationNotificationRecipients;
+use App\Support\ReviewValidationNotifier;
 use App\Support\VersionSubmissionChangelog;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -28,6 +29,7 @@ class TemplateReviewService
         private readonly TemplatePublishingService $templatePublishingService,
         private readonly NotificationPublisher $notificationPublisher,
         private readonly UserDirectoryRepositoryInterface $userDirectoryRepository,
+        private readonly ReviewValidationNotifier $reviewValidationNotifier,
     ) {}
 
     /**
@@ -367,33 +369,24 @@ class TemplateReviewService
         $reviewMode = is_string($template->review_mode) ? $template->review_mode : 'parallel';
         $recipients = ReviewValidationNotificationRecipients::filterForReviewMode($reviewMode, $pending);
 
-        foreach ($recipients as $row) {
-            $reviewerId = $row['user_id'] ?? '';
-            if ($reviewerId === '') {
-                continue;
-            }
+        $templateId = (string) $template->id;
+        $templateName = $template->name;
 
-            try {
-                $this->notificationPublisher->send(
-                    type: 'template.validation_requested',
-                    recipientId: $reviewerId,
-                    title: 'Nueva solicitud de revisión de plantilla',
-                    body: 'La plantilla "'.$template->name.'" requiere tu revisión',
-                    titleKey: 'notifications.template.validation_requested.title',
-                    bodyKey: 'notifications.template.validation_requested.body',
-                    params: ['template_id' => (string) $template->id, 'template_name' => $template->name],
-                    severity: 'high',
-                    channels: ['app'],
-                    metadata: ['template_id' => (string) $template->id],
-                );
-            } catch (\Throwable $e) {
-                Log::warning('notification.publish_failed', [
-                    'error' => $e->getMessage(),
-                    'type' => 'template.validation_requested',
-                    'template_id' => (string) $template->id,
-                    'reviewer_id' => $reviewerId,
-                ]);
-            }
-        }
+        $this->reviewValidationNotifier->notifyEach(
+            $recipients,
+            'user_id',
+            fn (string $recipientId): array => [
+                'type' => 'template.validation_requested',
+                'recipientId' => $recipientId,
+                'title' => 'Nueva solicitud de revisión de plantilla',
+                'body' => 'La plantilla "'.$templateName.'" requiere tu revisión',
+                'titleKey' => 'notifications.template.validation_requested.title',
+                'bodyKey' => 'notifications.template.validation_requested.body',
+                'params' => ['template_id' => $templateId, 'template_name' => $templateName],
+                'severity' => 'high',
+                'channels' => ['app'],
+                'metadata' => ['template_id' => $templateId],
+            ],
+        );
     }
 }

@@ -14,6 +14,7 @@ use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
 use App\Support\DocumentReviewModeResolver;
 use App\Support\ReviewValidationNotificationRecipients;
+use App\Support\ReviewValidationNotifier;
 use App\Support\VersionSubmissionChangelog;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -34,6 +35,7 @@ class DocumentReviewService
         private readonly NotificationPublisher $notificationPublisher,
         private readonly DocumentReviewModeResolver $documentReviewModeResolver,
         private readonly UserDirectoryRepositoryInterface $userDirectoryRepository,
+        private readonly ReviewValidationNotifier $reviewValidationNotifier,
     ) {}
 
     /**
@@ -146,34 +148,24 @@ class DocumentReviewService
 
         $recipients = ReviewValidationNotificationRecipients::filterForReviewMode($mode, $pending);
 
-        foreach ($recipients as $row) {
-            $reviewerId = $row['reviewer_id'] ?? '';
-            if ($reviewerId === '') {
-                continue;
-            }
+        $documentTitle = $document->title;
 
-            try {
-                $this->notificationPublisher->send(
-                    type: 'document.validation_requested',
-                    recipientId: $reviewerId,
-                    title: 'Nueva solicitud de revisión',
-                    body: 'El documento "'.$document->title.'" requiere tu revisión',
-                    titleKey: 'notifications.document.validation_requested.title',
-                    bodyKey: 'notifications.document.validation_requested.body',
-                    params: ['document_id' => $documentId, 'document_title' => $document->title],
-                    severity: 'high',
-                    channels: ['app'],
-                    metadata: ['document_id' => $documentId],
-                );
-            } catch (\Throwable $e) {
-                Log::warning('notification.publish_failed', [
-                    'error' => $e->getMessage(),
-                    'type' => 'document.validation_requested',
-                    'document_id' => $documentId,
-                    'reviewer_id' => $reviewerId,
-                ]);
-            }
-        }
+        $this->reviewValidationNotifier->notifyEach(
+            $recipients,
+            'reviewer_id',
+            fn (string $recipientId): array => [
+                'type' => 'document.validation_requested',
+                'recipientId' => $recipientId,
+                'title' => 'Nueva solicitud de revisión',
+                'body' => 'El documento "'.$documentTitle.'" requiere tu revisión',
+                'titleKey' => 'notifications.document.validation_requested.title',
+                'bodyKey' => 'notifications.document.validation_requested.body',
+                'params' => ['document_id' => $documentId, 'document_title' => $documentTitle],
+                'severity' => 'high',
+                'channels' => ['app'],
+                'metadata' => ['document_id' => $documentId],
+            ],
+        );
     }
 
     private function notifyDocumentPublished(Document $document): void

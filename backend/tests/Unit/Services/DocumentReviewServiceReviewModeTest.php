@@ -14,6 +14,7 @@ use App\Services\Contracts\SnapshotServiceInterface;
 use App\Services\DocumentReviewService;
 use App\Services\DocumentStateService;
 use App\Support\DocumentReviewModeResolver;
+use App\Support\ReviewValidationNotifier;
 use App\Support\TemplateHeadSnapshot;
 use Maya\Messaging\Publishers\NotificationPublisher;
 use Mockery;
@@ -39,6 +40,7 @@ class DocumentReviewServiceReviewModeTest extends TestCase
             Mockery::mock(NotificationPublisher::class),
             new DocumentReviewModeResolver($evRepo),
             Mockery::mock(UserDirectoryRepositoryInterface::class),
+            new ReviewValidationNotifier(Mockery::mock(NotificationPublisher::class)),
         );
     }
 
