@@ -10,12 +10,12 @@ namespace App\DTOs\Documents;
 readonly class BlockUpdateDto
 {
     public function __construct(
-        public string $document_block_id,
-        public string $template_block_id,
+        public string $documentBlockId,
+        public string $templateBlockId,
         public mixed $content,
-        public bool $is_filled,
-        public string $last_edited_by,
-        public ?string $updated_at,
+        public bool $isFilled,
+        public string $lastEditedBy,
+        public ?string $updatedAt,
     ) {}
 
     /**
@@ -24,12 +24,12 @@ readonly class BlockUpdateDto
     public function toArray(): array
     {
         return [
-            'document_block_id' => $this->document_block_id,
-            'template_block_id' => $this->template_block_id,
+            'document_block_id' => $this->documentBlockId,
+            'template_block_id' => $this->templateBlockId,
             'content' => $this->content,
-            'is_filled' => $this->is_filled,
-            'last_edited_by' => $this->last_edited_by,
-            'updated_at' => $this->updated_at,
+            'is_filled' => $this->isFilled,
+            'last_edited_by' => $this->lastEditedBy,
+            'updated_at' => $this->updatedAt,
         ];
     }
 }

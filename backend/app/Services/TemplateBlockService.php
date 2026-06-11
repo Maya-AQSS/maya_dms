@@ -157,32 +157,32 @@ class TemplateBlockService implements TemplateBlockServiceInterface
         $block = $this->blockRepository->findOrFail($blockId);
 
         $attributes = [];
-        if ($dto->set_title) {
+        if ($dto->setTitle) {
             $attributes['title'] = $dto->title;
         }
-        if ($dto->set_default_content) {
-            $attributes['default_content'] = $dto->default_content;
+        if ($dto->setDefaultContent) {
+            $attributes['default_content'] = $dto->defaultContent;
         }
-        if ($dto->set_sort_order) {
-            $attributes['sort_order'] = $dto->sort_order;
+        if ($dto->setSortOrder) {
+            $attributes['sort_order'] = $dto->sortOrder;
         }
-        if ($dto->set_block_state) {
-            $attributes['block_state'] = $dto->block_state;
+        if ($dto->setBlockState) {
+            $attributes['block_state'] = $dto->blockState;
         }
-        if ($dto->set_description) {
+        if ($dto->setDescription) {
             $attributes['description'] = $dto->description;
         }
-        if ($dto->set_block_type) {
-            $attributes['block_type'] = $dto->block_type;
+        if ($dto->setBlockType) {
+            $attributes['block_type'] = $dto->blockType;
         }
-        if ($dto->set_page_break_after) {
-            $attributes['page_break_after'] = $dto->page_break_after;
+        if ($dto->setPageBreakAfter) {
+            $attributes['page_break_after'] = $dto->pageBreakAfter;
         }
-        if ($dto->set_theme_id) {
-            $attributes['theme_id'] = $dto->theme_id;
+        if ($dto->setThemeId) {
+            $attributes['theme_id'] = $dto->themeId;
         }
-        if ($dto->set_apply_theme) {
-            $attributes['apply_theme'] = $dto->apply_theme;
+        if ($dto->setApplyTheme) {
+            $attributes['apply_theme'] = $dto->applyTheme;
         }
 
         if ($attributes === []) {
@@ -191,7 +191,7 @@ class TemplateBlockService implements TemplateBlockServiceInterface
 
         // Audit only when there is an actual block_state transition.
         $stateOrMandatoryChanged = false;
-        if ($dto->set_block_state && $block->block_state !== $dto->block_state) {
+        if ($dto->setBlockState && $block->block_state !== $dto->blockState) {
             $stateOrMandatoryChanged = true;
         }
 
@@ -241,8 +241,8 @@ class TemplateBlockService implements TemplateBlockServiceInterface
         $before = $this->findModelsByIdsOrFail($uniqueIds)->keyBy('id');
 
         $attributes = [];
-        if ($dto->set_block_state) {
-            $attributes['block_state'] = $dto->block_state;
+        if ($dto->setBlockState) {
+            $attributes['block_state'] = $dto->blockState;
         }
 
         $updated = $this->blockRepository->bulkUpdate($dto->ids, $attributes);
@@ -251,7 +251,7 @@ class TemplateBlockService implements TemplateBlockServiceInterface
             $prev = $before->get($block->getKey());
 
             // Redundant audit prevention: only log if something actually changed
-            $changedState = $dto->set_block_state && $prev && $prev->block_state !== $block->block_state;
+            $changedState = $dto->setBlockState && $prev && $prev->block_state !== $block->block_state;
 
             if ($changedState) {
                 TemplateBlockStateChanged::dispatch(

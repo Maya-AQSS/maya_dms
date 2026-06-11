@@ -166,12 +166,12 @@ class DocumentBlockService
 
             if ($contentUnchanged) {
                 return new BlockUpdateDto(
-                    document_block_id: (string) $block->id,
-                    template_block_id: (string) $block->template_block_id,
+                    documentBlockId: (string) $block->id,
+                    templateBlockId: (string) $block->template_block_id,
                     content: $block->content,
-                    is_filled: (bool) $block->is_filled,
-                    last_edited_by: (string) $block->last_edited_by,
-                    updated_at: $block->updated_at?->toIso8601String(),
+                    isFilled: (bool) $block->is_filled,
+                    lastEditedBy: (string) $block->last_edited_by,
+                    updatedAt: $block->updated_at?->toIso8601String(),
                 );
             }
 
@@ -189,12 +189,12 @@ class DocumentBlockService
             $this->documentBlockRepository->updateBlock($block, $dto->content, $isFilled, $dto->actorId);
 
             return new BlockUpdateDto(
-                document_block_id: (string) $block->id,
-                template_block_id: (string) $block->template_block_id,
+                documentBlockId: (string) $block->id,
+                templateBlockId: (string) $block->template_block_id,
                 content: $block->content,
-                is_filled: $isFilled,
-                last_edited_by: $dto->actorId,
-                updated_at: $block->updated_at?->toIso8601String(),
+                isFilled: $isFilled,
+                lastEditedBy: $dto->actorId,
+                updatedAt: $block->updated_at?->toIso8601String(),
             );
         });
     }

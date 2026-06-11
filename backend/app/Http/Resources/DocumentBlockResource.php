@@ -87,12 +87,12 @@ class DocumentBlockResource extends JsonResource
     private function fromUpdateDto(BlockUpdateDto $dto): array
     {
         return [
-            'document_block_id' => $dto->document_block_id,
-            'template_block_id' => $dto->template_block_id,
+            'document_block_id' => $dto->documentBlockId,
+            'template_block_id' => $dto->templateBlockId,
             'content' => $dto->content,
-            'is_filled' => $dto->is_filled,
-            'last_edited_by' => $dto->last_edited_by,
-            'updated_at' => $dto->updated_at,
+            'is_filled' => $dto->isFilled,
+            'last_edited_by' => $dto->lastEditedBy,
+            'updated_at' => $dto->updatedAt,
         ];
     }
 }

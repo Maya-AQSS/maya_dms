@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\Concerns\PurgesBlockComments;
 use App\Observers\DocumentBlockObserver;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
@@ -15,6 +16,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[ObservedBy(DocumentBlockObserver::class)]
 class DocumentBlock extends Model
 {
+    use PurgesBlockComments;
     use SoftDeletes;
 
     protected $keyType = 'string';
@@ -40,15 +42,6 @@ class DocumentBlock extends Model
             'locked_at' => 'datetime',
             'sort_order' => 'integer',
         ];
-    }
-
-    protected static function booted(): void
-    {
-        static::deleting(function (DocumentBlock $block): void {
-            Comment::where('blockable_type', static::class)
-                ->where('blockable_id', $block->id)
-                ->delete();
-        });
     }
 
     public function document(): BelongsTo

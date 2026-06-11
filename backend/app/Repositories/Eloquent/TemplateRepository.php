@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Repositories\Eloquent;
 
 use App\DTOs\Templates\FilterTemplatesDto;
-use App\DTOs\Templates\TemplateBlockPayloadDto;
+use App\DTOs\TemplateBlocks\TemplateBlockPayloadDto;
 use App\DTOs\Templates\TemplateFilterDto;
 use App\DTOs\Templates\TemplateRenderDto;
 use App\Enums\BlockType;

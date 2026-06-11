@@ -86,8 +86,8 @@ class TemplateBlockBulkController extends Controller
 
         $dto = new BulkUpdateTemplateBlocksDto(
             ids: $validated['ids'],
-            block_state: $validated['block_state'] ?? null,
-            set_block_state: $request->has('block_state'),
+            blockState: $validated['block_state'] ?? null,
+            setBlockState: $request->has('block_state'),
         );
 
         $blocks = $this->blockService->bulkUpdate(

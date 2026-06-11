@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\DTOs\Templates;
+namespace App\DTOs\Versioning;
 
 /**
  * Snapshot data for entity version (extracted from Eloquent model).

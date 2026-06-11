@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repositories\Eloquent;
 
-use App\DTOs\Templates\EntityVersionSnapshotDto;
+use App\DTOs\Versioning\EntityVersionSnapshotDto;
 use App\Models\EntityVersion;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use Illuminate\Support\Collection;

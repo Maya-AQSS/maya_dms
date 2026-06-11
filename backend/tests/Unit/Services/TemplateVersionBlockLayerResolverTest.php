@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services;
 
-use App\DTOs\Templates\EntityVersionSnapshotDto;
+use App\DTOs\Versioning\EntityVersionSnapshotDto;
 use App\DTOs\Templates\TemplateVersionBlockLayerDto;
 use App\Models\Template;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;

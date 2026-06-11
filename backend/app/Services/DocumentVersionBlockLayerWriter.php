@@ -8,6 +8,7 @@ use App\DTOs\Documents\DocumentBlockPayloadDto;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\DocumentVersionBlockLayerRepositoryInterface;
 use App\Repositories\Contracts\DocumentVersionRepositoryInterface;
+use App\Support\BlockLayerPayloadComparator;
 
 /**
  * Capas incrementales por versión publicada de documento (convive con snapshot JSON completo).
@@ -68,7 +69,7 @@ final class DocumentVersionBlockLayerWriter
             $payload = $block->toArray();
             $prev = $prevById[$block->blockId] ?? null;
 
-            $inherits = $prev !== null && $this->payloadsEqual($prev, $payload);
+            $inherits = $prev !== null && BlockLayerPayloadComparator::equal($prev, $payload);
 
             $this->layerRepository->create([
                 'document_version_id' => $createdVersion->id,
@@ -94,28 +95,4 @@ final class DocumentVersionBlockLayerWriter
         }
     }
 
-    /**
-     * @param  array<string, mixed>  $prev
-     * @param  array<string, mixed>  $curr
-     */
-    private function payloadsEqual(array $prev, array $curr): bool
-    {
-        return json_encode($this->normalizeForCompare($prev)) === json_encode($this->normalizeForCompare($curr));
-    }
-
-    /**
-     * @param  array<string, mixed>  $data
-     * @return array<string, mixed>
-     */
-    private function normalizeForCompare(array $data): array
-    {
-        ksort($data);
-        foreach ($data as $k => $v) {
-            if (is_array($v)) {
-                $data[$k] = $this->normalizeForCompare($v);
-            }
-        }
-
-        return $data;
-    }
 }

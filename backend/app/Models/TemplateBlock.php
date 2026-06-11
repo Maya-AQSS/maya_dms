@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\BlockType;
+use App\Models\Concerns\PurgesBlockComments;
 use App\Observers\TemplateBlockObserver;
 use App\Support\TemplateBlockDescriptionNormalizer;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
@@ -17,6 +18,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[ObservedBy(TemplateBlockObserver::class)]
 class TemplateBlock extends Model
 {
+    use PurgesBlockComments;
     use SoftDeletes;
 
     protected $keyType = 'string';
@@ -70,15 +72,6 @@ class TemplateBlock extends Model
     public function theme(): BelongsTo
     {
         return $this->belongsTo(Theme::class, 'theme_id');
-    }
-
-    protected static function booted(): void
-    {
-        static::deleting(function (TemplateBlock $block): void {
-            Comment::where('blockable_type', static::class)
-                ->where('blockable_id', $block->id)
-                ->delete();
-        });
     }
 
     public function template(): BelongsTo

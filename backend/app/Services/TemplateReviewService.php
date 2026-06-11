@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\DTOs\Templates\TemplateBlockPayloadDto;
+use App\DTOs\TemplateBlocks\TemplateBlockPayloadDto;
 use App\Enums\BlockType;
 use App\Enums\TemplateVisibilityLevel;
 use App\Events\TemplateReviewApproved;

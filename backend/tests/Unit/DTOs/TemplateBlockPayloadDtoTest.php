@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\DTOs;
 
-use App\DTOs\Templates\TemplateBlockPayloadDto;
+use App\DTOs\TemplateBlocks\TemplateBlockPayloadDto;
 use App\Enums\BlockType;
 use Tests\TestCase;
 

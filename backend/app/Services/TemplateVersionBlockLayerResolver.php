@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\DTOs\Templates\EntityVersionSnapshotDto;
+use App\DTOs\Versioning\EntityVersionSnapshotDto;
 use App\Enums\BlockType;
 use App\Models\Template;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;

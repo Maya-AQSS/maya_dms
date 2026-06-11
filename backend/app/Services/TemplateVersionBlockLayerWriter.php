@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\DTOs\Templates\TemplateBlockPayloadDto;
+use App\DTOs\TemplateBlocks\TemplateBlockPayloadDto;
 use App\Models\Template;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionBlockLayerRepositoryInterface;
+use App\Support\BlockLayerPayloadComparator;
 
 /**
  * Persistencia incremental de definición de bloques por publicación de plantilla.
@@ -67,7 +68,7 @@ final class TemplateVersionBlockLayerWriter
             $payload = $block->toArray();
             $prev = $prevById[$block->blockId] ?? null;
 
-            $inherits = $prev !== null && $this->payloadsEqual($prev, $payload);
+            $inherits = $prev !== null && BlockLayerPayloadComparator::equal($prev, $payload);
 
             $this->layerRepository->create([
                 'entity_version_id' => $createdVersion->id,
@@ -93,28 +94,4 @@ final class TemplateVersionBlockLayerWriter
         }
     }
 
-    /**
-     * @param  array<string, mixed>  $prev
-     * @param  array<string, mixed>  $curr
-     */
-    private function payloadsEqual(array $prev, array $curr): bool
-    {
-        return json_encode($this->normalizeForCompare($prev)) === json_encode($this->normalizeForCompare($curr));
-    }
-
-    /**
-     * @param  array<string, mixed>  $data
-     * @return array<string, mixed>
-     */
-    private function normalizeForCompare(array $data): array
-    {
-        ksort($data);
-        foreach ($data as $k => $v) {
-            if (is_array($v)) {
-                $data[$k] = $this->normalizeForCompare($v);
-            }
-        }
-
-        return $data;
-    }
 }
