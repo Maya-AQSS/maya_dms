@@ -159,3 +159,35 @@ it('allows template block delete for owner with block.delete and template.update
     $this->deleteJson("/api/v1/blocks/{$ctx['blockId']}")
         ->assertNoContent();
 });
+
+it('enforces page_number_start exclusivity within a template', function () {
+    grantBlockMutationPermissions('block.update');
+
+    $ctx = seedPersonalTemplateWithBlock(test()->userId);
+    $blockA = $ctx['blockId'];
+
+    $blockB = (string) Str::uuid();
+    TemplateBlock::query()->forceCreate([
+        'id' => $blockB,
+        'template_id' => $ctx['templateId'],
+        'title' => 'B',
+        'block_state' => BlockState::Editable->value,
+        'sort_order' => 1,
+        'page_number_start' => true,
+    ]);
+
+    // Marcar A como inicio de numeración debe desmarcar B.
+    $this->putJson("/api/v1/blocks/{$blockA}", ['page_number_start' => true])
+        ->assertOk()
+        ->assertJsonPath('data.page_number_start', true);
+
+    expect((bool) TemplateBlock::find($blockA)->page_number_start)->toBeTrue();
+    expect((bool) TemplateBlock::find($blockB)->page_number_start)->toBeFalse();
+
+    // Mover el inicio a B desmarca A.
+    $this->putJson("/api/v1/blocks/{$blockB}", ['page_number_start' => true])
+        ->assertOk();
+
+    expect((bool) TemplateBlock::find($blockA)->page_number_start)->toBeFalse();
+    expect((bool) TemplateBlock::find($blockB)->page_number_start)->toBeTrue();
+});

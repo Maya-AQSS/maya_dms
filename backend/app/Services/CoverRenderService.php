@@ -68,7 +68,11 @@ class CoverRenderService
             'text_placeholder' => $this->renderPlaceholder($style, $props, $values),
             'image' => $this->renderImage($style, $props, $previewMode),
             'date' => $this->renderDate($style, $props, $lang),
-            'page_number' => $this->renderPageNumber($style, $props),
+            // El número de página lo emite el TEMA (margin box de @page con páginas
+            // con nombre), nunca la portada: así evitamos el pie duplicado y la
+            // portada puede quedar SIN número. Se ignora cualquier región
+            // `page_number` que arrastren portadas/snapshots antiguos.
+            'page_number' => '',
             default => '',
         };
     }
@@ -182,25 +186,6 @@ class CoverRenderService
             $boxStyle,
             $this->textStyle($props),
             e($text),
-        );
-    }
-
-    /**
-     * @param  array<string, mixed>  $props
-     */
-    private function renderPageNumber(string $boxStyle, array $props): string
-    {
-        // counter(page)/counter(pages) vía CSS (.cover-pn/.cover-pt) — funciona
-        // tanto en WeasyPrint como en paged.js dentro del flujo del documento.
-        $inner = ($props['format'] ?? 'page-of-pages') === 'page-of-pages'
-            ? 'Página <span class="cover-pn"></span> de <span class="cover-pt"></span>'
-            : 'Página <span class="cover-pn"></span>';
-
-        return sprintf(
-            '<div class="cover-el cover-el--meta" style="%s%s">%s</div>',
-            $boxStyle,
-            $this->textStyle($props),
-            $inner,
         );
     }
 

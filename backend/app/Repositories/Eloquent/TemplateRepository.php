@@ -573,6 +573,7 @@ class TemplateRepository extends AbstractVersionableEntityRepository implements 
                     'sort_order' => $block->sort_order,
                     'block_type' => $block->block_type,
                     'page_break_after' => $block->page_break_after,
+                    'page_number_start' => $block->page_number_start,
                     'theme_id' => $block->theme_id,
                     'apply_theme' => $block->apply_theme,
                 ]);
@@ -615,6 +616,7 @@ class TemplateRepository extends AbstractVersionableEntityRepository implements 
                         ? $block['block_type']
                         : 'content',
                     'page_break_after' => (bool) ($block['page_break_after'] ?? false),
+                    'page_number_start' => (bool) ($block['page_number_start'] ?? false),
                     'theme_id' => isset($block['theme_id']) && is_string($block['theme_id']) ? $block['theme_id'] : null,
                     'apply_theme' => (bool) ($block['apply_theme'] ?? true),
                 ]);
@@ -897,6 +899,7 @@ class TemplateRepository extends AbstractVersionableEntityRepository implements 
                 'default_content' => $b->default_content,
                 'block_type' => $b->block_type instanceof BlockType ? $b->block_type->value : (string) ($b->block_type ?? 'content'),
                 'page_break_after' => (bool) $b->page_break_after,
+                'page_number_start' => (bool) $b->page_number_start,
                 'theme_id' => $b->theme_id !== null ? (string) $b->theme_id : null,
                 'apply_theme' => (bool) $b->apply_theme,
             ])
@@ -933,6 +936,7 @@ class TemplateRepository extends AbstractVersionableEntityRepository implements 
                     sortOrder: (int) $block->sort_order,
                     blockType: $block->block_type,
                     pageBreakAfter: (bool) $block->page_break_after,
+                    pageNumberStart: (bool) $block->page_number_start,
                     themeId: $block->theme_id !== null ? (string) $block->theme_id : null,
                     applyTheme: (bool) $block->apply_theme,
                 );

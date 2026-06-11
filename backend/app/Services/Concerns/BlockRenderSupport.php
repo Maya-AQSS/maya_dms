@@ -58,9 +58,19 @@ trait BlockRenderSupport
 
     /**
      * Clases CSS de la sección de un bloque según su maquetación.
+     *
+     * - `doc-block--unnumbered`: el bloque cae ANTES del inicio de numeración →
+     *   su página no lleva número (página con nombre `front`).
+     * - `doc-block--page-start`: bloque a partir del cual arranca la numeración
+     *   del cuerpo → reinicia el contador `page` a 1.
      */
-    protected function blockSectionClasses(string $type, bool $pageBreakAfter, bool $applyTheme): string
-    {
+    protected function blockSectionClasses(
+        string $type,
+        bool $pageBreakAfter,
+        bool $applyTheme,
+        bool $unnumbered = false,
+        bool $pageStart = false,
+    ): string {
         $classes = 'doc-block doc-block--'.$type;
         if ($pageBreakAfter) {
             $classes .= ' doc-block--page-break-after';
@@ -68,8 +78,39 @@ trait BlockRenderSupport
         if (! $applyTheme) {
             $classes .= ' doc-block--no-theme';
         }
+        if ($unnumbered) {
+            $classes .= ' doc-block--unnumbered';
+        }
+        if ($pageStart) {
+            $classes .= ' doc-block--page-start';
+        }
 
         return $classes;
+    }
+
+    /**
+     * Índice (0-based) del bloque a partir del cual empieza la numeración de
+     * página del cuerpo, o `null` si no debe numerarse nada (todos estructurales).
+     *
+     *  1. Override explícito: el primer bloque con `page_number_start = true`.
+     *  2. Automático: el primer bloque NO estructural (≠ portada/índice/blank).
+     *
+     * @param  list<array{block_type: string, page_number_start: bool}>  $blocks
+     */
+    protected function resolveNumberingStartIndex(array $blocks): ?int
+    {
+        foreach ($blocks as $i => $b) {
+            if ($b['page_number_start'] ?? false) {
+                return $i;
+            }
+        }
+        foreach ($blocks as $i => $b) {
+            if (! in_array($b['block_type'] ?? 'content', ['cover', 'index', 'blank'], true)) {
+                return $i;
+            }
+        }
+
+        return null;
     }
 
     /**

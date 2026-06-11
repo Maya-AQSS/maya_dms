@@ -21,6 +21,7 @@ class TemplateBlockPayloadDtoTest extends TestCase
             sortOrder: 1,
             blockType: BlockType::Cover,
             pageBreakAfter: true,
+            pageNumberStart: true,
             themeId: 't1',
             applyTheme: false,
         );
@@ -30,9 +31,24 @@ class TemplateBlockPayloadDtoTest extends TestCase
         // El bug de origen: el snapshot omitía estos campos. Garantizamos que están.
         $this->assertSame('cover', $arr['block_type']);
         $this->assertTrue($arr['page_break_after']);
+        $this->assertTrue($arr['page_number_start']);
         $this->assertSame('t1', $arr['theme_id']);
         $this->assertFalse($arr['apply_theme']);
         $this->assertSame('locked', $arr['block_state']);
+    }
+
+    public function test_page_number_start_por_defecto_es_false(): void
+    {
+        $dto = new TemplateBlockPayloadDto(
+            blockId: 'b3',
+            title: 'Texto',
+            description: null,
+            defaultContent: null,
+            blockState: 'editable',
+            sortOrder: 3,
+        );
+
+        $this->assertFalse($dto->toArray()['page_number_start']);
     }
 
     public function test_block_type_por_defecto_es_content(): void

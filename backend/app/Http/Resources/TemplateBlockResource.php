@@ -30,6 +30,7 @@ class TemplateBlockResource extends JsonResource
             'description' => $dto->description,
             'block_state' => $dto->blockState,
             'page_break_after' => $dto->pageBreakAfter,
+            'page_number_start' => $dto->pageNumberStart,
             'theme_id' => $dto->themeId,
             'apply_theme' => $dto->applyTheme,
             'sort_order' => $dto->sortOrder,

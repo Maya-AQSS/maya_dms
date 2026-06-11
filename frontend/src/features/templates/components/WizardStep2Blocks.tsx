@@ -189,7 +189,8 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     createBlock,
     updateBlock,
     deleteBlock,
-    reorderBlocks
+    reorderBlocks,
+    refetch,
   } = useTemplateBlocks(template.id, {
     created_by: template.created_by,
     status: template.status,
@@ -262,6 +263,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const [formUiState, setFormUiState] = useState<BlockUiState>('editable');
   const [formBlockType, setFormBlockType] = useState<BlockType>('content');
   const [formPageBreakAfter, setFormPageBreakAfter] = useState(false);
+  const [formPageNumberStart, setFormPageNumberStart] = useState(false);
   const [formThemeId, setFormThemeId] = useState<string | null>(null);
   const [formApplyTheme, setFormApplyTheme] = useState(true);
   const { data: publishedThemes = [] } = usePublishedThemes();
@@ -317,6 +319,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     );
     setFormBlockType(loadedType);
     setFormPageBreakAfter(Boolean(block.page_break_after));
+    setFormPageNumberStart(Boolean(block.page_number_start));
     setFormThemeId(block.theme_id ?? null);
     setFormApplyTheme(block.apply_theme ?? true);
     setTabIsDirty(false);
@@ -393,12 +396,18 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
       mandatory,
       block_type: formBlockType,
       page_break_after: formPageBreakAfter,
+      page_number_start: formPageNumberStart,
       // apply_theme=false ⇒ el bloque no lleva tema; limpiamos el override.
       apply_theme: formApplyTheme,
       theme_id: formApplyTheme ? formThemeId : null,
     });
     setTabIsDirty(false);
-  }, [formName, formDesc, formContent, formUiState, formBlockType, formPageBreakAfter, formThemeId, formApplyTheme, updateBlock]);
+    // `page_number_start` es exclusivo por plantilla: al activarlo, el backend
+    // desmarca el resto. Refrescamos para reflejar esos cambios en los hermanos.
+    if (formPageNumberStart) {
+      void refetch();
+    }
+  }, [formName, formDesc, formContent, formUiState, formBlockType, formPageBreakAfter, formPageNumberStart, formThemeId, formApplyTheme, updateBlock, refetch]);
 
   const { saveStatus, triggerSave, forceSave } = useAutoSave(doSave, 1500);
 
@@ -406,7 +415,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   useEffect(() => {
     if ((panelMode !== 'edit' && panelMode !== 'multi') || !activeSingleId || !tabIsDirty) return;
     triggerSave();
-  }, [formName, formDesc, formContent, formUiState, formBlockType, formPageBreakAfter, formThemeId, formApplyTheme, tabIsDirty, panelMode, activeSingleId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [formName, formDesc, formContent, formUiState, formBlockType, formPageBreakAfter, formPageNumberStart, formThemeId, formApplyTheme, tabIsDirty, panelMode, activeSingleId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Convenience wrapper used by saveIfPending and manual saves
   const saveCurrentTab = useCallback(async () => {
@@ -1077,6 +1086,20 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                         </label>
                         <p className="mt-1 text-xs text-text-muted">
                           El siguiente bloque empezará en una página nueva al exportar a PDF.
+                        </p>
+                      </div>
+                      <div>
+                        <label className="flex items-center gap-2 text-sm text-text-primary dark:text-text-dark-primary cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={formPageNumberStart}
+                            onChange={(e) => { setFormPageNumberStart(e.target.checked); setTabIsDirty(true); }}
+                            className="h-4 w-4 rounded border-ui-border"
+                          />
+                          La numeración de página empieza en este bloque
+                        </label>
+                        <p className="mt-1 text-xs text-text-muted">
+                          La numeración del cuerpo arranca en 1 en este bloque; los anteriores (portada, índice…) quedan sin número. Si no marcas ninguno, empieza en el primer bloque de contenido. Solo se ve si el tema incluye número de página.
                         </p>
                       </div>
                       <div className="pt-2 border-t border-ui-border dark:border-ui-dark-border">

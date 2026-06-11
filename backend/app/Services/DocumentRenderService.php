@@ -179,7 +179,19 @@ class DocumentRenderService implements DocumentRenderServiceInterface
      */
     private function renderBlockHtmlParts(Document $document, string $defaultThemeId = '', bool $previewMode = false, string $lang = 'es'): array
     {
+        $startIndex = $this->resolveNumberingStartIndex(
+            $document->blocks->map(function ($block): array {
+                $type = $block->templateBlock?->block_type;
+
+                return [
+                    'block_type' => $type instanceof BlockType ? $type->value : (string) ($type ?? 'content'),
+                    'page_number_start' => (bool) ($block->templateBlock?->page_number_start ?? false),
+                ];
+            })->all(),
+        );
+
         $blockHtmlParts = [];
+        $idx = 0;
         foreach ($document->blocks as $block) {
             $tpl = $block->templateBlock;
             $type = $tpl?->block_type instanceof BlockType
@@ -187,6 +199,13 @@ class DocumentRenderService implements DocumentRenderServiceInterface
                 : (string) ($tpl?->block_type ?? 'content');
             $pageBreakAfter = (bool) ($tpl?->page_break_after ?? false);
             $applyTheme = (bool) ($tpl?->apply_theme ?? true);
+
+            // Numeración de página: los bloques ANTES del inicio quedan sin número
+            // (página `front`); el bloque de inicio reinicia el contador a 1. La
+            // portada ya lleva su propia página con nombre (`cover`), así que no se
+            // le añade `unnumbered` para no duplicar la declaración `page:`.
+            $isPageStart = $startIndex !== null && $idx === $startIndex;
+            $isUnnumbered = ($startIndex === null || $idx < $startIndex) && $type !== 'cover';
             $themeId = $this->effectiveThemeId(
                 $tpl?->theme_id !== null ? (string) $tpl->theme_id : null,
                 $applyTheme,
@@ -228,7 +247,7 @@ class DocumentRenderService implements DocumentRenderServiceInterface
                 }
             }
 
-            $classes = $this->blockSectionClasses($type, $pageBreakAfter, $applyTheme);
+            $classes = $this->blockSectionClasses($type, $pageBreakAfter, $applyTheme, $isUnnumbered, $isPageStart);
 
             // Ancla estable para el índice: usa el id del bloque de PLANTILLA
             // (el índice referencia bloques de plantilla; coincide con el preview
@@ -244,6 +263,8 @@ class DocumentRenderService implements DocumentRenderServiceInterface
                 $pageBreakAfter,
                 $inner,
             );
+
+            $idx++;
         }
 
         return $blockHtmlParts;

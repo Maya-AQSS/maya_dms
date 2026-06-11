@@ -21,6 +21,8 @@ readonly class UpdateTemplateBlockDto
         public bool $setBlockType = false,
         public ?bool $pageBreakAfter = null,
         public bool $setPageBreakAfter = false,
+        public ?bool $pageNumberStart = null,
+        public bool $setPageNumberStart = false,
         public ?string $themeId = null,
         public bool $setThemeId = false,
         public ?bool $applyTheme = null,

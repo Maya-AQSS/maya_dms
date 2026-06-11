@@ -62,57 +62,7 @@ class TemplateRenderService implements TemplateRenderServiceInterface
         // `default_content` de cada bloque, en orden. Cada bloque empieza
         // con su título como h2 para que el árbol PDF/UA quede correcto
         // si en algún momento alguien decide imprimir el preview.
-        $blockHtmlParts = [];
-        foreach ($template->blocks as $block) {
-            $type = (string) ($block['block_type'] ?? 'content');
-            $pageBreakAfter = (bool) ($block['page_break_after'] ?? false);
-            $applyTheme = (bool) ($block['apply_theme'] ?? true);
-            $themeId = $this->effectiveThemeId(
-                isset($block['theme_id']) && $block['theme_id'] !== null ? (string) $block['theme_id'] : null,
-                $applyTheme,
-                $defaultThemeId,
-            );
-
-            $inner = '';
-            if ($type === 'cover') {
-                // Portada en preview de plantilla: geometría del default_content,
-                // sin valores (los placeholders muestran su defaultText).
-                $geometry = is_array($block['default_content'] ?? null) ? $block['default_content'] : [];
-                $inner = $this->coverRenderer->renderInner($geometry, [], $previewMode, $theme['accessibility']['language'] ?? 'es');
-            } elseif ($type === 'index') {
-                // Bloque índice: sólo el título; el TOC lo inyecta TocBuilderService.
-                $title = (string) ($block['title'] ?? '');
-                if ($title !== '') {
-                    $inner .= '<h2>'.e($title).'</h2>';
-                }
-            } elseif ($type !== 'blank') {
-                // El título del bloque NO se imprime (metadato): el contenido ya
-                // trae sus propios encabezados; imprimirlo duplicaba cada cabecera.
-                $default = $block['default_content'];
-                if (is_array($default) && count($default) > 0) {
-                    $inner .= $this->renderTiptapContent($default);
-                } elseif (is_string($default) && $default !== '') {
-                    // Backwards-compat: algún seed legacy guardaba string en lugar de array.
-                    $inner .= '<p>'.e($default).'</p>';
-                } else {
-                    $inner .= '<p><em>—</em></p>';
-                }
-            }
-
-            $classes = $this->blockSectionClasses($type, $pageBreakAfter, $applyTheme);
-            $anchorId = (string) ($block['id'] ?? '');
-
-            $blockHtmlParts[] = $this->wrapBlockSection(
-                $classes,
-                $anchorId,
-                $anchorId,
-                $type,
-                $themeId,
-                $pageBreakAfter,
-                $inner,
-            );
-        }
-        $body = $this->tocBuilder->build(implode("\n", $blockHtmlParts), $this->blocksMeta($template->blocks));
+        $body = $this->renderBlocksToHtmlBody($template->blocks, $defaultThemeId, $theme, $previewMode);
 
         return View::make('documents.render', [
             'document' => [
@@ -188,51 +138,7 @@ class TemplateRenderService implements TemplateRenderServiceInterface
             $defaultThemeId,
         );
 
-        $blockHtmlParts = [];
-        foreach ($blocks as $block) {
-            $type = (string) ($block['block_type'] ?? 'content');
-            $pageBreakAfter = (bool) ($block['page_break_after'] ?? false);
-            $applyTheme = (bool) ($block['apply_theme'] ?? true);
-            $themeId = $this->effectiveThemeId(
-                isset($block['theme_id']) && $block['theme_id'] !== null ? (string) $block['theme_id'] : null,
-                $applyTheme,
-                $defaultThemeId,
-            );
-
-            $inner = '';
-            if ($type === 'cover') {
-                $geometry = is_array($block['default_content'] ?? null) ? $block['default_content'] : [];
-                $inner = $this->coverRenderer->renderInner($geometry, [], $previewMode, $theme['accessibility']['language'] ?? 'es');
-            } elseif ($type === 'index') {
-                $title = (string) ($block['title'] ?? '');
-                if ($title !== '') {
-                    $inner .= '<h2>'.e($title).'</h2>';
-                }
-            } elseif ($type !== 'blank') {
-                $default = $block['default_content'];
-                if (is_array($default) && count($default) > 0) {
-                    $inner .= $this->renderTiptapContent($default);
-                } elseif (is_string($default) && $default !== '') {
-                    $inner .= '<p>'.e($default).'</p>';
-                } else {
-                    $inner .= '<p><em>—</em></p>';
-                }
-            }
-
-            $classes = $this->blockSectionClasses($type, $pageBreakAfter, $applyTheme);
-            $anchorId = (string) ($block['id'] ?? '');
-
-            $blockHtmlParts[] = $this->wrapBlockSection(
-                $classes,
-                $anchorId,
-                $anchorId,
-                $type,
-                $themeId,
-                $pageBreakAfter,
-                $inner,
-            );
-        }
-        $body = $this->tocBuilder->build(implode("\n", $blockHtmlParts), $this->blocksMeta($blocks));
+        $body = $this->renderBlocksToHtmlBody($blocks, $defaultThemeId, $theme, $previewMode);
 
         return View::make('documents.render', [
             'document' => [
@@ -246,6 +152,82 @@ class TemplateRenderService implements TemplateRenderServiceInterface
             'scoped_themes' => $scopedThemes,
             'preview_mode' => $previewMode,
         ])->render();
+    }
+
+    /**
+     * Construye el cuerpo HTML (con índice) de una lista de bloques de plantilla.
+     * Compartido por {@see renderHtml} y {@see renderBlocksToHtml}. Aplica la misma
+     * numeración de página que el render de documento (preliminares sin número +
+     * reinicio en el bloque de inicio) para que el preview de plantilla coincida
+     * con el PDF final.
+     *
+     * @param  list<array<string, mixed>>  $blocks
+     * @param  array<string, mixed>  $theme
+     */
+    private function renderBlocksToHtmlBody(array $blocks, string $defaultThemeId, array $theme, bool $previewMode): string
+    {
+        $startIndex = $this->resolveNumberingStartIndex(
+            array_map(fn ($block): array => [
+                'block_type' => (string) ($block['block_type'] ?? 'content'),
+                'page_number_start' => (bool) ($block['page_number_start'] ?? false),
+            ], $blocks),
+        );
+
+        $blockHtmlParts = [];
+        foreach (array_values($blocks) as $idx => $block) {
+            $type = (string) ($block['block_type'] ?? 'content');
+            $pageBreakAfter = (bool) ($block['page_break_after'] ?? false);
+            $applyTheme = (bool) ($block['apply_theme'] ?? true);
+            $themeId = $this->effectiveThemeId(
+                isset($block['theme_id']) && $block['theme_id'] !== null ? (string) $block['theme_id'] : null,
+                $applyTheme,
+                $defaultThemeId,
+            );
+
+            $isPageStart = $startIndex !== null && $idx === $startIndex;
+            $isUnnumbered = ($startIndex === null || $idx < $startIndex) && $type !== 'cover';
+
+            $inner = '';
+            if ($type === 'cover') {
+                // Portada en preview de plantilla: geometría del default_content,
+                // sin valores (los placeholders muestran su defaultText).
+                $geometry = is_array($block['default_content'] ?? null) ? $block['default_content'] : [];
+                $inner = $this->coverRenderer->renderInner($geometry, [], $previewMode, $theme['accessibility']['language'] ?? 'es');
+            } elseif ($type === 'index') {
+                // Bloque índice: sólo el título; el TOC lo inyecta TocBuilderService.
+                $title = (string) ($block['title'] ?? '');
+                if ($title !== '') {
+                    $inner .= '<h2>'.e($title).'</h2>';
+                }
+            } elseif ($type !== 'blank') {
+                // El título del bloque NO se imprime (metadato): el contenido ya
+                // trae sus propios encabezados; imprimirlo duplicaba cada cabecera.
+                $default = $block['default_content'];
+                if (is_array($default) && count($default) > 0) {
+                    $inner .= $this->renderTiptapContent($default);
+                } elseif (is_string($default) && $default !== '') {
+                    // Backwards-compat: algún seed legacy guardaba string en lugar de array.
+                    $inner .= '<p>'.e($default).'</p>';
+                } else {
+                    $inner .= '<p><em>—</em></p>';
+                }
+            }
+
+            $classes = $this->blockSectionClasses($type, $pageBreakAfter, $applyTheme, $isUnnumbered, $isPageStart);
+            $anchorId = (string) ($block['id'] ?? '');
+
+            $blockHtmlParts[] = $this->wrapBlockSection(
+                $classes,
+                $anchorId,
+                $anchorId,
+                $type,
+                $themeId,
+                $pageBreakAfter,
+                $inner,
+            );
+        }
+
+        return $this->tocBuilder->build(implode("\n", $blockHtmlParts), $this->blocksMeta($blocks));
     }
 
     /**

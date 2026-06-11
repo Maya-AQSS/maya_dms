@@ -15,6 +15,8 @@ export type TemplateBlock = {
   block_state: BlockState;
   /** Fuerza que el siguiente bloque empiece en página nueva en el PDF. */
   page_break_after?: boolean;
+  /** La numeración de página del cuerpo empieza en este bloque (exclusivo por plantilla). */
+  page_number_start?: boolean;
   /** Override de tema por bloque (null = hereda el tema por defecto de la plantilla). */
   theme_id?: string | null;
   /** Si false, el bloque no lleva tema (ni estilo ni chrome) y ocupa su propia página. */
@@ -37,6 +39,7 @@ export type CreateBlockPayload = {
   description?: unknown | null;
   block_state?: BlockState;
   page_break_after?: boolean;
+  page_number_start?: boolean;
   theme_id?: string | null;
   apply_theme?: boolean;
   mandatory?: boolean;
@@ -51,6 +54,7 @@ export type UpdateBlockPayload = {
   description?: unknown | null;
   block_state?: BlockState;
   page_break_after?: boolean;
+  page_number_start?: boolean;
   theme_id?: string | null;
   apply_theme?: boolean;
   mandatory?: boolean;

@@ -35,6 +35,7 @@ class TemplateBlock extends Model
         'description',
         'block_state',
         'page_break_after',
+        'page_number_start',
         'sort_order',
     ];
 
@@ -44,6 +45,7 @@ class TemplateBlock extends Model
             'block_type' => BlockType::class,
             'default_content' => 'array',
             'page_break_after' => 'boolean',
+            'page_number_start' => 'boolean',
             'apply_theme' => 'boolean',
             'sort_order' => 'integer',
         ];

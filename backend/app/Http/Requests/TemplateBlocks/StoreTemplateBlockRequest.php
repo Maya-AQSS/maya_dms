@@ -47,6 +47,7 @@ class StoreTemplateBlockRequest extends FormRequest
             'description' => ['nullable', 'array'],
             'block_state' => ['sometimes', 'string', 'in:'.implode(',', BlockState::values())],
             'page_break_after' => ['sometimes', 'boolean'],
+            'page_number_start' => ['sometimes', 'boolean'],
             'sort_order' => ['sometimes', 'integer', 'min:0'],
         ];
     }

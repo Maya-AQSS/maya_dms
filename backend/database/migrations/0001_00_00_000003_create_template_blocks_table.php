@@ -34,6 +34,10 @@ return new class extends Migration
             $table->enum('block_state', BlockState::values())
                 ->default(BlockState::Editable->value);
             $table->boolean('page_break_after')->default(false);
+            // Marca el bloque a partir del cual empieza la numeración de página del
+            // cuerpo (exclusivo dentro de una plantilla). Si ningún bloque lo lleva,
+            // la numeración arranca automáticamente en el primer bloque de contenido.
+            $table->boolean('page_number_start')->default(false);
             $table->integer('sort_order')->default(0);
             $table->timestamps();
             $table->softDeletes();

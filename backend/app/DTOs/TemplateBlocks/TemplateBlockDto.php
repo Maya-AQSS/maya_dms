@@ -21,6 +21,7 @@ final readonly class TemplateBlockDto
         public ?string $updatedAt,
         public string $blockType = 'content',
         public bool $pageBreakAfter = false,
+        public bool $pageNumberStart = false,
         public ?string $themeId = null,
         public bool $applyTheme = true,
     ) {}
@@ -42,6 +43,7 @@ final readonly class TemplateBlockDto
             updatedAt: $m->updated_at?->toIso8601String(),
             blockType: $type instanceof BackedEnum ? (string) $type->value : ($type !== null ? (string) $type : 'content'),
             pageBreakAfter: (bool) $m->page_break_after,
+            pageNumberStart: (bool) $m->page_number_start,
             themeId: $m->theme_id !== null ? (string) $m->theme_id : null,
             applyTheme: (bool) $m->apply_theme,
         );

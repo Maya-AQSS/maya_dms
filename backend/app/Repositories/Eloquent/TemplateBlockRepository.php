@@ -57,6 +57,7 @@ class TemplateBlockRepository implements TemplateBlockRepositoryInterface
             'description' => $attributes['description'] ?? null,
             'block_state' => $attributes['block_state'] ?? 'editable',
             'page_break_after' => $attributes['page_break_after'] ?? false,
+            'page_number_start' => $attributes['page_number_start'] ?? false,
             'sort_order' => $attributes['sort_order'] ?? ($maxOrder + 1),
         ]);
     }

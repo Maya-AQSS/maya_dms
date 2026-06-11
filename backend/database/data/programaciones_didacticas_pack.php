@@ -769,14 +769,10 @@ return (static function (): array {
                 'box' => ['x' => 24, 'y' => 282, 'w' => 60, 'h' => 8, 'z' => 2],
                 'props' => ['format' => 'long', 'align' => 'left', 'size' => 10, 'color' => '#666666'],
             ],
-            [
-                'id' => 'cv-pagina',
-                'type' => 'page_number',
-                'box' => ['x' => 150, 'y' => 282, 'w' => 45, 'h' => 8, 'z' => 2],
-                'props' => ['format' => 'page-of-pages', 'align' => 'right', 'size' => 10, 'color' => '#666666'],
-            ],
+            // El número de página NO se define en la portada: lo emite el TEMA
+            // (región page_number) y la portada queda intencionadamente sin número.
         ],
-    ], pageBreakAfter: true, desc: 'Portada del documento: edita el título, el curso y el departamento. La fecha y el número de página se generan automáticamente.');
+    ], pageBreakAfter: true, desc: 'Portada del documento: edita el título, el curso y el departamento. La fecha se genera automáticamente.');
 
     $LS($T3, 2, 'Índice', 'locked', 'index', null, pageBreakAfter: true,
         desc: 'Índice generado automáticamente a partir de los títulos de los bloques de contenido del documento.');

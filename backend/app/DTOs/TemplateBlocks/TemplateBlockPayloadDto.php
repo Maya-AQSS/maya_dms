@@ -20,6 +20,7 @@ readonly class TemplateBlockPayloadDto
         public int $sortOrder,
         public mixed $blockType = 'content',
         public bool $pageBreakAfter = false,
+        public bool $pageNumberStart = false,
         public ?string $themeId = null,
         public bool $applyTheme = true,
     ) {}
@@ -40,6 +41,7 @@ readonly class TemplateBlockPayloadDto
             sortOrder: (int) $b->sort_order,
             blockType: $b->block_type ?? 'content',
             pageBreakAfter: (bool) $b->page_break_after,
+            pageNumberStart: (bool) $b->page_number_start,
             themeId: $b->theme_id !== null ? (string) $b->theme_id : null,
             applyTheme: (bool) ($b->apply_theme ?? true),
         );
@@ -61,6 +63,7 @@ readonly class TemplateBlockPayloadDto
             'default_content' => $this->defaultContent,
             'block_state' => $state,
             'page_break_after' => $this->pageBreakAfter,
+            'page_number_start' => $this->pageNumberStart,
             'theme_id' => $this->themeId,
             'apply_theme' => $this->applyTheme,
             'sort_order' => $this->sortOrder,

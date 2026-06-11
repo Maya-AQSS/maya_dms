@@ -42,6 +42,7 @@ class UpdateTemplateBlockRequest extends FormRequest
             'description' => ['sometimes', 'nullable', 'array'],
             'block_state' => ['sometimes', 'string', 'in:'.implode(',', BlockState::values())],
             'page_break_after' => ['sometimes', 'boolean'],
+            'page_number_start' => ['sometimes', 'boolean'],
             'sort_order' => ['sometimes', 'integer', 'min:0'],
         ];
     }
@@ -70,6 +71,8 @@ class UpdateTemplateBlockRequest extends FormRequest
             setBlockType: $this->has('block_type'),
             pageBreakAfter: array_key_exists('page_break_after', $validated) ? (bool) $validated['page_break_after'] : null,
             setPageBreakAfter: $this->has('page_break_after'),
+            pageNumberStart: array_key_exists('page_number_start', $validated) ? (bool) $validated['page_number_start'] : null,
+            setPageNumberStart: $this->has('page_number_start'),
             themeId: $validated['theme_id'] ?? null,
             setThemeId: $this->has('theme_id'),
             applyTheme: array_key_exists('apply_theme', $validated) ? (bool) $validated['apply_theme'] : null,

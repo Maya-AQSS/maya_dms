@@ -16,6 +16,7 @@ use App\Repositories\Contracts\TemplateBlockRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Services\Contracts\TemplateBlockServiceInterface;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class TemplateBlockService implements TemplateBlockServiceInterface
@@ -145,7 +146,18 @@ class TemplateBlockService implements TemplateBlockServiceInterface
     public function create(string $templateId, array $attributes, string $userId): TemplateBlockDto
     {
         $template = $this->templateRepository->findOrFailWithoutCatalogScope($templateId);
-        $block = $this->blockRepository->create($template, $attributes);
+
+        // `page_number_start` es exclusivo dentro de la plantilla: si este bloque
+        // lo marca, desmarcamos cualquier otro en la misma transacción.
+        if (($attributes['page_number_start'] ?? false) === true) {
+            $block = DB::transaction(function () use ($template, $attributes): TemplateBlock {
+                $this->clearPageNumberStart((string) $template->getKey(), null);
+
+                return $this->blockRepository->create($template, $attributes);
+            });
+        } else {
+            $block = $this->blockRepository->create($template, $attributes);
+        }
 
         TemplateBlockCreated::dispatch($templateId, $block, $userId);
 
@@ -178,6 +190,9 @@ class TemplateBlockService implements TemplateBlockServiceInterface
         if ($dto->setPageBreakAfter) {
             $attributes['page_break_after'] = $dto->pageBreakAfter;
         }
+        if ($dto->setPageNumberStart) {
+            $attributes['page_number_start'] = $dto->pageNumberStart;
+        }
         if ($dto->setThemeId) {
             $attributes['theme_id'] = $dto->themeId;
         }
@@ -199,7 +214,17 @@ class TemplateBlockService implements TemplateBlockServiceInterface
             'block_state' => $block->block_state,
         ];
 
-        $updated = $this->blockRepository->update($block, $attributes);
+        // `page_number_start` es exclusivo dentro de la plantilla: al activarlo en
+        // este bloque, desmarcamos el resto en la misma transacción que el update.
+        if ($dto->setPageNumberStart && $dto->pageNumberStart === true) {
+            $updated = DB::transaction(function () use ($block, $attributes): TemplateBlock {
+                $this->clearPageNumberStart((string) $block->template_id, (string) $block->id);
+
+                return $this->blockRepository->update($block, $attributes);
+            });
+        } else {
+            $updated = $this->blockRepository->update($block, $attributes);
+        }
 
         if ($stateOrMandatoryChanged) {
             TemplateBlockStateChanged::dispatch(
@@ -212,6 +237,24 @@ class TemplateBlockService implements TemplateBlockServiceInterface
         }
 
         return TemplateBlockDto::fromModel($updated);
+    }
+
+    /**
+     * Desmarca `page_number_start` en todos los bloques de la plantilla, excepto
+     * (opcionalmente) el indicado. Garantiza que como máximo un bloque por
+     * plantilla actúe como inicio de numeración.
+     */
+    private function clearPageNumberStart(string $templateId, ?string $exceptBlockId): void
+    {
+        $query = TemplateBlock::query()
+            ->where('template_id', $templateId)
+            ->where('page_number_start', true);
+
+        if ($exceptBlockId !== null) {
+            $query->where('id', '!=', $exceptBlockId);
+        }
+
+        $query->update(['page_number_start' => false]);
     }
 
     public function delete(string $blockId, string $userId): void

@@ -116,6 +116,58 @@
         }
     }
 
+    // ─── Número de página ───────────────────────────────────────────────────
+    // El número NO va en el overlay fijo (no se puede ocultar por página ni
+    // reiniciar el contador): se pinta como margin box de @page con páginas con
+    // nombre (`front`/`cover` lo suprimen; el bloque de inicio reinicia `page`).
+    // En PREVIEW (paged.js) los contadores de un elemento fijo no se propagan,
+    // así que ahí lo seguimos pintando en el overlay y lo rellena el JS por
+    // página (saltando preliminares y reiniciando en 1). En PDF (WeasyPrint) lo
+    // emite el margin box nativo.
+    $isPreviewMode = ! empty($preview_mode);
+    $pageNumberRegion = null;
+    $overlayKept = [];
+    foreach ($overlayBlocks as $b) {
+        if (($b['type'] ?? '') === 'page_number') {
+            if ($pageNumberRegion === null) {
+                $pageNumberRegion = $b;
+            }
+            // Solo se conserva en el overlay para el preview; en PDF se omite.
+            if ($isPreviewMode) {
+                $overlayKept[] = $b;
+            }
+
+            continue;
+        }
+        $overlayKept[] = $b;
+    }
+    $overlayBlocks = $overlayKept;
+
+    // ¿Se numera? Sólo si el TEMA define la región (modo grid), o si es un tema
+    // legacy sin layout (chrome estándar → pie centrado por compatibilidad).
+    $hasPageNumber = false;
+    $pnSlot = 'bottom-center';
+    $pnFormat = 'page-of-pages';
+    $pnAlign = 'center';
+    if ($pageNumberRegion !== null) {
+        $hasPageNumber = true;
+        $pnFormat = (($pageNumberRegion['props']['format'] ?? 'page-of-pages') === 'page') ? 'page' : 'page-of-pages';
+        $g = $pageNumberRegion['_box'];
+        $vert = (($g['y'] + $g['h'] / 2.0) <= ($pageHeightMm / 2.0)) ? 'top' : 'bottom';
+        $a = $pageNumberRegion['props']['align'] ?? 'right';
+        $pnAlign = in_array($a, ['left', 'center', 'right'], true) ? $a : 'right';
+        $pnSlot = $vert.'-'.$pnAlign;
+    } elseif (! $hasGridLayout) {
+        $hasPageNumber = true;
+    }
+    // Nombre del at-rule del margin box (p. ej. "@bottom-right"). Se construye en
+    // PHP para no chocar con la sintaxis `@{{ }}` de Blade.
+    $pnAt = '@'.$pnSlot;
+    // ¿El número se pinta como margin box de @page? Sí, EXCEPTO en preview con
+    // tema de rejilla: ahí lo pinta el overlay clonado por JS (paged.js no
+    // propaga `counter(page)` a un elemento fijo). En legacy o en PDF, margin box.
+    $pnInMarginBox = $hasPageNumber && ! ($isPreviewMode && $pageNumberRegion !== null);
+
     /**
      * Resuelve un asset del theme a una URL embebible en el HTML.
      *
@@ -318,6 +370,10 @@
                 @bottom-left { content: none; }
                 @bottom-right { content: none; }
             @endif
+            @if ($pnInMarginBox)
+                /* La portada nunca lleva número de página. */
+                {!! $pnAt !!} { content: none; }
+            @endif
         }
         /* El PRIMER bloque del cuerpo nunca fuerza un salto de página antes:
            cuando el primer bloque es portada o página en blanco (ambos llevan
@@ -359,8 +415,6 @@
         .doc-block--cover .cover-el--meta { font-family: var(--font-body); line-height: 1.25; }
         .doc-block--cover .cover-el--image { display: flex; align-items: center; justify-content: center; }
         .doc-block--cover .cover-el--image img { max-width: 100%; max-height: 100%; }
-        .doc-block--cover .cover-pn::before { content: counter(page); }
-        .doc-block--cover .cover-pt::before { content: counter(pages); }
 
         /* ─── CSS Paged Media ─── */
         h1.doc-title {
@@ -406,11 +460,18 @@
                     border-bottom: 1pt solid var(--color-primary);
                     padding-bottom: 0.2cm;
                 }
-                @bottom-center {
-                    content: "Página " counter(page) " de " counter(pages);
+            @endif
+            @if ($pnInMarginBox)
+                /* Número de página del cuerpo. `counter(page)` ya viene reiniciado a
+                   1 por `.doc-block--page-start`. El total (`page-of-pages`) es el
+                   número de página del marcador `#doc-end` en ese mismo espacio de
+                   contador = nº de páginas numeradas. */
+                {!! $pnAt !!} {
+                    content: "Página " counter(page)@if ($pnFormat === 'page-of-pages') " de " target-counter(url(#doc-end), page)@endif;
                     font-family: var(--font-body);
                     font-size: 9pt;
                     color: var(--color-secondary);
+                    text-align: {{ $pnAlign }};
                 }
             @endif
         }
@@ -421,6 +482,21 @@
                 @top-right { content: none; }
             }
         @endif
+
+        /* ─── Numeración de página: preliminares sin número + reinicio ───
+           Los bloques anteriores al inicio de numeración usan la página con nombre
+           `front` (mismos márgenes que el cuerpo, sin número). El bloque de inicio
+           reinicia el contador. */
+        .doc-block--unnumbered { page: front; }
+        @page front {
+            margin: {{ $cm($marginTop) }} {{ $cm($marginRight) }} {{ $cm($marginBottom) }} {{ $cm($marginLeft) }};
+            @if ($pnInMarginBox)
+                {!! $pnAt !!} { content: none; }
+            @endif
+        }
+        /* Reinicia la numeración del cuerpo. NOTA a verificar en WeasyPrint: si la
+           primera página numerada saliera como "2" en vez de "1", cambiar a `0`. */
+        .doc-block--page-start { counter-reset: page 1; }
 
         /* ─── Estilos base ─── */
         html, body {
@@ -722,6 +798,11 @@
              Se conserva (oculto) por si algún consumidor lee el título. --}}
         <h1 class="doc-title doc-title--running">{{ $document['title'] }}</h1>
     @endif
+
+    {{-- Marcador de fin de documento: su nº de página (en el espacio del contador
+         reiniciado) es el total de páginas numeradas, leído por el margin box vía
+         `target-counter(url(#doc-end), page)` para "Página N de M". --}}
+    <span id="doc-end" aria-hidden="true"></span>
 </main>
 
 @if (! empty($preview_mode))
@@ -756,11 +837,29 @@
                 window.PagedConfig = {
                     auto: true,
                     after: function () {
-                        /* 1) Clonar el overlay del theme en cada página. */
+                        var pages = document.querySelectorAll('.pagedjs_page');
+                        var totalPages = pages.length;
+
+                        /* Numeración del cuerpo: página física (1-based) donde
+                           empieza (primer .doc-block--page-start). Antes de ella no
+                           se numera (portada/preliminares). */
+                        var startPageNum = null;
+                        pages.forEach(function (pageEl, idx) {
+                            if (startPageNum === null && pageEl.querySelector('.doc-block--page-start')) {
+                                startPageNum = idx + 1;
+                            }
+                        });
+                        function printedNumberFor(physicalNum) {
+                            if (startPageNum === null || physicalNum < startPageNum) return null;
+                            return physicalNum - startPageNum + 1;
+                        }
+                        var printedTotal = startPageNum === null ? 0 : (totalPages - startPageNum + 1);
+
+                        /* 1) Clonar el overlay del theme en cada página, con el nº de
+                              página ya reiniciado. En páginas sin número se elimina el
+                              elemento de número (los .blk-meta que contienen .pn). */
                         var overlay = document.querySelector('.theme-overlay');
                         if (overlay) {
-                            var pages = document.querySelectorAll('.pagedjs_page');
-                            var total = pages.length;
                             pages.forEach(function (pageEl, idx) {
                                 var pageBox = pageEl.querySelector('.pagedjs_pagebox');
                                 if (! pageBox) return;
@@ -772,13 +871,19 @@
                                 var clone = overlay.cloneNode(true);
                                 clone.classList.remove('theme-overlay');
                                 clone.classList.add('theme-overlay-clone');
-                                var num = idx + 1;
-                                clone.querySelectorAll('.pn').forEach(function (el) {
-                                    el.textContent = String(num);
-                                });
-                                clone.querySelectorAll('.pt').forEach(function (el) {
-                                    el.textContent = String(total);
-                                });
+                                var printed = printedNumberFor(idx + 1);
+                                if (printed === null) {
+                                    clone.querySelectorAll('.blk-meta').forEach(function (m) {
+                                        if (m.querySelector('.pn')) m.remove();
+                                    });
+                                } else {
+                                    clone.querySelectorAll('.pn').forEach(function (el) {
+                                        el.textContent = String(printed);
+                                    });
+                                    clone.querySelectorAll('.pt').forEach(function (el) {
+                                        el.textContent = String(printedTotal);
+                                    });
+                                }
                                 pageBox.insertBefore(clone, pageBox.firstChild);
                             });
                             overlay.remove();
@@ -816,8 +921,12 @@
                             if (! dest) return;
                             var pageEl = dest.closest('.pagedjs_page');
                             if (! pageEl) return;
-                            var num = pageEl.getAttribute('data-page-number');
-                            if (num) span.textContent = num;
+                            /* El índice muestra el número IMPRESO (reiniciado), no el
+                               físico, para que coincida con el pie de página. */
+                            var physical = parseInt(pageEl.getAttribute('data-page-number'), 10);
+                            if (isNaN(physical)) physical = (Array.prototype.indexOf.call(pages, pageEl) + 1);
+                            var printed = printedNumberFor(physical);
+                            span.textContent = printed === null ? '' : String(printed);
                         });
                     }
                 };
