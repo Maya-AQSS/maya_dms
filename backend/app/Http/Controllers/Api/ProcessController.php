@@ -23,9 +23,32 @@ class ProcessController extends Controller
         private readonly ProcessServiceInterface $processService,
     ) {}
 
-    public function index(IndexProcessRequest $request): AnonymousResourceCollection
+    public function index(IndexProcessRequest $request): JsonResponse
     {
-        return ProcessResource::collection($this->processService->list());
+        $filters = [
+            'search' => $request->input('search'),
+            'parent_id' => $request->input('parent_id'),
+        ];
+
+        $sortBy = $request->getSortBy();
+        $sortDir = $request->getSortDir();
+        if ($sortBy) {
+            $filters['sort_by'] = $sortBy;
+            $filters['sort_dir'] = $sortDir;
+        }
+
+        $paginated = $this->processService->paginate($filters, $request->getPerPage());
+        $page = $request->getPage();
+
+        return response()->json([
+            'data' => ProcessResource::collection($paginated->items())->resolve(),
+            'meta' => [
+                'current_page' => $paginated->currentPage(),
+                'per_page' => $paginated->perPage(),
+                'total' => $paginated->total(),
+                'last_page' => $paginated->lastPage(),
+            ],
+        ]);
     }
 
     public function show(ShowProcessRequest $request, string $process): ProcessResource
