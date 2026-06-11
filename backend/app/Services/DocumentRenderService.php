@@ -144,6 +144,10 @@ class DocumentRenderService implements DocumentRenderServiceInterface
     /**
      * Extracts theme data from document model into scalar/array form.
      *
+     * No Eloquent query is issued here: `DocumentRepositoryInterface::findWithBlocksAndThemeOrFail`
+     * eager-loads `template.theme` before this method is called (see `with(['blocks', 'template.theme'])`
+     * in DocumentRepository). Accessing `$document->template?->theme` reads the already-loaded relation.
+     *
      * @return array<string, mixed>
      */
     private function extractThemeData(Document $document): array

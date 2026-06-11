@@ -25,6 +25,7 @@ use App\Models\DocumentVersion;
 use App\Models\EntityVersion;
 use App\Models\Template;
 use App\Repositories\Contracts\AcademicHierarchyRepositoryInterface;
+use App\Repositories\Contracts\CommentRepositoryInterface;
 use App\Repositories\Contracts\DocumentBlockRepositoryInterface;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
@@ -67,6 +68,7 @@ class DocumentService implements DocumentServiceInterface
         private readonly DocumentReviewModeResolver $documentReviewModeResolver,
         private readonly DocumentMigrationPayloadResolver $migrationPayloadResolver,
         private readonly UserDirectoryRepositoryInterface $userDirectoryRepository,
+        private readonly CommentRepositoryInterface $commentRepository,
     ) {}
 
     /**
@@ -1910,8 +1912,11 @@ class DocumentService implements DocumentServiceInterface
             $document->setRelation('headVersion', $latestPublished);
         }
 
-        // Determinar si hay comentarios de revisión rechazada
-        $hasReviewComments = $document->comments()->exists();
+        // Determinar si hay comentarios visibles para el usuario sobre este documento.
+        $hasReviewComments = $this->commentRepository->existsForCommentable(
+            \App\Models\Document::class,
+            (string) $document->getKey(),
+        );
         $document->setAttribute('has_review_comments', $hasReviewComments);
 
         // Establecer si es revisor asignado

@@ -378,9 +378,16 @@ class Document extends Model
      */
     public function getCurrentVersionAttribute(mixed $value): int
     {
-        /*if (array_key_exists('current_version', $this->attributes)) {
-            return (int) $this->attributes['current_version'];
-        }*/
+        // Fast-path: the global scope `join_head_document_entity_version` adds
+        // `current_version` as a SQL GREATEST(1, COALESCE(max(published ev),0))
+        // column whenever the model is loaded via a query that includes the scope
+        // (e.g. DocumentRepository::findOrFail). Reading it here avoids the extra
+        // Eloquent subquery below. The fallback executes only when the model was
+        // loaded without the global scope (e.g. findWithBlocksAndThemeOrFail which
+        // strips `user_access` but does NOT add the aggregate selects).
+        if (array_key_exists('current_version', $this->attributes)) {
+            return max(1, (int) $this->attributes['current_version']);
+        }
 
         $max = EntityVersion::query()
             ->where('versionable_type', self::class)

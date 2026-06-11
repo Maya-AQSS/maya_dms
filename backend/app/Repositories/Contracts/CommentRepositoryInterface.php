@@ -62,4 +62,13 @@ interface CommentRepositoryInterface
      * Indica si existe un bloque de documento para un documento.
      */
     public function existsDocumentBlockForDocument(string $blockId, string $documentId): bool;
+
+    /**
+     * Indica si existen comentarios visibles para el usuario autenticado
+     * sobre un recurso comentable dado (type + id).
+     *
+     * Aplica el scope global `user_access` del modelo Comment, por lo que
+     * solo devuelve true si el usuario autenticado puede ver al menos uno.
+     */
+    public function existsForCommentable(string $commentableType, string $commentableId): bool;
 }

@@ -71,7 +71,13 @@ final class DocumentMigrationPayloadResolver
 
     /**
      * Contenido real del documento origen indexado por template_block_id.
-     * Los bloques los carga el repositorio ({@see DocumentRepositoryInterface::findWithBlocksAndThemeOrFail}).
+     *
+     * No Eloquent query is issued here: `$source` is loaded via
+     * `DocumentRepositoryInterface::findWithBlocksAndThemeOrFail` which eager-loads
+     * `blocks` with `orderBy('sort_order')`. Iterating `$source->blocks` reads the
+     * in-memory Collection — no lazy-load occurs. This is acceptable per the
+     * architecture rule (Eloquent access in Services forbidden as a new query;
+     * reading pre-loaded relations does not constitute a new query).
      *
      * @return array<string, mixed>
      */

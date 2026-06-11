@@ -172,6 +172,21 @@ class CommentRepository implements CommentRepositoryInterface
     }
 
     /**
+     * Indica si existen comentarios visibles para el usuario autenticado
+     * sobre un recurso comentable dado (type + id).
+     *
+     * El scope global `user_access` del modelo Comment se aplica automáticamente,
+     * replicando exactamente la semántica de `$model->comments()->exists()`.
+     */
+    public function existsForCommentable(string $commentableType, string $commentableId): bool
+    {
+        return Comment::query()
+            ->where('commentable_type', $commentableType)
+            ->where('commentable_id', $commentableId)
+            ->exists();
+    }
+
+    /**
      * Enriquece la consulta con `is_read_by_me` para el usuario lector.
      */
     private function applyReaderState(Builder $query, ?string $readerUserId): void

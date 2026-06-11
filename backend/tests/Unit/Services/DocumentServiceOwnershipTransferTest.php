@@ -13,6 +13,7 @@ use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TeamReadRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
+use App\Repositories\Contracts\CommentRepositoryInterface;
 use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
 use App\Services\DocumentBlockService;
@@ -112,6 +113,7 @@ class DocumentServiceOwnershipTransferTest extends TestCase
             new DocumentReviewModeResolver($entityVersionRepo),
             new DocumentMigrationPayloadResolver($docRepo, $entityVersionRepo, $blockSvc, new DocumentMigrationBlockDiffer),
             $userDirectory,
+            Mockery::mock(CommentRepositoryInterface::class),
         );
     }
 }

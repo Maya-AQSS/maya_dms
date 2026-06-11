@@ -13,6 +13,7 @@ use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TeamReadRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
+use App\Repositories\Contracts\CommentRepositoryInterface;
 use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
 use App\Services\DocumentBlockService;
@@ -77,6 +78,7 @@ class DocumentServiceDualReadResolutionTest extends TestCase
             new DocumentReviewModeResolver($entityVersionRepo),
             new DocumentMigrationPayloadResolver($docRepo, $entityVersionRepo, $blockSvc, new DocumentMigrationBlockDiffer),
             Mockery::mock(UserDirectoryRepositoryInterface::class),
+            Mockery::mock(CommentRepositoryInterface::class),
         );
 
         $document = new Document;
@@ -143,6 +145,7 @@ class DocumentServiceDualReadResolutionTest extends TestCase
             new DocumentReviewModeResolver($entityVersionRepo),
             new DocumentMigrationPayloadResolver($docRepo, $entityVersionRepo, $blockSvc, new DocumentMigrationBlockDiffer),
             Mockery::mock(UserDirectoryRepositoryInterface::class),
+            Mockery::mock(CommentRepositoryInterface::class),
         );
 
         $document = new Document;
