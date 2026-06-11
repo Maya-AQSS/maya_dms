@@ -30,15 +30,19 @@ Ninguna. Las 4 decisiones (6.3, 3.9, 4.1, 6.6) fueron aprobadas por el usuario
 el 2026-06-11 y aplicadas — ver entradas al final. Única igualación descartada:
 `destroy` de Template (el frontend usa la señal 204-física vs 200+Resource-archivada).
 
-## Asimetrías preservadas (decisión de plan — NO se unifican)
+## Asimetrías — estado final (revisado 2026-06-11 tras 2ª ronda de unificación)
 
-- `startNewRevisionCycle` (D-12): fuentes de snapshot divergentes entre dominios; riesgo ALTO.
-- `DocumentRenderService::renderHtmlForVersion`: las plantillas no renderizan histórico por versión.
-- `DocumentPdfService::generate`: persiste PDF a disco; los de template/theme son efímeros.
-- `DocumentMigrationBlockDiffer` / `DocumentMigrationPayloadResolver`: la migración entre versiones de plantilla es concepto exclusivo de documentos.
-- `TemplateVersionBlockLayerResolver::backfillStructuralFields`: corrección de snapshots legacy de plantilla.
-- Broadcast realtime (`BroadcastNotificationCreated`) solo en documentos: queda como flag condicional en `ReviewValidationNotifier`.
-- `store()/clone()` de documents devuelve blocks inline y el de templates no: asimetría correcta por diseño.
+UNIFICADAS en esta ronda:
+- ~~renderHtmlForVersion solo documents~~ → plantillas ya renderizan/descargan PDF por versión histórica (commit 20543021).
+- ~~DocumentPdfService::generate persistente~~ → eliminado el almacenamiento físico; PDFs siempre bajo demanda (commit 4f817bba).
+- ~~Broadcast realtime solo documents~~ → el único hueco real era template.rejected; cerrado (commit a416f45b). published/affects_my_document ya emitían en ambos; validation_requested no emite en ninguno (simétrico).
+
+PRESERVADAS (con veredicto definitivo):
+- `startNewRevisionCycle` (D-12): NO unificable — análisis post-fases 4/5 midió 33% de solape real: el guard es común pero la acción delega en servicios sin interfaz común (TemplatePublishingService::transitionStatus → templateRepository->update + TemplateStateChanged, vs DocumentStateService::transition → mergeHeadWorkingCopy + DocumentStateChanged) y los atributos reseteados difieren (created_by vs owner_id+created_by). Extraerlo sería ~2 líneas comunes envueltas en ~20 de plumbing.
+- `DocumentMigrationBlockDiffer/PayloadResolver`: concepto doc-only sin espejo.
+- `backfillStructuralFields`: deuda de DATOS, no de código — eliminar cuando no queden snapshots pre-fix (ver procedimiento en la entrada de cierre).
+- `store()/clone()` con blocks inline solo en documents: lo exige el wizard de creación de documentos (necesita los bloques al instante para editar); el wizard de plantillas crea sus bloques en pasos posteriores.
+- `destroy` 204 vs 200+Resource: el frontend usa la señal (archivada vs física).
 
 ---
 
@@ -149,3 +153,40 @@ el 2026-06-11 y aplicadas — ver entradas al final. Única igualación descarta
     igualar destruiría esa señal. Documentado como asimetría funcional.
 - **Endpoint(s)**: GET /api/v1/documents (orden por defecto); POST submit/publish/delegate de documents (mecanismo interno, sin cambio observable).
 - **Decidido por**: usuario ("igualar del modo más seguro").
+
+
+## [UNIF 2ª RONDA] PDFs de documentos sin persistencia — APROBADO
+
+- **Fecha**: 2026-06-11 · **Severidad**: HIGH (API)
+- **Qué cambió**: eliminado el flujo async de export (job GenerateDocumentPdf,
+  cache de estado, POST /documents/{id}/export-pdf, GET /documents/{id}/export-status
+  y variantes por versión). La descarga GET /documents/{id}/pdf genera bajo demanda.
+- **Impacto en cliente**: el frontend ya descargaba síncrono (nunca llamaba a
+  export-pdf/status) → sin impacto. Consumidores API externos de esos 2 endpoints
+  (si existieran) reciben 404. Auditoría DocumentDownloaded intacta.
+- **Limpieza futura**: PDFs huérfanos en storage/app/private/documents/.
+
+## [UNIF 2ª RONDA] PDF por versión histórica de plantillas (feature espejo)
+
+- **Fecha**: 2026-06-11 · **Severidad**: MEDIUM (solo añade)
+- **Qué cambió**: GET /api/v1/templates/{id}/versions/{v}/pdf (gate viewHistory)
+  + TemplateRenderService::renderHtmlForVersion + evento TemplateDownloaded +
+  botón PDF por versión en el panel de historial de plantillas.
+
+## [UNIF 2ª RONDA] Broadcast realtime en template.rejected
+
+- **Fecha**: 2026-06-11 · **Severidad**: LOW
+- **Qué cambió**: el creador de la plantilla recibe ahora notificación realtime
+  al rechazarse la revisión (igual que document.rejected). Solo añade canal.
+
+## [FIX] Portada: clipping de texto y métricas de fuente preview⇄PDF
+
+- **Fecha**: 2026-06-11 · **Severidad**: HIGH (render visible)
+- **Qué cambió**: (1) las cajas de TEXTO de portada ya no amputan glifos
+  (overflow visible; las de imagen siguen recortando), también en el editor
+  (CoverRegionPreview); (2) en preview_mode el render emite @font-face con
+  data: URI de los MISMOS TTF que resuelve WeasyPrint (ThemeFontResolver) →
+  el navegador deja de caer a Arial/Liberation y el salto de línea coincide.
+- **Verificación**: layout WeasyPrint post-fix sin clipping; T3 = 8 páginas,
+  las 3 iniciales (portada/blanco/índice) son bloques deliberados del seeder,
+  sin páginas en blanco extra.
