@@ -86,7 +86,7 @@ abstract class AbstractBlockLayerResolver
 
     /**
      * Called after building $out from layers.
-     * Default: no-op (return as-is). Override to backfill structural fields etc.
+     * Default: no-op (return as-is). Override para post-procesado por dominio.
      *
      * @param  list<array<string, mixed>>  $blocks
      * @param  TSnapshot  $snapshotDto

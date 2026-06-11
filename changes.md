@@ -40,7 +40,6 @@ UNIFICADAS en esta ronda:
 PRESERVADAS (con veredicto definitivo):
 - `startNewRevisionCycle` (D-12): NO unificable — análisis post-fases 4/5 midió 33% de solape real: el guard es común pero la acción delega en servicios sin interfaz común (TemplatePublishingService::transitionStatus → templateRepository->update + TemplateStateChanged, vs DocumentStateService::transition → mergeHeadWorkingCopy + DocumentStateChanged) y los atributos reseteados difieren (created_by vs owner_id+created_by). Extraerlo sería ~2 líneas comunes envueltas en ~20 de plumbing.
 - `DocumentMigrationBlockDiffer/PayloadResolver`: concepto doc-only sin espejo.
-- `backfillStructuralFields`: deuda de DATOS, no de código — eliminar cuando no queden snapshots pre-fix (ver procedimiento en la entrada de cierre).
 - `store()/clone()` con blocks inline solo en documents: lo exige el wizard de creación de documentos (necesita los bloques al instante para editar); el wizard de plantillas crea sus bloques en pasos posteriores.
 - `destroy` 204 vs 200+Resource: el frontend usa la señal (archivada vs física).
 
@@ -190,3 +189,18 @@ PRESERVADAS (con veredicto definitivo):
 - **Verificación**: layout WeasyPrint post-fix sin clipping; T3 = 8 páginas,
   las 3 iniciales (portada/blanco/índice) son bloques deliberados del seeder,
   sin páginas en blanco extra.
+
+## [LIMPIEZA] backfillStructuralFields eliminado — APROBADO
+
+- **Fecha**: 2026-06-11 · **Severidad**: MEDIUM
+- **Qué cambió**: eliminado el enriquecimiento en lectura de snapshots de
+  plantilla pre-fix (rellenaba block_type/page_break_after/theme_id/apply_theme
+  desde los template_blocks vivos). Verificado en BD de dev: 0 snapshots sin
+  block_type (todos los seeds modernos lo emiten vía TemplateBlockPayloadDto).
+  TemplateVersionBlockLayerResolver pierde la dependencia de
+  TemplateBlockRepository y usa los hooks por defecto del abstract.
+- **Por qué seguro**: entorno solo-desarrollo (sin producción); cualquier BD se
+  reconstruye con seeders que ya emiten snapshots completos.
+- **Riesgo residual**: una BD antigua no reseedeada mostraría bloques
+  estructurales como 'content' en el histórico de versiones. Solución: reseed.
+- **Decidido por**: usuario.
