@@ -30,7 +30,7 @@ import {
 import { BlockCommentsCard, ViewCardHeader } from './BlockCommentsCard';
 import type { BlockComment, CommentMode } from './BlockCommentsCard';
 import { getCommentsForBlock, countUnreadCommentsForBlock, resolveCommentBlockableId } from '../../../utils/blockComments';
-import { markCommentAsReadInTemplateCache, markCommentDeletedInTemplateCache } from '../../comments/commentCache';
+import { appendCommentToTemplateCache, markCommentAsReadInTemplateCache, markCommentDeletedInTemplateCache } from '../../comments/commentCache';
 
 type Props = { template: Template };
 
@@ -313,13 +313,7 @@ export function TemplateReviewView({ template }: Props) {
           blockable_id: blockableId,
         },
       });
-      queryClient.setQueryData<TemplateCommentsResponse>(
-        templateCommentsKey(template.id),
-        (current) => {
-          if (!current) return { data: [res.data] };
-          return { ...current, data: [...current.data, res.data] };
-        },
-      );
+      appendCommentToTemplateCache(queryClient, template.id, res.data);
     } catch {
       setCommentSubmitError('No se pudo guardar el comentario.');
       throw new Error('comment-send-failed');
