@@ -216,7 +216,7 @@ function ImageBlockEditor({ props, themeId, onChange }: ImageBlockEditorProps) {
     setError(null);
     try {
       const response = await uploadThemeImage(themeId, file);
-      onChange({ src: response.data.src, srcUrl: response.data.url });
+      onChange({ src: response.src, srcUrl: response.url });
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error subiendo imagen');
@@ -231,7 +231,7 @@ function ImageBlockEditor({ props, themeId, onChange }: ImageBlockEditorProps) {
     setError(null);
     try {
       const response = await ingestThemeImageUrl(themeId, urlInput);
-      onChange({ src: response.data.src, srcUrl: response.data.url });
+      onChange({ src: response.src, srcUrl: response.url });
       setUrlInput('');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error ingiriendo imagen desde URL');

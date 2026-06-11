@@ -535,7 +535,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
         setLoadingTemplate(true);
         const res = await fetchTemplate(templateId);
         if (!cancelled) {
-          setTemplate(res.data);
+          setTemplate(res);
         }
       } catch (e) {
         if (!cancelled) {
@@ -637,7 +637,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
           fetchTemplate(detail.template_id),
         ]);
         if (cancelled) return;
-        const reviewMode = effectiveDocumentReviewMode(templateResp.data);
+        const reviewMode = effectiveDocumentReviewMode(templateResp);
         const actionable = pickActionableDocumentReview(reviews, currentUserId, reviewMode);
         if (!actionable) {
           setValidationSetupError(
@@ -872,7 +872,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
       try {
         const templateResp = await fetchTemplate(tId);
         if (!cancelled) {
-          setTemplate(templateResp.data);
+          setTemplate(templateResp);
         }
       } catch {
         if (!cancelled) {

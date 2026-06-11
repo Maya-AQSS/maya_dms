@@ -253,7 +253,7 @@ function CoverImageEditor({
     setError(null);
     try {
       const res = await uploadCoverImage(templateId, file);
-      onUpdateProps({ src: res.data.src, srcUrl: res.data.url });
+      onUpdateProps({ src: res.src, srcUrl: res.url });
       if (fileRef.current) fileRef.current.value = '';
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error subiendo la imagen');

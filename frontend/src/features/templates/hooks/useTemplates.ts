@@ -167,10 +167,10 @@ export function useTemplates(processId?: string, sortBy?: TemplatesTableSort) {
       try {
         setActionError(null);
         setActionInfo(null);
-        const res = await createTemplateRequest(payload);
+        const created = await createTemplateRequest(payload);
         setActionInfo('Plantilla creada correctamente.');
         await load();
-        return res.data;
+        return created;
       } catch (e) {
         setActionError(formatActionError(e));
         throw e;

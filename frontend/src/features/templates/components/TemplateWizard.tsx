@@ -257,7 +257,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
           process_id: effectiveProcessId,
         });
       }
-      setTemplate(res.data);
+      setTemplate(res);
       step1Methods.reset(values);
       setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'properties'])) as Step[]);
       setStep('blocks');
@@ -296,7 +296,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     setChangelogModalError(null);
     try {
       const res = await apiSubmitTemplateForReview(template.id, changelog);
-      setTemplate(res.data);
+      setTemplate(res);
       setShowChangelogModal(false);
       goBack();
     } catch (e) {

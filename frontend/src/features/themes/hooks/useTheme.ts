@@ -27,8 +27,8 @@ export function useTheme(id: string | undefined) {
     try {
       setError(null);
       setLoading(true);
-      const res = await fetchTheme(id);
-      setTheme(res.data);
+      const loaded = await fetchTheme(id);
+      setTheme(loaded);
     } catch (e) {
       setError(formatLoadError(e));
       setTheme(null);

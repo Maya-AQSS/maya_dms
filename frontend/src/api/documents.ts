@@ -1,5 +1,6 @@
 import type { Document, DocumentDetail } from '../types/documents';
-import { apiFetchJson, apiGetJson, buildApiUrl, getBearerToken, ApiHttpError } from './http';
+import { apiFetchJson, apiGetJson } from './http';
+import { downloadAuthenticatedBlob } from './blobDownload';
 import { postNewVersion } from './newVersion';
 import { fetchAllPaginatedPages, normalizePaginatedResponse } from './paginatedList';
 import {
@@ -118,6 +119,12 @@ type CreateFromModuleResponse = { data: Document };
 
 /**
  * GET /api/v1/documents — listado del usuario; agrega todas las páginas (ADR-C).
+ *
+ * API-7 (pospuesto): a diferencia de `fetchTemplates`, esta variante "full"
+ * devuelve `Document[]` sin `meta`. No se iguala todavía porque sus
+ * consumidores (DocumentsContent/DocumentsTable/useFavoritesIds) los está
+ * tocando otra sesión en paralelo; igualar el contrato aquí obligaría a
+ * editar esos archivos. Pendiente para cuando esa sesión commitee.
  *
  * @param filters Filtros opcionales (p. ej. `process_id` para acotar al proceso activo).
  */
@@ -499,35 +506,9 @@ function exportBasePath(documentId: string, versionId?: string): string {
 /**
  * GET /api/v1/documents/{id}/pdf — descarga binaria autenticada.
  *
- * El endpoint devuelve `application/pdf`. Como necesitamos pasar el JWT en
- * un header, usamos fetch + blob y disparamos la descarga con un `<a>`
- * sintético (mismo patrón que las demás descargas autenticadas del proyecto).
+ * El endpoint devuelve `application/pdf`; el patrón fetch+blob+`<a>` vive en
+ * `downloadAuthenticatedBlob` (compartido con las descargas de templates).
  */
 export async function downloadDocumentPdf(documentId: string, filename: string, versionId?: string): Promise<void> {
-  const token = await getBearerToken();
-  const response = await fetch(buildApiUrl(`${exportBasePath(documentId, versionId)}/pdf`), {
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-  });
-  if (!response.ok) {
-    let message = response.statusText;
-    try {
-      const body = (await response.json()) as { message?: string };
-      if (body?.message) message = body.message;
-    } catch {
-      /* keep statusText */
-    }
-    throw new ApiHttpError(message, response.status);
-  }
-  const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
-  try {
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  } finally {
-    URL.revokeObjectURL(url);
-  }
+  await downloadAuthenticatedBlob(`${exportBasePath(documentId, versionId)}/pdf`, filename);
 }

@@ -168,16 +168,16 @@ describe('TemplateWizard Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (fetchBlocks as any).mockResolvedValue({ data: [] });
-    (createTemplate as any).mockImplementation(async (payload: { name?: string }) => ({
-      data: fullTemplate({ id: 't123', name: payload.name ?? 'Existing' }),
-    }));
-    (updateTemplate as any).mockImplementation(async (_id: string, payload: { name?: string }) => ({
-      data: fullTemplate({ name: payload.name ?? 'Existing' }),
-    }));
+    (createTemplate as any).mockImplementation(async (payload: { name?: string }) =>
+      fullTemplate({ id: 't123', name: payload.name ?? 'Existing' }),
+    );
+    (updateTemplate as any).mockImplementation(async (_id: string, payload: { name?: string }) =>
+      fullTemplate({ name: payload.name ?? 'Existing' }),
+    );
     (syncTemplateValidators as any).mockResolvedValue({ data: [] });
-    (submitTemplateForReview as any).mockResolvedValue({
-      data: fullTemplate({ status: 'published' }),
-    });
+    (submitTemplateForReview as any).mockResolvedValue(
+      fullTemplate({ status: 'published' }),
+    );
   });
 
   const renderWizard = async (props = {}) => {
@@ -201,7 +201,7 @@ describe('TemplateWizard Integration', () => {
 
   it('completes full "Create" flow from Step 1 to Step 4', async () => {
     const mockNewTemplate = fullTemplate({ id: 't123', name: 'New Template' });
-    (createTemplate as any).mockResolvedValue({ data: mockNewTemplate });
+    (createTemplate as any).mockResolvedValue(mockNewTemplate);
     (fetchBlocks as any).mockResolvedValue({
       data: [{
         id: 'b1',

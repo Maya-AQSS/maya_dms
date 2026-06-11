@@ -369,7 +369,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           // (document_review_mode ?? review_mode), no del review_mode pelado.
           const templateResp = await fetchTemplate(detail.template_id);
           if (cancelled) return;
-          const reviewMode = effectiveDocumentReviewMode(templateResp.data);
+          const reviewMode = effectiveDocumentReviewMode(templateResp);
           const actionable = pickActionableDocumentReview(reviews, uid, reviewMode);
           if (!actionable) {
             setValidationSetupError(
@@ -407,7 +407,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     enabled: !!detail?.template_id,
   });
   const processLabel = useMemo<string | null>(() => {
-    const processId = templateForLabelQuery.data?.data.process_id;
+    const processId = templateForLabelQuery.data?.process_id;
     if (!processId) return null;
     const process = processesQuery.data?.data.find((p: Process) => p.id === processId) ?? null;
     if (!process) return null;

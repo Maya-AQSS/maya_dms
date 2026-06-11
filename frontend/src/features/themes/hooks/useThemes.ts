@@ -85,10 +85,10 @@ export function useThemes(initialFilters: ThemeListFilters = {}) {
       try {
         setActionError(null);
         setActionInfo(null);
-        const res = await createThemeRequest(payload);
+        const created = await createThemeRequest(payload);
         setActionInfo('Theme creado correctamente.');
         await load();
-        return res.data;
+        return created;
       } catch (e) {
         setActionError(formatActionError(e));
         throw e;
@@ -102,10 +102,10 @@ export function useThemes(initialFilters: ThemeListFilters = {}) {
       try {
         setActionError(null);
         setActionInfo(null);
-        const res = await updateThemeRequest(id, payload);
+        const updated = await updateThemeRequest(id, payload);
         setActionInfo('Cambios guardados.');
         await load();
-        return res.data;
+        return updated;
       } catch (e) {
         setActionError(formatActionError(e));
         throw e;
@@ -119,10 +119,10 @@ export function useThemes(initialFilters: ThemeListFilters = {}) {
       try {
         setActionError(null);
         setActionInfo(null);
-        const res = await publishThemeRequest(id);
+        const published = await publishThemeRequest(id);
         setActionInfo('Theme publicado.');
         await load();
-        return res.data;
+        return published;
       } catch (e) {
         setActionError(formatActionError(e));
         throw e;
@@ -136,10 +136,10 @@ export function useThemes(initialFilters: ThemeListFilters = {}) {
       try {
         setActionError(null);
         setActionInfo(null);
-        const res = await archiveThemeRequest(id);
+        const archived = await archiveThemeRequest(id);
         setActionInfo('Theme archivado.');
         await load();
-        return res.data;
+        return archived;
       } catch (e) {
         setActionError(formatActionError(e));
         throw e;
@@ -169,10 +169,10 @@ export function useThemes(initialFilters: ThemeListFilters = {}) {
       try {
         setActionError(null);
         setActionInfo(null);
-        const res = await cloneThemeRequest(id, payload);
+        const cloned = await cloneThemeRequest(id, payload);
         setActionInfo('Copia creada como borrador.');
         await load();
-        return res.data;
+        return cloned;
       } catch (e) {
         setActionError(formatActionError(e));
         throw e;

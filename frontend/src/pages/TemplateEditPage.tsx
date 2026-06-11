@@ -15,7 +15,7 @@ export function TemplateEditPage() {
     if (!id) return;
     setLoading(true);
     fetchTemplate(id)
-      .then((res) => setTemplate(res.data))
+      .then((tpl) => setTemplate(tpl))
       .catch((e) => setError(e instanceof Error ? e.message : 'Error al cargar la plantilla'))
       .finally(() => setLoading(false));
   }, [id]);

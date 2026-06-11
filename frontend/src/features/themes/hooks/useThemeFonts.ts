@@ -32,9 +32,9 @@ export function useThemeFonts() {
     let cancelled = false;
     setLoading(true);
     fetchThemeFonts()
-      .then((res) => {
+      .then((fonts) => {
         if (cancelled) return;
-        setCatalog(res.data);
+        setCatalog(fonts);
         setError(null);
       })
       .catch((e: unknown) => {

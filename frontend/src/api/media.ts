@@ -1,4 +1,4 @@
-import { buildApiUrl, getBearerToken } from './http';
+import { apiErrorFromResponse, buildApiUrl, getBearerToken } from './http';
 
 export type MediaContext =
   | { type: 'block';    id: string }
@@ -25,8 +25,8 @@ export async function uploadMedia(file: File, context?: MediaContext): Promise<s
   });
 
   if (!response.ok) {
-    const errorBody = await response.json().catch(() => null) as { message?: string } | null;
-    throw new Error(errorBody?.message ?? `Upload failed: ${response.status}`);
+    // D-09/API-5: misma clase de error que el resto de la capa API.
+    throw await apiErrorFromResponse(response);
   }
 
   const data = (await response.json()) as { url: string };

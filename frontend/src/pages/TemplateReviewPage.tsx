@@ -22,8 +22,7 @@ export function TemplateReviewPage() {
 
     async function loadTemplate() {
       try {
-        const res = await fetchTemplate(id!);
-        const t = res.data;
+        const t = await fetchTemplate(id!);
 
         const isReviewer = t.reviewers?.some((r) => r.user_id === profile?.id);
         const isCreator = t.created_by === profile?.id;

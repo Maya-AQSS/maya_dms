@@ -180,7 +180,7 @@ export function TemplatePreviewPage() {
         setHistoricalVersionDetail(null);
 
         if (templateVersionId) {
-          const [tRes, vRes] = await Promise.all([fetchTemplate(id), fetchTemplateVersion(templateVersionId)]);
+          const [t, vRes] = await Promise.all([fetchTemplate(id), fetchTemplateVersion(templateVersionId)]);
           if (cancelled) return;
           if (vRes.template_id !== id) {
             setError('La versión seleccionada no pertenece a esta plantilla.');
@@ -188,16 +188,14 @@ export function TemplatePreviewPage() {
             setBlocks([]);
             return;
           }
-          const t = tRes.data;
           setTemplate(t);
           setSnapshotVersionNumber(vRes.version_number);
           setHistoricalVersionDetail(vRes);
           const snap = Array.isArray(vRes.blocks_snapshot) ? vRes.blocks_snapshot : [];
           setBlocks(mapSnapshotToTemplateBlocks(id, snap).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
         } else {
-          const tRes = await fetchTemplate(id);
+          const t = await fetchTemplate(id);
           if (cancelled) return;
-          const t = tRes.data;
           setTemplate(t);
           const canListBlocks = canListTemplateBlocks(hasPermission, profile?.id, t);
           if (canListBlocks) {
@@ -353,7 +351,7 @@ export function TemplatePreviewPage() {
     startNewVersion: startTemplateNewVersion,
     onSuccess: async (result) => {
       const res = result as Awaited<ReturnType<typeof startTemplateNewVersion>>;
-      setTemplate(res.data);
+      setTemplate(res);
       navigate(`/templates/${id}/edit`);
     },
   });
@@ -375,7 +373,7 @@ export function TemplatePreviewPage() {
     setChangelogModalError(null);
     try {
       const res = await submitTemplateForReview(id, changelog);
-      setTemplate(res.data);
+      setTemplate(res);
       setShowChangelogModal(false);
       return true;
     } catch (e) {
@@ -407,7 +405,7 @@ export function TemplatePreviewPage() {
     try {
       const res = await cloneTemplate(id);
       // TODO: permitir al usuario personalizar nombre del clon
-      navigate(`/templates/${res.data.id}/edit`);
+      navigate(`/templates/${res.id}/edit`);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'No se pudo clonar la plantilla.');
     } finally {
@@ -434,7 +432,7 @@ export function TemplatePreviewPage() {
     setDiscardVersionError(null);
     try {
       const restored = await discardTemplateWorkingVersion(id, template.working_version_id);
-      setTemplate(restored.data);
+      setTemplate(restored);
       setShowDiscardVersionModal(false);
       setActionError(null);
     } catch (e) {

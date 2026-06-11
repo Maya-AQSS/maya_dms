@@ -6,9 +6,11 @@ import type {
   TemplatesListResponse,
   TemplateVisibilityLevel,
 } from '../types/templates';
-import { apiFetchJson, apiGetJson, buildApiUrl, getBearerToken, ApiHttpError } from './http';
+import { apiFetchJson, apiGetJson, apiErrorFromResponse, buildApiUrl, getBearerToken } from './http';
+import { downloadAuthenticatedBlob } from './blobDownload';
 import { postNewVersion } from './newVersion';
 import { fetchAllPaginatedPages, normalizePaginatedResponse } from './paginatedList';
+import { buildQueryString } from './queryString';
 
 /**
  * POST /api/v1/templates/{id}/cover-images — multipart upload de imagen para un
@@ -19,7 +21,7 @@ import { fetchAllPaginatedPages, normalizePaginatedResponse } from './paginatedL
 export async function uploadCoverImage(
   templateId: string,
   file: File,
-): Promise<{ data: { src: string; url: string } }> {
+): Promise<{ src: string; url: string }> {
   const form = new FormData();
   form.append('file', file);
 
@@ -31,51 +33,20 @@ export async function uploadCoverImage(
   });
 
   if (!response.ok) {
-    let message = response.statusText;
-    try {
-      const body = (await response.json()) as { message?: string };
-      if (body?.message) message = body.message;
-    } catch {
-      /* keep statusText */
-    }
-    throw new ApiHttpError(message, response.status);
+    throw await apiErrorFromResponse(response);
   }
 
-  return (await response.json()) as { data: { src: string; url: string } };
+  const body = (await response.json()) as { data: { src: string; url: string } };
+  return body.data;
 }
 
 /**
  * GET /api/v1/templates/{id}/pdf — descarga binaria autenticada del PDF/UA de la
  * plantilla. El backend lo genera de forma síncrona (WeasyPrint), igual que el
- * PDF de muestra de themes. Fetch + blob + `<a>` sintético (JWT en header).
+ * PDF de muestra de themes.
  */
 export async function downloadTemplatePdf(templateId: string, filename: string): Promise<void> {
-  const token = await getBearerToken();
-  const response = await fetch(buildApiUrl(`templates/${encodeURIComponent(templateId)}/pdf`), {
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-  });
-  if (!response.ok) {
-    let message = response.statusText;
-    try {
-      const body = (await response.json()) as { message?: string };
-      if (body?.message) message = body.message;
-    } catch {
-      /* keep statusText */
-    }
-    throw new ApiHttpError(message, response.status);
-  }
-  const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
-  try {
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  } finally {
-    URL.revokeObjectURL(url);
-  }
+  await downloadAuthenticatedBlob(`templates/${encodeURIComponent(templateId)}/pdf`, filename);
 }
 
 export type { Template, TemplateListFilters, TemplatesListResponse } from '../types/templates';
@@ -112,51 +83,7 @@ export type UpdateTemplatePayload = {
 };
 
 function buildListQuery(filters: TemplateListFilters): string {
-  const q = new URLSearchParams();
-  if (filters.visibility_level) {
-    q.set('visibility_level', filters.visibility_level);
-  }
-  if (filters.status) {
-    q.set('status', filters.status);
-  }
-  if (filters.usable_for_documents) {
-    q.set('usable_for_documents', '1');
-  }
-  if (filters.study_type_id) {
-    q.set('study_type_id', filters.study_type_id);
-  }
-  if (filters.study_id) {
-    q.set('study_id', filters.study_id);
-  }
-  if (filters.module_id) {
-    q.set('module_id', filters.module_id);
-  }
-  if (filters.team_id) {
-    q.set('team_id', filters.team_id);
-  }
-  if (filters.search) {
-    q.set('search', filters.search);
-  }
-  if (filters.sort_by) {
-    q.set('sort_by', filters.sort_by);
-  }
-  if (filters.sort_dir) {
-    q.set('sort_dir', filters.sort_dir);
-  }
-  if (filters.favorite_ids) {
-    q.set('favorite_ids', filters.favorite_ids);
-  }
-  if (filters.process_id) {
-    q.set('process_id', filters.process_id);
-  }
-  if (filters.page) {
-    q.set('page', String(filters.page));
-  }
-  if (filters.per_page) {
-    q.set('per_page', String(filters.per_page));
-  }
-  const s = q.toString();
-  return s ? `?${s}` : '';
+  return buildQueryString({ ...filters });
 }
 
 /**
@@ -205,8 +132,9 @@ export async function fetchTemplates(filters: TemplateListFilters = {}): Promise
 }
 
 /** GET /api/v1/templates/{id} */
-export async function fetchTemplate(id: string): Promise<{ data: Template }> {
-  return apiGetJson<{ data: Template }>(`templates/${id}`);
+export async function fetchTemplate(id: string): Promise<Template> {
+  const body = await apiGetJson<{ data: Template }>(`templates/${id}`);
+  return body.data;
 }
 
 /** Bloque dentro del snapshot de una versión publicada (GET template-versions). */
@@ -272,16 +200,18 @@ export async function fetchTemplateVersionSummaries(templateId: string): Promise
 }
 
 /** POST /api/v1/templates */
-export async function createTemplate(payload: CreateTemplatePayload): Promise<{ data: Template }> {
-  return apiFetchJson<{ data: Template }>('templates', { method: 'POST', body: payload });
+export async function createTemplate(payload: CreateTemplatePayload): Promise<Template> {
+  const body = await apiFetchJson<{ data: Template }>('templates', { method: 'POST', body: payload });
+  return body.data;
 }
 
 /** PATCH /api/v1/templates/{id} */
 export async function updateTemplate(
   id: string,
   payload: UpdateTemplatePayload,
-): Promise<{ data: Template }> {
-  return apiFetchJson<{ data: Template }>(`templates/${id}`, { method: 'PATCH', body: payload });
+): Promise<Template> {
+  const body = await apiFetchJson<{ data: Template }>(`templates/${id}`, { method: 'PATCH', body: payload });
+  return body.data;
 }
 
 /**
@@ -300,46 +230,51 @@ export async function deleteTemplate(
 }
 
 /** POST /api/v1/templates/{id}/clone */
-export async function cloneTemplate(id: string): Promise<{ data: Template }> {
-  return apiFetchJson<{ data: Template }>(`templates/${id}/clone`, { method: 'POST', body: {} });
+export async function cloneTemplate(id: string): Promise<Template> {
+  const body = await apiFetchJson<{ data: Template }>(`templates/${id}/clone`, { method: 'POST', body: {} });
+  return body.data;
 }
 
 /** POST /api/v1/templates/{id}/new-version — publicada → borrador (misma plantilla). */
-export async function startTemplateNewVersion(id: string): Promise<{ data: Template }> {
-  return postNewVersion<{ data: Template }>(`templates/${id}/new-version`);
+export async function startTemplateNewVersion(id: string): Promise<Template> {
+  const body = await postNewVersion<{ data: Template }>(`templates/${id}/new-version`);
+  return body.data;
 }
 
 /** DELETE /api/v1/templates/{id}/versions/{versionId} — descarta borrador/en revisión y restaura última publicada. */
 export async function discardTemplateWorkingVersion(
   templateId: string,
   versionId: string,
-): Promise<{ data: Template }> {
-  return apiFetchJson<{ data: Template }>(
+): Promise<Template> {
+  const body = await apiFetchJson<{ data: Template }>(
     `templates/${encodeURIComponent(templateId)}/versions/${encodeURIComponent(versionId)}`,
     { method: 'DELETE' },
   );
+  return body.data;
 }
 
 /** POST /api/v1/templates/{id}/publish */
 export async function publishTemplate(
   id: string,
   changelog?: string | null,
-): Promise<{ data: Template }> {
-  return apiFetchJson<{ data: Template }>(`templates/${id}/publish`, {
+): Promise<Template> {
+  const body = await apiFetchJson<{ data: Template }>(`templates/${id}/publish`, {
     method: 'POST',
     body: { changelog: changelog ?? null },
   });
+  return body.data;
 }
 
 /** POST /api/v1/templates/{id}/submit-review */
 export async function submitTemplateForReview(
   id: string,
   changelog: string,
-): Promise<{ data: Template }> {
-  return apiFetchJson<{ data: Template }>(`templates/${id}/submit-review`, {
+): Promise<Template> {
+  const body = await apiFetchJson<{ data: Template }>(`templates/${id}/submit-review`, {
     method: 'POST',
     body: { changelog },
   });
+  return body.data;
 }
 
 /** POST /api/v1/templates/{id}/reviewers */
@@ -364,59 +299,36 @@ export async function syncDocumentReviewers(
   });
 }
 /** POST /api/v1/templates/{id}/approve-review */
-export async function approveTemplateReview(id: string): Promise<{ data: Template }> {
-  return apiFetchJson<{ data: Template }>(`templates/${id}/approve-review`, {
+export async function approveTemplateReview(id: string): Promise<Template> {
+  const body = await apiFetchJson<{ data: Template }>(`templates/${id}/approve-review`, {
     method: 'POST',
     body: {},
   });
+  return body.data;
 }
 
 /** POST /api/v1/templates/{id}/reject-review */
-export async function rejectTemplateReview(id: string): Promise<{ data: Template }> {
-  return apiFetchJson<{ data: Template }>(`templates/${id}/reject-review`, {
+export async function rejectTemplateReview(id: string): Promise<Template> {
+  const body = await apiFetchJson<{ data: Template }>(`templates/${id}/reject-review`, {
     method: 'POST',
     body: {},
   });
+  return body.data;
 }
 
 /**
  * GET /api/v1/templates/{id}/versions/{versionId}/pdf — descarga binaria autenticada
  * del PDF de una versión histórica publicada. Mismo patrón que downloadTemplatePdf
- * y downloadDocumentPdf (fetch + blob + <a> sintético).
+ * y downloadDocumentPdf.
  */
 export async function downloadTemplateVersionPdf(
   templateId: string,
   versionId: string,
   filename: string,
 ): Promise<void> {
-  const token = await getBearerToken();
-  const response = await fetch(
-    buildApiUrl(
-      `templates/${encodeURIComponent(templateId)}/versions/${encodeURIComponent(versionId)}/pdf`,
-    ),
-    { headers: token ? { Authorization: `Bearer ${token}` } : undefined },
+  await downloadAuthenticatedBlob(
+    `templates/${encodeURIComponent(templateId)}/versions/${encodeURIComponent(versionId)}/pdf`,
+    filename,
   );
-  if (!response.ok) {
-    let message = response.statusText;
-    try {
-      const body = (await response.json()) as { message?: string };
-      if (body?.message) message = body.message;
-    } catch {
-      /* keep statusText */
-    }
-    throw new ApiHttpError(message, response.status);
-  }
-  const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
-  try {
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  } finally {
-    URL.revokeObjectURL(url);
-  }
 }
 

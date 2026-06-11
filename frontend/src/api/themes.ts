@@ -8,7 +8,9 @@ import type {
   ThemeTypography,
   ThemesListResponse,
 } from '../types/themes';
-import { apiFetchJson, apiGetJson, buildApiUrl, getBearerToken, ApiHttpError } from './http';
+import { apiFetchJson, apiGetJson, apiErrorFromResponse, buildApiUrl, getBearerToken } from './http';
+import { normalizePaginatedResponse } from './paginatedList';
+import { buildQueryString } from './queryString';
 
 export type { Theme, ThemeListFilters, ThemesListResponse } from '../types/themes';
 
@@ -40,45 +42,50 @@ export interface CloneThemePayload {
   accessibility?: Partial<ThemeAccessibility>;
 }
 
-function buildListQuery(filters: ThemeListFilters): string {
-  const q = new URLSearchParams();
-  if (filters.status) q.set('status', filters.status);
-  if (filters.team_id) q.set('team_id', filters.team_id);
-  if (filters.search) q.set('search', filters.search);
-  if (filters.page) q.set('page', String(filters.page));
-  if (filters.per_page) q.set('per_page', String(filters.per_page));
-  if (filters.sort_by) q.set('sort_by', filters.sort_by);
-  if (filters.sort_dir) q.set('sort_dir', filters.sort_dir);
-  const s = q.toString();
-  return s ? `?${s}` : '';
-}
-
-/** GET /api/v1/themes */
+/**
+ * GET /api/v1/themes — una página del listado. Pasa por
+ * `normalizePaginatedResponse` (API-6) para tolerar tanto el envelope plano de
+ * Laravel como la paginación anidada bajo `meta`, igual que el resto de listados.
+ */
 export async function fetchThemes(filters: ThemeListFilters = {}): Promise<ThemesListResponse> {
-  return apiGetJson<ThemesListResponse>(`themes${buildListQuery(filters)}`);
+  const body = await apiGetJson<unknown>(`themes${buildQueryString({ ...filters })}`);
+  const page = normalizePaginatedResponse<Theme>(body);
+  return {
+    data: page.data,
+    meta: {
+      current_page: page.current_page,
+      last_page: page.last_page,
+      per_page: page.per_page,
+      total: page.total,
+    },
+  };
 }
 
 /** GET /api/v1/themes/fonts — whitelist real de tipografías instaladas. */
-export async function fetchThemeFonts(): Promise<{ data: ThemeFontsCatalog }> {
-  return apiGetJson<{ data: ThemeFontsCatalog }>('themes/fonts');
+export async function fetchThemeFonts(): Promise<ThemeFontsCatalog> {
+  const body = await apiGetJson<{ data: ThemeFontsCatalog }>('themes/fonts');
+  return body.data;
 }
 
 /** GET /api/v1/themes/{id} */
-export async function fetchTheme(id: string): Promise<{ data: Theme }> {
-  return apiGetJson<{ data: Theme }>(`themes/${id}`);
+export async function fetchTheme(id: string): Promise<Theme> {
+  const body = await apiGetJson<{ data: Theme }>(`themes/${id}`);
+  return body.data;
 }
 
 /** POST /api/v1/themes */
-export async function createTheme(payload: CreateThemePayload): Promise<{ data: Theme }> {
-  return apiFetchJson<{ data: Theme }>('themes', { method: 'POST', body: payload });
+export async function createTheme(payload: CreateThemePayload): Promise<Theme> {
+  const body = await apiFetchJson<{ data: Theme }>('themes', { method: 'POST', body: payload });
+  return body.data;
 }
 
 /** PATCH /api/v1/themes/{id} */
 export async function updateTheme(
   id: string,
   payload: UpdateThemePayload,
-): Promise<{ data: Theme }> {
-  return apiFetchJson<{ data: Theme }>(`themes/${id}`, { method: 'PATCH', body: payload });
+): Promise<Theme> {
+  const body = await apiFetchJson<{ data: Theme }>(`themes/${id}`, { method: 'PATCH', body: payload });
+  return body.data;
 }
 
 /** DELETE /api/v1/themes/{id} */
@@ -87,18 +94,21 @@ export async function deleteTheme(id: string): Promise<void> {
 }
 
 /** POST /api/v1/themes/{id}/clone */
-export async function cloneTheme(id: string, payload: CloneThemePayload = {}): Promise<{ data: Theme }> {
-  return apiFetchJson<{ data: Theme }>(`themes/${id}/clone`, { method: 'POST', body: payload });
+export async function cloneTheme(id: string, payload: CloneThemePayload = {}): Promise<Theme> {
+  const body = await apiFetchJson<{ data: Theme }>(`themes/${id}/clone`, { method: 'POST', body: payload });
+  return body.data;
 }
 
 /** POST /api/v1/themes/{id}/publish — transición draft → published. */
-export async function publishTheme(id: string): Promise<{ data: Theme }> {
-  return apiFetchJson<{ data: Theme }>(`themes/${id}/publish`, { method: 'POST' });
+export async function publishTheme(id: string): Promise<Theme> {
+  const body = await apiFetchJson<{ data: Theme }>(`themes/${id}/publish`, { method: 'POST' });
+  return body.data;
 }
 
 /** POST /api/v1/themes/{id}/archive — transición published → archived. */
-export async function archiveTheme(id: string): Promise<{ data: Theme }> {
-  return apiFetchJson<{ data: Theme }>(`themes/${id}/archive`, { method: 'POST' });
+export async function archiveTheme(id: string): Promise<Theme> {
+  const body = await apiFetchJson<{ data: Theme }>(`themes/${id}/archive`, { method: 'POST' });
+  return body.data;
 }
 
 /**
@@ -109,7 +119,7 @@ export async function archiveTheme(id: string): Promise<{ data: Theme }> {
 export async function uploadThemeImage(
   themeId: string,
   file: File,
-): Promise<{ data: { src: string; url: string } }> {
+): Promise<{ src: string; url: string }> {
   const form = new FormData();
   form.append('file', file);
 
@@ -121,17 +131,11 @@ export async function uploadThemeImage(
   });
 
   if (!response.ok) {
-    let message = response.statusText;
-    try {
-      const body = (await response.json()) as { message?: string };
-      if (body?.message) message = body.message;
-    } catch {
-      /* keep statusText */
-    }
-    throw new ApiHttpError(message, response.status);
+    throw await apiErrorFromResponse(response);
   }
 
-  return (await response.json()) as { data: { src: string; url: string } };
+  const body = (await response.json()) as { data: { src: string; url: string } };
+  return body.data;
 }
 
 /**
@@ -141,10 +145,10 @@ export async function uploadThemeImage(
 export async function ingestThemeImageUrl(
   themeId: string,
   url: string,
-): Promise<{ data: { src: string; url: string } }> {
-  return apiFetchJson<{ data: { src: string; url: string } }>(
+): Promise<{ src: string; url: string }> {
+  const body = await apiFetchJson<{ data: { src: string; url: string } }>(
     `themes/${themeId}/images`,
     { method: 'POST', body: { url } },
   );
+  return body.data;
 }
-
