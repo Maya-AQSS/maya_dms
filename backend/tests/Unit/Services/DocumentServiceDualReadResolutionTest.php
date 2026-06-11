@@ -21,6 +21,7 @@ use App\Services\DocumentMigrationBlockDiffer;
 use App\Services\DocumentMigrationPayloadResolver;
 use App\Services\DocumentReviewService;
 use App\Services\DocumentService;
+use App\Services\EntityVersionDestroyService;
 use App\Services\DocumentShareService;
 use App\Services\DocumentStateService;
 use App\Services\DocumentVersionService;
@@ -79,6 +80,7 @@ class DocumentServiceDualReadResolutionTest extends TestCase
             new DocumentMigrationPayloadResolver($docRepo, $entityVersionRepo, $blockSvc, new DocumentMigrationBlockDiffer),
             Mockery::mock(UserDirectoryRepositoryInterface::class),
             Mockery::mock(CommentRepositoryInterface::class),
+            new EntityVersionDestroyService($entityVersionRepo),
         );
 
         $document = new Document;
@@ -146,6 +148,7 @@ class DocumentServiceDualReadResolutionTest extends TestCase
             new DocumentMigrationPayloadResolver($docRepo, $entityVersionRepo, $blockSvc, new DocumentMigrationBlockDiffer),
             Mockery::mock(UserDirectoryRepositoryInterface::class),
             Mockery::mock(CommentRepositoryInterface::class),
+            new EntityVersionDestroyService($entityVersionRepo),
         );
 
         $document = new Document;

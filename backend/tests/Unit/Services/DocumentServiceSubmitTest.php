@@ -19,6 +19,7 @@ use App\Services\DocumentMigrationBlockDiffer;
 use App\Services\DocumentMigrationPayloadResolver;
 use App\Services\DocumentReviewService;
 use App\Services\DocumentService;
+use App\Services\EntityVersionDestroyService;
 use App\Services\DocumentShareService;
 use App\Services\DocumentStateService;
 use App\Services\DocumentVersionService;
@@ -65,7 +66,7 @@ class DocumentServiceSubmitTest extends TestCase
         $contextResolver = Mockery::mock(TemplateContextResolver::class);
         $academicRepo = Mockery::mock(AcademicHierarchyRepositoryInterface::class);
         $teamRepo = Mockery::mock(TeamReadRepositoryInterface::class);
-        $service = new DocumentService($repo, $tplRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionRepo, $blockRepo, $contextResolver, $academicRepo, $teamRepo, Mockery::mock(NotificationPublisher::class), new DocumentReviewModeResolver($entityVersionRepo), new DocumentMigrationPayloadResolver($repo, $entityVersionRepo, $blockSvc, new DocumentMigrationBlockDiffer), Mockery::mock(UserDirectoryRepositoryInterface::class), Mockery::mock(CommentRepositoryInterface::class));
+        $service = new DocumentService($repo, $tplRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionRepo, $blockRepo, $contextResolver, $academicRepo, $teamRepo, Mockery::mock(NotificationPublisher::class), new DocumentReviewModeResolver($entityVersionRepo), new DocumentMigrationPayloadResolver($repo, $entityVersionRepo, $blockSvc, new DocumentMigrationBlockDiffer), Mockery::mock(UserDirectoryRepositoryInterface::class), Mockery::mock(CommentRepositoryInterface::class), new EntityVersionDestroyService($entityVersionRepo));
 
         $this->expectException(AuthorizationException::class);
 
@@ -98,7 +99,7 @@ class DocumentServiceSubmitTest extends TestCase
         $contextResolver = Mockery::mock(TemplateContextResolver::class);
         $academicRepo = Mockery::mock(AcademicHierarchyRepositoryInterface::class);
         $teamRepo = Mockery::mock(TeamReadRepositoryInterface::class);
-        $service = new DocumentService($repo, $tplRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionRepo, $blockRepo, $contextResolver, $academicRepo, $teamRepo, Mockery::mock(NotificationPublisher::class), new DocumentReviewModeResolver($entityVersionRepo), new DocumentMigrationPayloadResolver($repo, $entityVersionRepo, $blockSvc, new DocumentMigrationBlockDiffer), Mockery::mock(UserDirectoryRepositoryInterface::class), Mockery::mock(CommentRepositoryInterface::class));
+        $service = new DocumentService($repo, $tplRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionRepo, $blockRepo, $contextResolver, $academicRepo, $teamRepo, Mockery::mock(NotificationPublisher::class), new DocumentReviewModeResolver($entityVersionRepo), new DocumentMigrationPayloadResolver($repo, $entityVersionRepo, $blockSvc, new DocumentMigrationBlockDiffer), Mockery::mock(UserDirectoryRepositoryInterface::class), Mockery::mock(CommentRepositoryInterface::class), new EntityVersionDestroyService($entityVersionRepo));
 
         $this->expectException(ValidationException::class);
 
