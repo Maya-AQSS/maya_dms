@@ -27,11 +27,16 @@ export function patchTemplateCommentCache(
 ): void {
   queryClient.setQueryData<TemplateCommentsResponse>(
     templateCommentsKey(templateId),
-    (current) => {
-      if (!current) return current;
-      return { ...current, data: updater(current.data) };
-    },
+    (current) => ({ data: updater(current?.data ?? []), meta: current?.meta }),
   );
+}
+
+export function appendCommentToTemplateCache(
+  queryClient: QueryClient,
+  templateId: string,
+  comment: BlockComment,
+): void {
+  patchTemplateCommentCache(queryClient, templateId, (comments) => [...comments, comment]);
 }
 
 export async function markCommentAsReadInDocumentCache(

@@ -29,7 +29,7 @@ import { CoverDesignEditor } from '../cover/CoverDesignEditor';
 import { parseCoverContent } from '../cover/coverModel';
 import { IndexBlockEditor, parseIndexConfig } from './IndexBlockEditor';
 import { useCompletedBlocks } from '../../documents/hooks/useCompletedBlocks';
-import { useTemplateCommentsQuery, templateCommentsKey, type TemplateCommentsResponse } from '../hooks/useTemplateComments';
+import { useTemplateCommentsQuery } from '../hooks/useTemplateComments';
 import { type BlockUiState, BLOCK_UI_STATE_CONFIG, blockToUiState } from '../blockUiState';
 import { htmlToTiptapDoc, buildMayaEditorExtensions } from '@ceedcv-maya/shared-editor-react';
 import { DocxBlockSplitter } from './DocxBlockSplitter';
@@ -38,7 +38,12 @@ import { useAutoSave, useFlushOnPageLeave } from '@ceedcv-maya/shared-hooks-reac
 import { apiFetchJson } from '../../../api/http';
 import { uploadMedia } from '../../../api/media';
 import { BlockCommentsCard, type BlockComment } from './BlockCommentsCard';
-import { countUnreadCommentsForBlock, resolveCommentBlockableId } from '../../../utils/blockComments';
+import {
+  countUnreadCommentsForBlock,
+  getCommentsForBlock,
+  resolveCommentBlockableId,
+} from '../../../utils/blockComments';
+import { appendCommentToTemplateCache, patchTemplateCommentCache } from '../../comments/commentCache';
 import { markCommentAsReadInTemplateCache, markCommentDeletedInTemplateCache } from '../../comments/commentCache';
 import { useUserProfile } from '../../user-profile';
 import { canCreateBlockComment, canDeleteBlockComment } from '../../../permissions';
@@ -156,7 +161,6 @@ interface WizardStep2BlocksProps {
   onBlocksChange?: (blocks: TemplateBlock[]) => void;
   onContinue?: () => void;
   onInvalidBlocksChange?: (hasInvalid: boolean) => void;
-  onCommentAdded?: (comment: BlockComment) => void;
 }
 
 export type WizardStep2BlocksHandle = {
@@ -172,7 +176,6 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   onBlocksChange,
   onContinue,
   onInvalidBlocksChange,
-  onCommentAdded,
 }, ref) => {
   const { t } = useTranslation(['documents', 'common']);
   const commentsQuery = useTemplateCommentsQuery(template.id);
@@ -293,7 +296,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const selectedBlockIndex = selectedBlock ? blocks.findIndex((b) => b.id === selectedBlock.id) : -1;
 
   const blockComments: BlockComment[] = activeSingleId
-    ? reviewComments.filter((c) => c.blockable_id === activeSingleId)
+    ? getCommentsForBlock(activeSingleId, reviewComments)
     : [];
 
   useEffect(() => {
@@ -683,14 +686,14 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
         method: 'POST',
         body: { body, parent_id: parentId, blockable_id: blockableId },
       });
-      onCommentAdded?.(res.data);
+      appendCommentToTemplateCache(queryClient, template.id, res.data);
     } catch {
       setCommentSubmitError('No se pudo guardar el comentario.');
       throw new Error('comment-send-failed');
     } finally {
       setCommentSubmitLoading(false);
     }
-  }, [activeSingleId, reviewComments, template.id, onCommentAdded]);
+  }, [activeSingleId, queryClient, reviewComments, template.id]);
 
   /**
    * Anchored comment on a text selection from inside the editor.
@@ -733,14 +736,14 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
         } catch (e) {
           console.warn('[WizardStep2Blocks] anchor save failed', e);
         }
-        onCommentAdded?.(res.data);
+        appendCommentToTemplateCache(queryClient, template.id, res.data);
         return commentId;
       } catch (e) {
         console.error('[WizardStep2Blocks] comment create failed', e);
         return null;
       }
     },
-    [activeSingleId, template.id, onCommentAdded],
+    [activeSingleId, queryClient, template.id],
   );
 
   const handleEditComment = useCallback(async (commentId: string, newBody: string) => {
@@ -748,12 +751,8 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
       method: 'PATCH',
       body: { body: newBody },
     });
-    queryClient.setQueryData<TemplateCommentsResponse>(
-      templateCommentsKey(template.id),
-      (current) => {
-        if (!current) return current;
-        return { ...current, data: current.data.map(c => c.id === commentId ? res.data : c) };
-      },
+    patchTemplateCommentCache(queryClient, template.id, (comments) =>
+      comments.map((c) => (c.id === commentId ? res.data : c)),
     );
   }, [queryClient, template.id]);
 
