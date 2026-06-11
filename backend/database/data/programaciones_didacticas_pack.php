@@ -8,10 +8,12 @@ declare(strict_types=1);
  * Reemplaza al pack genérico `programacion_per_module_templates_pack.php` (borrado).
  *
  * Contenidos:
- * - 3 plantillas publicadas:
+ * - 5 plantillas publicadas:
  *   - T0: Programación de ciclo formativo FP        (visibility=study_type, ST_FP=GS)
  *   - T1: Programación didáctica módulo FP          (visibility=study_type, ST_FP=GS)
  *   - T2: Programación didáctica asignatura Bachillerato (visibility=study_type, ST_BACH=NG)
+ *   - T3: Maquetación demo (portada/índice/blank + tema por bloque) (visibility=global)
+ *   - T4: DemoTipTap — showcase del editor (33 bloques, 1 por funcionalidad) (visibility=global)
  *
  * - 5 documentos heredados:
  *   - D0: Ciclo ASIR (study=8, sin module_id)
@@ -168,12 +170,17 @@ return (static function (): array {
     };
 
     // ============================================================
-    // PLANTILLAS (3)
+    // PLANTILLAS (4)
     // ============================================================
 
     $T0 = 'aa000000-0000-4000-8000-000000000000'; // Ciclo FP
     $T1 = 'aa000001-0000-4000-8000-000000000000'; // Módulo FP
     $T2 = 'aa000002-0000-4000-8000-000000000000'; // Asignatura Bach
+    $T3 = 'aa000003-0000-4000-8000-000000000000'; // Maquetación demo (global)
+    $T4 = 'aa000004-0000-4000-8000-000000000000'; // DemoTipTap — showcase editor (global)
+
+    // Tema demo limpio sembrado por DemoThemesSeeder (override de tema por bloque).
+    $demoThemeId = \Database\Seeders\DemoThemesSeeder::DEMO_THEME_ID;
 
     $deadline = '2026-09-15 14:00:00';
 
@@ -229,6 +236,43 @@ return (static function (): array {
             'review_stages' => 2,
             'review_mode' => 'sequential',
         ],
+        [
+            'id' => $T3,
+            'name' => 'Programación con maquetación (demostración)',
+            'description' => 'Plantilla de demostración de los bloques de maquetación: portada con '
+                .'regiones y placeholders, índice automático, saltos de página y override de tema por '
+                .'bloque. Visible para todos los estudios (nivel global).',
+            'visibility_level' => 'global',
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'theme_id' => $defaultThemeId,
+            'delivery_deadline' => $deadline,
+            'created_by' => $uDir,
+            'status' => 'published',
+            'review_stages' => 2,
+            'review_mode' => 'sequential',
+        ],
+        [
+            'id' => $T4,
+            'name' => 'DemoTipTap',
+            'description' => 'Plantilla de demostración del editor TipTap: un bloque por '
+                .'funcionalidad (negrita, cursiva, subrayado, tachado, color, resaltado, enlaces, '
+                .'código, listas de viñetas/numeradas/tareas, citas, tablas, imagen, encabezados, '
+                .'alineaciones y maquetación con portada e índice). Visible para todos (nivel global).',
+            'visibility_level' => 'global',
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'theme_id' => $defaultThemeId,
+            'delivery_deadline' => $deadline,
+            'created_by' => $uDir,
+            'status' => 'published',
+            'review_stages' => 2,
+            'review_mode' => 'sequential',
+        ],
     ];
 
     // ============================================================
@@ -244,6 +288,8 @@ return (static function (): array {
     $EV_T0_PUB = 'eeb00000-0000-4000-8000-000000000000';
     $EV_T1_PUB = 'eeb00000-0000-4000-8000-000000000001';
     $EV_T2_PUB = 'eeb00000-0000-4000-8000-000000000002';
+    $EV_T3_PUB = 'eeb00000-0000-4000-8000-000000000003';
+    $EV_T4_PUB = 'eeb00000-0000-4000-8000-000000000004';
 
     // ============================================================
     // DOCUMENTS (5) — IDs reales de jerarquía Odoo
@@ -324,8 +370,8 @@ return (static function (): array {
     ];
 
     // ============================================================
-    // TEMPLATE BLOCKS — los 32 bloques (T0=14, T1=10, T2=8)
-    // Generador: $L($tplId, $idx, $title, $state, $contentBN, $desc)
+    // TEMPLATE BLOCKS — 32 de contenido (T0=14, T1=10, T2=8) + 5 de maquetación (T3)
+    // Generadores: $L (contenido) y $LS (portada / índice / hoja en blanco / tema por bloque)
     // ============================================================
 
     $blocks = [];
@@ -335,6 +381,8 @@ return (static function (): array {
         $T0 => 0,
         $T1 => 1,
         $T2 => 2,
+        $T3 => 3,
+        $T4 => 4,
     ];
 
     $L = static function (string $tplId, int $idx, string $title, string $state, array $defaultContent, string $desc = '') use (&$blocks, $templateIndexMap, $finalizeDoc): void {
@@ -343,11 +391,66 @@ return (static function (): array {
         $blocks[] = [
             'id' => $blockId,
             'template_id' => $tplId,
+            'block_type' => 'content',
+            'theme_id' => null,
+            'apply_theme' => true,
             'title' => $title,
             'default_content' => $finalizeDoc($defaultContent),
             'description' => $desc !== '' ? $desc
                 : "Guía para el revisor: verifica que «{$title}» esté completo, sea coherente con la programación y cumpla la normativa del centro antes de validar.",
             'block_state' => $state,
+            'page_break_after' => false,
+            'sort_order' => $idx,
+        ];
+    };
+
+    /**
+     * Genera un bloque de maquetación (portada / índice / hoja en blanco) o un
+     * bloque de contenido con tema por bloque. A diferencia de $L, el
+     * default_content NO se finaliza como doc Tiptap: la portada lleva un payload
+     * de geometría `{"kind":"cover",...}` y el índice/hoja en blanco no llevan
+     * cuerpo (null). Espejo de {@see \App\Enums\BlockType}.
+     *
+     * @param  array<string, mixed>|null  $layout  Payload de maquetación (portada) o null.
+     */
+    $LS = static function (
+        string $tplId,
+        int $idx,
+        string $title,
+        string $state,
+        string $blockType,
+        ?array $layout = null,
+        bool $pageBreakAfter = false,
+        ?string $themeId = null,
+        bool $applyTheme = true,
+        string $desc = '',
+    ) use (&$blocks, $templateIndexMap, $finalizeDoc): void {
+        $template_index = $templateIndexMap[$tplId] ?? 0;
+        $blockId = sprintf('bb%06d-0000-4000-8000-%012d', $template_index, $idx);
+
+        // Portada: payload de geometría tal cual. Contenido: doc Tiptap (si ya
+        // viene como `{type:doc}` se pasa tal cual; si es lista de nodos, se
+        // finaliza). Índice / hoja en blanco: sin cuerpo.
+        $defaultContent = match (true) {
+            $blockType === 'cover' => $layout,
+            $blockType === 'content' && $layout !== null => ($layout['type'] ?? null) === 'doc'
+                ? $layout
+                : $finalizeDoc($layout),
+            default => null,
+        };
+
+        $blocks[] = [
+            'id' => $blockId,
+            'template_id' => $tplId,
+            'block_type' => $blockType,
+            'theme_id' => $themeId,
+            'apply_theme' => $applyTheme,
+            'title' => $title,
+            'default_content' => $defaultContent,
+            'description' => $desc !== '' ? $desc
+                : "Guía para el revisor: verifica que «{$title}» encaje con la maquetación del documento (portada/índice/saltos de página) antes de validar.",
+            'block_state' => $state,
+            'page_break_after' => $pageBreakAfter,
             'sort_order' => $idx,
         ];
     };
@@ -633,6 +736,87 @@ return (static function (): array {
         $para('Medidas de Nivel III: becas y ayudas, ampliación de tiempo en pruebas, adaptaciones de formato (letra, fondo, interlineado, Braille, descripciones), reducción de penalización ortográfica; acompañamiento emocional personalizado; adecuación personalizada de programaciones sin modificar contenidos mínimos.'),
     ]);
 
+    // -------------------------------------------------------------
+    // T3 — Maquetación demo, global (5 bloques: portada, índice, 2 de
+    // contenido —uno con tema por bloque— y hoja en blanco)
+    // -------------------------------------------------------------
+
+    $LS($T3, 1, 'Portada', 'locked', 'cover', [
+        'kind' => 'cover',
+        'page' => ['size' => 'A4'],
+        'regions' => [
+            [
+                'id' => 'cv-title',
+                'type' => 'text',
+                'box' => ['x' => 24, 'y' => 60, 'w' => 162, 'h' => 24, 'z' => 1],
+                'props' => ['text' => 'PROGRAMACIÓN DIDÁCTICA', 'size' => 30, 'color' => '#1a5fb4', 'align' => 'left', 'weight' => 'bold'],
+            ],
+            [
+                'id' => 'cv-curso',
+                'type' => 'text_placeholder',
+                'box' => ['x' => 24, 'y' => 92, 'w' => 162, 'h' => 16, 'z' => 1],
+                'props' => ['key' => 'curso', 'label' => 'Curso académico', 'defaultText' => 'Curso 20XX-XX', 'size' => 16, 'color' => '#1a1a1a', 'align' => 'left', 'weight' => 'normal'],
+            ],
+            [
+                'id' => 'cv-departamento',
+                'type' => 'text_placeholder',
+                'box' => ['x' => 24, 'y' => 112, 'w' => 162, 'h' => 12, 'z' => 1],
+                'props' => ['key' => 'departamento', 'label' => 'Departamento', 'defaultText' => 'NOMBRE DEL DEPARTAMENTO', 'size' => 14, 'color' => '#1a1a1a', 'align' => 'left', 'weight' => 'normal'],
+            ],
+            [
+                'id' => 'cv-fecha',
+                'type' => 'date',
+                'box' => ['x' => 24, 'y' => 282, 'w' => 60, 'h' => 8, 'z' => 2],
+                'props' => ['format' => 'long', 'align' => 'left', 'size' => 10, 'color' => '#666666'],
+            ],
+            [
+                'id' => 'cv-pagina',
+                'type' => 'page_number',
+                'box' => ['x' => 150, 'y' => 282, 'w' => 45, 'h' => 8, 'z' => 2],
+                'props' => ['format' => 'page-of-pages', 'align' => 'right', 'size' => 10, 'color' => '#666666'],
+            ],
+        ],
+    ], pageBreakAfter: true, desc: 'Portada del documento: edita el título, el curso y el departamento. La fecha y el número de página se generan automáticamente.');
+
+    $LS($T3, 2, 'Índice', 'locked', 'index', null, pageBreakAfter: true,
+        desc: 'Índice generado automáticamente a partir de los títulos de los bloques de contenido del documento.');
+
+    $LS($T3, 3, 'Presentación', 'editable', 'content', [
+        $heading(2, 'Presentación'),
+        $para('Este bloque demuestra el override de tema por bloque: usa un tema propio distinto del de la plantilla. Sustituye este texto por la presentación del documento.'),
+    ], themeId: $demoThemeId, desc: 'Bloque de contenido con tema propio (override). El resto del documento usa el tema de la plantilla.');
+
+    $LS($T3, 4, 'Desarrollo', 'editable', 'content', [
+        $heading(2, 'Desarrollo'),
+        $para('Bloque de contenido estándar: hereda el tema de la plantilla. Añade aquí el cuerpo del documento.'),
+        $para('Tras este bloque hay un salto de página manual para separar la hoja en blanco final.'),
+    ], pageBreakAfter: true);
+
+    $LS($T3, 5, 'Hoja en blanco', 'editable', 'blank', null,
+        desc: 'Página intencionalmente en blanco (por ejemplo, para anexos o separadores). No lleva cuerpo.');
+
+    // -------------------------------------------------------------
+    // T4 — DemoTipTap, global (33 bloques: un showcase por funcionalidad
+    // del editor TipTap). Contenido depurado de la plantilla viva
+    // «TestPlantilla Personal» del snapshot ({@see demo_tiptap_blocks.php}).
+    // -------------------------------------------------------------
+
+    $demoTiptapBlocks = require __DIR__.'/demo_tiptap_blocks.php';
+    foreach ($demoTiptapBlocks as $row) {
+        if (! is_array($row)) {
+            continue;
+        }
+        $LS(
+            $T4,
+            (int) $row['sort_order'],
+            (string) $row['title'],
+            (string) $row['block_state'],
+            (string) $row['block_type'],
+            $row['default_content'] ?? null,
+            (bool) ($row['page_break_after'] ?? false),
+        );
+    }
+
     // ============================================================
     // TEMPLATE VERSIONS — 1 publicada por plantilla
     // ============================================================
@@ -644,12 +828,18 @@ return (static function (): array {
         $subset = array_values(array_filter($blocks, fn (array $b): bool => $b['template_id'] === $templateId));
         usort($subset, fn (array $a, array $b): int => $a['sort_order'] <=> $b['sort_order']);
 
+        // Mismos campos que TemplateBlockPayloadDto::toArray() para que la versión
+        // publicada conserve la maquetación (portada/índice/saltos/tema por bloque).
         return array_map(static fn (array $b): array => [
             'id' => $b['id'],
+            'block_type' => $b['block_type'] ?? 'content',
             'title' => $b['title'],
             'description' => $b['description'],
             'default_content' => $b['default_content'],
             'block_state' => $b['block_state'],
+            'page_break_after' => $b['page_break_after'] ?? false,
+            'theme_id' => $b['theme_id'] ?? null,
+            'apply_theme' => $b['apply_theme'] ?? true,
             'sort_order' => $b['sort_order'],
         ], $subset);
     };
@@ -684,6 +874,26 @@ return (static function (): array {
             'published_by' => $uJefeEBach,
             'published_at' => '2025-09-01 09:00:00',
             'changelog' => 'Publicación inicial — plantilla de programación didáctica de asignatura de Bachillerato (CEEDCV).',
+        ],
+        [
+            'id' => 'cc000003-0000-4000-8000-000000000000',
+            'entity_version_id' => $EV_T3_PUB,
+            'template_id' => $T3,
+            'version_number' => 1,
+            'blocks_snapshot' => $snapshotFor($T3),
+            'published_by' => $uDir,
+            'published_at' => '2025-09-01 09:00:00',
+            'changelog' => 'Publicación inicial — plantilla de demostración de maquetación (portada, índice, saltos de página y tema por bloque).',
+        ],
+        [
+            'id' => 'cc000004-0000-4000-8000-000000000000',
+            'entity_version_id' => $EV_T4_PUB,
+            'template_id' => $T4,
+            'version_number' => 1,
+            'blocks_snapshot' => $snapshotFor($T4),
+            'published_by' => $uDir,
+            'published_at' => '2025-09-01 09:00:00',
+            'changelog' => 'Publicación inicial — DemoTipTap: showcase de funcionalidades del editor TipTap.',
         ],
     ];
 
@@ -742,6 +952,34 @@ return (static function (): array {
             'stage' => 2,
             'status' => 'approved',
         ],
+        [
+            'id' => 'ff000006-0000-4000-8000-000000000000',
+            'template_id' => $T3,
+            'user_id' => $uSec,
+            'stage' => 1,
+            'status' => 'approved',
+        ],
+        [
+            'id' => 'ff000007-0000-4000-8000-000000000001',
+            'template_id' => $T3,
+            'user_id' => $uDir,
+            'stage' => 2,
+            'status' => 'approved',
+        ],
+        [
+            'id' => 'ff000008-0000-4000-8000-000000000000',
+            'template_id' => $T4,
+            'user_id' => $uSec,
+            'stage' => 1,
+            'status' => 'approved',
+        ],
+        [
+            'id' => 'ff000009-0000-4000-8000-000000000001',
+            'template_id' => $T4,
+            'user_id' => $uDir,
+            'stage' => 2,
+            'status' => 'approved',
+        ],
     ];
 
     // ============================================================
@@ -761,6 +999,16 @@ return (static function (): array {
         ],
         [
             'template_id' => $T2,
+            'user_id' => $uDir,
+            'stage' => 1,
+        ],
+        [
+            'template_id' => $T3,
+            'user_id' => $uDir,
+            'stage' => 1,
+        ],
+        [
+            'template_id' => $T4,
             'user_id' => $uDir,
             'stage' => 1,
         ],

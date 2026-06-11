@@ -1,0 +1,2681 @@
+[
+ {
+  "sort_order": 1,
+  "title": "Portada",
+  "block_type": "cover",
+  "block_state": "editable",
+  "page_break_after": false,
+  "default_content": {
+   "kind": "cover",
+   "page": {
+    "size": "A4"
+   },
+   "regions": [
+    {
+     "id": "cv-mq7tijab-pzfwi",
+     "type": "text_placeholder",
+     "box": {
+      "x": 38,
+      "y": 53,
+      "w": 150,
+      "h": 16,
+      "z": 1
+     },
+     "props": {
+      "key": "campo_1",
+      "label": "Campo 1",
+      "defaultText": "OK",
+      "size": 14,
+      "color": "#1a1a1a",
+      "align": "left",
+      "weight": "normal"
+     }
+    },
+    {
+     "id": "cv-mq7tineo-7caai",
+     "type": "text",
+     "box": {
+      "x": 41,
+      "y": 23,
+      "w": 150,
+      "h": 20,
+      "z": 1
+     },
+     "props": {
+      "text": "Texto",
+      "size": 33,
+      "color": "#1a1a1a",
+      "align": "left",
+      "weight": "normal"
+     }
+    },
+    {
+     "id": "cv-mq7tiwgs-rtts2",
+     "type": "page_number",
+     "box": {
+      "x": 150,
+      "y": 282,
+      "w": 45,
+      "h": 8,
+      "z": 2
+     },
+     "props": {
+      "format": "page-of-pages",
+      "align": "right",
+      "size": 10,
+      "color": "#666666"
+     }
+    },
+    {
+     "id": "cv-mq7tkr0f-v7qkd",
+     "type": "text_placeholder",
+     "box": {
+      "x": 46,
+      "y": 89,
+      "w": 150,
+      "h": 16,
+      "z": 4
+     },
+     "props": {
+      "key": "campo_1",
+      "label": "Campo 1",
+      "size": 14,
+      "color": "#1a1a1a",
+      "align": "left",
+      "weight": "normal"
+     }
+    }
+   ]
+  }
+ },
+ {
+  "sort_order": 2,
+  "title": "Página en blanco",
+  "block_type": "blank",
+  "block_state": "locked",
+  "page_break_after": false,
+  "default_content": null
+ },
+ {
+  "sort_order": 3,
+  "title": "Índice",
+  "block_type": "index",
+  "block_state": "modifiable",
+  "page_break_after": false,
+  "default_content": null
+ },
+ {
+  "sort_order": 4,
+  "title": "Editable vacío",
+  "block_type": "content",
+  "block_state": "editable",
+  "page_break_after": false,
+  "default_content": null
+ },
+ {
+  "sort_order": 5,
+  "title": "Editable con contenido",
+  "block_type": "content",
+  "block_state": "editable",
+  "page_break_after": false,
+  "default_content": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "contenido editable"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "sort_order": 6,
+  "title": "Bloqueado",
+  "block_type": "content",
+  "block_state": "locked",
+  "page_break_after": false,
+  "default_content": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "contenido bloqueado"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "sort_order": 7,
+  "title": "Opcional con contenido",
+  "block_type": "content",
+  "block_state": "optional",
+  "page_break_after": false,
+  "default_content": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "contenido OpcionaContenido"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "sort_order": 8,
+  "title": "Opcional vacío",
+  "block_type": "content",
+  "block_state": "optional",
+  "page_break_after": false,
+  "default_content": null
+ },
+ {
+  "sort_order": 9,
+  "title": "Párrafo",
+  "block_type": "content",
+  "block_state": "modifiable",
+  "page_break_after": false,
+  "default_content": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Contenido ModificablePárrafo"
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "sort_order": 10,
+  "title": "Negrita",
+  "block_type": "content",
+  "block_state": "modifiable",
+  "page_break_after": false,
+  "default_content": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "bold"
+        }
+       ],
+       "text": "Contenido ModificableNegrita"
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "bold"
+        }
+       ],
+       "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "bold"
+        }
+       ],
+       "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "bold"
+        }
+       ],
+       "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "sort_order": 11,
+  "title": "Cursiva",
+  "block_type": "content",
+  "block_state": "modifiable",
+  "page_break_after": false,
+  "default_content": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "italic"
+        }
+       ],
+       "text": "Contenido ModificableCursiva"
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "italic"
+        }
+       ],
+       "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "italic"
+        }
+       ],
+       "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "italic"
+        }
+       ],
+       "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "sort_order": 12,
+  "title": "Subrayado",
+  "block_type": "content",
+  "block_state": "modifiable",
+  "page_break_after": false,
+  "default_content": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "underline"
+        }
+       ],
+       "text": "Contenido ModificableSubrayado"
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "underline"
+        }
+       ],
+       "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "underline"
+        }
+       ],
+       "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "underline"
+        }
+       ],
+       "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "sort_order": 13,
+  "title": "Código en línea",
+  "block_type": "content",
+  "block_state": "modifiable",
+  "page_break_after": false,
+  "default_content": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ],
+       "text": "Contenido ModificableCodeLine"
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ],
+       "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ],
+       "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ],
+       "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "sort_order": 14,
+  "title": "Enlace",
+  "block_type": "content",
+  "block_state": "modifiable",
+  "page_break_after": false,
+  "default_content": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "link",
+         "attrs": {
+          "href": "https://ceedcv.gva.es",
+          "target": "_blank",
+          "rel": "noopener noreferrer nofollow"
+         }
+        }
+       ],
+       "text": "Contenido ModificableEnlace"
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "link",
+         "attrs": {
+          "href": "https://ceedcv.gva.es",
+          "target": "_blank",
+          "rel": "noopener noreferrer nofollow"
+         }
+        }
+       ],
+       "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "link",
+         "attrs": {
+          "href": "https://ceedcv.gva.es",
+          "target": "_blank",
+          "rel": "noopener noreferrer nofollow"
+         }
+        }
+       ],
+       "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "link",
+         "attrs": {
+          "href": "https://ceedcv.gva.es",
+          "target": "_blank",
+          "rel": "noopener noreferrer nofollow"
+         }
+        }
+       ],
+       "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "sort_order": 15,
+  "title": "Tachado",
+  "block_type": "content",
+  "block_state": "modifiable",
+  "page_break_after": false,
+  "default_content": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "strike"
+        }
+       ],
+       "text": "Contenido ModificableTachado"
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "strike"
+        }
+       ],
+       "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "strike"
+        }
+       ],
+       "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "strike"
+        }
+       ],
+       "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "sort_order": 16,
+  "title": "Color de texto",
+  "block_type": "content",
+  "block_state": "modifiable",
+  "page_break_after": false,
+  "default_content": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "textStyle",
+         "attrs": {
+          "color": "#f97316"
+         }
+        }
+       ],
+       "text": "Contenido"
+      },
+      {
+       "type": "text",
+       "text": " "
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "textStyle",
+         "attrs": {
+          "color": "#3b82f6"
+         }
+        }
+       ],
+       "text": "ModificableColor"
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "textStyle",
+         "attrs": {
+          "color": "#5b5b5b"
+         }
+        }
+       ],
+       "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae f"
+      },
+      {
+       "type": "text",
+       "text": "eugia"
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "textStyle",
+         "attrs": {
+          "color": "#ef4444"
+         }
+        }
+       ],
+       "text": "t. Aliquam at posuere urna."
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Viva"
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "textStyle",
+         "attrs": {
+          "color": "#f97316"
+         }
+        }
+       ],
+       "text": "mus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habita"
+      },
+      {
+       "type": "text",
+       "text": "sse plate"
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "textStyle",
+         "attrs": {
+          "color": "#f59e0b"
+         }
+        }
+       ],
+       "text": "a dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac"
+      },
+      {
+       "type": "text",
+       "text": " "
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "textStyle",
+         "attrs": {
+          "color": "#10b981"
+         }
+        }
+       ],
+       "text": "magna"
+      },
+      {
+       "type": "text",
+       "text": "."
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Sed rh"
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "textStyle",
+         "attrs": {
+          "color": "#3b82f6"
+         }
+        }
+       ],
+       "text": "oncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nun"
+      },
+      {
+       "type": "text",
+       "text": "c effici"
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "textStyle",
+         "attrs": {
+          "color": "#8b5cf6"
+         }
+        }
+       ],
+       "text": "tur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, la"
+      },
+      {
+       "type": "text",
+       "text": "oreet elit."
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "textStyle",
+         "attrs": {
+          "color": "#ec4899"
+         }
+        }
+       ],
+       "text": " In consectetur p"
+      },
+      {
+       "type": "text",
+       "text": "ellente"
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "textStyle",
+         "attrs": {
+          "color": "#a16207"
+         }
+        }
+       ],
+       "text": "sque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "sort_order": 17,
+  "title": "Subrayado con color",
+  "block_type": "content",
+  "block_state": "modifiable",
+  "page_break_after": false,
+  "default_content": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "highlight",
+         "attrs": {
+          "color": "#ef4444"
+         }
+        }
+       ],
+       "text": "Contenido"
+      },
+      {
+       "type": "text",
+       "text": " "
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "highlight",
+         "attrs": {
+          "color": "#3b82f6"
+         }
+        }
+       ],
+       "text": "ModificableSubrayadoColor"
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Lo"
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "highlight",
+         "attrs": {
+          "color": "#000000"
+         }
+        }
+       ],
+       "text": "rem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor fel"
+      },
+      {
+       "type": "text",
+       "text": "is "
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "highlight",
+         "attrs": {
+          "color": "#5b5b5b"
+         }
+        }
+       ],
+       "text": "pharetra urna, vel"
+      },
+      {
+       "type": "text",
+       "text": " pellen"
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "highlight",
+         "attrs": {
+          "color": "#ef4444"
+         }
+        }
+       ],
+       "text": "tesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at "
+      },
+      {
+       "type": "text",
+       "text": "pos"
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "highlight",
+         "attrs": {
+          "color": "#f97316"
+         }
+        }
+       ],
+       "text": "uere"
+      },
+      {
+       "type": "text",
+       "text": " urna."
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "V"
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "highlight",
+         "attrs": {
+          "color": "#f59e0b"
+         }
+        }
+       ],
+       "text": "ivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id male"
+      },
+      {
+       "type": "text",
+       "text": "su"
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "highlight",
+         "attrs": {
+          "color": "#10b981"
+         }
+        }
+       ],
+       "text": "ada. In ha"
+      },
+      {
+       "type": "text",
+       "text": "c habit"
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "highlight",
+         "attrs": {
+          "color": "#06b6d4"
+         }
+        }
+       ],
+       "text": "asse platea di"
+      },
+      {
+       "type": "text",
+       "text": "ctum"
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "highlight",
+         "attrs": {
+          "color": "#3b82f6"
+         }
+        }
+       ],
+       "text": "st. Praesen"
+      },
+      {
+       "type": "text",
+       "text": "t eu l"
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "highlight",
+         "attrs": {
+          "color": "#8b5cf6"
+         }
+        }
+       ],
+       "text": "eo rutrum, tincidunt urna"
+      },
+      {
+       "type": "text",
+       "text": " sit a"
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "highlight",
+         "attrs": {
+          "color": "#ec4899"
+         }
+        }
+       ],
+       "text": "met, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Sed rhoncus lectus non sapie"
+      },
+      {
+       "type": "text",
+       "marks": [
+        {
+         "type": "highlight",
+         "attrs": {
+          "color": "#a16207"
+         }
+        }
+       ],
+       "text": "n rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctu"
+      },
+      {
+       "type": "text",
+       "text": "s neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "sort_order": 18,
+  "title": "Justificado",
+  "block_type": "content",
+  "block_state": "modifiable",
+  "page_break_after": false,
+  "default_content": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "justify",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Contenido ModificableModificableJustificado"
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "justify",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "justify",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "justify",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "sort_order": 19,
+  "title": "Sangría",
+  "block_type": "content",
+  "block_state": "modifiable",
+  "page_break_after": false,
+  "default_content": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 1
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Contenido ModificableSangría"
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 3
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 2
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 1
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "sort_order": 20,
+  "title": "Lista de viñetas",
+  "block_type": "content",
+  "block_state": "modifiable",
+  "page_break_after": false,
+  "default_content": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "bulletList",
+     "content": [
+      {
+       "type": "listItem",
+       "content": [
+        {
+         "type": "paragraph",
+         "attrs": {
+          "textAlign": "left",
+          "indent": 0
+         },
+         "content": [
+          {
+           "type": "text",
+           "text": "Contenido ModificableListaBullet"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "content": [
+        {
+         "type": "paragraph",
+         "attrs": {
+          "textAlign": "left",
+          "indent": 0
+         },
+         "content": [
+          {
+           "type": "text",
+           "text": "ModificableListaBullet"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "content": [
+        {
+         "type": "paragraph",
+         "attrs": {
+          "textAlign": "left",
+          "indent": 0
+         },
+         "content": [
+          {
+           "type": "text",
+           "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "content": [
+        {
+         "type": "paragraph",
+         "attrs": {
+          "textAlign": "left",
+          "indent": 0
+         },
+         "content": [
+          {
+           "type": "text",
+           "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "content": [
+        {
+         "type": "paragraph",
+         "attrs": {
+          "textAlign": "left",
+          "indent": 0
+         },
+         "content": [
+          {
+           "type": "text",
+           "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "sort_order": 21,
+  "title": "Lista numerada",
+  "block_type": "content",
+  "block_state": "modifiable",
+  "page_break_after": false,
+  "default_content": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "orderedList",
+     "attrs": {
+      "start": 1
+     },
+     "content": [
+      {
+       "type": "listItem",
+       "content": [
+        {
+         "type": "paragraph",
+         "attrs": {
+          "textAlign": "left",
+          "indent": 0
+         },
+         "content": [
+          {
+           "type": "text",
+           "text": "Contenido ModificableListaNum"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "content": [
+        {
+         "type": "paragraph",
+         "attrs": {
+          "textAlign": "left",
+          "indent": 0
+         },
+         "content": [
+          {
+           "type": "text",
+           "text": "ModificableListaNum"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "content": [
+        {
+         "type": "paragraph",
+         "attrs": {
+          "textAlign": "left",
+          "indent": 0
+         },
+         "content": [
+          {
+           "type": "text",
+           "text": "orem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "content": [
+        {
+         "type": "paragraph",
+         "attrs": {
+          "textAlign": "left",
+          "indent": 0
+         },
+         "content": [
+          {
+           "type": "text",
+           "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "content": [
+        {
+         "type": "paragraph",
+         "attrs": {
+          "textAlign": "left",
+          "indent": 0
+         },
+         "content": [
+          {
+           "type": "text",
+           "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "sort_order": 22,
+  "title": "Lista de tareas",
+  "block_type": "content",
+  "block_state": "modifiable",
+  "page_break_after": false,
+  "default_content": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "taskList",
+     "content": [
+      {
+       "type": "taskItem",
+       "attrs": {
+        "checked": false
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "attrs": {
+          "textAlign": "left",
+          "indent": 0
+         },
+         "content": [
+          {
+           "type": "text",
+           "text": "Contenido ModificableListaCheck"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "type": "taskItem",
+       "attrs": {
+        "checked": false
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "attrs": {
+          "textAlign": "left",
+          "indent": 0
+         },
+         "content": [
+          {
+           "type": "text",
+           "text": "ModificableListaCheck"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "type": "taskItem",
+       "attrs": {
+        "checked": false
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "attrs": {
+          "textAlign": "left",
+          "indent": 0
+         },
+         "content": [
+          {
+           "type": "text",
+           "text": "orem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "type": "taskItem",
+       "attrs": {
+        "checked": false
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "attrs": {
+          "textAlign": "left",
+          "indent": 0
+         },
+         "content": [
+          {
+           "type": "text",
+           "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "type": "taskItem",
+       "attrs": {
+        "checked": false
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "attrs": {
+          "textAlign": "left",
+          "indent": 0
+         },
+         "content": [
+          {
+           "type": "text",
+           "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "sort_order": 23,
+  "title": "Alineado al centro",
+  "block_type": "content",
+  "block_state": "modifiable",
+  "page_break_after": false,
+  "default_content": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "center",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Contenido ModificableAlineadoCentro"
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "center",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "center",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "center",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "sort_order": 24,
+  "title": "Alineado a la derecha",
+  "block_type": "content",
+  "block_state": "modifiable",
+  "page_break_after": false,
+  "default_content": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "right",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Contenido ModificableAlineadoCentro"
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "right",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "right",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "right",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "sort_order": 25,
+  "title": "Cita",
+  "block_type": "content",
+  "block_state": "modifiable",
+  "page_break_after": false,
+  "default_content": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "blockquote",
+     "attrs": {
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "paragraph",
+       "attrs": {
+        "textAlign": "left",
+        "indent": 0
+       },
+       "content": [
+        {
+         "type": "text",
+         "text": "Contenido ModificableQuotes"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "type": "blockquote",
+     "attrs": {
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "paragraph",
+       "attrs": {
+        "textAlign": "left",
+        "indent": 0
+       },
+       "content": [
+        {
+         "type": "text",
+         "text": "orem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+        }
+       ]
+      },
+      {
+       "type": "paragraph",
+       "attrs": {
+        "textAlign": "left",
+        "indent": 0
+       },
+       "content": [
+        {
+         "type": "text",
+         "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+        }
+       ]
+      },
+      {
+       "type": "paragraph",
+       "attrs": {
+        "textAlign": "left",
+        "indent": 0
+       },
+       "content": [
+        {
+         "type": "text",
+         "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+        }
+       ]
+      },
+      {
+       "type": "paragraph",
+       "attrs": {
+        "textAlign": "left",
+        "indent": 0
+       }
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "sort_order": 26,
+  "title": "Bloque de código",
+  "block_type": "content",
+  "block_state": "modifiable",
+  "page_break_after": false,
+  "default_content": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "codeBlock",
+     "attrs": [],
+     "content": [
+      {
+       "type": "text",
+       "text": "Contenido ModificableCodeBlock\norem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna.\n\nVivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna.\n\nSed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue.\n"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "sort_order": 27,
+  "title": "Línea horizontal",
+  "block_type": "content",
+  "block_state": "modifiable",
+  "page_break_after": false,
+  "default_content": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "sin texto no se guarda"
+      }
+     ]
+    },
+    {
+     "type": "horizontalRule"
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "orem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+      },
+      {
+       "type": "hardBreak"
+      }
+     ]
+    },
+    {
+     "type": "horizontalRule"
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "hardBreak"
+      },
+      {
+       "type": "text",
+       "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+      },
+      {
+       "type": "hardBreak"
+      }
+     ]
+    },
+    {
+     "type": "horizontalRule"
+    },
+    {
+     "type": "paragraph",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0
+     },
+     "content": [
+      {
+       "type": "hardBreak"
+      },
+      {
+       "type": "text",
+       "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+      },
+      {
+       "type": "hardBreak"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "sort_order": 28,
+  "title": "Encabezado H1",
+  "block_type": "content",
+  "block_state": "modifiable",
+  "page_break_after": false,
+  "default_content": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "heading",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0,
+      "level": 1
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Contenido ModificableH1"
+      }
+     ]
+    },
+    {
+     "type": "heading",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0,
+      "level": 1
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "orem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+      },
+      {
+       "type": "hardBreak"
+      },
+      {
+       "type": "hardBreak"
+      },
+      {
+       "type": "text",
+       "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+      },
+      {
+       "type": "hardBreak"
+      },
+      {
+       "type": "hardBreak"
+      },
+      {
+       "type": "text",
+       "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+      },
+      {
+       "type": "hardBreak"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "sort_order": 29,
+  "title": "Encabezado H2",
+  "block_type": "content",
+  "block_state": "modifiable",
+  "page_break_after": false,
+  "default_content": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "heading",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0,
+      "level": 2
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Contenido ModificableH2"
+      }
+     ]
+    },
+    {
+     "type": "heading",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0,
+      "level": 2
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "rem ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+      },
+      {
+       "type": "hardBreak"
+      },
+      {
+       "type": "hardBreak"
+      },
+      {
+       "type": "text",
+       "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+      },
+      {
+       "type": "hardBreak"
+      },
+      {
+       "type": "hardBreak"
+      },
+      {
+       "type": "text",
+       "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "sort_order": 30,
+  "title": "Encabezado H3",
+  "block_type": "content",
+  "block_state": "modifiable",
+  "page_break_after": false,
+  "default_content": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "heading",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0,
+      "level": 3
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Contenido ModificableH3"
+      }
+     ]
+    },
+    {
+     "type": "heading",
+     "attrs": {
+      "textAlign": "left",
+      "indent": 0,
+      "level": 3
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "em ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+      },
+      {
+       "type": "hardBreak"
+      },
+      {
+       "type": "hardBreak"
+      },
+      {
+       "type": "text",
+       "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+      },
+      {
+       "type": "hardBreak"
+      },
+      {
+       "type": "hardBreak"
+      },
+      {
+       "type": "text",
+       "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "sort_order": 31,
+  "title": "Tabla vacía",
+  "block_type": "content",
+  "block_state": "modifiable",
+  "page_break_after": false,
+  "default_content": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "table",
+     "content": [
+      {
+       "type": "tableRow",
+       "content": [
+        {
+         "type": "tableHeader",
+         "attrs": {
+          "colspan": 1,
+          "rowspan": 1
+         },
+         "content": [
+          {
+           "type": "paragraph",
+           "attrs": {
+            "textAlign": "left",
+            "indent": 0
+           }
+          }
+         ]
+        },
+        {
+         "type": "tableHeader",
+         "attrs": {
+          "colspan": 1,
+          "rowspan": 1
+         },
+         "content": [
+          {
+           "type": "paragraph",
+           "attrs": {
+            "textAlign": "left",
+            "indent": 0
+           }
+          }
+         ]
+        },
+        {
+         "type": "tableHeader",
+         "attrs": {
+          "colspan": 1,
+          "rowspan": 1
+         },
+         "content": [
+          {
+           "type": "paragraph",
+           "attrs": {
+            "textAlign": "left",
+            "indent": 0
+           }
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "type": "tableRow",
+       "content": [
+        {
+         "type": "tableCell",
+         "attrs": {
+          "colspan": 1,
+          "rowspan": 1
+         },
+         "content": [
+          {
+           "type": "paragraph",
+           "attrs": {
+            "textAlign": "left",
+            "indent": 0
+           }
+          }
+         ]
+        },
+        {
+         "type": "tableCell",
+         "attrs": {
+          "colspan": 1,
+          "rowspan": 1
+         },
+         "content": [
+          {
+           "type": "paragraph",
+           "attrs": {
+            "textAlign": "left",
+            "indent": 0
+           }
+          }
+         ]
+        },
+        {
+         "type": "tableCell",
+         "attrs": {
+          "colspan": 1,
+          "rowspan": 1
+         },
+         "content": [
+          {
+           "type": "paragraph",
+           "attrs": {
+            "textAlign": "left",
+            "indent": 0
+           }
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "type": "tableRow",
+       "content": [
+        {
+         "type": "tableCell",
+         "attrs": {
+          "colspan": 1,
+          "rowspan": 1
+         },
+         "content": [
+          {
+           "type": "paragraph",
+           "attrs": {
+            "textAlign": "left",
+            "indent": 0
+           }
+          }
+         ]
+        },
+        {
+         "type": "tableCell",
+         "attrs": {
+          "colspan": 1,
+          "rowspan": 1
+         },
+         "content": [
+          {
+           "type": "paragraph",
+           "attrs": {
+            "textAlign": "left",
+            "indent": 0
+           }
+          }
+         ]
+        },
+        {
+         "type": "tableCell",
+         "attrs": {
+          "colspan": 1,
+          "rowspan": 1
+         },
+         "content": [
+          {
+           "type": "paragraph",
+           "attrs": {
+            "textAlign": "left",
+            "indent": 0
+           }
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "sort_order": 32,
+  "title": "Tabla con datos",
+  "block_type": "content",
+  "block_state": "modifiable",
+  "page_break_after": false,
+  "default_content": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "table",
+     "content": [
+      {
+       "type": "tableRow",
+       "content": [
+        {
+         "type": "tableHeader",
+         "attrs": {
+          "colspan": 1,
+          "rowspan": 1
+         },
+         "content": [
+          {
+           "type": "paragraph",
+           "attrs": {
+            "textAlign": "left",
+            "indent": 0
+           },
+           "content": [
+            {
+             "type": "text",
+             "text": "ModificableTablaLlena"
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "type": "tableHeader",
+         "attrs": {
+          "colspan": 1,
+          "rowspan": 1
+         },
+         "content": [
+          {
+           "type": "paragraph",
+           "attrs": {
+            "textAlign": "left",
+            "indent": 0
+           },
+           "content": [
+            {
+             "type": "text",
+             "text": "ModificableTablaLlena"
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "type": "tableHeader",
+         "attrs": {
+          "colspan": 1,
+          "rowspan": 1
+         },
+         "content": [
+          {
+           "type": "paragraph",
+           "attrs": {
+            "textAlign": "left",
+            "indent": 0
+           },
+           "content": [
+            {
+             "type": "text",
+             "text": "ModificableTablaLlena"
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "type": "tableRow",
+       "content": [
+        {
+         "type": "tableCell",
+         "attrs": {
+          "colspan": 1,
+          "rowspan": 1
+         },
+         "content": [
+          {
+           "type": "heading",
+           "attrs": {
+            "textAlign": "left",
+            "indent": 0,
+            "level": 3
+           },
+           "content": [
+            {
+             "type": "text",
+             "text": "em ipsum dolor sit amet, consectetur adipiscing elit. Etiam venenatis sodales nulla ut placerat. Quisque fringilla dui malesuada massa sollicitudin accumsan. Duis dapibus, justo vitae semper interdum, tortor felis pharetra urna, vel pellentesque tellus tellus nec ligula. Curabitur cursus sem ipsum, quis ullamcorper mauris efficitur a. Sed massa ligula, fringilla nec leo vel, faucibus faucibus urna. Ut mattis tristique urna vitae feugiat. Aliquam at posuere urna."
+            },
+            {
+             "type": "hardBreak"
+            },
+            {
+             "type": "hardBreak"
+            },
+            {
+             "type": "hardBreak"
+            },
+            {
+             "type": "hardBreak"
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "type": "tableCell",
+         "attrs": {
+          "colspan": 1,
+          "rowspan": 1
+         },
+         "content": [
+          {
+           "type": "heading",
+           "attrs": {
+            "textAlign": "left",
+            "indent": 0,
+            "level": 3
+           },
+           "content": [
+            {
+             "type": "text",
+             "text": "Vivamus mollis mollis tincidunt. Fusce condimentum congue enim vel malesuada. Nulla nec mattis enim, in molestie velit. Morbi sit amet ante semper, varius massa ac, tincidunt nunc. Etiam rutrum eget nulla id malesuada. In hac habitasse platea dictumst. Praesent eu leo rutrum, tincidunt urna sit amet, porta metus. Vestibulum vel eleifend sapien. Aliquam lobortis, arcu sit amet gravida scelerisque, magna orci dictum orci, ac feugiat ante nulla ac magna."
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "type": "tableCell",
+         "attrs": {
+          "colspan": 1,
+          "rowspan": 1
+         },
+         "content": [
+          {
+           "type": "heading",
+           "attrs": {
+            "textAlign": "left",
+            "indent": 0,
+            "level": 3
+           },
+           "content": [
+            {
+             "type": "text",
+             "text": "Sed rhoncus lectus non sapien rutrum fermentum. Cras rutrum sodales volutpat. Pellentesque et libero metus. Morbi laoreet ac massa eget sollicitudin. Ut lorem turpis, tincidunt eu pellentesque eget, cursus eu velit. Nunc efficitur luctus neque, volutpat pharetra nunc lacinia nec. Sed sodales varius diam vitae dapibus. Phasellus eros libero, mattis eu condimentum eu, posuere et turpis. Suspendisse quis dui ultricies, tristique arcu eu, laoreet elit. In consectetur pellentesque libero, vel pharetra nunc ultrices id. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque maximus eros sed lectus tristique interdum. Donec sem libero, euismod eget nunc a, commodo posuere augue."
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "type": "tableRow",
+       "content": [
+        {
+         "type": "tableCell",
+         "attrs": {
+          "colspan": 1,
+          "rowspan": 1
+         },
+         "content": [
+          {
+           "type": "paragraph",
+           "attrs": {
+            "textAlign": "left",
+            "indent": 0
+           },
+           "content": [
+            {
+             "type": "text",
+             "text": "ModificableTablaLlena"
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "type": "tableCell",
+         "attrs": {
+          "colspan": 1,
+          "rowspan": 1
+         },
+         "content": [
+          {
+           "type": "paragraph",
+           "attrs": {
+            "textAlign": "left",
+            "indent": 0
+           },
+           "content": [
+            {
+             "type": "text",
+             "text": "ModificableTablaLlena"
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "type": "tableCell",
+         "attrs": {
+          "colspan": 1,
+          "rowspan": 1
+         },
+         "content": [
+          {
+           "type": "paragraph",
+           "attrs": {
+            "textAlign": "left",
+            "indent": 0
+           },
+           "content": [
+            {
+             "type": "text",
+             "text": "ModificableTablaLlena"
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "sort_order": 33,
+  "title": "Imagen",
+  "block_type": "content",
+  "block_state": "modifiable",
+  "page_break_after": false,
+  "default_content": {
+   "type": "doc",
+   "content": [
+    {
+     "type": "image",
+     "attrs": {
+      "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='480' height='300'><rect width='100%' height='100%' fill='#e9ecef'/><text x='50%' y='50%' font-family='sans-serif' font-size='20' fill='#868e96' text-anchor='middle' dominant-baseline='middle'>Imagen de ejemplo</text></svg>",
+      "alt": "rana.jpeg"
+     }
+    }
+   ]
+  }
+ }
+]

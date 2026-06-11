@@ -28,6 +28,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             ProcessesSeeder::class,
             DefaultThemeSeeder::class,
+            DemoThemesSeeder::class,
             TemplatesSeeder::class,
             TemplateReviewersSeeder::class,
             TemplateDocumentReviewersSeeder::class,

@@ -28,7 +28,17 @@ class TemplateBlocksSeeder extends Seeder
 
         $rows = array_map(static function (array $row) use ($now): array {
             if (isset($row['default_content'])) {
-                $row['default_content'] = SeedContentShape::toTiptapJson($row['default_content']);
+                $content = $row['default_content'];
+
+                // Bloques estructurales (portada, índice, hoja en blanco) no llevan
+                // cuerpo Tiptap: la portada guarda un payload de maquetación
+                // `{"kind":"cover",...}` (geometría/regiones) que NO debe pasar por el
+                // normalizador Tiptap (lo aplastaría a un doc vacío). Se serializa tal
+                // cual; el resto de bloques (content) sí se normalizan a Tiptap.
+                $isLayoutPayload = is_array($content) && isset($content['kind']);
+                $row['default_content'] = $isLayoutPayload
+                    ? json_encode($content, JSON_UNESCAPED_UNICODE)
+                    : SeedContentShape::toTiptapJson($content);
             }
 
             unset($row['type'], $row['mandatory']);
@@ -39,6 +49,14 @@ class TemplateBlocksSeeder extends Seeder
                 $doc = TemplateBlockDescriptionNormalizer::toTiptapDoc($row['description']);
                 $row['description'] = $doc === null ? null : json_encode($doc, JSON_UNESCAPED_UNICODE);
             }
+
+            // Columnas de maquetación NOT NULL con default en BD: hay que mandar un
+            // valor concreto (no NULL) porque la normalización de columnas posterior
+            // rellena con NULL las claves ausentes, lo que violaría el NOT NULL.
+            $row['block_type'] ??= 'content';
+            $row['apply_theme'] = array_key_exists('apply_theme', $row) ? (bool) $row['apply_theme'] : true;
+            $row['page_break_after'] = array_key_exists('page_break_after', $row) ? (bool) $row['page_break_after'] : false;
+            $row['theme_id'] ??= null;
 
             $row['created_at'] ??= $now;
             $row['updated_at'] ??= $now;
@@ -53,10 +71,14 @@ class TemplateBlocksSeeder extends Seeder
         $columnOrder = [
             'id',
             'template_id',
+            'block_type',
+            'theme_id',
+            'apply_theme',
             'title',
             'default_content',
             'description',
             'block_state',
+            'page_break_after',
             'sort_order',
             'created_at',
             'updated_at',

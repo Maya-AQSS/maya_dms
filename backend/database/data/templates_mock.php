@@ -6,10 +6,11 @@ use App\Models\EntityVersion;
 /**
  * Datos mock de plantillas (programaciones didácticas reales del CEEDCV).
  *
- * El pack consumido define 3 plantillas publicadas:
+ * El pack consumido define 4 plantillas publicadas:
  * - T0: Programación de ciclo formativo (FP) — visibility=study_type, study_type_id=GS
  * - T1: Programación didáctica de módulo (FP) — visibility=study_type, study_type_id=GS
  * - T2: Programación didáctica de asignatura (Bachillerato) — visibility=study_type, study_type_id=NG
+ * - T3: Programación con maquetación (demostración) — visibility=global (portada/índice/blank + tema por bloque)
  *
  * IDs de jerarquía académica reales de Odoo (ver maya_infra/odoo_db.sql, view v_dms_study_types).
  *
