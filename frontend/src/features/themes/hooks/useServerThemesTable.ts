@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useServerTable } from '@ceedcv-maya/shared-hooks-react';
 import { fetchThemes, type ThemeListFilters } from '../../../api/themes';
+import { DEFAULT_TABLE_PAGE_SIZE, dropInvalidStoredPageSize } from '../../../lib/dataTablePageSize';
 import type { Theme } from '../../../types/themes';
 
 /** Columnas ordenables server-side (espejo de la whitelist del backend). */
@@ -28,12 +29,13 @@ export interface ThemesListMeta {
  * (filtros/page/sort) y localStorage (per_page).
  */
 export function useServerThemesTable() {
+  dropInvalidStoredPageSize('maya:dms:themes-table');
   const table = useServerTable<Record<ThemeFilterKeys, string>>({
     defaults: { ...THEME_FILTER_DEFAULTS },
     sortableColumns: SORTABLE_THEME_COLUMNS,
     storageKey: 'maya:dms:themes-table',
     defaultSort: { columnId: 'updated_at', direction: 'desc' },
-    defaultPageSize: 15,
+    defaultPageSize: DEFAULT_TABLE_PAGE_SIZE,
   });
 
   const [rows, setRows] = useState<Theme[]>([]);

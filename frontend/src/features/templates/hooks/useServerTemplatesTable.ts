@@ -8,6 +8,7 @@ import {
 } from '../../../api/templates';
 import { useUserProfile } from '../../../features/user-profile';
 import { useFavoritesIds } from '../../../hooks/useFavoritesIds';
+import { DEFAULT_TABLE_PAGE_SIZE, dropInvalidStoredPageSize } from '../../../lib/dataTablePageSize';
 import { DMS_PERMISSIONS } from '../../../permissions';
 import type { Template, TemplatesListMeta } from '../../../types/templates';
 
@@ -60,12 +61,13 @@ export function useServerTemplatesTable(
   const canIndex = hasPermission(DMS_PERMISSIONS.templateIndex);
   const { templateIds: favoriteTemplateIds } = useFavoritesIds();
 
+  dropInvalidStoredPageSize(storageKey);
   const table = useServerTable<Record<TemplateFilterKeys, string>>({
     defaults: { ...TEMPLATE_FILTER_DEFAULTS },
     sortableColumns: SORTABLE_TEMPLATE_COLUMNS,
     storageKey,
     defaultSort: { columnId: 'updated_at', direction: 'desc' },
-    defaultPageSize: 15,
+    defaultPageSize: DEFAULT_TABLE_PAGE_SIZE,
   });
 
   const [rows, setRows] = useState<Template[]>([]);

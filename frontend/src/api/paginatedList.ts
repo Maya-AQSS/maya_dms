@@ -23,6 +23,9 @@ export type PaginatedListEnvelope<T> = {
   total: number;
 };
 
+/** Metadatos de paginación cuando el backend los anida bajo `meta` (p. ej. ProcessController). */
+type NestedMeta = Partial<Pick<PaginatedListEnvelope<unknown>, 'current_page' | 'last_page' | 'per_page' | 'total'>>;
+
 export function normalizePaginatedResponse<T>(body: unknown): PaginatedListEnvelope<T> {
   if (Array.isArray(body)) {
     const total = body.length;
@@ -44,8 +47,13 @@ export function normalizePaginatedResponse<T>(body: unknown): PaginatedListEnvel
     };
   }
 
-  const raw = body as Partial<PaginatedListEnvelope<T>>;
-  const data = Array.isArray(raw.data) ? raw.data : [];
+  const envelope = body as Partial<PaginatedListEnvelope<T>> & { meta?: NestedMeta };
+  const data = Array.isArray(envelope.data) ? envelope.data : [];
+
+  // Algunos endpoints (p. ej. processes) anidan la paginación bajo `meta` en vez
+  // del envelope plano de Laravel: aplanar para que ambos formatos normalicen igual.
+  const nested = envelope.meta && typeof envelope.meta === 'object' ? envelope.meta : undefined;
+  const raw: Partial<PaginatedListEnvelope<T>> = nested ? { ...nested, ...envelope } : envelope;
 
   return {
     current_page: typeof raw.current_page === 'number' ? raw.current_page : 1,

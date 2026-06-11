@@ -1,0 +1,460 @@
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\DTOs\ProcessDtoTest[39m
+  [32;1m✓[39;22m[90m [39m[90mfrom model maps all fields[39m[90m                                          [39m [90m0.23s[39m  
+  [32;1m✓[39;22m[90m [39m[90mfrom model handles nullable fields[39m[90m                                  [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mfrom model casts required fields to string[39m[90m                          [39m [90m0.08s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\DTOs\TemplateBlockPayloadDtoTest[39m
+  [32;1m✓[39;22m[90m [39m[90mtoarray serializa block type y campos de maquetacion[39m[90m                [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mblock type por defecto es content[39m[90m                                   [39m [90m0.07s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\DTOs\TemplateDtoThemeTest[39m
+  [32;1m✓[39;22m[90m [39m[90mdto carries theme id when set[39m[90m                                       [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdto emits theme mini when relation loaded[39m[90m                           [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdto emits null theme when no relation[39m[90m                               [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdto handles partial palette gracefully[39m[90m                              [39m [90m0.10s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Enums\BlockTypeTest[39m
+  [32;1m✓[39;22m[90m [39m[90mstructural blocks do not require body content[39m[90m                       [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcontent block requires body content[39m[90m                                 [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mvalues lists every case[39m[90m                                             [39m [90m0.10s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Listeners\RecordSegregationOfDutiesDenialTest[39m
+  [32;1m✓[39;22m[90m [39m[90mdispatches sod violation event when document submit is denied[39m[90m       [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mskips when gate allows[39m[90m                                              [39m [90m0.06s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Policies\BlockPolicyTest[39m
+  [32;1m✓[39;22m[90m [39m[90mview any denied without block index[39m[90m                                 [39m [90m1.78s[39m  
+  [32;1m✓[39;22m[90m [39m[90mview any denied without companion mutation slug[39m[90m                     [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mview any allowed with index and template update[39m[90m                     [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mview any allowed with index and document create[39m[90m                     [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mshow denied without block show[39m[90m                                      [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlist for template requires view on parent[39m[90m                           [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlist for template allowed for owner without template catalog slugs[39m[90m  [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlist for document requires view on parent[39m[90m                           [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcreate for template requires block create and parent update[39m[90m         [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mupdate for document requires document companion[39m[90m                     [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdelete for document follows document update[39m[90m                         [39m [90m0.10s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Policies\CommentPolicyTest[39m
+  [32;1m✓[39;22m[90m [39m[90mupdate allowed only for author[39m[90m                                      [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mauthor can delete own comment without delete slug[39m[90m                   [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mnon author delete denied without comment block delete slug[39m[90m          [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mauthor can delete own comment when creator of template[39m[90m              [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mtemplate creator can delete others comment[39m[90m                          [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstranger cannot delete comment on personal template[39m[90m                 [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mtemplate reviewer can delete comment in review[39m[90m                      [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdocument owner can delete comment[39m[90m                                   [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdocument reviewer can delete comment in review[39m[90m                      [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdocument edit share collaborator can participate in draft[39m[90m           [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdocument edit share collaborator can participate when rejected[39m[90m      [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdocument edit share read only cannot participate[39m[90m                    [39m [90m0.07s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Policies\DocumentBlockPolicyTest[39m
+  [32;1m✓[39;22m[90m [39m[90mdelete returns false when document not loaded[39m[90m                       [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcreator can delete own document block[39m[90m                               [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mowner can delete when different from creator[39m[90m                        [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstranger cannot delete another users document block[39m[90m                 [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mformer creator no longer owner cannot delete block[39m[90m                  [39m [90m0.07s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Policies\DocumentPolicyPerformanceTest[39m
+  [32;1m✓[39;22m[90m [39m[90mreview check is fast enough for in memory id comparison[39m[90m             [39m [90m0.07s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Policies\DocumentPolicyTest[39m
+  [32;1m✓[39;22m[90m [39m[90mcreate requires document create[39m[90m                                     [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mview any requires document index[39m[90m                                    [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mview allows owner without document show[39m[90m                             [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mview denied for stranger without document show[39m[90m                      [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mview denied for document delete outside academic context even with[39m[90m… [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mview denied for foreign personal document with published snapshot[39m[90m   [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreview denied without documents review permission[39m[90m                   [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreview denied with permission but not assigned[39m[90m                      [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90massigned reviewer can review with permission[39m[90m                        [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90massigned reviewer without review slug cannot approve via policy[39m[90m     [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mowner can submit[39m[90m                                                    [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdelegate owner can submit[39m[90m                                           [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcreator cannot submit when no longer owner[39m[90m                          [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthird party with scope access cannot submit if not owner[39m[90m            [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mupdate allows creator or owner without global permission[39m[90m            [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mupdate denied for non author with document update outside context[39m[90m   [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mupdate denied for stranger without documents update[39m[90m                 [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mupdate allows collaborator with edit share when shares relation loa[39m[90m…[39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mupdate denies collaborator with read share when shares relation loa[39m[90m…[39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mshare allows only owner[39m[90m                                             [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdelete allows owner without global permission[39m[90m                       [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdelete denied for former creator no longer owner[39m[90m                    [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdelete denied for stranger with document delete outside context[39m[90m     [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdelete denies stranger without documents delete permission[39m[90m          [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpublish allowed only for owner[39m[90m                                      [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mclone denied without document create[39m[90m                                [39m [90m0.27s[39m  
+  [32;1m✓[39;22m[90m [39m[90mclone denied for non titular without clone slug[39m[90m                     [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mclone requires document clone and update for non titular[39m[90m            [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mclone allowed for titular with document create[39m[90m                      [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mclone denied for non published document[39m[90m                             [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdelegate allowed only for owner[39m[90m                                     [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstart revision denied when not published[39m[90m                            [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstart revision allows owner when published and can update[39m[90m           [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstart revision allows document version for non titular[39m[90m              [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstart revision denied for non titular with only document update[39m[90m     [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstart revision denied when published but cannot view[39m[90m                [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mview history allows titular without slug[39m[90m                            [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mview history requires slug for non titular[39m[90m                          [39m [90m0.10s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Policies\TemplateBlockPolicyTest[39m
+  [32;1m✓[39;22m[90m [39m[90mdelete returns false when template not loaded[39m[90m                       [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcreator can delete own template block with block delete[39m[90m             [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcreator cannot delete without block delete slug[39m[90m                     [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mnon creator cannot delete template block on personal template[39m[90m       [39m [90m0.08s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Policies\TemplatePolicyTest[39m
+  [32;1m✓[39;22m[90m [39m[90massign review on personal allows creator in draft[39m[90m                   [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90massign review on global requires assign review slug[39m[90m                 [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreview requires template review and assignment[39m[90m                      [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mview any requires template index[39m[90m                                    [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mview requires templates read or documents create for transient mode[39m[90m…[39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mview denied for template delete outside academic context even with[39m[90m… [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mview denied for foreign personal template with published snapshot[39m[90m   [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcreator without templates review permission cannot review template[39m[90m  [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcreate defaults to personal and allows any authenticated user[39m[90m       [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcreate shared visibility denied without templates create[39m[90m            [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcreate shared visibility allowed with templates create[39m[90m              [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mupdate denied for non creator without privileged role[39m[90m               [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mupdate denied for coordinator on foreign template[39m[90m                   [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mupdate allows templates update on foreign published when user can v[39m[90m…[39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mupdate denied on foreign published without templates update[39m[90m         [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mupdate denied on foreign published without templates read[39m[90m           [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mupdate with target shared visibility denied without role[39m[90m            [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdelete non creator requires templates delete[39m[90m                        [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mupdate denied for user with only templates delete[39m[90m                   [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstart revision denied when not published[39m[90m                            [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstart revision allows creator when published and can view[39m[90m           [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstart revision allows template version on foreign published when us[39m[90m…[39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstart revision denied on foreign published without template version[39m[90m [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstart revision denied on foreign published without view[39m[90m             [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mclone allows creator on published personal[39m[90m                          [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mclone requires template clone and update for non creator[39m[90m            [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mview history allows creator without slug[39m[90m                            [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mview history requires slug for non creator[39m[90m                          [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpublish allows creator without reviewers even if non personal[39m[90m       [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpublish denied for creator when template has reviewers[39m[90m              [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90msubmit for review allowed for creator on draft[39m[90m                      [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90msubmit for review denied for creator on in review[39m[90m                   [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90msubmit for review denied for creator on published[39m[90m                   [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90msubmit for review denied for non creator even on draft[39m[90m              [39m [90m0.07s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Policies\ThemePolicyTest[39m
+  [32;1m✓[39;22m[90m [39m[90mview any requires theme index[39m[90m                                       [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mview published for template requires dms login[39m[90m                      [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mview allows theme show for any status[39m[90m                               [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mview allows published theme for template selector without theme sho[39m[90m…[39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mview denies draft theme without theme show[39m[90m                          [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcreate requires theme create[39m[90m                                        [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mupdate allows creator without theme update[39m[90m                          [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mupdate denies non creator without theme update[39m[90m                      [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mupdate allows non creator with theme update[39m[90m                         [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdelete allows creator without theme delete[39m[90m                          [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdelete allows admin with theme delete[39m[90m                               [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdelete denies non creator without theme delete[39m[90m                      [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdelete denies creator when theme is system[39m[90m                          [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdelete denies admin when theme is system[39m[90m                            [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mupdate allows admin on system theme[39m[90m                                 [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mclone allows system theme[39m[90m                                           [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mclone requires theme clone and view[39m[90m                                 [39m [90m0.05s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Repositories\Resolvers\PolymorphicResourceResolverTest[39m
+  [32;1m✓[39;22m[90m [39m[90mresolve returns document model[39m[90m                                      [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mresolve returns template model[39m[90m                                      [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mresolve throws domain exception for unknown resource type[39m[90m           [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mresolve throws not found when model not found[39m[90m                       [39m [90m0.09s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Repositories\UserProfileRepositoryTest[39m
+  [32;1m✓[39;22m[90m [39m[90mit findById runs inside transaction with SET LOCAL statement_timeou[39m[90m…[39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit findTeamsByUserId always includes user_id filter in JOIN[39m[90m         [39m [90m0.10s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Services\AnchoredCommentServiceTest[39m
+  [32;1m✓[39;22m[90m [39m[90mlist for resource returns dtos[39m[90m                                      [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcreate for resource creates anchor[39m[90m                                  [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mget for resource returns null if anchor not found[39m[90m                   [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mget for resource returns null if anchor belongs to different resour[39m[90m…[39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdelete anchor deletes via repository[39m[90m                                [39m [90m0.09s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Services\CommentServiceTest[39m
+  [32;1m✓[39;22m[90m [39m[90mfind or fail returns dto[39m[90m                                            [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mfind model or fail returns model[39m[90m                                    [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcreate throws when blockable type set but id null[39m[90m                   [39m [90m0.26s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcreate throws when blockable id set but type null[39m[90m                   [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcreate throws for invalid commentable type[39m[90m                          [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcreate throws when template blockable type is not template block[39m[90m    [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcreate throws when template block does not belong to template[39m[90m       [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcreate throws when document blockable type is not document block[39m[90m    [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcreate throws when document block does not belong to document[39m[90m       [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcreate throws when parent not found[39m[90m                                 [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcreate throws when parent is soft deleted[39m[90m                           [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcreate throws when parent belongs to different resource[39m[90m             [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcreate throws when parent belongs to different block[39m[90m                [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdelete delegates to repository[39m[90m                                      [39m [90m0.06s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Services\CoverRenderServiceTest[39m
+  [32;1m✓[39;22m[90m [39m[90mempty geometry returns empty string[39m[90m                                 [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrenders text region with absolute cm position[39m[90m                       [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mplaceholder uses document value when present[39m[90m                        [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mplaceholder falls back to default text[39m[90m                              [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mtext is html escaped[39m[90m                                                [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90minvalid color and align fall back to safe defaults[39m[90m                  [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mimage without existing asset is skipped[39m[90m                             [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpage number emits counter spans[39m[90m                                     [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mregion without box is ignored[39m[90m                                       [39m [90m0.06s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Services\DocumentMigrationBlockDifferTest[39m
+  [32;1m✓[39;22m[90m [39m[90munchanged block carries old content and target metadata[39m[90m             [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90madded block has no old content[39m[90m                                      [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mremoved block appears last with old content[39m[90m                         [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mblock state change to locked is flagged[39m[90m                             [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mtarget blocks are ordered by sort order[39m[90m                             [39m [90m0.06s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Services\DocumentReviewServiceReviewModeTest[39m
+  [32;1m✓[39;22m[90m [39m[90mprefers live document review mode over anchored sequential[39m[90m          [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mresolves sequential mode from anchored entity version when live uns[39m[90m…[39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mresolves parallel mode from anchored entity version when live unset[39m[90m [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mfalls back to live template review mode when document mode unset[39m[90m    [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mfalls back to live template when entity version not found[39m[90m           [39m [90m0.07s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Services\DocumentServiceCreationOptionsTest[39m
+  [32;1m✓[39;22m[90m [39m[90mcreation options for module returns only templates with published v[39m[90m…[39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcreate from module throws validation when no template options exist[39m[90m [39m [90m0.06s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Services\DocumentServiceDualReadResolutionTest[39m
+  [32;1m✓[39;22m[90m [39m[90mresolve current template version meta falls back to entity when leg[39m[90m…[39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mresolve review candidates uses entity snapshot when legacy meta mis[39m[90m…[39m [90m0.06s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Services\DocumentServiceOwnershipTransferTest[39m
+  [32;1m✓[39;22m[90m [39m[90mdelegate owner dispatches ownership transferred with resolved names[39m[90m [39m [90m0.10s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Services\DocumentServicePublishTest[39m
+  [32;1m✓[39;22m[90m [39m[90mpublish document throws when status not draft or in review[39m[90m          [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpublish document validates mandatory blocks for draft without revie[39m[90m…[39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpublish document does not call block validation when in review[39m[90m      [39m [90m0.13s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Services\DocumentServiceSubmitTest[39m
+  [32;1m✓[39;22m[90m [39m[90mdelegate owner throws when actor is not current owner[39m[90m               [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90msubmit to review throws when document is not draft[39m[90m                  [39m [90m0.09s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Services\DocumentTemplateVersionNumberResolverTest[39m
+  [32;1m✓[39;22m[90m [39m[90mreturns entity version number when anchor matches template[39m[90m          [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreturns null when entity meta missing[39m[90m                               [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreturns null when template version id empty[39m[90m                         [39m [90m0.06s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Services\ReviewerAcademicScopeResolverTest[39m
+  [32;1m✓[39;22m[90m [39m[90mglobal and personal return null scope[39m[90m                               [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstudy type scope only includes study type assignment[39m[90m                [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstudy scope includes study and parent study type[39m[90m                    [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mmodule scope includes module study and study type[39m[90m                   [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mteam scope only includes team membership[39m[90m                            [39m [90m0.06s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Services\TeamReadServiceTest[39m
+  [32;1m✓[39;22m[90m [39m[90mit lists visible teams for a user through repository[39m[90m                [39m [90m0.01s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit returns one visible team by id for user[39m
+  [32;1m✓[39;22m[90m [39m[90mit returns null when team is not visible for user[39m
+  [32;1m✓[39;22m[90m [39m[90mit returns null for embeddable team when team id is null without hitting repository[39m
+  [32;1m✓[39;22m[90m [39m[90mit returns null for embeddable team when viewer id is empty[39m
+  [32;1m✓[39;22m[90m [39m[90mit delegates embeddable team to findVisibleTeamByIdForUser[39m
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Services\TemplateContextResolverTest[39m
+  [32;1m✓[39;22m[90m [39m[90mnull meta passes through dto values[39m[90m                                 [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mteam visibility returns template team id[39m[90m                            [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mteam visibility throws if template has no team[39m[90m                      [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpersonal visibility returns template context[39m[90m                        [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpersonal visibility throws on mismatched study type[39m[90m                 [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpersonal visibility throws if dto has team[39m[90m                          [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mmodule visibility returns template module context[39m[90m                   [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mmodule visibility throws if dto has team[39m[90m                            [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mmodule visibility throws if template has no module[39m[90m                  [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstudy visibility returns template study no module[39m[90m                   [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstudy visibility throws if dto has team[39m[90m                             [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstudy visibility throws on mismatched study[39m[90m                         [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstudy visibility with valid module returns module id[39m[90m                [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstudy visibility throws if module belongs to different study[39m[90m        [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstudy type visibility no module no study returns study type[39m[90m         [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstudy type visibility throws if dto has team[39m[90m                        [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstudy type visibility with module resolves study from db[39m[90m            [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mglobal visibility with study type only returns study type[39m[90m           [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mglobal visibility with no context returns all null[39m[90m                  [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mglobal visibility with seeded study returns study context[39m[90m           [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mglobal visibility throws if both team and academic context[39m[90m          [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90munknown visibility falls through to dto values[39m[90m                      [39m [90m0.05s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Services\TemplateReviewerAssignmentServiceTest[39m
+  [32;1m✓[39;22m[90m [39m[90msync reviewers throws for duplicate user ids in dto[39m[90m                 [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90msync reviewers throws when sequential stage limit exceeded[39m[90m          [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90msync reviewers throws when user lacks templates review permission[39m[90m   [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90msync document reviewers throws for duplicate user ids in dto[39m[90m        [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90msync document reviewers throws when user lacks documents review per[39m[90m…[39m [90m0.08s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Services\TemplateVersionBlockLayerResolverTest[39m
+  [32;1m✓[39;22m[90m [39m[90mresolve returns snapshot rows when no layers[39m[90m                        [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mresolve skips removed layers[39m[90m                                        [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mresolve returns override payload for active layer[39m[90m                   [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90meffective block falls back to snapshot when no layer[39m[90m                [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90meffective block returns null when found layer is removed[39m[90m            [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90meffective block inherits from previous with version number 1 return[39m[90m…[39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90meffective block inherits resolves from parent version[39m[90m               [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mblock not in snapshot returns nothing in result[39m[90m                     [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mnon array override payload produces null and is excluded[39m[90m            [39m [90m0.06s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Services\ThemeStateTransitionsTest[39m
+  [32;1m✓[39;22m[90m [39m[90mallows draft to published[39m[90m                                           [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mallows published to archived[39m[90m                                        [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mforbids published to draft[39m[90m                                          [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mforbids draft to archived[39m[90m                                           [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90marchived is terminal[39m[90m                                                [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90massert throws validation exception on forbidden transition[39m[90m          [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90massert passes on allowed transition[39m[90m                                 [39m [90m0.06s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Services\TocBuilderServiceTest[39m
+  [32;1m✓[39;22m[90m [39m[90mreturns html unchanged when no index block[39m[90m                          [39m [90m0.02s[39m  
+  [32;1m✓[39;22m[90m [39m[90muses internal headings of all blocks not names[39m
+  [32;1m✓[39;22m[90m [39m[90mexcludes headings in deny list[39m
+  [32;1m✓[39;22m[90m [39m[90mblock without internal headings contributes nothing[39m
+  [32;1m✓[39;22m[90m [39m[90mrespects document order and excludes self[39m
+  [32;1m✓[39;22m[90m [39m[90mnormalizes indentation to h1[39m
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Services\UserProfileServiceTest[39m
+  [32;1m✓[39;22m[90m [39m[90mit queries FDW filtered by user id from JWT[39m[90m                         [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit returns cached profile without querying FDW[39m[90m                      [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit caches profile with key user_profile:{user_id} and 15 min TTL[39m[90m    [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit falls back to JWT data when FDW throws exception[39m[90m                 [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit falls back copies department from jwt departamento claim[39m[90m         [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit falls back copies department from jwt department claim[39m[90m           [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit falls back to JWT data when FDW user not found[39m[90m                   [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit invalidates cache for a specific user[39m[90m                            [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit returns empty scope lists when user has no hierarchy assigned in[39m[90m…[39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit merges FDW data, JWT claims, and teams into complete profile[39m[90m     [39m [90m0.08s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Support\BlockLayerPayloadComparatorTest[39m
+  [32;1m✓[39;22m[90m [39m[90mequal returns true for identical arrays[39m[90m                             [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mequal returns true when key order differs[39m
+  [32;1m✓[39;22m[90m [39m[90mequal returns true when nested key order differs[39m
+  [32;1m✓[39;22m[90m [39m[90mequal handles deep nesting[39m
+  [32;1m✓[39;22m[90m [39m[90mequal returns true for empty arrays[39m
+  [32;1m✓[39;22m[90m [39m[90mequal returns false when values differ[39m
+  [32;1m✓[39;22m[90m [39m[90mequal returns false when keys differ[39m
+  [32;1m✓[39;22m[90m [39m[90mequal returns false when nested values differ[39m
+  [32;1m✓[39;22m[90m [39m[90mequal returns false when one is empty[39m
+  [32;1m✓[39;22m[90m [39m[90mequal returns false when extra key present[39m
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Support\CloneDeadlinePolicyTest[39m
+  [32;1m✓[39;22m[90m [39m[90mclears a past deadline[39m[90m                                              [39m [90m0.01s[39m  
+  [32;1m✓[39;22m[90m [39m[90mkeeps a future deadline[39m
+  [32;1m✓[39;22m[90m [39m[90mkeeps today[39m
+  [32;1m✓[39;22m[90m [39m[90mkeeps null and empty[39m
+  [32;1m✓[39;22m[90m [39m[90mhandles datetime instances[39m
+  [32;1m✓[39;22m[90m [39m[90mkeeps unparseable value untouched[39m
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Support\DocumentReviewModeResolverTest[39m
+  [32;1m✓[39;22m[90m [39m[90muses live document review mode independent of template review mode[39m[90m  [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mfalls back to review mode when document review mode missing[39m[90m         [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90muses frozen review mode when document is in review[39m[90m                  [39m [90m0.06s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Support\MarkdownBlockRepairTest[39m
+  [32;1m✓[39;22m[90m [39m[90mfixes inline bold in heading keeping wrapper[39m[90m                        [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mmerges existing marks when node already bold[39m
+  [32;1m✓[39;22m[90m [39m[90msplices block markdown paragraph into heading and list[39m
+  [32;1m✓[39;22m[90m [39m[90mleaves codeblock alone by default[39m
+  [32;1m✓[39;22m[90m [39m[90mconverts codeblock when opted in[39m
+  [32;1m✓[39;22m[90m [39m[90mrecurses into list items[39m
+  [32;1m✓[39;22m[90m [39m[90mis noop on clean content[39m
+  [32;1m✓[39;22m[90m [39m[90mis idempotent[39m
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Support\ReviewValidationNotificationRecipientsTest[39m
+  [32;1m✓[39;22m[90m [39m[90msequential returns only lowest pending stage[39m[90m                        [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mparallel returns all pending[39m[90m                                        [39m [90m0.08s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Support\SearchAccentFoldTest[39m
+  [32;1m✓[39;22m[90m [39m[90mfold lowercases input[39m
+  [32;1m✓[39;22m[90m [39m[90mfold trims whitespace[39m
+  [32;1m✓[39;22m[90m [39m[90mfold replaces accented vowels[39m
+  [32;1m✓[39;22m[90m [39m[90mfold replaces uppercase accented vowels[39m
+  [32;1m✓[39;22m[90m [39m[90mfold replaces additional accent variants[39m
+  [32;1m✓[39;22m[90m [39m[90mfold replaces n with tilde[39m
+  [32;1m✓[39;22m[90m [39m[90mfold replaces c cedilla[39m
+  [32;1m✓[39;22m[90m [39m[90mfold replaces german sharp s with ss[39m
+  [32;1m✓[39;22m[90m [39m[90mfold replaces oe ligature[39m
+  [32;1m✓[39;22m[90m [39m[90mfold replaces ae ligature[39m
+  [32;1m✓[39;22m[90m [39m[90mfold leaves plain ascii unchanged[39m
+  [32;1m✓[39;22m[90m [39m[90mfold empty string[39m
+  [32;1m✓[39;22m[90m [39m[90mfold mixed input[39m
+  [32;1m✓[39;22m[90m [39m[90mfold complex spanish word[39m
+  [32;1m✓[39;22m[90m [39m[90msql translate pair returns two strings[39m
+  [32;1m✓[39;22m[90m [39m[90msql translate pair same length[39m
+  [32;1m✓[39;22m[90m [39m[90msql translate pair is not empty[39m
+  [32;1m✓[39;22m[90m [39m[90msql folded lower column returns array[39m
+  [32;1m✓[39;22m[90m [39m[90msql folded lower column expression contains translate[39m
+  [32;1m✓[39;22m[90m [39m[90msql folded lower column expression contains replace for ligatures[39m
+  [32;1m✓[39;22m[90m [39m[90msql folded lower column bindings are from translate pair[39m
+  [32;1m✓[39;22m[90m [39m[90mescape like escapes percent[39m
+  [32;1m✓[39;22m[90m [39m[90mescape like escapes underscore[39m
+  [32;1m✓[39;22m[90m [39m[90mescape like escapes backslash[39m
+  [32;1m✓[39;22m[90m [39m[90mescape like leaves plain string unchanged[39m
+  [32;1m✓[39;22m[90m [39m[90mescape like empty string[39m
+  [32;1m✓[39;22m[90m [39m[90mfold is idempotent[39m
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Support\TemplateBlockDescriptionNormalizerTest[39m
+  [32;1m✓[39;22m[90m [39m[90mnull and empty string return null[39m[90m                                   [39m [90m0.02s[39m  
+  [32;1m✓[39;22m[90m [39m[90mplain string passthrough[39m
+  [32;1m✓[39;22m[90m [39m[90mdoc root blocknote to plain text[39m
+  [32;1m✓[39;22m[90m [39m[90mjson string doc legacy[39m
+  [32;1m✓[39;22m[90m [39m[90mjson string starting with bracket decoded as list[39m
+  [32;1m✓[39;22m[90m [39m[90mjson string non json returns as is[39m
+  [32;1m✓[39;22m[90m [39m[90mnon string non array returns null[39m
+  [32;1m✓[39;22m[90m [39m[90mbullet list item with content returns text[39m
+  [32;1m✓[39;22m[90m [39m[90mnumbered list item with children appends child text[39m
+  [32;1m✓[39;22m[90m [39m[90mlist array without type key collapses blocks[39m
+  [32;1m✓[39;22m[90m [39m[90massociative array with content key extracts text[39m
+  [32;1m✓[39;22m[90m [39m[90massociative array with children key extracts text[39m
+  [32;1m✓[39;22m[90m [39m[90minline content with non text type falls back to extract[39m
+  [32;1m✓[39;22m[90m [39m[90minline content with non array item is skipped[39m
+  [32;1m✓[39;22m[90m [39m[90mempty array returns null[39m
+  [32;1m✓[39;22m[90m [39m[90mto tiptap doc null and empty return null[39m
+  [32;1m✓[39;22m[90m [39m[90mto tiptap doc wraps plain prose in paragraph[39m
+  [32;1m✓[39;22m[90m [39m[90mto tiptap doc splits blank lines into paragraphs[39m
+  [32;1m✓[39;22m[90m [39m[90mto tiptap doc passthrough clean tiptap doc[39m
+  [32;1m✓[39;22m[90m [39m[90mto tiptap doc flattens legacy blocknote doc[39m
+  [32;1m✓[39;22m[90m [39m[90mto tiptap doc decodes json string[39m
+  [32;1m✓[39;22m[90m [39m[90mto tiptap doc preserves peeled tiptap node list[39m
+  [32;1m✓[39;22m[90m [39m[90mto tiptap doc flattens peeled blocknote node list[39m
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Support\TiptapContentSemanticsTest[39m
+  [32;1m✓[39;22m[90m [39m[90mempty paragraph array is not filled[39m[90m                                 [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mtrailing empty paragraph does not make content filled[39m[90m               [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90monly phantom paragraphs are not filled[39m[90m                              [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mtable colwidth from editor does not change content equals[39m[90m           [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mimage width height from editor does not change content equals[39m[90m       [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mparagraph with nested image is filled[39m[90m                               [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mphantom empty paragraph inside table cell does not change content e[39m[90m…[39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mempty list item does not change content equals[39m[90m                      [39m [90m0.08s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Support\VersionSubmissionChangelogTest[39m
+  [32;1m✓[39;22m[90m [39m[90mrequire non empty uses head when explicit missing[39m[90m                   [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrequire non empty throws when both empty[39m[90m                            [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mfor api exposure only in working statuses[39m[90m                           [39m [90m0.07s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\Views\DocumentsRenderViewTest[39m
+  [32;1m✓[39;22m[90m [39m[90mlegacy mode renders top left chrome when no grid blocks[39m[90m             [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mfirst block does not force page break before[39m[90m                        [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlegacy margins taken from theme layout page[39m[90m                         [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mgrid mode renders overlay with blocks and excludes top left[39m[90m         [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mgrid mode keeps body free of style blocks and title after content[39m[90m   [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mgrid mode margins come from content slot[39m[90m                            [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mbox mode margins come from content slot[39m[90m                             [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mbox mode renders overlay block geometry in cm[39m[90m                       [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mgrid mode falls back to legacy margins when no content slot[39m[90m         [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mbody html is inserted unescaped[39m[90m                                     [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mscoped themes emit per theme css variables[39m[90m                          [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mno theme block gets neutral reset and named page[39m[90m                    [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mtoc css and weasyprint target counter present in pdf mode[39m[90m           [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcover block css and named page present[39m[90m                              [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90minvalid text align is normalized[39m[90m                                    [39m [90m0.06s[39m  
+
+  [90mTests:[39m    [32;1m368 passed[39;22m[90m (663 assertions)[39m
+  [90mDuration:[39m [39m24.13s[39m
+

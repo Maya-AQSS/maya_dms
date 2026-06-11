@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useServerTable } from '@ceedcv-maya/shared-hooks-react';
 import { fetchTemplatesPage, type TemplateListFilters } from '../api/templates';
+import { DEFAULT_TABLE_PAGE_SIZE, dropInvalidStoredPageSize } from '../lib/dataTablePageSize';
 import type { Template } from '../types/templates';
 
 /** Columnas ordenables server-side. */
@@ -31,12 +32,13 @@ export function useServerNuevaProgramacionTable(opts?: {
   usableForDocuments?: boolean;
   processId?: string;
 }) {
+  dropInvalidStoredPageSize('maya:dms:nueva-programacion-selector');
   const table = useServerTable<Record<NuevaProgramacionFilterKeys, string>>({
     defaults: { ...NUEVA_PROGRAMACION_FILTER_DEFAULTS },
     sortableColumns: SORTABLE_NUEVA_PROGRAMACION_COLUMNS,
     storageKey: 'maya:dms:nueva-programacion-selector',
     defaultSort: { columnId: 'latest_published_at', direction: 'desc' },
-    defaultPageSize: 15,
+    defaultPageSize: DEFAULT_TABLE_PAGE_SIZE,
   });
 
   const [rows, setRows] = useState<Template[]>([]);

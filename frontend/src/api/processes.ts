@@ -1,6 +1,6 @@
 import type { Process, ProcessDeletionPreview } from '../types/processes';
 import { apiFetchJson, apiGetJson } from './http';
-import { normalizePaginatedResponse } from './paginatedList';
+import { fetchAllPaginatedPages, normalizePaginatedResponse } from './paginatedList';
 
 /** Metadatos de paginación server-side de procesos. */
 export type ProcessesListMeta = {
@@ -56,9 +56,19 @@ export async function fetchProcessesPage(
   };
 }
 
-/** GET /api/v1/processes — catálogo de procesos disponibles (sin paginación, para compatibilidad). */
+/**
+ * GET /api/v1/processes — catálogo completo de procesos (agrega todas las páginas
+ * del listado paginado). Usado por el drawer de navegación, wizards y selectores,
+ * que necesitan el árbol entero sin paginar.
+ */
 export async function fetchProcesses(): Promise<{ data: Process[] }> {
-  return apiGetJson<{ data: Process[] }>('processes');
+  const result = await fetchAllPaginatedPages<Process>(async (page, perPage) => {
+    const body = await apiGetJson<unknown>(
+      `processes${buildProcessesListQuery({ page, per_page: perPage })}`,
+    );
+    return normalizePaginatedResponse<Process>(body);
+  });
+  return { data: result.data };
 }
 
 /** GET /api/v1/processes/:id */

@@ -1,0 +1,361 @@
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\AnchoredCommentApiTest[39m
+  [32;1m✓[39;22m[90m [39m[90mindex returns anchored comments for document[39m[90m                        [39m [90m2.63s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstore creates anchored comment[39m[90m                                      [39m [90m0.29s[39m  
+  [32;1m✓[39;22m[90m [39m[90mupdate modifies anchored comment[39m[90m                                    [39m [90m0.37s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdestroy deletes anchored comment[39m[90m                                    [39m [90m0.19s[39m  
+  [32;1m✓[39;22m[90m [39m[90munauthorized user cannot access anchored comments[39m[90m                   [39m [90m0.29s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Api\BlockListPermissionsApiTest[39m
+  [32;1m✓[39;22m[90m [39m[90mit denies template blocks index without block.index[39m[90m                 [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows template blocks index with block.index and template read[39m[90m… [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows template blocks index with block.index and template.updat[39m[90m…[39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit denies block show without block.show[39m[90m                             [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows block show with block.show and template.update[39m[90m            [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit denies document blocks index without block.index for owner[39m[90m       [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows document blocks index for owner with block.index and docu[39m[90m…[39m [90m0.13s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Api\BlockMutationPermissionsApiTest[39m
+  [32;1m✓[39;22m[90m [39m[90mit denies template block store without block.create[39m[90m                 [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows template block store for owner with block.create only on[39m[90m… [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows template block store for owner with block.create and temp[39m[90m…[39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit denies template block update without block.update[39m[90m                [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows template block update with block.update and template.upda[39m[90m…[39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit denies template block delete without block.delete[39m[90m                [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows template block delete for owner with block.delete and tem[39m[90m…[39m [90m0.14s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Api\CommentBlockPermissionsApiTest[39m
+  [32;1m✓[39;22m[90m [39m[90mit denies template comment store without comment-block.create[39m[90m       [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows template comment store for reviewer with comment-block.cr[39m[90m…[39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows template comment store for creator without template.revie[39m[90m…[39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit denies comment destroy without comment-block.delete[39m[90m              [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows reviewer to destroy own comment with comment-block.delete[39m[90m [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit denies document comment store for owner without comment-block.cr[39m[90m…[39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows document owner comment with comment-block.create[39m[90m          [39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows document edit-share collaborator to comment when rejected[39m[90m [39m [90m0.16s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Api\DmsDashboardPermissionsTest[39m
+  [32;1m✓[39;22m[90m [39m[90mit denies dashboard without dms.index[39m[90m                               [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows dashboard with dms.index[39m[90m                                  [39m [90m0.11s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Api\DmsLoginPermissionTest[39m
+  [32;1m✓[39;22m[90m [39m[90mit denies protected API routes without dms.login[39m[90m                    [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows protected API routes when user has dms.login[39m[90m              [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit does not require dms.login for health endpoints[39m[90m                  [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows GET me without dms.login so the frontend can resolve perm[39m[90m…[39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit denies GET me when jwt is missing[39m[90m                                [39m [90m0.06s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Api\DocumentApplyMigrationTest[39m
+  [32;1m✓[39;22m[90m [39m[90mit upgrades a document in place: re-anchors, applies content, creat[39m[90m…[39m [90m0.24s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit keeps a removed block when the action is keep and surfaces it as[39m[90m…[39m [90m0.19s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit never overwrites a locked block even if migrated content is sent[39m[90m [39m [90m0.20s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit returns 422 when target version is not newer than the current an[39m[90m…[39m [90m0.18s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit restores a soft-deleted block instead of failing the unique cons[39m[90m…[39m [90m0.25s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit denies applying migration to a foreign document outside scope[39m[90m    [39m [90m0.16s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Api\DocumentCreateWithMigratedBlocksTest[39m
+  [32;1m✓[39;22m[90m [39m[90mit applies migrated content to editable blocks and ignores locked b[39m[90m…[39m [90m0.23s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit creates editable block empty when no migrated content is provide[39m[90m…[39m [90m0.23s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Api\DocumentListPermissionsTest[39m
+  [32;1m✓[39;22m[90m [39m[90mit denies document index without document.index[39m[90m                     [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows document index with document.index[39m[90m                        [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows document show for owner without document.show[39m[90m             [39m [90m0.22s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Api\DocumentListSortSearchTest[39m
+  [32;1m✓[39;22m[90m [39m[90mit sorts documents by title ascending[39m[90m                               [39m [90m0.22s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit sorts documents by delivery_deadline ascending with nulls last[39m[90m   [39m [90m0.20s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit sorts documents by status ascending[39m[90m                              [39m [90m0.18s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit falls back to created_at desc for an invalid sort column[39m[90m         [39m [90m0.24s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit filters documents by favorite_ids (document id)[39m[90m                  [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit ignores empty favorite_ids for documents (returns all)[39m[90m           [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit filters documents by module_id (snapshot académico)[39m[90m              [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit filters documents by study_id (snapshot académico)[39m[90m               [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit filters documents by study_type_id (snapshot académico)[39m[90m          [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit combines academic filters as AND (tipo + estudio + módulo)[39m[90m       [39m [90m0.15s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Api\DocumentMigrationPayloadTest[39m
+  [32;1m✓[39;22m[90m [39m[90mit returns migration payload with classified blocks for the owner[39m[90m   [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit returns 422 when the document is already on the latest template[39m[90m… [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit denies access to a foreign document outside scope[39m[90m                [39m [90m0.11s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Api\DocumentMutationPermissionsTest[39m
+  [32;1m✓[39;22m[90m [39m[90mit denies document store without document.create[39m[90m                    [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit denies patch document without document.update for non owner[39m[90m      [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows owner to patch own document without document.update[39m[90m       [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit denies delete by non owner without document.delete[39m[90m               [39m [90m0.10s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Api\DocumentVersionClonePermissionsTest[39m
+  [32;1m✓[39;22m[90m [39m[90mit denies new-version on foreign published document without documen[39m[90m…[39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows new-version on foreign published document with document.v[39m[90m…[39m [90m0.25s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit denies clone on foreign published without document.clone[39m[90m         [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows clone on foreign published with document.clone and docume[39m[90m…[39m [90m0.22s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows titular to clone own published without document.clone slu[39m[90m…[39m [90m0.28s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit denies versions list without document.history.view for non-titul[39m[90m…[39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows versions list for non-titular with document.history.view[39m[90m  [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows versions list for titular without document.history.view[39m[90m   [39m [90m0.12s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Api\ProcessCrudBusinessTest[39m
+  [32;1m✓[39;22m[90m [39m[90mit store returns 201 with the created process[39m[90m                       [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit store returns 422 when code is missing[39m[90m                           [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit store returns 422 when name is missing[39m[90m                           [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit store returns 422 when alias is missing[39m[90m                          [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit store returns 422 when code is not unique[39m[90m                        [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit store accepts a valid process_parent_id[39m[90m                          [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit show returns 404 for non-existent process[39m[90m                        [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit show returns the process shape[39m[90m                                   [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit update returns 200 with updated data[39m[90m                             [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit update returns 422 when required fields are missing[39m[90m              [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit update returns 404 for non-existent process[39m[90m                      [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit update returns 422 when process_parent_id is itself[39m[90m              [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit destroy returns 404 for non-existent process[39m[90m                     [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit destroy soft-deletes a process with no dependents[39m[90m                [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit destroy cascades soft-delete to the process templates and docume[39m[90m…[39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit deletion-preview returns the count of affected dependents[39m[90m        [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit deletion-preview counts subprocesses[39m[90m                             [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit destroy returns 409 when process has child processes[39m[90m             [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit 409 response contains a descriptive error message[39m[90m                [39m [90m0.09s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Api\ProcessPermissionsTest[39m
+  [32;1m✓[39;22m[90m [39m[90mit denies process index without process.index[39m[90m                       [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows process index with process.index[39m[90m                          [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit denies process show without process.show[39m[90m                         [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows process show with process.show[39m[90m                            [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit denies process create without process.create[39m[90m                     [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows process create with process.create[39m[90m                        [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit denies process update without process.update[39m[90m                     [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows process update with process.update[39m[90m                        [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit denies process delete without process.delete[39m[90m                     [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows process delete with process.delete when no dependents[39m[90m     [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit denies deletion-preview without process.delete[39m[90m                   [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows deletion-preview with process.delete[39m[90m                      [39m [90m0.07s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Api\TemplateListPermissionsTest[39m
+  [32;1m✓[39;22m[90m [39m[90mit denies template index without template.index[39m[90m                     [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows template index with template.index[39m[90m                        [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit denies template show without template.show for non creator[39m[90m       [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows template show for creator without template.show[39m[90m           [39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows template show with template.show[39m[90m                          [39m [90m0.13s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Api\TemplateListSortSearchTest[39m
+  [32;1m✓[39;22m[90m [39m[90mit sorts templates by name ascending[39m[90m                                [39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit sorts templates by name descending[39m[90m                               [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit falls back to updated_at desc for an invalid sort column[39m[90m         [39m [90m0.22s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit sorts by delivery_deadline ascending with nulls last[39m[90m             [39m [90m0.20s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit searches templates by template name (accent/case insensitive)[39m[90m    [39m [90m0.21s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit filters templates by favorite_ids (head version id)[39m[90m              [39m [90m0.24s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit ignores empty favorite_ids (returns all)[39m[90m                         [39m [90m0.26s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Api\TemplateMutationPermissionsTest[39m
+  [32;1m✓[39;22m[90m [39m[90mit allows personal template create without template.create[39m[90m          [39m [90m0.22s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit denies shared template create without template.create[39m[90m            [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows shared template create with template.create[39m[90m               [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows creator to delete own template without template.delete[39m[90m    [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit denies delete by non creator without template.delete[39m[90m             [39m [90m0.11s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Api\TemplateReviewPermissionsTest[39m
+  [32;1m✓[39;22m[90m [39m[90mit denies approve review without template.review even when assigned[39m[90m [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows approve review when assigned and has template.review[39m[90m      [39m [90m0.27s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit denies sync template reviewers on global template without templa[39m[90m…[39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows sync template reviewers on global template with template.[39m[90m…[39m [90m0.21s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows creator to sync reviewers on personal draft without templ[39m[90m…[39m [90m0.21s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Api\TemplateVersionClonePermissionsTest[39m
+  [32;1m✓[39;22m[90m [39m[90mit denies new-version on foreign published template without templat[39m[90m…[39m [90m0.19s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows new-version on foreign published template with template.v[39m[90m…[39m [90m0.19s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit denies clone on foreign published without template.clone[39m[90m         [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows clone on foreign published with template.clone and templa[39m[90m…[39m [90m0.19s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows creator to clone own published without template.clone slu[39m[90m…[39m [90m0.18s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit denies versions list without template.history.view for non-creat[39m[90m…[39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows versions list for non-creator with template.history.view[39m[90m  [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows versions list for creator without template.history.view[39m[90m   [39m [90m0.12s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Api\ThemeListPermissionsTest[39m
+  [32;1m✓[39;22m[90m [39m[90mit denies theme index without theme.index[39m[90m                           [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows theme index with theme.index[39m[90m                              [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows published theme index for template selector with only dms[39m[90m…[39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit denies published theme index without dms.login[39m[90m                   [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit denies theme show without theme.show for draft theme[39m[90m             [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows theme show with theme.show for draft theme[39m[90m                [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows theme show for published theme with only dms.login[39m[90m        [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit denies theme show for published theme without dms.login[39m[90m          [39m [90m0.06s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Api\ThemeMutationPermissionsTest[39m
+  [32;1m✓[39;22m[90m [39m[90mit denies theme create without theme.create[39m[90m                         [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows theme create with theme.create[39m[90m                            [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows creator to update own theme without theme.update[39m[90m          [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit denies non creator update without theme.update[39m[90m                   [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows non creator update with theme.update[39m[90m                      [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit denies theme clone without theme.clone[39m[90m                           [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows theme clone with theme.clone[39m[90m                              [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows creator to delete own theme without theme.delete[39m[90m          [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit denies non creator delete without theme.delete[39m[90m                   [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit allows non creator delete with theme.delete[39m[90m                      [39m [90m0.07s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Api\WorkingRevisionConflictTest[39m
+  [32;1m✓[39;22m[90m [39m[90mit returns structured 409 when template already has a working revis[39m[90m…[39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit exposes working revision meta on template show while serving pub[39m[90m…[39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit exposes version capability flags on template show[39m[90m                [39m [90m0.22s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit returns structured 409 when document already has a working revis[39m[90m…[39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit exposes working revision meta on document show while serving pub[39m[90m…[39m [90m0.23s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit exposes version capability flags on document show[39m[90m                [39m [90m0.19s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\DefaultThemeSeederTest[39m
+  [32;1m✓[39;22m[90m [39m[90mseeds a published protected default theme from constant[39m[90m             [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mseeds visible layout regions[39m[90m                                        [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mis idempotent[39m[90m                                                       [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpreserves admin edits on reseed[39m[90m                                     [39m [90m0.06s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\DocumentDocxExportTest[39m
+  [32;1m✓[39;22m[90m [39m[90munauthenticated request is rejected[39m[90m                                 [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90muser without access cannot export document[39m[90m                          [39m [90m0.26s[39m  
+  [32;1m✓[39;22m[90m [39m[90mowner can export document as docx[39m[90m                                   [39m [90m0.36s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\DocumentDownloadAuditTest[39m
+  [32;1m✓[39;22m[90m [39m[90mpdf download dispatches downloaded audit event[39m[90m                      [39m [90m2.53s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\DocumentRenderEditedBlocksTest[39m
+  [32;1m✓[39;22m[90m [39m[90medited bare list block content renders in pdf html[39m[90m                  [39m [90m0.10s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\DocumentRenderForVersionTest[39m
+  [32;1m✓[39;22m[90m [39m[90mrender for version uses snapshot content and falls back to default[39m[90m  [39m [90m0.10s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\DocumentReviewAuditTest[39m
+  [32;1m✓[39;22m[90m [39m[90mintermediate approval dispatches review approved with reviewer name[39m[90m [39m [90m0.24s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreject dispatches state changed enriched with reviewer and reason[39m[90m   [39m [90m0.30s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\DocumentSoDHttpAcceptanceTest[39m
+  [32;1m✓[39;22m[90m [39m[90mowner submit own document returns ok[39m[90m                                [39m [90m0.39s[39m  
+  [32;1m✓[39;22m[90m [39m[90mshared user submit returns 403 and publishes audit event[39m[90m            [39m [90m0.18s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcreator submit review auto publishes when no reviewers[39m[90m              [39m [90m0.42s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdelegate owner can submit document[39m[90m                                  [39m [90m0.40s[39m  
+  [32;1m✓[39;22m[90m [39m[90msubmit document with reviewer enters in review and creates pending[39m[90m… [39m [90m0.45s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\DocumentSubmitAuditTest[39m
+  [32;1m✓[39;22m[90m [39m[90msubmit to review dispatches submitted for review with reviewers and[39m[90m…[39m [90m0.26s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\EntityVersionLifecycleServiceTest[39m
+  [32;1m✓[39;22m[90m [39m[90mpublish fails when snapshot data is empty[39m[90m                           [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpublish marks snapshot as immutable and sets publication metadata[39m[90m   [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpublish fails when status is not publishable[39m[90m                        [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpublish fails when snapshot is already immutable[39m[90m                    [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpublish trims empty changelog to null[39m[90m                               [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcreate published snapshot version creates immutable entity version[39m[90m  [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcreate published snapshot version links previous published version[39m[90m… [39m [90m0.09s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\EntityVersionReconstructionServiceTest[39m
+  [32;1m✓[39;22m[90m [39m[90mreconstruct merges base chain change sets[39m[90m                           [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreconstruct prefers snapshot data in target version[39m[90m                 [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreconstruct fails when base chain has cycle[39m[90m                         [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreconstruct handles base deletion via null on delete[39m[90m                [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreconstruct fails when base chain mixes different entities[39m[90m          [39m [90m0.07s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\EntityVersionsModelTest[39m
+  [32;1m✓[39;22m[90m [39m[90mentity versions support polymorphic template and document versions[39m[90m  [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mentity versions enforce unique version number per entity[39m[90m            [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mnext version number is scoped by versionable type and id[39m[90m            [39m [90m0.08s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\HealthCheckTest[39m
+  [32;1m✓[39;22m[90m [39m[90mlive always returns 200 without touching dependencies[39m[90m               [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mhealth endpoint returns expected shape[39m[90m                              [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mready endpoint returns expected shape[39m[90m                               [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mhealth endpoints do not require authentication[39m[90m                      [39m [90m0.07s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\JwtMiddlewareTest[39m
+  [32;1m✓[39;22m[90m [39m[90mprotected route returns 401 without token[39m[90m                           [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mmalformed token returns 401[39m[90m                                         [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90m401 response uses error key not message[39m[90m                             [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mhealth endpoints are accessible without jwt[39m[90m                         [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mauth failure logs ip and user agent[39m[90m                                 [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mauth failure does not log full token[39m[90m                                [39m [90m0.22s[39m  
+  [32;1m✓[39;22m[90m [39m[90mvalid rs256 token signature and claims are accepted[39m[90m                 [39m [90m0.27s[39m  
+  [32;1m✓[39;22m[90m [39m[90mexpired token returns 401[39m[90m                                           [39m [90m0.23s[39m  
+  [32;1m✓[39;22m[90m [39m[90mtoken with wrong issuer returns 401[39m[90m                                 [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mtoken with wrong audience returns 401[39m[90m                               [39m [90m0.09s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\JwtValidationTest[39m
+  [32;1m✓[39;22m[90m [39m[90msub claim is extracted as user id[39m[90m                                   [39m [90m0.21s[39m  
+  [32;1m✓[39;22m[90m [39m[90mjwt user exposes id from sub claim[39m[90m                                  [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mjwt user exposes name and department from profile[39m[90m                   [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdepartment claim extracted from jwt[39m[90m                                 [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdepartment is null when claim is absent[39m[90m                             [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mjwt user exposes scope[39m[90m                                              [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mjwt user scope defaults to empty string when absent[39m[90m                 [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mapi guard resolves jwt user from request attributes[39m[90m                 [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mapi guard returns null without request attribute[39m[90m                    [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mmissing token returns www authenticate header[39m[90m                       [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mexpired token returns www authenticate with error[39m[90m                   [39m [90m0.19s[39m  
+  [32;1m✓[39;22m[90m [39m[90minvalid token returns www authenticate with error[39m[90m                   [39m [90m0.07s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\MeProfileApiTest[39m
+  [32;1m✓[39;22m[90m [39m[90mme response uses canonical snake case keys without legacy fields[39m[90m    [39m [90m0.31s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\ResolvedPermissionReaderIntegrationTest[39m
+  [32;1m✓[39;22m[90m [39m[90mreturns ordered slugs for user with assignments[39m[90m                     [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreturns empty list when user has no rows[39m[90m                            [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mauditor mock returns ordered permission slugs[39m[90m                       [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90msecond call uses cache until forget[39m[90m                                 [39m [90m0.14s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\TemplateBlockStatePersistenceLatencyTest[39m
+  [32;1m✓[39;22m[90m [39m[90mblock state update persists under 200ms on average[39m[90m                  [39m [90m0.12s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\TemplateRenderContentBlocksTest[39m
+  [32;1m✓[39;22m[90m [39m[90mtemplate content blocks render for both content shapes[39m[90m              [39m [90m0.11s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\TemplateReviewAuditTest[39m
+  [32;1m✓[39;22m[90m [39m[90mintermediate approval dispatches review approved[39m[90m                    [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreject emits state changed enriched with reviewer[39m[90m                   [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mfinal approval publishes with state changed enriched[39m[90m                [39m [90m0.31s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\TemplateSubmitAuditTest[39m
+  [32;1m✓[39;22m[90m [39m[90msubmit for review dispatches submitted for review with reviewers an[39m[90m…[39m [90m0.23s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\ThemeApiTest[39m
+  [32;1m✓[39;22m[90m [39m[90mindex requires authentication[39m[90m                                       [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mindex forbidden without theme index[39m[90m                                 [39m [90m0.19s[39m  
+  [32;1m✓[39;22m[90m [39m[90mindex returns empty collection when no themes[39m[90m                       [39m [90m0.32s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstore creates theme with defaults[39m[90m                                   [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90mshow returns theme by id[39m[90m                                            [39m [90m0.51s[39m  
+  [32;1m✓[39;22m[90m [39m[90mupdate modifies only provided fields[39m[90m                                [39m [90m0.25s[39m  
+  [32;1m✓[39;22m[90m [39m[90mupdate forbidden for non owner[39m[90m                                      [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdelete removes theme[39m[90m                                                [39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90mclone creates copy with overrides and marks parent[39m[90m                  [39m [90m0.27s[39m  
+  [32;1m✓[39;22m[90m [39m[90mclone uses default name when not provided[39m[90m                           [39m [90m0.27s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstore rejects invalid color hex[39m[90m                                     [39m [90m0.18s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstore requires name[39m[90m                                                 [39m [90m0.25s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\ThemeAuthorTest[39m
+  [32;1m✓[39;22m[90m [39m[90mauthor is resolved from creator name[39m[90m                                [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90mauthor falls back to ceedcv when user not resolvable[39m[90m                [39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90mclient supplied author is ignored on create[39m[90m                         [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mauthor is immutable on update[39m[90m                                       [39m [90m0.22s[39m  
+  [32;1m✓[39;22m[90m [39m[90mclone sets author to cloner[39m[90m                                         [39m [90m0.16s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\ThemeImageTest[39m
+  [32;1m✓[39;22m[90m [39m[90mupload image file returns src and signed url[39m[90m                        [39m [90m0.23s[39m  
+  [32;1m✓[39;22m[90m [39m[90mupload requires file or url[39m[90m                                         [39m [90m0.20s[39m  
+  [32;1m✓[39;22m[90m [39m[90mingest from url rejects loopback address[39m[90m                            [39m [90m0.20s[39m  
+  [32;1m✓[39;22m[90m [39m[90mingest from url rejects private address[39m[90m                             [39m [90m0.24s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcreate rejects invalid image src path[39m[90m                               [39m [90m0.18s[39m  
+  [32;1m✓[39;22m[90m [39m[90mimage block gets signed src url on show[39m[90m                             [39m [90m0.27s[39m  
+  [32;1m✓[39;22m[90m [39m[90mderived src url is not persisted[39m[90m                                    [39m [90m0.17s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\ThemePreviewTest[39m
+  [32;1m✓[39;22m[90m [39m[90mpreview returns themed html with lorem ipsum[39m[90m                        [39m [90m0.25s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpreview without content slot has no lorem[39m[90m                           [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpreview not found for missing theme[39m[90m                                 [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90msample pdf streams pdf bytes[39m[90m                                        [39m [90m0.17s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\ThemeStateMachineTest[39m
+  [32;1m✓[39;22m[90m [39m[90mnew theme starts in draft[39m[90m                                           [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpublish transitions draft to published[39m[90m                              [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpublish is idempotent[39m[90m                                               [39m [90m0.20s[39m  
+  [32;1m✓[39;22m[90m [39m[90marchive transitions published to archived[39m[90m                           [39m [90m0.19s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcannot archive a draft directly[39m[90m                                     [39m [90m0.21s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcannot publish an archived theme[39m[90m                                    [39m [90m0.37s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpatch with status is rejected[39m[90m                                       [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpatch without status still works[39m[90m                                    [39m [90m0.15s[39m  
+
+  [90mTests:[39m    [32;1m261 passed[39;22m[90m (612 assertions)[39m
+  [90mDuration:[39m [39m43.43s[39m
+

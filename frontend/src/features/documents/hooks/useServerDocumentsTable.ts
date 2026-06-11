@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useServerTable } from '@ceedcv-maya/shared-hooks-react';
 import { fetchDocumentsPage, type DocumentsListMeta } from '../../../api/documents';
+import { DEFAULT_TABLE_PAGE_SIZE, dropInvalidStoredPageSize } from '../../../lib/dataTablePageSize';
 import { useUserProfile } from '../../../features/user-profile';
 import { useFavoritesIds } from '../../../hooks/useFavoritesIds';
 import { DMS_PERMISSIONS } from '../../../permissions';
@@ -38,12 +39,13 @@ export function useServerDocumentsTable(processId?: string) {
   const canIndex = hasPermission(DMS_PERMISSIONS.documentIndex);
   const { documentIds: favoriteDocumentIds } = useFavoritesIds();
 
+  dropInvalidStoredPageSize('maya:dms:documents-table');
   const table = useServerTable<Record<DocumentFilterKeys, string>>({
     defaults: { ...DOCUMENT_FILTER_DEFAULTS },
     sortableColumns: SORTABLE_DOCUMENT_COLUMNS,
     storageKey: 'maya:dms:documents-table',
     defaultSort: { columnId: 'created_at', direction: 'desc' },
-    defaultPageSize: 15,
+    defaultPageSize: DEFAULT_TABLE_PAGE_SIZE,
   });
 
   const [rows, setRows] = useState<Document[]>([]);

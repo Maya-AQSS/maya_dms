@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useServerTable } from '@ceedcv-maya/shared-hooks-react';
 import { fetchProcessesPage, type ProcessesListMeta } from '../../../api/processes';
+import { DEFAULT_TABLE_PAGE_SIZE, dropInvalidStoredPageSize } from '../../../lib/dataTablePageSize';
 import { useUserProfile } from '../../../features/user-profile';
 import { DMS_PERMISSIONS } from '../../../permissions';
 import type { Process } from '../../../types/processes';
@@ -25,12 +26,13 @@ export function useServerProcessesTable() {
   const { hasPermission } = useUserProfile();
   const canIndex = hasPermission(DMS_PERMISSIONS.processIndex);
 
+  dropInvalidStoredPageSize('maya:dms:processes-table');
   const table = useServerTable<Record<ProcessFilterKeys, string>>({
     defaults: { ...PROCESS_FILTER_DEFAULTS },
     sortableColumns: SORTABLE_PROCESS_COLUMNS,
     storageKey: 'maya:dms:processes-table',
     defaultSort: { columnId: 'code', direction: 'asc' },
-    defaultPageSize: 15,
+    defaultPageSize: DEFAULT_TABLE_PAGE_SIZE,
   });
 
   const [rows, setRows] = useState<Process[]>([]);
