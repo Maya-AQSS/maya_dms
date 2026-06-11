@@ -24,7 +24,9 @@ import { normalizeBlockContentForEditor } from '../features/documents/lib/normal
 import { BlockContentHtml } from '../features/templates/components/BlockContentHtml';
 import { StructuralBlockPreview, isStructuralBlockType } from '../features/documents/components/StructuralBlockPreview';
 import { useUserProfile } from '../features/user-profile';
-import { DMS_PERMISSIONS } from '../permissions';
+import { useFavoritesIds } from '../hooks/useFavoritesIds';
+import { FavoriteInlineMark } from './FavoriteInlineMark';
+import { DMS_PERMISSIONS, canOpenDocument } from '../permissions';
 import type { Document, DocumentStatus } from '../types/documents';
 import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
 import { BLOCK_STATE_LABELS, type BlockState } from '../types/blocks';
@@ -128,6 +130,7 @@ export function DocumentsContent() {
   } = useTablePreferences({ storageKey: 'maya:dms:documents-table' });
 
   const { hasPermission, loading: profileLoading, profile } = useUserProfile();
+  const { documentIds: favoriteDocumentIds } = useFavoritesIds();
 
   // Expansión de filas: un documento con versión publicada distinta del head
   // se muestra como dos filas (viva + publicada). Server-side: la expansión
@@ -143,6 +146,9 @@ export function DocumentsContent() {
       const isAssignedReviewer =
         d.status === 'in_review' &&
         d.is_assigned_reviewer === true;
+      // Divergencia con TemplatesTable JUSTIFICADA: documents tiene delegación de
+      // titularidad (owner_id) y shares (document_shares, DocumentPolicy::hasEditShare);
+      // templates solo expone created_by + revisores en el listado.
       const canSeeLive =
         (profile?.id != null && (profile.id === d.created_by || profile.id === d.owner_id)) ||
         d.share_permission === 'edit' ||
@@ -332,6 +338,7 @@ export function DocumentsContent() {
         alwaysVisible: true,
         cell: (d: Document) => (
           <span className="flex items-center gap-2 min-w-0">
+            {favoriteDocumentIds.has(d.id) && <FavoriteInlineMark />}
             <span className="font-medium text-text-primary dark:text-text-dark-primary truncate">
               {d.title}
             </span>
@@ -386,7 +393,7 @@ export function DocumentsContent() {
         align: 'right',
         alwaysVisible: true,
         visibilityLabel: t('tables.actions'),
-        cell: (d: Document) => (
+        cell: (d: Document) => canOpenDocument(hasPermission, profile?.id, d) && (
           <Button
             type="button"
             variant="ghost"
@@ -412,7 +419,7 @@ export function DocumentsContent() {
         ),
       },
     ],
-    [navigate, profile, t],
+    [favoriteDocumentIds, hasPermission, navigate, profile, t],
   );
 
   const handleNewProgrammingClick = async () => {

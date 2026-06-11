@@ -19,7 +19,7 @@ import type { TemplateVisibilityLevel } from '../../../types/templates';
 import { useFavoritesIds } from '../../../hooks/useFavoritesIds';
 import { FavoriteInlineMark } from '../../../components/FavoriteInlineMark';
 import { useUserProfile } from '../../../features/user-profile';
-import { DMS_PERMISSIONS } from '../../../permissions';
+import { canOpenDocument as canOpenDocumentShared } from '../../../permissions';
 import { useHierarchy } from '../../../features/hierarchy';
 import { formatCalendarDateForBrowser } from '../../../utils/formatCalendarDate';
 import { formatListRowVisibilityCaption } from '../../../utils/academicContextSearch';
@@ -45,7 +45,6 @@ export function DocumentsTable({ processId }: Props = {}) {
   const location = useLocation();
   const { t } = useTranslation(['documents', 'common']);
   const { profile, hasPermission } = useUserProfile();
-  const canShow = hasPermission(DMS_PERMISSIONS.documentShow);
   const { hierarchy } = useHierarchy();
   const { documentIds: favoriteDocumentIds } = useFavoritesIds();
 
@@ -122,6 +121,9 @@ export function DocumentsTable({ processId }: Props = {}) {
     for (const d of rows) {
       const hasPublishedFallback = d.status !== 'published' && !!d.latest_published_version_id;
       const isAssignedReviewer = d.status === 'in_review' && d.is_assigned_reviewer === true;
+      // Divergencia con TemplatesTable JUSTIFICADA: documents tiene delegación de
+      // titularidad (owner_id) y shares (document_shares, DocumentPolicy::hasEditShare);
+      // templates solo expone created_by + revisores en el listado.
       const canSeeLive =
         (profile?.id != null && (profile.id === d.created_by || profile.id === d.owner_id)) ||
         d.share_permission === 'edit' ||
@@ -242,15 +244,8 @@ export function DocumentsTable({ processId }: Props = {}) {
     [favoriteDocumentIds, hierarchy, profile, t],
   );
 
-  const canOpenDocument = (doc: Document): boolean => {
-    if (canShow) {
-      return true;
-    }
-    if (profile?.id && (doc.created_by === profile.id || doc.owner_id === profile.id)) {
-      return true;
-    }
-    return false;
-  };
+  const canOpenDocument = (doc: Document): boolean =>
+    canOpenDocumentShared(hasPermission, profile?.id, doc);
 
   if (!canIndex) {
     return (

@@ -173,10 +173,83 @@ export function canMutateTemplateBlocks(
   );
 }
 
-export function canMutateDocumentBlocks(hasPermission: (slug: string) => boolean): boolean {
-  return (
-    hasPermission(DMS_PERMISSIONS.documentCreate) || hasPermission(DMS_PERMISSIONS.documentUpdate)
-  );
+/** Contexto de documento padre para permisos de bloques (alineado con BlockPolicy/DocumentPolicy). */
+/** Campos mínimos para decidir si una fila de documento es abrible. */
+export type DocumentOpenContext = {
+  created_by?: string;
+  owner_id?: string | null;
+  status?: string;
+  is_assigned_reviewer?: boolean;
+};
+
+/**
+ * Abrir el detalle de un documento desde un listado. Espeja DocumentPolicy::view:
+ * `document.show`, titular/creador, o revisor asignado SOLO en `in_review`
+ * (a diferencia de plantillas, donde TemplatePolicy::view admite al revisor siempre).
+ */
+export function canOpenDocument(
+  hasPermission: (slug: string) => boolean,
+  profileId: string | undefined,
+  doc: DocumentOpenContext,
+): boolean {
+  if (hasPermission(DMS_PERMISSIONS.documentShow)) {
+    return true;
+  }
+  if (profileId && (doc.created_by === profileId || doc.owner_id === profileId)) {
+    return true;
+  }
+  return doc.status === 'in_review' && doc.is_assigned_reviewer === true;
+}
+
+export type DocumentBlockPermissionContext = {
+  created_by?: string;
+  owner_id?: string | null;
+  status?: string;
+  /** Permiso de share del usuario actual sobre el documento (`edit` habilita mutación). */
+  share_permission?: string | null;
+};
+
+/**
+ * Mutar bloques de un documento. Espeja el backend:
+ * - `BlockPolicy::updateForDocument`/`deleteForDocument`: exige SIEMPRE slug compañero
+ *   (`document.create` o `document.update`), incluso para el titular.
+ * - `DocumentBlockService::updateBlock`/`deleteOptionalBlock`: solo documentos en
+ *   `draft` o `rejected` (AuthorizationException en otro estado).
+ * - `DocumentPolicy::update`: titular (owner_id; created_by solo si no hay owner),
+ *   colaborador con share `edit`, o `document.update`. Sin chequeo de status en la
+ *   policy (el status lo corta el service, ver arriba).
+ */
+export function canMutateDocumentBlocks(
+  hasPermission: (slug: string) => boolean,
+  profileId: string | undefined,
+  document: DocumentBlockPermissionContext,
+): boolean {
+  const hasCompanionSlug =
+    hasPermission(DMS_PERMISSIONS.documentCreate) || hasPermission(DMS_PERMISSIONS.documentUpdate);
+  if (!hasCompanionSlug) {
+    return false;
+  }
+
+  // DocumentBlockService: bloques solo mutables en borrador o rechazado.
+  if (document.status && document.status !== 'draft' && document.status !== 'rejected') {
+    return false;
+  }
+
+  // DocumentPolicy::isTitular: solo si owner_id es cadena NO vacía manda el owner;
+  // null/undefined/'' ceden al creador (espejo exacto del backend).
+  const titularId =
+    document.owner_id != null && document.owner_id !== '' ? document.owner_id : document.created_by;
+  if (profileId && titularId && profileId === titularId) {
+    return true;
+  }
+
+  // DocumentPolicy::hasEditShare.
+  if (document.share_permission === 'edit') {
+    return true;
+  }
+
+  // Resto: necesita `document.update` (la visibilidad la garantiza ya el listado servido).
+  return hasPermission(DMS_PERMISSIONS.documentUpdate);
 }
 
 export function canCreateTemplateBlock(
@@ -212,12 +285,39 @@ export function canDeleteTemplateBlock(
   );
 }
 
-export function canUpdateDocumentBlock(hasPermission: (slug: string) => boolean): boolean {
-  return hasPermission(DMS_PERMISSIONS.blockUpdate) && canMutateDocumentBlocks(hasPermission);
+export function canUpdateDocumentBlock(
+  hasPermission: (slug: string) => boolean,
+  profileId: string | undefined,
+  document: DocumentBlockPermissionContext,
+): boolean {
+  return (
+    hasPermission(DMS_PERMISSIONS.blockUpdate) &&
+    canMutateDocumentBlocks(hasPermission, profileId, document)
+  );
 }
 
-export function canDeleteDocumentBlock(hasPermission: (slug: string) => boolean): boolean {
-  return hasPermission(DMS_PERMISSIONS.blockDelete) && canMutateDocumentBlocks(hasPermission);
+export function canDeleteDocumentBlock(
+  hasPermission: (slug: string) => boolean,
+  profileId: string | undefined,
+  document: DocumentBlockPermissionContext,
+): boolean {
+  return (
+    hasPermission(DMS_PERMISSIONS.blockDelete) &&
+    canMutateDocumentBlocks(hasPermission, profileId, document)
+  );
+}
+
+/**
+ * Añadir comentarios según el estado del ciclo (guardia de UI compartida por
+ * documentos y plantillas): un snapshot `published` es de solo lectura.
+ *
+ * Nota backend: `CommentPolicy::mayParticipateOnDocument`/`OnTemplate` permite al
+ * titular/creador comentar en cualquier estado; esta guardia de UI es deliberadamente
+ * más estricta (no se comenta sobre lo publicado). Para share `edit` y revisores el
+ * backend ya restringe por estado (`draft`/`rejected`/`in_review`), coherente con esto.
+ */
+export function canCommentOnDocument(status: string | null | undefined): boolean {
+  return status !== 'published';
 }
 
 /** Crear comentarios en bloque; el contexto (creador/revisor) lo valida la API. */

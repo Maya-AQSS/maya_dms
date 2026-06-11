@@ -13,6 +13,14 @@ import { fetchFavorites } from '../api/favorites';
  * Decisión registrada en `maya_dms/SPIKE_useSharedFavorites.md` (2026-05-14).
  */
 
+/**
+ * KEYING ASIMÉTRICO VERIFICADO contra backend (NO es un bug):
+ * - `template_ids` son IDs de VERSIÓN publicada (`user_favorite_templates.template_version_id`;
+ *   el repo los re-apunta a la nueva versión al publicar) → comparar contra
+ *   `template.latest_published_version_id`.
+ * - `document_ids` son IDs de ENTIDAD (`user_favorite_documents.document_id`) →
+ *   comparar contra `document.id`.
+ */
 interface FavoritesIds {
   template_ids: string[];
   document_ids: string[];
