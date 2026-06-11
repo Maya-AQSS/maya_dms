@@ -183,11 +183,6 @@ export function TemplatesTable({ processId }: Props = {}) {
       navigate(`/templates/${tpl.id}/review`, { state: { backTo, processId } });
       return;
     }
-    const isOwner = profile?.id != null && tpl.created_by === profile.id;
-    if (shouldOpenTemplateEditorFromList(tpl, isOwner)) {
-      navigate(`/templates/${tpl.id}/edit`, { state: { backTo, processId } });
-      return;
-    }
     navigate(`/templates/${tpl.id}`, { state: { backTo, processId } });
   };
 
