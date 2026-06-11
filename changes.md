@@ -24,14 +24,11 @@ capa Service/Repo sin cambiar la respuesta) NO se registran aquí.
 
 ---
 
-## Decisiones pendientes (requieren aprobación explícita antes de tocar)
+## Decisiones pendientes
 
-| Fase | Divergencia actual | Opciones |
-|---|---|---|
-| 6.3 | `PublishDocumentRequest::authorize()` devuelve `true` (la autorización solo se ejerce en el controller); `PublishTemplateRequest` sí autoriza con `can('publish')` | (a) igualar a Template (doble guardia — **CRITICAL**, cambio de seguridad) · (b) dejar y documentar |
-| 3.9 | `process_id` sin `exists:processes,id` en Documents; `study_type_id/study_id/module_id` `string` (Templates) vs `uuid` (Documents) | igualar validaciones (HIGH) o preservar |
-| 4.1 | Timeout WeasyPrint: 60s (template) vs 30s (theme) | unificar valor al extraer `WeasyPrintRunner` |
-| 6.6 | `sortBy` default `updated_at` (templates) vs `created_at` (documents); respuestas `Resource::response()` vs `response()->json(['data'=>...])` manual; `destroy` 204 vs Resource | igualar o preservar por endpoint |
+Ninguna. Las 4 decisiones (6.3, 3.9, 4.1, 6.6) fueron aprobadas por el usuario
+el 2026-06-11 y aplicadas — ver entradas al final. Única igualación descartada:
+`destroy` de Template (el frontend usa la señal 204-física vs 200+Resource-archivada).
 
 ## Asimetrías preservadas (decisión de plan — NO se unifican)
 
@@ -92,3 +89,63 @@ capa Service/Repo sin cambiar la respuesta) NO se registran aquí.
 - **Fase 7 (patrón PATCH UpdateTemplateDto)**: NO ejecutada — marcada opcional en el plan, riesgo ALTO, separable en rama propia.
 - **6.2**: TemplateReviewService conserva retorno `Template` documentado como excepción B4 (el controller adjunta can_clone vía setAttribute antes del DTO readonly).
 - **Verificación global**: Unit 453/453, Feature 285/285 (baseline 358 Unit/261 Feature — +119 tests nuevos, 0 regresiones); pint limpio en archivos del refactor; grep de arquitectura limpio (Eloquent/DB solo en Repositories y Models; única excepción documentada BlockRenderSupport).
+
+
+## [FASE 6.3] PublishDocumentRequest autoriza (igualado a Template) — APROBADO
+
+- **Fecha**: 2026-06-11
+- **Severidad**: CRITICAL (cambio de comportamiento de seguridad)
+- **Qué cambió**: `authorize()` pasaba de `return true` a
+  `$this->user()->can('publish', $this->resolveDocument())` — doble guardia
+  (Request + controller), patrón idéntico a PublishTemplateRequest.
+- **Endpoint(s)**: POST /api/v1/documents/{id}/publish
+- **Impacto en cliente**: usuarios sin permiso reciben ahora 403 ANTES de la
+  validación de campos (antes: la validación de changelog corría primero y el
+  403 llegaba del controller). Mismo resultado final para el caso no autorizado.
+- **Decidido por**: usuario (aprobación explícita).
+
+## [FASE 3.9] Validaciones de listado igualadas — APROBADO
+
+- **Fecha**: 2026-06-11
+- **Severidad**: HIGH
+- **Qué cambió**:
+  - ListDocumentsRequest: `process_id` añade `exists:processes,id`;
+    `template_id` añade `exists:templates,id` (igualado a la política de
+    Templates, que ya validaba process_id/team_id con exists).
+  - ListTemplatesRequest: `study_type_id/study_id/module_id` pasan de
+    `string|max:255` a `uuid` (igualado a Documents).
+- **Endpoint(s)**: GET /api/v1/documents, GET /api/v1/templates
+- **Impacto en cliente**: filtrar por un id inexistente o con formato no-UUID
+  devuelve ahora 422 en vez de 200 con lista vacía. El frontend usa pickers de
+  valores reales → sin impacto esperado.
+- **Decidido por**: usuario.
+
+## [FASE 4.1] Timeout WeasyPrint unificado a 60s — APROBADO
+
+- **Fecha**: 2026-06-11
+- **Severidad**: MEDIUM
+- **Qué cambió**: ThemePdfService pasa de 30s a 60s (template y document ya
+  usaban 60s). PDFs de muestra de temas complejos dejan de poder morir a los 30s.
+- **Endpoint(s)**: GET /api/v1/themes/{id}/sample-pdf (y preview PDF de temas)
+- **Impacto en cliente**: solo positivo (más margen); latencia máxima del
+  endpoint sube de 30 a 60s en el caso patológico.
+- **Decidido por**: usuario.
+
+## [FASE 6.6] Wire format y defaults igualados (modo seguro) — APROBADO
+
+- **Fecha**: 2026-06-11
+- **Severidad**: MEDIUM
+- **Qué cambió**:
+  - `sortBy` default de Documents: `created_at` → `updated_at` (igualado a
+    Templates; request y DocumentFilterDto). Solo afecta a llamadas API SIN
+    `sort_by` explícito — el frontend siempre lo envía (defaultSort en ambos hooks).
+  - DocumentStateController submit/publish/delegate devuelven `DocumentResource`
+    directo (wrap estándar de Laravel) en vez de `response()->json(['data'=>...])`
+    manual. JSON byte-idéntico verificado (sin withoutWrapping global, sin with()
+    en el Resource). startNewVersion/applyTemplateMigration/destroyVersion siguen
+    manuales porque añaden `blocks` al payload (asimetría por diseño).
+  - `destroy`: NO igualado — el frontend distingue 204 (borrado físico) de
+    200+Resource (archivada por documentos vinculados) en deleteTemplate();
+    igualar destruiría esa señal. Documentado como asimetría funcional.
+- **Endpoint(s)**: GET /api/v1/documents (orden por defecto); POST submit/publish/delegate de documents (mecanismo interno, sin cambio observable).
+- **Decidido por**: usuario ("igualar del modo más seguro").

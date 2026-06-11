@@ -12,9 +12,13 @@ class PublishDocumentRequest extends FormRequest
 {
     use ResolvesDocumentForAuthorization;
 
+    /**
+     * Igualado a PublishTemplateRequest (decisión 6.3, ver changes.md): doble
+     * guardia — el controlador repite la comprobación con authorize('publish').
+     */
     public function authorize(): bool
     {
-        return true;
+        return $this->user()->can('publish', $this->resolveDocument());
     }
 
     protected function prepareForValidation(): void

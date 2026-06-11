@@ -41,7 +41,7 @@ class DocumentStateController extends Controller
     /**
      * Enviar documento a revisión.
      */
-    public function submit(SubmitDocumentForReviewRequest $request, string $document): JsonResponse
+    public function submit(SubmitDocumentForReviewRequest $request, string $document): DocumentResource
     {
         $model = $this->documentService->findModelOrFail($document);
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
@@ -54,13 +54,13 @@ class DocumentStateController extends Controller
         );
         $this->attachCanCloneMeta($updated, $request);
 
-        return response()->json(['data' => (new DocumentResource(DocumentDto::fromModel($updated)))->toArray($request)]);
+        return new DocumentResource(DocumentDto::fromModel($updated));
     }
 
     /**
      * Publicar documento.
      */
-    public function publish(PublishDocumentRequest $request, string $id): JsonResponse
+    public function publish(PublishDocumentRequest $request, string $id): DocumentResource
     {
         $document = $this->documentService->findModelOrFail($id);
         $this->authorize('publish', $document);
@@ -74,7 +74,7 @@ class DocumentStateController extends Controller
         );
         $this->attachCanCloneMeta($updated, $request);
 
-        return response()->json(['data' => (new DocumentResource(DocumentDto::fromModel($updated)))->toArray($request)]);
+        return new DocumentResource(DocumentDto::fromModel($updated));
     }
 
     /**
@@ -165,7 +165,7 @@ class DocumentStateController extends Controller
     /**
      * Delegar documento a otro usuario.
      */
-    public function delegate(DelegateDocumentRequest $request, string $id): JsonResponse
+    public function delegate(DelegateDocumentRequest $request, string $id): DocumentResource
     {
         $document = $this->documentService->findModelOrFail($id);
         $this->authorize('delegate', $document);
@@ -179,6 +179,6 @@ class DocumentStateController extends Controller
         );
         $this->attachCanCloneMeta($updated, $request);
 
-        return response()->json(['data' => (new DocumentResource(DocumentDto::fromModel($updated)))->toArray($request)]);
+        return new DocumentResource(DocumentDto::fromModel($updated));
     }
 }

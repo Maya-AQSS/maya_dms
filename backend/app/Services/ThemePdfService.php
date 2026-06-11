@@ -18,7 +18,7 @@ use App\Support\WeasyPrintRunner;
 class ThemePdfService implements ThemePdfServiceInterface
 {
     /** Timeout duro del proceso WeasyPrint, segundos. */
-    private const PROCESS_TIMEOUT = 30;
+    private const PROCESS_TIMEOUT = 60;
 
     public function __construct(
         private readonly ThemeRenderServiceInterface $renderer,

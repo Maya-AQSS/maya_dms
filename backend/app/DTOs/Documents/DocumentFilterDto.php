@@ -29,7 +29,7 @@ final readonly class DocumentFilterDto extends FilterDto
         public readonly ?string $moduleId = null,
         int $page = 1,
         int $perPage = 15,
-        ?string $sortBy = 'created_at',
+        ?string $sortBy = 'updated_at',
         string $sortDir = 'desc',
         ?string $search = null,
     ) {

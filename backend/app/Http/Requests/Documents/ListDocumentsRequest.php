@@ -36,9 +36,9 @@ class ListDocumentsRequest extends PaginatedFilterRequest
     protected function filterRules(): array
     {
         return [
-            'process_id' => ['nullable', 'uuid'],
+            'process_id' => ['nullable', 'uuid', 'exists:processes,id'],
             'status' => ['nullable', 'string', 'in:draft,in_review,published,archived'],
-            'template_id' => ['nullable', 'uuid'],
+            'template_id' => ['nullable', 'uuid', 'exists:templates,id'],
             'created_by' => ['nullable', 'string', 'max:255'],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],
@@ -67,7 +67,7 @@ class ListDocumentsRequest extends PaginatedFilterRequest
             moduleId: $this->input('module_id'),
             page: $this->getPage(),
             perPage: $this->getPerPage(),
-            sortBy: $this->getSortBy() ?? 'created_at',
+            sortBy: $this->getSortBy() ?? 'updated_at',
             sortDir: $this->getSortDir(),
             search: $this->input('search'),
         );
