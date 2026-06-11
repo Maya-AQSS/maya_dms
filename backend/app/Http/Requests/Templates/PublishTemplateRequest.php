@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Templates;
 
-use App\Models\Template;
+use App\Http\Requests\Templates\Concerns\ResolvesTemplateForAuthorization;
 use App\Support\VersionSubmissionChangelog;
 use Illuminate\Foundation\Http\FormRequest;
 
 class PublishTemplateRequest extends FormRequest
 {
-    private ?Template $resolvedTemplate = null;
+    use ResolvesTemplateForAuthorization;
 
     /**
      * Delega la autorización en TemplatePolicy::publish(), que aplica la regla de
@@ -60,17 +60,5 @@ class PublishTemplateRequest extends FormRequest
             'changelog.required' => 'El changelog es obligatorio al publicar una plantilla.',
             'changelog.min' => 'El changelog es obligatorio al publicar una plantilla.',
         ];
-    }
-
-    /**
-     * Resuelve la plantilla.
-     */
-    private function resolveTemplate(): Template
-    {
-        if ($this->resolvedTemplate === null) {
-            $this->resolvedTemplate = Template::query()->findOrFail($this->route('template'));
-        }
-
-        return $this->resolvedTemplate;
     }
 }

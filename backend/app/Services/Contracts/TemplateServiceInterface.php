@@ -190,4 +190,13 @@ interface TemplateServiceInterface
      * Verifica si un usuario es revisor activo para una plantilla en estado in_review.
      */
     public function isUserActiveReviewerForTemplate(string $templateId, string $userId): bool;
+
+    /**
+     * Determina si el viewer debe recibir el snapshot publicado o el contenido vivo,
+     * y si es revisor asignado activo. Encapsula la lógica de branching del show()
+     * del TemplateController — espejo de DocumentService::resolveDocumentViewerContext().
+     *
+     * @return array{serve_published_snapshot: bool, is_assigned_reviewer: bool}
+     */
+    public function resolveTemplateViewerContext(Template $model, string $templateId, string $viewerId): array;
 }

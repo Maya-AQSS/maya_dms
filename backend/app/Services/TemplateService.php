@@ -1182,4 +1182,32 @@ class TemplateService implements TemplateServiceInterface
         return $template->status === 'in_review'
             && $this->templateReviewerRepository->existsReviewerForTemplate($templateId, $userId);
     }
+
+    /**
+     * Determina si el viewer debe recibir el snapshot publicado o el contenido vivo,
+     * y si es revisor asignado activo. Encapsula la lógica de branching del show()
+     * del TemplateController — espejo de DocumentService::resolveDocumentViewerContext().
+     *
+     * @return array{serve_published_snapshot: bool, is_assigned_reviewer: bool}
+     */
+    public function resolveTemplateViewerContext(Template $model, string $templateId, string $viewerId): array
+    {
+        $isCreator = (string) $model->created_by === $viewerId;
+        $isAssignedReviewer = false;
+        $servePublishedSnapshot = false;
+
+        if (! $isCreator && in_array($model->status, ['draft', 'in_review', 'rejected'], true)) {
+            $isAssignedReviewer = $model->status === 'in_review'
+                && $this->templateReviewerRepository->existsReviewerForTemplate($templateId, $viewerId);
+
+            if (! $isAssignedReviewer) {
+                $servePublishedSnapshot = true;
+            }
+        }
+
+        return [
+            'serve_published_snapshot' => $servePublishedSnapshot,
+            'is_assigned_reviewer' => $isAssignedReviewer,
+        ];
+    }
 }

@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Http\Resources\Concerns\ResolvesUserNames;
 use App\Services\TemplateVersionBlockLayerResolver;
+use App\Support\TemplateVersionSnapshotParser;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\DB;
 
 class TemplateVersionResource extends JsonResource
 {
+    use ResolvesUserNames;
+
     /**
      * Detalle de publicación de plantilla (snapshot de bloques reconstruido con capas incrementales si existen).
      *
@@ -24,24 +27,20 @@ class TemplateVersionResource extends JsonResource
         $templateSnapshot = isset($snapshotData['template']) && is_array($snapshotData['template'])
             ? $snapshotData['template']
             : null;
-        $authorId = isset($templateSnapshot['created_by']) && is_string($templateSnapshot['created_by']) && $templateSnapshot['created_by'] !== ''
-            ? $templateSnapshot['created_by']
-            : (is_string($this->created_by) && $this->created_by !== '' ? $this->created_by : null);
-        $publishedBy = is_string($this->published_by) && $this->published_by !== '' ? $this->published_by : null;
 
+        $authorId = TemplateVersionSnapshotParser::authorId($snapshotData);
+        if ($authorId === null && is_string($this->created_by) && $this->created_by !== '') {
+            $authorId = $this->created_by;
+        }
+
+        $publishedBy = is_string($this->published_by) && $this->published_by !== '' ? $this->published_by : null;
         $publishedAt = $this->published_at ?? null;
 
-        $reviewers = data_get($snapshotData, 'reviewers.template_reviewers');
         $reviewerNames = [];
-        if (is_array($reviewers)) {
-            foreach ($reviewers as $r) {
-                $uid = $r['user_id'] ?? null;
-                if (is_string($uid) && $uid !== '') {
-                    $name = $this->resolveUserNameById($uid);
-                    if ($name !== null) {
-                        $reviewerNames[] = $name;
-                    }
-                }
+        foreach (TemplateVersionSnapshotParser::reviewerIds($snapshotData) as $uid) {
+            $name = $this->resolveUserNameById($uid);
+            if ($name !== null) {
+                $reviewerNames[] = $name;
             }
         }
 
@@ -60,17 +59,5 @@ class TemplateVersionResource extends JsonResource
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];
-    }
-
-    private function resolveUserNameById(string $userId): ?string
-    {
-        static $cache = [];
-        if (array_key_exists($userId, $cache)) {
-            return $cache[$userId];
-        }
-        $name = DB::table('users')->where('id', $userId)->value('name');
-        $cache[$userId] = is_string($name) && trim($name) !== '' ? trim($name) : null;
-
-        return $cache[$userId];
     }
 }

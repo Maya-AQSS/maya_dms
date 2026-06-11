@@ -4,19 +4,19 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Documents;
 
-use App\Models\Document;
+use App\Http\Requests\Documents\Concerns\ResolvesDocumentForAuthorization;
 use Illuminate\Foundation\Http\FormRequest;
 
 class CloneDocumentRequest extends FormRequest
 {
+    use ResolvesDocumentForAuthorization;
+
     /**
      * Verifica si el usuario puede clonar el documento.
      */
     public function authorize(): bool
     {
-        $document = Document::query()->findOrFail($this->route('document'));
-
-        return $this->user()->can('clone', $document);
+        return $this->user()->can('clone', $this->resolveDocument());
     }
 
     /**

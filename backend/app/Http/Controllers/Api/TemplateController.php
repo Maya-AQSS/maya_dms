@@ -90,28 +90,23 @@ class TemplateController extends Controller
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         $viewerId = (string) $request->user()->getAuthIdentifier();
-        $isCreator = (string) $model->created_by === $viewerId;
 
         $this->templateService->attachWorkingRevisionPresentationMeta($model);
 
-        if (! $isCreator && in_array($model->status, ['draft', 'in_review', 'rejected'], true)) {
-            // Only serve real content to an active reviewer during in_review.
-            // For draft/rejected (or in_review for non-reviewer), serve the last published snapshot.
-            $isActiveReviewer = $this->templateService->isUserActiveReviewerForTemplate($model->id, $viewerId);
+        $viewerContext = $this->templateService->resolveTemplateViewerContext($model, (string) $model->getKey(), $viewerId);
 
-            if (! $isActiveReviewer) {
-                $latestPublished = $this->templateService->findLatestPublishedVersion($model->id);
-                if ($latestPublished === null) {
-                    abort(404);
-                }
-                $model->setRelation('headVersion', $latestPublished);
-                $model->loadMissing(['creator']);
-                $this->attachCanCloneMeta($model, $request);
-                $this->templateService->attachLatestPublishedVersionMeta(collect([$model]));
-                $this->apiTeamEmbedService->embedOnTemplate($model, $viewerId);
-
-                return new TemplateResource(TemplateDto::fromModel($model));
+        if ($viewerContext['serve_published_snapshot']) {
+            $latestPublished = $this->templateService->findLatestPublishedVersion($model->id);
+            if ($latestPublished === null) {
+                abort(404);
             }
+            $model->setRelation('headVersion', $latestPublished);
+            $model->loadMissing(['creator']);
+            $this->attachCanCloneMeta($model, $request);
+            $this->templateService->attachLatestPublishedVersionMeta(collect([$model]));
+            $this->apiTeamEmbedService->embedOnTemplate($model, $viewerId);
+
+            return new TemplateResource(TemplateDto::fromModel($model));
         }
 
         $model->loadMissing(['reviewers', 'documentReviewers.user', 'creator', 'headVersion']);
