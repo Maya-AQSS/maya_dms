@@ -33,10 +33,11 @@ class TemplateRepository implements TemplateRepositoryInterface
      */
     public function findOrFail(string $id): Template
     {
-        return Template::query()
-            ->with(['headVersion', 'theme'])
-            ->withExists(['comments as has_review_comments' => fn ($q) => $q])
-            ->findOrFail($id);
+        $query = Template::query()
+            ->with(['headVersion', 'theme']);
+        $this->applyReviewCommentExists($query);
+
+        return $query->findOrFail($id);
     }
 
     /**
@@ -74,11 +75,12 @@ class TemplateRepository implements TemplateRepositoryInterface
      */
     public function findOrFailWithoutCatalogScope(string $id): Template
     {
-        return Template::query()
+        $query = Template::query()
             ->withoutGlobalScopes(['user_access'])
-            ->with(['headVersion', 'theme'])
-            ->withExists(['comments as has_review_comments' => fn ($q) => $q])
-            ->findOrFail($id);
+            ->with(['headVersion', 'theme']);
+        $this->applyReviewCommentExists($query);
+
+        return $query->findOrFail($id);
     }
 
     /**
@@ -187,7 +189,7 @@ class TemplateRepository implements TemplateRepositoryInterface
 
         return $query
             ->with(['headVersion'])
-            ->withExists(['comments as has_review_comments' => fn ($q) => $q])
+            ->tap(fn ($q) => $this->applyReviewCommentExists($q))
             ->with('reviewers')
             ->distinct()
             ->paginate($filter->perPage, ['*'], 'page', $filter->page);
@@ -312,9 +314,7 @@ class TemplateRepository implements TemplateRepositoryInterface
         /** @var EloquentCollection<int, Template> $rows */
         $rows = $query
             ->with(['headVersion'])
-            ->withExists([
-                'comments as has_review_comments' => fn ($q) => $q,
-            ])
+            ->tap(fn ($q) => $this->applyReviewCommentExists($q))
             ->with('reviewers')
             ->orderByDesc('templates.updated_at')
             ->distinct()
@@ -959,5 +959,34 @@ class TemplateRepository implements TemplateRepositoryInterface
                     applyTheme: (bool) $block->apply_theme,
                 );
             });
+    }
+
+    /**
+     * Añade exists de comentarios de revisión (cualquiera) y no leídos por el usuario autenticado.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Template>  $query
+     */
+    private function applyReviewCommentExists($query): void
+    {
+        $query->withExists(['comments as has_review_comments' => fn ($q) => $q]);
+
+        $readerUserId = auth()->check() ? (string) auth()->id() : '';
+        if ($readerUserId === '') {
+            $query->withExists(['comments as has_unread_review_comments' => fn ($q) => $q->whereRaw('1 = 0')]);
+
+            return;
+        }
+
+        $query->withExists([
+            'comments as has_unread_review_comments' => function ($q) use ($readerUserId): void {
+                $q->where('comments.author_id', '!=', $readerUserId)
+                    ->whereNotExists(function ($sub) use ($readerUserId): void {
+                        $sub->select(DB::raw(1))
+                            ->from('comment_reads')
+                            ->whereColumn('comment_reads.comment_id', 'comments.id')
+                            ->where('comment_reads.user_id', $readerUserId);
+                    });
+            },
+        ]);
     }
 }

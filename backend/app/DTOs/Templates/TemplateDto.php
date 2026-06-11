@@ -44,6 +44,7 @@ final readonly class TemplateDto
         public ?string $createdAt,
         public ?string $updatedAt,
         public bool $hasReviewComments,
+        public bool $hasUnreadReviewComments,
         public ?string $latestPublishedVersionId,
         public ?int $latestPublishedVersionNumber,
         public bool $canClone,
@@ -163,6 +164,7 @@ final readonly class TemplateDto
             createdAt: $m->created_at?->toIso8601String(),
             updatedAt: $m->updated_at?->toIso8601String(),
             hasReviewComments: (bool) ($m->getAttribute('has_review_comments') ?? false),
+            hasUnreadReviewComments: (bool) ($m->getAttribute('has_unread_review_comments') ?? false),
             latestPublishedVersionId: $m->getAttribute('latest_published_version_id'),
             latestPublishedVersionNumber: $m->getAttribute('latest_published_version_number') !== null
                 ? (int) $m->getAttribute('latest_published_version_number')

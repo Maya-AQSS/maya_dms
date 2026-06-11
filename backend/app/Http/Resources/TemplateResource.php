@@ -45,6 +45,7 @@ class TemplateResource extends JsonResource
             'created_at' => $dto->createdAt,
             'updated_at' => $dto->updatedAt,
             'has_review_comments' => $dto->hasReviewComments,
+            'has_unread_review_comments' => $dto->hasUnreadReviewComments,
             'latest_published_version_id' => $dto->latestPublishedVersionId,
             'latest_published_version_number' => $dto->latestPublishedVersionNumber,
             'can_clone' => $dto->canClone,

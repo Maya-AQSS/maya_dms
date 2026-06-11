@@ -205,7 +205,7 @@ export function TemplatesTable({ processId }: Props = {}) {
             <span className="flex items-center gap-2 min-w-0">
               {isFavorite ? <FavoriteInlineMark /> : null}
               <span className="truncate font-medium">{template.name}</span>
-              {template.has_review_comments && (template.status === 'draft' || template.status === 'rejected') && profile && template.created_by === profile.id && (
+              {template.has_unread_review_comments && (template.status === 'draft' || template.status === 'rejected') && profile && template.created_by === profile.id && (
                 <span
                   className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-bold bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
                   title={t('templates:pendingReviewTitle')}
