@@ -78,7 +78,7 @@ class CommentPolicy
             return false;
         }
 
-        return (new TemplatePolicy)->review($user, $template)
+        return app(TemplatePolicy::class)->review($user, $template)
             || $template->reviewers()
                 ->where('user_id', $userId)
                 ->exists();
@@ -87,7 +87,7 @@ class CommentPolicy
     public function mayParticipateOnDocument(JwtUser $user, Document $document): bool
     {
         $userId = (string) $user->getAuthIdentifier();
-        $documentPolicy = new DocumentPolicy;
+        $documentPolicy = app(DocumentPolicy::class);
 
         if ($userId === (string) $document->created_by || $userId === (string) $document->owner_id) {
             return true;

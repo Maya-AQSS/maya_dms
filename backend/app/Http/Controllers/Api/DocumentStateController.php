@@ -18,7 +18,7 @@ use App\Http\Resources\DocumentResource;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\DocumentReviewService;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
+use App\Support\WorkingRevisionConflictResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -82,26 +82,17 @@ class DocumentStateController extends Controller
      */
     public function startNewVersion(StartNewDocumentRevisionRequest $request, string $document): JsonResponse
     {
-        try {
-            $model = $this->documentService->findModelOrFail($document);
-            $directAccess = true;
-        } catch (ModelNotFoundException) {
-            $model = $this->documentService->findModelOrFailWithoutUserAccess($document);
-            if (! $this->documentService->hasPublishedSnapshot($model->id)) {
-                abort(404);
-            }
-            $directAccess = false;
-        }
+        $model = $request->resolveDocument();
+        $directAccess = $request->hasDirectDocumentAccess();
 
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
-        if ($model->status !== 'published') {
-            $editorName = $this->documentService->getOwnerNameForDocument($model->id);
-
-            return response()->json([
-                'message' => "{$editorName} ya está editando este documento.",
-                'draft_author' => $editorName,
-            ], 409);
+        $workingRevisionConflict = $this->documentService->resolveWorkingRevisionConflict($model);
+        if ($workingRevisionConflict->inProgress) {
+            return response()->json(
+                WorkingRevisionConflictResolver::toConflictResponse($workingRevisionConflict),
+                409,
+            );
         }
 
         if (! $directAccess) {

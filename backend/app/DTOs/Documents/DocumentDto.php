@@ -9,6 +9,7 @@ use App\Models\EntityVersion;
 use App\Models\Template;
 use App\Services\DocumentTemplateVersionNumberResolver;
 use App\Support\ApiEmbeddedTeamResponse;
+use App\Support\IsoTimestamp;
 use App\Support\VersionSubmissionChangelog;
 
 final readonly class DocumentDto
@@ -43,6 +44,8 @@ final readonly class DocumentDto
         public bool $isSharedWithMe,
         public ?string $sharePermission,
         public bool $canClone,
+        public bool $canViewHistory,
+        public bool $canCreateNewVersion,
         public ?string $workingVersionId,
         public ?string $latestPublishedVersionId,
         public ?int $latestPublishedVersionNumber,
@@ -51,6 +54,9 @@ final readonly class DocumentDto
         public bool $isAssignedReviewer,
         public ?array $reviewHistory,
         public ?string $submissionChangelog = null,
+        public bool $workingRevisionInProgress = false,
+        public ?string $workingRevisionEditorName = null,
+        public ?string $workingRevisionStartedAt = null,
     ) {}
 
     public static function fromModel(Document $m): self
@@ -102,6 +108,8 @@ final readonly class DocumentDto
             isSharedWithMe: (bool) ($m->getAttribute('is_shared_with_me') ?? false),
             sharePermission: $m->getAttribute('viewer_share_permission'),
             canClone: (bool) ($m->getAttribute('can_clone') ?? false),
+            canViewHistory: (bool) ($m->getAttribute('can_view_history') ?? false),
+            canCreateNewVersion: (bool) ($m->getAttribute('can_create_new_version') ?? false),
             workingVersionId: $m->head_entity_version_id !== null ? (string) $m->head_entity_version_id : null,
             latestPublishedVersionId: $m->getAttribute('latest_published_version_id'),
             latestPublishedVersionNumber: $m->getAttribute('latest_published_version_number') !== null
@@ -112,6 +120,9 @@ final readonly class DocumentDto
             isAssignedReviewer: (bool) ($m->getAttribute('is_assigned_reviewer') ?? false),
             reviewHistory: $reviewHistory,
             submissionChangelog: self::submissionChangelogFrom($m),
+            workingRevisionInProgress: (bool) ($m->getAttribute('working_revision_in_progress') ?? false),
+            workingRevisionEditorName: $m->getAttribute('working_revision_editor_name'),
+            workingRevisionStartedAt: IsoTimestamp::formatOptional($m->getAttribute('working_revision_started_at')),
         );
     }
 
@@ -179,4 +190,5 @@ final readonly class DocumentDto
             (string) $m->template_version_id,
         );
     }
+
 }

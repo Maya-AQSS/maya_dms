@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Policies;
 
 use App\Enums\TemplateVisibilityLevel;
-use App\Models\EntityVersion;
 use App\Models\JwtUser;
 use App\Models\Template;
+use App\Services\Contracts\TemplateServiceInterface;
 use App\Support\DocumentHeadSnapshot;
 use App\Support\TemplateHeadSnapshot;
 use Illuminate\Support\Facades\DB;
@@ -57,6 +57,10 @@ use Illuminate\Support\Facades\DB;
  */
 class TemplatePolicy
 {
+    public function __construct(
+        private readonly TemplateServiceInterface $templateService,
+    ) {}
+
     /**
      * Listar plantillas: requiere `template.index`; el global scope acota filas visibles.
      */
@@ -257,14 +261,7 @@ class TemplatePolicy
             return false;
         }
 
-        $hasPublishedSnapshot = EntityVersion::query()
-            ->where('versionable_type', Template::class)
-            ->where('versionable_id', $templateId)
-            ->where('version_number', '>', 0)
-            ->where('status', 'published')
-            ->exists();
-
-        if (! $hasPublishedSnapshot) {
+        if (! $this->templateService->hasPublishedSnapshot($templateId)) {
             return false;
         }
 
@@ -318,6 +315,21 @@ class TemplatePolicy
     }
 
     /**
+     * Puede solicitar una nueva versión (permiso de entrada al endpoint).
+     * La disponibilidad concreta (p. ej. borrador en curso) la resuelve el controller con 409.
+     */
+    public function attemptStartRevision(JwtUser $user, Template $template): bool
+    {
+        if (! $this->view($user, $template)) {
+            return false;
+        }
+
+        $isCreator = (string) $user->getAuthIdentifier() === (string) $template->created_by;
+
+        return $isCreator || $user->hasPermission('template.version');
+    }
+
+    /**
      * Publicada → borrador para preparar una nueva versión (misma plantilla).
      *
      * Creador o permiso `template.version`, siempre que pueda ver la plantilla.
@@ -328,13 +340,7 @@ class TemplatePolicy
             return false;
         }
 
-        if (! $this->view($user, $template)) {
-            return false;
-        }
-
-        $isCreator = (string) $user->getAuthIdentifier() === (string) $template->created_by;
-
-        return $isCreator || $user->hasPermission('template.version');
+        return $this->attemptStartRevision($user, $template);
     }
 
     /**

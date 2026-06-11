@@ -13,6 +13,7 @@ use App\DTOs\Documents\DocumentDto;
 use App\DTOs\Documents\DocumentFilterDto;
 use App\DTOs\Documents\DocumentMigrationPayloadDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
+use App\DTOs\Versioning\WorkingRevisionConflictDto;
 use App\Http\Controllers\Api\DocumentController;
 use App\Models\Document;
 use App\Models\DocumentReview;
@@ -291,6 +292,10 @@ interface DocumentServiceInterface
      * @param  Collection<int, Document>  $documents
      */
     public function attachLatestPublishedVersionMeta(Collection $documents): void;
+
+    public function resolveWorkingRevisionConflict(Document $document): WorkingRevisionConflictDto;
+
+    public function attachWorkingRevisionPresentationMeta(Document $document): void;
 
     /**
      * Adjunta `template_version_number` en lote para evitar resolución por documento en el Resource.

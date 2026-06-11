@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Documents;
 
-use App\Models\Document;
-use App\Services\Contracts\DocumentServiceInterface;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
+use App\Http\Requests\Documents\Concerns\ResolvesDocumentForAuthorization;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ShowDocumentRequest extends FormRequest
 {
+    use ResolvesDocumentForAuthorization;
+
     public function authorize(): bool
     {
         return $this->user()->can('view', $this->resolveDocument());
@@ -27,22 +27,5 @@ class ShowDocumentRequest extends FormRequest
     public function rules(): array
     {
         return [];
-    }
-
-    public function resolveDocument(): Document
-    {
-        $id = (string) $this->route('document');
-        $service = app(DocumentServiceInterface::class);
-
-        try {
-            return $service->findModelOrFail($id);
-        } catch (ModelNotFoundException) {
-            $document = $service->findModelOrFailWithoutUserAccess($id);
-            if (! $service->hasPublishedSnapshot($document->id)) {
-                abort(404);
-            }
-
-            return $document;
-        }
     }
 }

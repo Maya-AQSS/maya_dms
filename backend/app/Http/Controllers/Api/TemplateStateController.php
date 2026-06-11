@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\DTOs\Templates\TemplateDto;
-use App\Http\Concerns\AttachesTemplateCanCloneMeta;
+use App\Http\Concerns\AttachesCanCloneMeta;
 use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Templates\PublishTemplateRequest;
@@ -15,11 +15,10 @@ use App\Http\Resources\TemplateResource;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\TemplateServiceInterface;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
+use App\Support\WorkingRevisionConflictResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Gate;
 
 /**
  * Transiciones de estado de Template: submitForReview, rejectReview,
@@ -28,7 +27,7 @@ use Illuminate\Support\Facades\Gate;
  */
 class TemplateStateController extends Controller
 {
-    use AttachesTemplateCanCloneMeta;
+    use AttachesCanCloneMeta;
     use ValidatesOptionalProcessContext;
 
     public function __construct(
@@ -50,7 +49,7 @@ class TemplateStateController extends Controller
             (string) Auth::id(),
             (string) $request->validated('changelog'),
         );
-        $updated->setAttribute('can_clone', Gate::forUser(Auth::user())->allows('clone', $updated));
+        $this->attachCanCloneMeta($updated, $request);
 
         return new TemplateResource(TemplateDto::fromModel($updated));
     }
@@ -58,14 +57,14 @@ class TemplateStateController extends Controller
     /**
      * En revisión → rechazada (revisor). El creador puede editar y reenviar.
      */
-    public function rejectReview(string $template): TemplateResource
+    public function rejectReview(Request $request, string $template): TemplateResource
     {
         $model = $this->templateService->findModelOrFail($template);
         $this->authorize('review', $model);
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         $updated = $this->templateService->rejectReview($model->id, (string) Auth::id());
-        $updated->setAttribute('can_clone', Gate::forUser(Auth::user())->allows('clone', $updated));
+        $this->attachCanCloneMeta($updated, $request);
 
         return new TemplateResource(TemplateDto::fromModel($updated));
     }
@@ -76,14 +75,14 @@ class TemplateStateController extends Controller
      * Si todos los revisores han aprobado, la plantilla se publica automáticamente.
      * En modo secuencial verifica que los stages anteriores estén aprobados.
      */
-    public function approveReview(string $template): TemplateResource
+    public function approveReview(Request $request, string $template): TemplateResource
     {
         $model = $this->templateService->findModelOrFail($template);
         $this->authorize('review', $model);
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         $updated = $this->templateService->approveReview($model->id, (string) Auth::id());
-        $updated->setAttribute('can_clone', Gate::forUser(Auth::user())->allows('clone', $updated));
+        $this->attachCanCloneMeta($updated, $request);
 
         return new TemplateResource(TemplateDto::fromModel($updated));
     }
@@ -112,29 +111,17 @@ class TemplateStateController extends Controller
      */
     public function startNewVersion(StartNewTemplateRevisionRequest $request, string $template): TemplateResource|JsonResponse
     {
-        // Intento normal con user_access (cubre creador y revisores activos).
-        try {
-            $model = $this->templateService->findModelOrFail($template);
-            $directAccess = true;
-        } catch (ModelNotFoundException) {
-            // Recurso no accesible en el estado actual (p.ej. draft visible solo al creador).
-            // Si existe y tiene snapshot publicado, el usuario puede recibir el 409 informativo.
-            $model = $this->templateService->findOrFailWithoutCatalogScope($template);
-            if (! $this->templateService->hasPublishedSnapshot($model->id)) {
-                abort(404);
-            }
-            $directAccess = false;
-        }
+        $model = $request->resolveTemplate();
+        $directAccess = $request->hasDirectTemplateAccess();
 
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
-        if ($model->status !== 'published') {
-            $editorName = $this->templateRepository->getUserNameById((string) $model->created_by) ?? 'otro usuario';
-
-            return response()->json([
-                'message' => "{$editorName} ya está editando esta plantilla.",
-                'draft_author' => $editorName,
-            ], 409);
+        $workingRevisionConflict = $this->templateService->resolveWorkingRevisionConflict($model);
+        if ($workingRevisionConflict->inProgress) {
+            return response()->json(
+                WorkingRevisionConflictResolver::toConflictResponse($workingRevisionConflict),
+                409,
+            );
         }
 
         if (! $directAccess) {

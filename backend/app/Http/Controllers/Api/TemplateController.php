@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\DTOs\Templates\TemplateDto;
-use App\Http\Concerns\AttachesTemplateCanCloneMeta;
+use App\Http\Concerns\AttachesCanCloneMeta;
 use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Templates\CloneTemplateRequest;
@@ -35,7 +35,7 @@ use Maya\Http\Concerns\RespondsWithEnvelope;
  */
 class TemplateController extends Controller
 {
-    use AttachesTemplateCanCloneMeta;
+    use AttachesCanCloneMeta;
     use RespondsWithEnvelope;
     use ValidatesOptionalProcessContext;
 
@@ -91,6 +91,8 @@ class TemplateController extends Controller
 
         $viewerId = (string) $request->user()->getAuthIdentifier();
         $isCreator = (string) $model->created_by === $viewerId;
+
+        $this->templateService->attachWorkingRevisionPresentationMeta($model);
 
         if (! $isCreator && in_array($model->status, ['draft', 'in_review', 'rejected'], true)) {
             // Only serve real content to an active reviewer during in_review.

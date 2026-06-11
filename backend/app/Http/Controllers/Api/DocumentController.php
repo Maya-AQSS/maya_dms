@@ -113,6 +113,8 @@ class DocumentController extends Controller
         $servePublishedSnapshot = $viewerContext['serve_published_snapshot'];
         $isAssignedReviewer = $viewerContext['is_assigned_reviewer'];
 
+        $this->documentService->attachWorkingRevisionPresentationMeta($resolved);
+
         if ($servePublishedSnapshot) {
             $latestPublished = $this->documentService->findLatestPublishedVersion($resolved->id);
             if ($latestPublished === null) {

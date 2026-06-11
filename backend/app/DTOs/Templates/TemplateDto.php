@@ -6,10 +6,9 @@ namespace App\DTOs\Templates;
 
 use App\Models\Template;
 use App\Support\ApiEmbeddedTeamResponse;
+use App\Support\IsoTimestamp;
 use App\Support\TemplateHeadSnapshot;
 use App\Support\VersionSubmissionChangelog;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Date;
 
 final readonly class TemplateDto
 {
@@ -48,6 +47,8 @@ final readonly class TemplateDto
         public ?string $latestPublishedVersionId,
         public ?int $latestPublishedVersionNumber,
         public bool $canClone,
+        public bool $canViewHistory,
+        public bool $canCreateNewVersion,
         public ?string $workingVersionId,
         public ?string $latestPublishedName,
         public ?string $latestPublishedAt,
@@ -58,6 +59,9 @@ final readonly class TemplateDto
         public ?array $themeMini = null,
         public ?string $documentReviewMode = null,
         public ?string $submissionChangelog = null,
+        public bool $workingRevisionInProgress = false,
+        public ?string $workingRevisionEditorName = null,
+        public ?string $workingRevisionStartedAt = null,
     ) {}
 
     public static function fromModel(Template $m): self
@@ -164,15 +168,20 @@ final readonly class TemplateDto
                 ? (int) $m->getAttribute('latest_published_version_number')
                 : null,
             canClone: (bool) ($m->getAttribute('can_clone') ?? false),
+            canViewHistory: (bool) ($m->getAttribute('can_view_history') ?? false),
+            canCreateNewVersion: (bool) ($m->getAttribute('can_create_new_version') ?? false),
             workingVersionId: $m->head_entity_version_id !== null ? (string) $m->head_entity_version_id : null,
             latestPublishedName: $m->getAttribute('latest_published_name'),
-            latestPublishedAt: self::formatOptionalIso($m->getAttribute('latest_published_at')),
+            latestPublishedAt: IsoTimestamp::formatOptional($m->getAttribute('latest_published_at')),
             blocksAtPreviousSubmission: $blocksAtPreviousSubmission,
             reviewHistory: $reviewHistory,
             themeId: $m->theme_id !== null ? (string) $m->theme_id : null,
             themeMini: $themeMini,
             documentReviewMode: self::storedDocumentReviewModeFrom($m),
             submissionChangelog: self::submissionChangelogFrom($m),
+            workingRevisionInProgress: (bool) ($m->getAttribute('working_revision_in_progress') ?? false),
+            workingRevisionEditorName: $m->getAttribute('working_revision_editor_name'),
+            workingRevisionStartedAt: IsoTimestamp::formatOptional($m->getAttribute('working_revision_started_at')),
         );
     }
 
@@ -194,22 +203,4 @@ final readonly class TemplateDto
         return is_array($fields) ? TemplateHeadSnapshot::storedDocumentReviewMode($fields) : null;
     }
 
-    private static function formatOptionalIso(mixed $value): ?string
-    {
-        if ($value === null) {
-            return null;
-        }
-        if ($value instanceof Carbon) {
-            return $value->toIso8601String();
-        }
-        if (is_string($value) && $value !== '') {
-            try {
-                return Date::parse($value)->toIso8601String();
-            } catch (\Throwable) {
-                return null;
-            }
-        }
-
-        return null;
-    }
 }

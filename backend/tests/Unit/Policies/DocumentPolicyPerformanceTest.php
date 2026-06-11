@@ -16,7 +16,7 @@ class DocumentPolicyPerformanceTest extends TestCase
 {
     public function test_review_check_is_fast_enough_for_in_memory_id_comparison(): void
     {
-        $policy = new DocumentPolicy;
+        $policy = app(DocumentPolicy::class);
         $user = new JwtUser([
             'id' => 'user-perf-1',
             'email' => null,
