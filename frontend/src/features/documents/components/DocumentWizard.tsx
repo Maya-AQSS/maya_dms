@@ -891,6 +891,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
   const processesQuery = useProcessesQuery(undefined, { enabled: !!wizardProcessId });
   const processSubtitle = useMemo<string | null>(() => {
     if (!wizardProcessId) return null;
+    // 1er .data: TanStack Query; 2º .data: envelope paginado de fetchProcesses (no migrado a contrato pelado).
     const selectedProcess = processesQuery.data?.data.find((p) => p.id === wizardProcessId) ?? null;
     if (!selectedProcess) return null;
     return `Proceso: ${selectedProcess.code} — ${selectedProcess.name}`;
