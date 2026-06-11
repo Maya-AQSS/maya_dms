@@ -22,7 +22,6 @@ import { formatListRowVisibilityCaption } from '../../../utils/academicContextSe
 import { useFavoritesIds } from '../../../hooks/useFavoritesIds';
 import { FavoriteInlineMark } from '../../../components/FavoriteInlineMark';
 import { formatCalendarDateForBrowser } from '../../../utils/formatCalendarDate';
-import { shouldOpenTemplateEditorFromList } from '../templateListNavigation';
 
 function templateStatusLabel(
   status: string | null | undefined,
@@ -183,11 +182,6 @@ export function TemplatesTable({ processId }: Props = {}) {
     const openReviewView = tpl.status === 'in_review' && isAssignedReviewer && canReview;
     if (openReviewView) {
       navigate(`/templates/${tpl.id}/review`, { state: backState });
-      return;
-    }
-    const isOwner = profile?.id != null && tpl.created_by === profile.id;
-    if (shouldOpenTemplateEditorFromList(tpl, isOwner)) {
-      navigate(`/templates/${tpl.id}/edit`, { state: backState });
       return;
     }
     navigate(`/templates/${tpl.id}`, { state: backState });
