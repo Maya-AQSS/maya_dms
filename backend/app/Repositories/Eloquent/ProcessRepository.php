@@ -151,13 +151,12 @@ class ProcessRepository implements ProcessRepositoryInterface
     }
 
     /**
-     * @param  array{search?: string, parent_id?: string}  $filters
+     * @param  array{search?: string, parent_id?: string, sort_by?: string, sort_dir?: string}  $filters
      */
     public function paginate(array $filters, int $perPage = 20): LengthAwarePaginator
     {
         $query = Process::query()
-            ->select(['id', 'code', 'name', 'alias', 'icon', 'color', 'description', 'process_parent_id'])
-            ->orderBy('code');
+            ->select(['id', 'code', 'name', 'alias', 'icon', 'color', 'description', 'process_parent_id']);
 
         if (! empty($filters['search'])) {
             $needle = '%'.$filters['search'].'%';
@@ -175,6 +174,20 @@ class ProcessRepository implements ProcessRepositoryInterface
                 $query->where('process_parent_id', $filters['parent_id']);
             }
         }
+
+        // Aplicar sort (whitelist de columnas)
+        $sortBy = $filters['sort_by'] ?? 'code';
+        $sortDir = $filters['sort_dir'] ?? 'asc';
+        $sortDir = $sortDir === 'asc' ? 'asc' : 'desc';
+
+        match ($sortBy) {
+            'code' => $query->orderBy('code', $sortDir),
+            'name' => $query->orderBy('name', $sortDir),
+            'alias' => $query->orderBy('alias', $sortDir),
+            'created_at' => $query->orderBy('created_at', $sortDir),
+            'updated_at' => $query->orderBy('updated_at', $sortDir),
+            default => $query->orderBy('code', $sortDir),
+        };
 
         /** @var LengthAwarePaginator<int, Process> $page */
         $page = $query->paginate($perPage);

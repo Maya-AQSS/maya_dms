@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -15,7 +15,7 @@ import {
 } from '@ceedcv-maya/shared-ui-react';
 import { useUserProfile } from '@ceedcv-maya/shared-profile-react';
 import { canCreateTheme } from '../../../permissions';
-import { useThemes } from '../hooks/useThemes';
+import { useServerThemesTable } from '../hooks/useServerThemesTable';
 import type { Theme, ThemeStatus } from '../../../types/themes';
 
 const STATUS_LABEL: Record<ThemeStatus, string> = {
@@ -31,52 +31,19 @@ const STATUS_OPTIONS: { value: '' | ThemeStatus; label: string }[] = [
   { value: 'archived', label: 'Archivado' },
 ];
 
-const STORAGE_KEY = 'maya:dms:themes-table';
-
 export function ThemesListPage() {
   const navigate = useNavigate();
   const { t } = useTranslation(['themes', 'common']);
   const { hasPermission } = useUserProfile();
   const mayCreate = canCreateTheme(hasPermission);
 
-  const { hiddenIds, toggleHidden, pageSize, setPageSize } = useTablePreferences({
-    storageKey: STORAGE_KEY,
+  const { hiddenIds, toggleHidden } = useTablePreferences({
+    storageKey: 'maya:dms:themes',
   });
 
-  const { items, meta, loading, listError, filters, applyFilters, goToPage } = useThemes({
-    per_page: pageSize,
-  });
-
-  // Búsqueda por nombre con debounce → filtro server-side (`search`).
-  const [nameInput, setNameInput] = useState(filters.search ?? '');
-  const nameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setNameInput(value);
-    if (nameDebounceRef.current) clearTimeout(nameDebounceRef.current);
-    nameDebounceRef.current = setTimeout(() => {
-      applyFilters({ search: value || undefined });
-    }, 400);
-  };
-
-  const statusFilter = filters.status ?? '';
-
-  const filtersActiveCount =
-    (filters.search ? 1 : 0) + (filters.status ? 1 : 0);
-
-  const clearFilters = () => {
-    if (nameDebounceRef.current) clearTimeout(nameDebounceRef.current);
-    setNameInput('');
-    applyFilters({ search: undefined, status: undefined });
-  };
-
-  // Si la página actual queda fuera de rango tras filtrar, retrocede.
-  useEffect(() => {
-    if (meta && meta.current_page > meta.last_page) {
-      goToPage(meta.last_page);
-    }
-  }, [meta, goToPage]);
+  const { rows, meta, loading, error, filters, setFilter, resetFilters,
+          filtersActiveCount, page, onPageChange, pageSize, onPageSizeChange,
+          sortBy, onSortChange } = useServerThemesTable();
 
   const columns: ColumnDef<Theme>[] = useMemo(
     () => [
@@ -84,6 +51,7 @@ export function ThemesListPage() {
         id: 'name',
         header: 'Nombre',
         alwaysVisible: true,
+        sortable: true,
         cell: (theme) => <span className="font-medium">{theme.name}</span>,
       },
       {
@@ -122,6 +90,7 @@ export function ThemesListPage() {
       {
         id: 'status',
         header: 'Estado',
+        sortable: true,
         cell: (theme) => (
           <span
             className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass(theme.status)}`}
@@ -153,49 +122,50 @@ export function ThemesListPage() {
         }
       />
 
-      {listError && (
+      {error && (
         <div className="my-3 rounded border border-danger bg-danger-light p-3 text-sm text-danger-dark">
-          {listError}
+          {error.message}
         </div>
       )}
 
       <DataTable<Theme>
         columns={columns}
-        rows={items}
+        rows={rows}
         rowKey={(theme) => theme.id}
         loading={loading}
         emptyMessage={t('themes:emptyMessage')}
         onRowClick={(theme) => navigate(`/themes/${theme.id}`)}
         hiddenColumnIds={hiddenIds}
         onToggleHiddenColumn={toggleHidden}
+        sortBy={sortBy}
+        onSortChange={onSortChange}
         pageSize={pageSize}
-        onPageSizeChange={(size) => {
-          setPageSize(size);
-          applyFilters({ per_page: size });
-        }}
+        onPageSizeChange={onPageSizeChange}
         filtersLabel="Filtros"
         columnsLabel="Columnas"
         clearFiltersLabel="Limpiar filtros"
         pageSizeLabel="Por página"
         filtersActiveCount={filtersActiveCount}
-        onClearFilters={clearFilters}
-        filtersStorageKey={STORAGE_KEY}
+        onClearFilters={resetFilters}
+        filtersStorageKey="maya:dms:themes"
         filtersPanel={
           <>
             <FilterField label="Nombre">
               <TextInput
                 fieldSize="sm"
                 placeholder="Buscar por nombre…"
-                value={nameInput}
-                onChange={handleNameChange}
+                value={filters.search}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setFilter('search', e.target.value || undefined)
+                }
               />
             </FilterField>
             <FilterField label="Estado">
               <Select
                 fieldSize="sm"
-                value={statusFilter}
+                value={filters.status}
                 onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                  applyFilters({ status: (e.target.value as ThemeStatus) || undefined })
+                  setFilter('status', (e.target.value as ThemeStatus) || undefined)
                 }
               >
                 {STATUS_OPTIONS.map((o) => (
@@ -213,7 +183,7 @@ export function ThemesListPage() {
         <Pagination
           currentPage={meta.current_page}
           totalPages={meta.last_page}
-          onChange={goToPage}
+          onChange={onPageChange}
           info={
             meta.total > 0
               ? `${(meta.current_page - 1) * meta.per_page + 1}–${Math.min(

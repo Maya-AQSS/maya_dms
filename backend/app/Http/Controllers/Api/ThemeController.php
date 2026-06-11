@@ -26,7 +26,12 @@ class ThemeController extends Controller
 
     public function index(IndexThemeRequest $request): AnonymousResourceCollection
     {
-        $page = $this->service->list($request->filters(), $request->perPage());
+        $page = $this->service->list(
+            $request->filters(),
+            $request->perPage(),
+            $request->getSortBy(),
+            $request->getSortDir(),
+        );
 
         return ThemeResource::collection($page);
     }

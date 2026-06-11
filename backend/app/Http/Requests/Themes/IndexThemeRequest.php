@@ -30,7 +30,10 @@ class IndexThemeRequest extends FormRequest
             'status' => ['nullable', 'string', 'in:draft,published,archived'],
             'team_id' => ['nullable', 'uuid'],
             'search' => ['nullable', 'string', 'max:255'],
+            'page' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'sort_by' => ['nullable', 'string', 'in:name,created_at,updated_at'],
+            'sort_dir' => ['nullable', 'string', 'in:asc,desc'],
         ];
     }
 
@@ -51,8 +54,27 @@ class IndexThemeRequest extends FormRequest
         return $filters;
     }
 
+    public function getPage(): int
+    {
+        $page = (int) ($this->validated()['page'] ?? 1);
+        return $page > 0 ? $page : 1;
+    }
+
     public function perPage(): int
     {
         return (int) ($this->validated()['per_page'] ?? 15);
+    }
+
+    public function getSortBy(): string
+    {
+        $sortBy = $this->validated()['sort_by'] ?? 'updated_at';
+        $whitelist = ['name', 'created_at', 'updated_at'];
+        return in_array($sortBy, $whitelist, true) ? $sortBy : 'updated_at';
+    }
+
+    public function getSortDir(): string
+    {
+        $dir = $this->validated()['sort_dir'] ?? 'desc';
+        return in_array($dir, ['asc', 'desc'], true) ? $dir : 'desc';
     }
 }

@@ -20,9 +20,9 @@ class ThemeRepository implements ThemeRepositoryInterface
     /**
      * @param  array{status?: string, search?: string, team_id?: string}  $filters
      */
-    public function paginate(array $filters, int $perPage = 15): LengthAwarePaginator
+    public function paginate(array $filters, int $perPage = 15, string $sortBy = 'updated_at', string $sortDir = 'desc'): LengthAwarePaginator
     {
-        $query = Theme::query()->orderBy('updated_at', 'desc');
+        $query = Theme::query();
 
         if (! empty($filters['status'])) {
             $query->where('status', $filters['status']);
@@ -39,6 +39,13 @@ class ThemeRepository implements ThemeRepositoryInterface
                     ->orWhere('description', 'ilike', $needle);
             });
         }
+
+        // Validar sort contra whitelist (seguridad contra inyección)
+        $whitelist = ['name', 'created_at', 'updated_at'];
+        $safeSortBy = in_array($sortBy, $whitelist, true) ? $sortBy : 'updated_at';
+        $safeSortDir = in_array($sortDir, ['asc', 'desc'], true) ? $sortDir : 'desc';
+
+        $query->orderBy($safeSortBy, $safeSortDir);
 
         /** @var LengthAwarePaginator<int, Theme> $page */
         $page = $query->paginate($perPage);

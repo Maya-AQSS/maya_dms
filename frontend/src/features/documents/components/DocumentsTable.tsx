@@ -209,6 +209,7 @@ export function DocumentsTable({ processId }: Props = {}) {
       {
         id: 'status',
         header: t('documents:table.columns.status'),
+        sortable: true,
         cell: (doc) => {
           const status = doc.status as DocumentStatus;
           return (

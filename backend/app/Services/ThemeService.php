@@ -26,9 +26,9 @@ class ThemeService implements ThemeServiceInterface
      * @param  array{status?: string, search?: string, team_id?: string}  $filters
      * @return LengthAwarePaginator<int, ThemeDto>
      */
-    public function list(array $filters, int $perPage = 15): LengthAwarePaginator
+    public function list(array $filters, int $perPage = 15, string $sortBy = 'updated_at', string $sortDir = 'desc'): LengthAwarePaginator
     {
-        return $this->repository->paginate($filters, $perPage);
+        return $this->repository->paginate($filters, $perPage, $sortBy, $sortDir);
     }
 
     public function get(string $id): ThemeDto

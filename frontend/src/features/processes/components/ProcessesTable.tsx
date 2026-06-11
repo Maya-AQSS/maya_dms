@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   DataTable,
@@ -6,73 +6,73 @@ import {
   Pagination,
   Select,
   TextInput,
-  useDebounce,
   useTablePreferences,
   type ColumnDef,
 } from '@ceedcv-maya/shared-ui-react';
+import { useServerProcessesTable } from '../hooks/useServerProcessesTable';
 import { useProcessesQuery } from '../../../hooks/useProcesses';
 import { ColorBadge } from './ColorBadge';
 import { getProcessIcon } from '../../../components/layout/processIcons';
-import { normalizeForSearch } from '../../../utils/normalizeForSearch';
 import type { Process } from '../../../types/processes';
 
 export function ProcessesTable() {
   const navigate = useNavigate();
-  const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } =
-    useTablePreferences({ storageKey: 'maya:dms:processes-table' });
+  const { hiddenIds, toggleHidden } = useTablePreferences({
+    storageKey: 'maya:dms:processes-table',
+  });
 
-  const processesQuery = useProcessesQuery();
-  const allProcesses: Process[] = processesQuery.data?.data ?? [];
-  const listLoading = processesQuery.isLoading;
+  const {
+    rows,
+    meta,
+    loading,
+    error,
+    canIndex,
+    filters,
+    setFilter,
+    resetFilters,
+    filtersActiveCount,
+    page,
+    onPageChange,
+    pageSize,
+    onPageSizeChange,
+    sortBy,
+    onSortChange,
+  } = useServerProcessesTable();
 
-  const [nameInput, setNameInput] = useState('');
-  const nameFilter = useDebounce(nameInput, 400);
-  const [parentFilter, setParentFilter] = useState('');
-  const [page, setPage] = useState(1);
+  // Búsqueda con debounce → param server-side `search`.
+  const [searchInput, setSearchInput] = useState(filters.search ?? '');
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    setSearchInput(filters.search ?? '');
+  }, [filters.search]);
 
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setNameInput(e.target.value);
-    setPage(1);
-  };
-
-  const handleParentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setParentFilter(e.target.value);
-    setPage(1);
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchInput(value);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      setFilter('search', value || undefined);
+    }, 400);
   };
 
   const clearFilters = () => {
-    setNameInput('');
-    setParentFilter('');
-    setPage(1);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    setSearchInput('');
+    resetFilters();
   };
 
-  const filtered = useMemo(() => {
-    let list = allProcesses;
-    if (nameFilter.trim()) {
-      const needle = normalizeForSearch(nameFilter.trim());
-      list = list.filter(
-        (p) =>
-          normalizeForSearch(p.name).includes(needle) ||
-          normalizeForSearch(p.code).includes(needle) ||
-          normalizeForSearch(p.alias).includes(needle),
-      );
+  // Si la página actual queda fuera de rango, corrige a la última.
+  useEffect(() => {
+    if (meta && meta.last_page >= 1 && page > meta.last_page) {
+      onPageChange(meta.last_page);
     }
-    if (parentFilter === 'root') {
-      list = list.filter((p) => p.process_parent_id === null);
-    } else if (parentFilter) {
-      list = list.filter((p) => p.process_parent_id === parentFilter);
-    }
-    return list;
-  }, [allProcesses, nameFilter, parentFilter]);
+  }, [meta, page, onPageChange]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const safePage = Math.min(page, totalPages);
-  const pageSlice = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
-  const filtersActiveCount = [nameFilter, parentFilter].filter(Boolean).length;
-
+  // Obtener procesos raíz para el selector (usamos la API sin paginar para la lista desplegable).
+  const processesQuery = useProcessesQuery({ enabled: canIndex && rows.length > 0 });
   const topLevelProcesses = useMemo(
-    () => allProcesses.filter((p) => p.process_parent_id === null),
-    [allProcesses],
+    () => (processesQuery.data?.data ?? []).filter((p) => p.process_parent_id === null),
+    [processesQuery.data?.data],
   );
 
   const columns: ColumnDef<Process>[] = useMemo(
@@ -94,6 +94,7 @@ export function ProcessesTable() {
       {
         id: 'alias',
         header: 'Alias',
+        sortable: true,
         cell: (p) => (
           <span className="text-sm text-text-secondary dark:text-text-dark-secondary">{p.alias}</span>
         ),
@@ -125,22 +126,35 @@ export function ProcessesTable() {
     [],
   );
 
+  if (!canIndex) {
+    return (
+      <p className="text-sm text-text-secondary dark:text-text-dark-secondary py-4 text-center">
+        No tienes permiso para ver el listado de procesos.
+      </p>
+    );
+  }
+
+  if (error) {
+    return (
+      <p className="text-sm text-danger dark:text-danger py-4 text-center">
+        Error: {error.message}
+      </p>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <DataTable<Process>
         columns={columns}
-        rows={pageSlice}
-        loading={listLoading}
+        rows={rows}
+        loading={loading}
         rowKey={(p) => p.id}
         hiddenColumnIds={hiddenIds}
         onToggleHiddenColumn={toggleHidden}
         sortBy={sortBy}
-        onSortChange={setSortBy}
+        onSortChange={onSortChange}
         pageSize={pageSize}
-        onPageSizeChange={(size) => {
-          setPageSize(size);
-          setPage(1);
-        }}
+        onPageSizeChange={onPageSizeChange}
         filtersLabel="Filtros"
         columnsLabel="Columnas"
         clearFiltersLabel="Limpiar filtros"
@@ -157,15 +171,17 @@ export function ProcessesTable() {
                 fieldSize="sm"
                 type="search"
                 placeholder="Código, nombre o alias…"
-                value={nameInput}
-                onChange={handleNameChange}
+                value={searchInput}
+                onChange={handleSearchChange}
               />
             </FilterField>
             <FilterField label="Proceso padre">
               <Select
                 fieldSize="sm"
-                value={parentFilter}
-                onChange={handleParentChange}
+                value={filters.parent_id ?? ''}
+                onChange={(e) => {
+                  setFilter('parent_id', e.target.value || undefined);
+                }}
               >
                 <option value="">Todos</option>
                 <option value="root">Solo raíz (sin padre)</option>
@@ -181,10 +197,10 @@ export function ProcessesTable() {
       />
 
       <Pagination
-        currentPage={safePage}
-        totalPages={totalPages}
-        onChange={setPage}
-        info={`${filtered.length} proceso${filtered.length !== 1 ? 's' : ''}`}
+        currentPage={meta?.current_page ?? 1}
+        totalPages={meta?.last_page ?? 1}
+        onChange={onPageChange}
+        info={`${meta?.total ?? 0} proceso${(meta?.total ?? 0) !== 1 ? 's' : ''}`}
       />
     </div>
   );
