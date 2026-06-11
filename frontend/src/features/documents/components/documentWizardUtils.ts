@@ -39,14 +39,6 @@ export function dateIsoToInput(value: string | null | undefined): string {
   return `${y}-${m}-${day}`;
 }
 
-export function blockEditorContent(block: DocumentDisplayBlock): unknown[] {
-  const fromDoc = normalizeBlockContentForEditor(block.content);
-  if (fromDoc.length > 0 && !isSemanticallyEmptyTiptapContent(fromDoc)) {
-    return fromDoc;
-  }
-  return normalizeBlockContentForEditor(block.default_content);
-}
-
 export function validationSuccessBannerMessage(
   updated: { title: string; status: DocumentStatus },
   action: 'approve' | 'reject',
