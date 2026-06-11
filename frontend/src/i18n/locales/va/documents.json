@@ -39,7 +39,8 @@
       "draft": "Esborrany",
       "in_review": "En revisió",
       "published": "Publicat",
-      "rejected": "Rebutjat"
+      "rejected": "Rebutjat",
+      "archived": "Arxivat"
     },
     "statusFilter": {
       "all": "Tots"
@@ -67,7 +68,7 @@
     "clearFiltersLabel": "Netejar",
     "pageSizeLabel": "Per pàgina",
     "deadlineAria": "Documents no publicats amb data límit de validació en esta data o anterior (les files publicades no apliquen)",
-    "paginationInfo": "Pàgina {{page}} de {{totalPages}} — {{count}} documents"
+    "paginationInfo": "{{from}}–{{to}} de {{total}}"
   },
   "diff": {
     "previousBlock": "Bloc anterior",

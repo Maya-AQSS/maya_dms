@@ -40,14 +40,23 @@ function snapshotNodesForPreview(block: TemplateVersionSnapshotBlock): unknown[]
   return normalizeBlockContentForEditor(block.default_content);
 }
 
-const STATUS_LABELS: Record<DocumentStatus, string> = {
-  draft: 'Borrador',
-  in_review: 'En revisión',
-  published: 'Publicado',
-  rejected: 'Rechazado',
-};
+/** Etiqueta i18n del estado (mismas keys que DocumentsTable; fallback al slug). */
+function documentStatusLabel(
+  status: string | null | undefined,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  if (!status) {
+    return t('documents:table.notAvailable');
+  }
+  const label = t(`documents:table.status.${status as DocumentStatus}`, { defaultValue: '' });
+  return label || status;
+}
 
-const STATUS_CLASS: Record<DocumentStatus, string> = {
+// NOTA S-02: clases locales mantenidas a propósito — NO coinciden token a token
+// con statusBadgeClass() de shared-ui-react (published teal vs success, draft
+// gris vs warning, in_review warning vs info, rejected danger vs gris default).
+// Sustituirlas cambiaría el estilo visual (prohibido en esta fase).
+const STATUS_CLASS: Record<DocumentStatus | 'archived', string> = {
   published:
     'bg-odoo-teal/10 text-odoo-teal dark:bg-odoo-dark-teal/20 dark:text-odoo-dark-teal',
   in_review:
@@ -56,6 +65,8 @@ const STATUS_CLASS: Record<DocumentStatus, string> = {
     'bg-ui-border dark:bg-ui-dark-border text-text-secondary dark:text-text-dark-secondary',
   rejected:
     'bg-danger-light text-danger-dark dark:bg-danger-dark/20 dark:text-danger-light',
+  archived:
+    'bg-ui-border dark:bg-ui-dark-border text-text-secondary dark:text-text-dark-secondary',
 };
 
 /**
@@ -122,6 +133,8 @@ export function DocumentsContent() {
   // se muestra como dos filas (viva + publicada). Server-side: la expansión
   // ocurre sobre la página servida por el backend.
   const displayDocuments = useMemo(() => {
+    const includePublishedFallbackRow = !filters.status || filters.status === 'published';
+
     const out: Document[] = [];
     for (const d of serverDocuments) {
       const hasPublishedFallback =
@@ -152,10 +165,12 @@ export function DocumentsContent() {
       if (canSeeLive) {
         out.push({ ...d, list_variant: 'live', list_row_id: `${d.id}:live` });
       }
-      out.push(publishedFallback);
+      if (includePublishedFallbackRow) {
+        out.push(publishedFallback);
+      }
     }
     return out;
-  }, [serverDocuments, profile?.id]);
+  }, [serverDocuments, profile?.id, filters.status]);
 
   const isSelectingTemplate = showSelector && creationMode === 'select';
 
@@ -320,12 +335,12 @@ export function DocumentsContent() {
             <span className="font-medium text-text-primary dark:text-text-dark-primary truncate">
               {d.title}
             </span>
-            {d.has_review_comments && d.status === 'draft' && profile && (d.owner_id === profile.id || d.created_by === profile.id) && (
+            {d.has_review_comments && (d.status === 'draft' || d.status === 'rejected') && profile && (d.owner_id === profile.id || d.created_by === profile.id) && (
               <span
                 className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-bold bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
                 title={t('table.rejectedTitle')}
               >
-                ⚠ Revisión
+                ⚠ {t('table.reviewBadge')}
               </span>
             )}
           </span>
@@ -350,7 +365,7 @@ export function DocumentsContent() {
           <span
             className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_CLASS[d.status]}`}
           >
-            {STATUS_LABELS[d.status]}
+            {documentStatusLabel(d.status, t)}
           </span>
         ),
       },
@@ -614,7 +629,7 @@ export function DocumentsContent() {
           <div>
             {error && (
               <p className="px-5 py-4 text-sm text-warning-dark dark:text-warning-light">
-                Error al cargar documentos: {error.message}
+                {t('table.loadError', { message: error.message })}
               </p>
             )}
             {!error && (

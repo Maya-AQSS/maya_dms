@@ -27,15 +27,19 @@ import { useFavoritesIds } from '../../../hooks/useFavoritesIds';
 import { FavoriteInlineMark } from '../../../components/FavoriteInlineMark';
 import { formatCalendarDateForBrowser } from '../../../utils/formatCalendarDate';
 
-const STATUS_LABEL: Record<TemplateStatus, string> = {
-  draft: 'Borrador',
-  in_review: 'En revisión',
-  published: 'Publicada',
-  archived: 'Archivada',
-  rejected: 'Rechazada',
-};
-
 const STORAGE_KEY = 'maya:dms:templates-content';
+
+/** Etiqueta i18n del estado (mismas keys que TemplatesTable; fallback al slug). */
+function templateStatusLabel(
+  status: string | null | undefined,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  if (!status) {
+    return t('templates:table.notAvailable');
+  }
+  const label = t(`templates:table.status.${status as TemplateStatus}`, { defaultValue: '' });
+  return label || status;
+}
 
 /**
  * Gestión de plantillas normativas (página principal). Listado server-side vía
@@ -165,7 +169,7 @@ export function TemplatesContent() {
                   className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-bold bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
                   title={t('templates:pendingReviewTitle')}
                 >
-                  ⚠ Revisión
+                  ⚠ {t('templates:table.reviewBadge')}
                 </span>
               )}
             </span>
@@ -210,7 +214,7 @@ export function TemplatesContent() {
           const status = template.status as TemplateStatus;
           return (
             <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadgeClass(status)}`}>
-              {STATUS_LABEL[status] ?? status}
+              {templateStatusLabel(status, t)}
             </span>
           );
         },
@@ -248,7 +252,7 @@ export function TemplatesContent() {
 
       {listError && (
         <div className="rounded-lg border border-warning/40 bg-warning-light/40 dark:bg-warning-dark/10 px-4 py-3 text-sm text-warning-dark dark:text-warning-light">
-          {listError}
+          {t('templates:table.loadError', { message: listError.message })}
         </div>
       )}
 

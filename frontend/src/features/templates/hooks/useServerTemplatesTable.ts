@@ -9,14 +9,12 @@ import {
 import { useUserProfile } from '../../../features/user-profile';
 import { useFavoritesIds } from '../../../hooks/useFavoritesIds';
 import { DEFAULT_TABLE_PAGE_SIZE, dropInvalidStoredPageSize } from '../../../lib/dataTablePageSize';
+import { NO_MATCH_ID } from '../../../lib/noMatchId';
 import { DMS_PERMISSIONS } from '../../../permissions';
 import type { Template, TemplatesListMeta } from '../../../types/templates';
 
 /** Columnas ordenables server-side (espejo de la whitelist del backend). */
 const SORTABLE_TEMPLATE_COLUMNS = ['name', 'delivery_deadline', 'created_at', 'updated_at'] as const;
-
-/** Sentinela que no coincide con ningún id (para "solo favoritos" sin favoritos → 0 resultados). */
-const NO_MATCH_ID = '00000000-0000-0000-0000-000000000000';
 
 /** Filtros de dominio sincronizados a URL (claves = query params del backend, salvo `favorites`). */
 const TEMPLATE_FILTER_DEFAULTS = {
@@ -73,7 +71,9 @@ export function useServerTemplatesTable(
   const [rows, setRows] = useState<Template[]>([]);
   const [meta, setMeta] = useState<TemplatesListMeta | null>(null);
   const [loading, setLoading] = useState(true);
-  const [listError, setListError] = useState<string | null>(null);
+  // Tipo unificado con useServerDocumentsTable (D1/D7): el componente formatea
+  // el mensaje vía i18n con `message` (igual en ambos dominios).
+  const [listError, setListError] = useState<Error | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionInfo, setActionInfo] = useState<string | null>(null);
@@ -115,7 +115,7 @@ export function useServerTemplatesTable(
         if (cancelled) return;
         setRows([]);
         setMeta(null);
-        setListError(formatListError(e));
+        setListError(e instanceof Error ? e : new Error('Error desconocido'));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

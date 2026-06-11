@@ -40,7 +40,8 @@
       "draft": "Borrador",
       "in_review": "En revisión",
       "published": "Publicado",
-      "rejected": "Rechazado"
+      "rejected": "Rechazado",
+      "archived": "Archivado"
     },
     "statusFilter": {
       "all": "Todos"
@@ -68,7 +69,7 @@
     "clearFiltersLabel": "Limpiar",
     "pageSizeLabel": "Por página",
     "deadlineAria": "Documentos no publicados cuya fecha límite de validación sea esta fecha o anterior (las filas publicadas no aplican)",
-    "paginationInfo": "Página {{page}} de {{totalPages}} — {{count}} documentos"
+    "paginationInfo": "{{from}}–{{to}} de {{total}}"
   },
   "diff": {
     "previousBlock": "Bloque anterior",

@@ -60,7 +60,8 @@
     "columnsLabel": "Columnas",
     "clearFiltersLabel": "Limpiar",
     "pageSizeLabel": "Por página",
-    "paginationInfo": "{{from}}–{{to}} de {{total}}"
+    "paginationInfo": "{{from}}–{{to}} de {{total}}",
+    "loadError": "Error al cargar plantillas: {{message}}"
   },
   "comments": {
     "closePanelAria": "Cerrar panel",
@@ -80,6 +81,20 @@
     "viewBlockHistory": "Ver historial del bloque",
     "blockCommentsTitle": "Comentarios del Bloque",
     "closePanelAria": "Cerrar panel"
+  },
+  "history": {
+    "panelHeader": "⎇ Bloque {{n}} · Historial de cambios",
+    "sortAscendingTitle": "Mostrar más recientes primero",
+    "sortDescendingTitle": "Mostrar más antiguos primero",
+    "tabContent": "Contenido",
+    "tabDescription": "Descripción",
+    "noChangesInSubmission": "Sin cambios en este envío.",
+    "noChanges": "Este bloque no tiene cambios registrados.",
+    "revision": "Revisión {{n}}",
+    "legendRemoved": "Eliminado",
+    "legendAdded": "Añadido",
+    "revisions_one": "{{count}} revisión",
+    "revisions_other": "{{count}} revisiones"
   },
   "placeholders": {
     "templateName": "Nombre de la plantilla…",

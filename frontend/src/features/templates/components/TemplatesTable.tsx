@@ -285,7 +285,7 @@ export function TemplatesTable({ processId }: Props = {}) {
     <div className="space-y-4">
       {listError && (
         <div className="rounded-lg border border-warning/40 bg-warning-light/40 dark:bg-warning-dark/10 px-4 py-3 text-sm text-warning-dark dark:text-warning-light">
-          {listError}
+          {t('templates:table.loadError', { message: listError.message })}
         </div>
       )}
 
@@ -315,6 +315,7 @@ export function TemplatesTable({ processId }: Props = {}) {
             <FilterField label={t('templates:table.filters.name')}>
               <TextInput
                 fieldSize="sm"
+                type="search"
                 placeholder={t('templates:table.searchName')}
                 value={searchInput}
                 onChange={handleSearchChange}

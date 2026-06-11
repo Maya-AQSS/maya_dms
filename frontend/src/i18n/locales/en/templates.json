@@ -60,7 +60,8 @@
     "columnsLabel": "Columns",
     "clearFiltersLabel": "Clear",
     "pageSizeLabel": "Per page",
-    "paginationInfo": "{{from}}–{{to}} of {{total}}"
+    "paginationInfo": "{{from}}–{{to}} of {{total}}",
+    "loadError": "Error loading templates: {{message}}"
   },
   "comments": {
     "closePanelAria": "Close panel",
@@ -80,6 +81,20 @@
     "viewBlockHistory": "View block change history",
     "blockCommentsTitle": "Block comments",
     "closePanelAria": "Close panel"
+  },
+  "history": {
+    "panelHeader": "⎇ Block {{n}} · Change history",
+    "sortAscendingTitle": "Show most recent first",
+    "sortDescendingTitle": "Show oldest first",
+    "tabContent": "Content",
+    "tabDescription": "Description",
+    "noChangesInSubmission": "No changes in this submission.",
+    "noChanges": "This block has no recorded changes.",
+    "revision": "Revision {{n}}",
+    "legendRemoved": "Removed",
+    "legendAdded": "Added",
+    "revisions_one": "{{count}} revision",
+    "revisions_other": "{{count}} revisions"
   },
   "placeholders": {
     "templateName": "E.g. Final Assessment Report",

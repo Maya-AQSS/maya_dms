@@ -60,7 +60,8 @@
     "columnsLabel": "Columnes",
     "clearFiltersLabel": "Netejar",
     "pageSizeLabel": "Per pàgina",
-    "paginationInfo": "{{from}}–{{to}} de {{total}}"
+    "paginationInfo": "{{from}}–{{to}} de {{total}}",
+    "loadError": "Error en carregar plantilles: {{message}}"
   },
   "comments": {
     "closePanelAria": "Tancar panell",
@@ -80,6 +81,20 @@
     "viewBlockHistory": "Veure historial del bloc",
     "blockCommentsTitle": "Comentaris del Bloc",
     "closePanelAria": "Tancar panell"
+  },
+  "history": {
+    "panelHeader": "⎇ Bloc {{n}} · Historial de canvis",
+    "sortAscendingTitle": "Mostrar més recents primer",
+    "sortDescendingTitle": "Mostrar més antics primer",
+    "tabContent": "Contingut",
+    "tabDescription": "Descripció",
+    "noChangesInSubmission": "Sense canvis en aquest enviament.",
+    "noChanges": "Aquest bloc no té canvis registrats.",
+    "revision": "Revisió {{n}}",
+    "legendRemoved": "Eliminat",
+    "legendAdded": "Afegit",
+    "revisions_one": "{{count}} revisió",
+    "revisions_other": "{{count}} revisions"
   },
   "placeholders": {
     "templateName": "Nom de la plantilla…",

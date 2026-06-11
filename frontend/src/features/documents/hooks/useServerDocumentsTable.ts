@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useServerTable } from '@ceedcv-maya/shared-hooks-react';
 import { fetchDocumentsPage, type DocumentsListMeta } from '../../../api/documents';
 import { DEFAULT_TABLE_PAGE_SIZE, dropInvalidStoredPageSize } from '../../../lib/dataTablePageSize';
+import { NO_MATCH_ID } from '../../../lib/noMatchId';
 import { useUserProfile } from '../../../features/user-profile';
 import { useFavoritesIds } from '../../../hooks/useFavoritesIds';
 import { DMS_PERMISSIONS } from '../../../permissions';
@@ -9,9 +10,6 @@ import type { Document } from '../../../types/documents';
 
 /** Columnas ordenables server-side (espejo de la whitelist del backend). */
 const SORTABLE_DOCUMENT_COLUMNS = ['title', 'status', 'delivery_deadline', 'created_at', 'updated_at'] as const;
-
-/** Sentinela que no coincide con ningún id (para "solo favoritos" sin favoritos → 0 resultados). */
-const NO_MATCH_ID = '00000000-0000-0000-0000-000000000000';
 
 /** Filtros de dominio sincronizados a URL (claves = query params del backend, salvo `favorites`). */
 const DOCUMENT_FILTER_DEFAULTS = {

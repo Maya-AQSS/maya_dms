@@ -15,7 +15,7 @@ export type DocumentReviewCycleSnapshot = {
   blocks: DocumentReviewCycleBlock[];
 };
 
-export type DocumentStatus = 'draft' | 'in_review' | 'published' | 'rejected';
+export type DocumentStatus = 'draft' | 'in_review' | 'published' | 'rejected' | 'archived';
 
 export type Document = {
   id: string;

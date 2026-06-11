@@ -40,7 +40,8 @@
       "draft": "Draft",
       "in_review": "In review",
       "published": "Published",
-      "rejected": "Rejected"
+      "rejected": "Rejected",
+      "archived": "Archived"
     },
     "statusFilter": {
       "all": "All"
@@ -68,7 +69,7 @@
     "clearFiltersLabel": "Clear",
     "pageSizeLabel": "Per page",
     "deadlineAria": "Unpublished documents whose validation deadline is this date or earlier (published rows do not apply)",
-    "paginationInfo": "Page {{page}} of {{totalPages}} — {{count}} documents"
+    "paginationInfo": "{{from}}–{{to}} of {{total}}"
   },
   "diff": {
     "previousBlock": "Previous block",

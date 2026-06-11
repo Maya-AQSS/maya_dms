@@ -109,12 +109,15 @@ export function DocumentsTable({ processId }: Props = {}) {
       { value: 'in_review', label: t('documents:table.status.in_review') },
       { value: 'published', label: t('documents:table.status.published') },
       { value: 'rejected', label: t('documents:table.status.rejected') },
+      { value: 'archived', label: t('documents:table.status.archived') },
     ],
     [t],
   );
 
   // Expansión de filas: por cada documento, fila "live" y/o "published_fallback".
   const displayDocuments = useMemo(() => {
+    const includePublishedFallbackRow = !filters.status || filters.status === 'published';
+
     const out: Document[] = [];
     for (const d of rows) {
       const hasPublishedFallback = d.status !== 'published' && !!d.latest_published_version_id;
@@ -141,10 +144,12 @@ export function DocumentsTable({ processId }: Props = {}) {
       if (canSeeLive) {
         out.push({ ...d, list_variant: 'live', list_row_id: `${d.id}:live` });
       }
-      out.push(publishedFallback);
+      if (includePublishedFallbackRow) {
+        out.push(publishedFallback);
+      }
     }
     return out;
-  }, [rows, profile?.id]);
+  }, [rows, profile?.id, filters.status]);
 
   const columns: ColumnDef<Document>[] = useMemo(
     () => [
@@ -157,7 +162,7 @@ export function DocumentsTable({ processId }: Props = {}) {
           <span className="flex items-center gap-2 min-w-0">
             {favoriteDocumentIds.has(doc.id) && <FavoriteInlineMark />}
             <span className="font-medium truncate">{doc.title}</span>
-            {doc.has_review_comments && doc.status === 'draft' && profile && (doc.owner_id === profile.id || doc.created_by === profile.id) && (
+            {doc.has_review_comments && (doc.status === 'draft' || doc.status === 'rejected') && profile && (doc.owner_id === profile.id || doc.created_by === profile.id) && (
               <span
                 className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-bold bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
                 title={t('documents:table.rejectedTitle')}
@@ -347,9 +352,9 @@ export function DocumentsTable({ processId }: Props = {}) {
           info={
             meta.total > 0
               ? t('documents:table.paginationInfo', {
-                  page: meta.current_page,
-                  totalPages: meta.last_page,
-                  count: meta.total,
+                  from: (meta.current_page - 1) * meta.per_page + 1,
+                  to: Math.min(meta.current_page * meta.per_page, meta.total),
+                  total: meta.total,
                 })
               : undefined
           }
