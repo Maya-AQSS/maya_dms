@@ -133,6 +133,23 @@
     // anti path-traversal — ver App\Services\MediaAssetResolver.
     $assetUrl = fn (?string $relativePath): ?string => \App\Services\MediaAssetResolver::resolve($relativePath, $isPreview);
 
+    // Alineación de métricas preview ⇄ PDF: en preview embebemos como
+    // @font-face los MISMOS ficheros de fuente que WeasyPrint resuelve vía
+    // fontconfig en el contenedor. Sin esto, el navegador resuelve la familia
+    // contra las fuentes del equipo del usuario (métricas distintas) y el
+    // texto envuelve en puntos diferentes que en el PDF — en portadas con
+    // cajas absolutas el título podía caber en 1 línea en preview y ocupar 2
+    // en el PDF. En el render para PDF no se emite nada (fontconfig nativo).
+    $fontStacks = [
+        $theme['typography']['heading_font'] ?? null,
+        $theme['typography']['body_font'] ?? null,
+    ];
+    foreach (($scoped_themes ?? []) as $st) {
+        $fontStacks[] = $st['typography']['heading_font'] ?? null;
+        $fontStacks[] = $st['typography']['body_font'] ?? null;
+    }
+    $embeddedFontFaces = $isPreview ? \App\Services\ThemeFontResolver::embeddableFaces($fontStacks) : [];
+
     // Helper para formatear cm con 4 decimales sin notación científica.
     $cm = fn (float $v) => number_format($v, 4, '.', '').'cm';
 
@@ -166,6 +183,16 @@
     <meta name="description" content="{{ $document['subject'] ?? '' }}">
     <meta name="author" content="{{ $theme['accessibility']['author'] ?? 'CEEDCV' }}">
     <style>
+        @foreach ($embeddedFontFaces as $face)
+        /* Fuente embebida (preview): mismo fichero que usa WeasyPrint. */
+        @font-face {
+            font-family: "{{ $face['family'] }}";
+            font-style: normal;
+            font-weight: {{ $face['weight'] }};
+            src: url("{{ $face['src'] }}") format("{{ $face['format'] }}");
+        }
+        @endforeach
+
         /* ─── Tokens del Theme (CSS variables) ─── */
         :root {
             --color-primary: {{ $cssColor($theme['palette']['primary'] ?? null, '#0b5394') }};
@@ -317,7 +344,15 @@
             margin-left: -{{ $cm($marginLeft) }};
             overflow: hidden;
         }
-        .doc-block--cover .cover-el { position: absolute; box-sizing: border-box; overflow: hidden; }
+        /* Las cajas de texto de la portada NO recortan (`overflow` visible por
+           defecto): si las métricas de la fuente difieren entre motores
+           (navegador vs WeasyPrint) y el texto envuelve a una línea más de las
+           previstas, desborda por abajo de su caja en vez de amputar glifos a
+           media letra. El recorte duro al borde de página lo sigue dando el
+           `overflow: hidden` de `.doc-block--cover`. Sólo las imágenes
+           recortan a su caja (fondos a sangre parcial). */
+        .doc-block--cover .cover-el { position: absolute; box-sizing: border-box; }
+        .doc-block--cover .cover-el--image { overflow: hidden; }
         .doc-block--cover .cover-el--text,
         .doc-block--cover .cover-el--placeholder,
         .doc-block--cover .cover-el--date,

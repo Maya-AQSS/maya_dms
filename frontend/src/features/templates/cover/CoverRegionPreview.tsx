@@ -22,7 +22,10 @@ export function CoverRegionPreview({
     fontWeight: (p.weight as string) === 'bold' ? 700 : 400,
     width: '100%',
     height: '100%',
-    overflow: 'hidden',
+    // Espeja el render PHP (documents.render): las cajas de texto no recortan
+    // glifos — si el texto envuelve a más líneas de las previstas, desborda
+    // visiblemente en vez de amputarse a media letra (las imágenes sí recortan).
+    overflow: 'visible',
     lineHeight: 1.25,
   };
 
