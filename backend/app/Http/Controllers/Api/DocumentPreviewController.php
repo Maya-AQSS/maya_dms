@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Services\Contracts\DocumentRenderServiceInterface;
+use App\Support\PreviewHeaders;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 
@@ -34,13 +35,6 @@ class DocumentPreviewController extends Controller
         // `renderHtml($id)` sin flag → false por defecto.
         $html = $this->renderer->renderHtml($document, previewMode: true);
 
-        return response($html, 200, [
-            'Content-Type' => 'text/html; charset=utf-8',
-            // CSP: permitimos `script-src 'self'` (paged.js servido desde
-            // /vendor/pagedjs/ — mismo origen). Sin CDN externo, sin inline
-            // scripts más allá del wrapper IIFE que pagedjs ya emite.
-            'Content-Security-Policy' => "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'",
-            'X-Content-Type-Options' => 'nosniff',
-        ]);
+        return response($html, 200, PreviewHeaders::forHtml());
     }
 }

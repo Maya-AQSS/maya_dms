@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Documents;
 
 use App\DTOs\Documents\DocumentFilterDto;
+use App\Http\Requests\Concerns\ParsesFavoriteIds;
 use App\Models\Document;
 use Illuminate\Auth\Access\AuthorizationException;
 use Maya\Http\Http\Requests\PaginatedFilterRequest;
@@ -17,6 +18,8 @@ use Maya\Http\Http\Requests\PaginatedFilterRequest;
  */
 class ListDocumentsRequest extends PaginatedFilterRequest
 {
+    use ParsesFavoriteIds;
+
     public function authorize(): bool
     {
         return $this->user()->can('viewAny', Document::class);
@@ -44,22 +47,6 @@ class ListDocumentsRequest extends PaginatedFilterRequest
             'study_id' => ['nullable', 'uuid'],
             'module_id' => ['nullable', 'uuid'],
         ];
-    }
-
-    /**
-     * Parsea `favorite_ids` (CSV de ids de documento) a una lista, o null si vacío.
-     *
-     * @return list<string>|null
-     */
-    private function parseFavoriteIds(): ?array
-    {
-        $raw = $this->input('favorite_ids');
-        if (! is_string($raw) || trim($raw) === '') {
-            return null;
-        }
-        $ids = array_values(array_filter(array_map('trim', explode(',', $raw)), fn ($v) => $v !== ''));
-
-        return $ids === [] ? null : $ids;
     }
 
     /**

@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Theme;
 use App\Services\Contracts\ThemePdfServiceInterface;
 use App\Services\Contracts\ThemeRenderServiceInterface;
+use App\Support\PreviewHeaders;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 
@@ -32,11 +33,7 @@ class ThemePreviewController extends Controller
 
         $html = $this->renderer->renderHtml($theme, previewMode: true);
 
-        return response($html, 200, [
-            'Content-Type' => 'text/html; charset=utf-8',
-            'Content-Security-Policy' => "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'",
-            'X-Content-Type-Options' => 'nosniff',
-        ]);
+        return response($html, 200, PreviewHeaders::forHtml());
     }
 
     /**

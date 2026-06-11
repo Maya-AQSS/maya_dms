@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Services\Contracts\TemplatePdfServiceInterface;
 use App\Services\Contracts\TemplateRenderServiceInterface;
 use App\Services\Contracts\TemplateServiceInterface;
+use App\Support\PreviewHeaders;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 
@@ -36,13 +37,7 @@ class TemplatePreviewController extends Controller
 
         $html = $this->renderer->renderHtml($template, previewMode: true);
 
-        return response($html, 200, [
-            'Content-Type' => 'text/html; charset=utf-8',
-            // CSP: igual que DocumentPreviewController — `script-src 'self'`
-            // para permitir paged.js servido desde /vendor/pagedjs/.
-            'Content-Security-Policy' => "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'",
-            'X-Content-Type-Options' => 'nosniff',
-        ]);
+        return response($html, 200, PreviewHeaders::forHtml());
     }
 
     /**

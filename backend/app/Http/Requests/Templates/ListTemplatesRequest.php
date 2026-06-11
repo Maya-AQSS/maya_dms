@@ -6,6 +6,7 @@ namespace App\Http\Requests\Templates;
 
 use App\DTOs\Templates\TemplateFilterDto;
 use App\Enums\TemplateVisibilityLevel;
+use App\Http\Requests\Concerns\ParsesFavoriteIds;
 use App\Models\Template;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Validation\Rule;
@@ -20,6 +21,8 @@ use Maya\Http\Http\Requests\PaginatedFilterRequest;
  */
 class ListTemplatesRequest extends PaginatedFilterRequest
 {
+    use ParsesFavoriteIds;
+
     public function authorize(): bool
     {
         return $this->user()->can('viewAny', Template::class);
@@ -46,22 +49,6 @@ class ListTemplatesRequest extends PaginatedFilterRequest
             'usable_for_documents' => ['nullable', 'boolean'],
             'favorite_ids' => ['nullable', 'string', 'max:4000'],
         ];
-    }
-
-    /**
-     * Parsea `favorite_ids` (CSV de ids de versión) a una lista, o null si vacío.
-     *
-     * @return list<string>|null
-     */
-    private function parseFavoriteIds(): ?array
-    {
-        $raw = $this->input('favorite_ids');
-        if (! is_string($raw) || trim($raw) === '') {
-            return null;
-        }
-        $ids = array_values(array_filter(array_map('trim', explode(',', $raw)), fn ($v) => $v !== ''));
-
-        return $ids === [] ? null : $ids;
     }
 
     /**
