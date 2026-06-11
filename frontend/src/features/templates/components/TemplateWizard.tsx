@@ -4,7 +4,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useBlocker } from 'react-router-dom';
 import { useBackNavigation } from '@ceedcv-maya/shared-hooks-react';
 import { useTranslation } from 'react-i18next';
-import { useQueryClient } from '@tanstack/react-query';
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
 import type { Template } from '../../../types/templates';
 import type { ReviewMode } from '../../../types/templates';
@@ -20,15 +19,10 @@ import { ApiHttpError } from '../../../api/http';
 import { VersionChangelogModal } from '../../../components/VersionChangelogModal';
 import { Button, ConfirmDialog } from '@ceedcv-maya/shared-ui-react';
 import { useProcessesQuery } from '../../../hooks/useProcesses';
-import {
-  templateCommentsKey,
-  type TemplateCommentsResponse,
-} from '../hooks/useTemplateComments';
 import { useUserProfile } from '../../../features/user-profile';
 import { WizardStep1Properties } from './WizardStep1Properties';
 import { WizardStep2Blocks, type WizardStep2BlocksHandle } from './WizardStep2Blocks';
 import { WizardStep3Users, type ValidatorEntry } from './WizardStep3Users';
-import type { BlockComment } from './BlockCommentsCard';
 import { WizardStep4Summary } from './WizardStep4Summary';
 import {
   templateStep1Schema,
@@ -47,7 +41,6 @@ type Props = {
 
 export function TemplateWizard({ template: templateProp, initialTemplate, processId }: Props) {
   const { t } = useTranslation(['templates', 'common']);
-  const queryClient = useQueryClient();
   const { profile } = useUserProfile();
   const initial = templateProp || initialTemplate;
   const processBackTo = useMemo(() => {
@@ -60,7 +53,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
 
   // Rejected templates start on the blocks step so the creator sees comment badges immediately.
   const [step, setStep] = useState<Step>(
-    initial?.id && initial?.has_review_comments ? 'blocks' : 'properties',
+    initial?.id && initial?.has_unread_review_comments ? 'blocks' : 'properties',
   );
   const [completedSteps, setCompletedSteps] = useState<Step[]>(
     initial?.id ? (['properties', 'blocks', 'users'] as Step[]) : [],
@@ -185,14 +178,6 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     });
     return () => subscription.unsubscribe();
   }, [step1Methods]);
-
-  const handleCommentAdded = (comment: BlockComment) => {
-    if (!initial?.id) return;
-    queryClient.setQueryData<TemplateCommentsResponse>(
-      templateCommentsKey(initial.id),
-      (current) => ({ data: [...(current?.data ?? []), comment] }),
-    );
-  };
 
   const validateBlocksInvariants = (blocksList: TemplateBlock[]): string | null => {
     const hasEditable = blocksList.some(b => b.block_state === 'editable' || b.block_state === 'modifiable');
@@ -703,7 +688,6 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
               onBlocksChange={setWizardBlocks}
               onContinue={() => void handleContinue()}
               onInvalidBlocksChange={setHasInvalidBlocks}
-              onCommentAdded={handleCommentAdded}
             />
           )}
           {step === 'users' && (

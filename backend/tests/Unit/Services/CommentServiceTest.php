@@ -5,6 +5,11 @@ declare(strict_types=1);
 namespace Tests\Unit\Services;
 
 use App\DTOs\Comments\CommentDto;
+use App\Events\BlockCommentCreated;
+use App\Events\BlockCommentDeleted;
+use App\Events\BlockCommentMarkedRead;
+use App\Events\BlockCommentsMarkedRead;
+use App\Events\BlockCommentUpdated;
 use App\Models\Comment;
 use App\Models\Document;
 use App\Models\DocumentBlock;
@@ -13,6 +18,7 @@ use App\Models\TemplateBlock;
 use App\Repositories\Contracts\CommentReadRepositoryInterface;
 use App\Repositories\Contracts\CommentRepositoryInterface;
 use App\Services\CommentService;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Validation\ValidationException;
 use Mockery;
 use Tests\TestCase;
@@ -380,11 +386,107 @@ final class CommentServiceTest extends TestCase
         );
     }
 
+    // ─── audit events ────────────────────────────────────────────────────────
+
+    public function test_create_dispatches_block_comment_created_event(): void
+    {
+        Event::fake([BlockCommentCreated::class]);
+
+        $comment = $this->makeComment([
+            'commentable_type' => Template::class,
+            'commentable_id' => 'tmpl-uuid',
+            'blockable_type' => TemplateBlock::class,
+            'blockable_id' => 'block-uuid',
+        ]);
+
+        $repo = Mockery::mock(CommentRepositoryInterface::class);
+        $repo->shouldReceive('findWithoutScopesById')->andReturn(null);
+        $repo->shouldReceive('existsTemplateBlockForTemplate')
+            ->once()
+            ->with('block-uuid', 'tmpl-uuid')
+            ->andReturn(true);
+        $repo->shouldReceive('create')->once()->andReturn($comment);
+        $repo->shouldReceive('findOrFail')->once()->with('comment-uuid', 'author-uuid')->andReturn($comment);
+
+        $service = $this->makeService($repo);
+        $service->createForResource(
+            commentableType: Template::class,
+            commentableId: 'tmpl-uuid',
+            commentableVersion: 1,
+            blockableType: TemplateBlock::class,
+            blockableId: 'block-uuid',
+            parentId: null,
+            authorId: 'author-uuid',
+            body: 'Body',
+        );
+
+        Event::assertDispatched(BlockCommentCreated::class);
+    }
+
+    public function test_update_dispatches_block_comment_updated_event(): void
+    {
+        Event::fake([BlockCommentUpdated::class]);
+
+        $before = $this->makeComment(['body' => 'Antes']);
+        $after = $this->makeComment(['body' => 'Después']);
+
+        $repo = Mockery::mock(CommentRepositoryInterface::class);
+        $repo->shouldReceive('findOrFail')->once()->with('comment-uuid', null)->andReturn($before);
+        $repo->shouldReceive('update')->once()->with('comment-uuid', 'Después', 'editor-uuid')->andReturn($after);
+        $repo->shouldReceive('findOrFail')->once()->with('comment-uuid', null)->andReturn($after);
+
+        $service = $this->makeService($repo);
+        $service->update('comment-uuid', 'Después', 'editor-uuid');
+
+        Event::assertDispatched(BlockCommentUpdated::class);
+    }
+
+    public function test_mark_as_read_dispatches_event_only_when_newly_marked(): void
+    {
+        Event::fake([BlockCommentMarkedRead::class]);
+
+        $comment = $this->makeComment();
+
+        $repo = Mockery::mock(CommentRepositoryInterface::class);
+        $readRepo = Mockery::mock(CommentReadRepositoryInterface::class);
+        $repo->shouldReceive('findOrFail')->once()->with('comment-uuid', 'reader-uuid')->andReturn($comment);
+        $readRepo->shouldReceive('markAsRead')->once()->with('comment-uuid', 'reader-uuid')->andReturn(true);
+        $repo->shouldReceive('findOrFail')->once()->with('comment-uuid', 'reader-uuid')->andReturn($comment);
+
+        $service = $this->makeService($repo, $readRepo);
+        $service->markAsRead('comment-uuid', 'reader-uuid');
+
+        Event::assertDispatched(BlockCommentMarkedRead::class);
+    }
+
+    public function test_mark_as_read_skips_audit_when_already_read(): void
+    {
+        Event::fake([BlockCommentMarkedRead::class]);
+
+        $comment = $this->makeComment();
+
+        $repo = Mockery::mock(CommentRepositoryInterface::class);
+        $readRepo = Mockery::mock(CommentReadRepositoryInterface::class);
+        $repo->shouldReceive('findOrFail')->once()->with('comment-uuid', 'reader-uuid')->andReturn($comment);
+        $readRepo->shouldReceive('markAsRead')->once()->with('comment-uuid', 'reader-uuid')->andReturn(false);
+        $repo->shouldReceive('findOrFail')->once()->with('comment-uuid', 'reader-uuid')->andReturn($comment);
+
+        $service = $this->makeService($repo, $readRepo);
+        $service->markAsRead('comment-uuid', 'reader-uuid');
+
+        Event::assertNotDispatched(BlockCommentMarkedRead::class);
+    }
+
     // ─── delete ──────────────────────────────────────────────────────────────
 
-    public function test_delete_delegates_to_repository(): void
+    public function test_delete_dispatches_block_comment_deleted_event(): void
     {
+        Event::fake([BlockCommentDeleted::class]);
+
+        $comment = $this->makeComment();
+
         $repo = Mockery::mock(CommentRepositoryInterface::class);
+        $repo->shouldReceive('findOrFail')->once()->with('comment-uuid')->andReturn($comment);
         $repo->shouldReceive('delete')
             ->once()
             ->with('comment-uuid', 'user-uuid', 'User Name');
@@ -392,8 +494,6 @@ final class CommentServiceTest extends TestCase
         $service = $this->makeService($repo);
         $service->delete('comment-uuid', 'user-uuid', 'User Name');
 
-        // La verificación real la hace la expectativa Mockery `->once()`; esta
-        // aserción evita que PHPUnit marque el test como "risky" (sin aserciones).
-        $this->assertTrue(true);
+        Event::assertDispatched(BlockCommentDeleted::class);
     }
 }

@@ -42,11 +42,17 @@ import { PagedThemedPreview } from '../features/documents/components/PagedThemed
 import { SequentialValidatorBadge } from '../features/documents/components/SequentialValidatorBadge';
 import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
 import { getCommentsForBlock, countUnreadCommentsForBlock, resolveCommentBlockableId } from '../utils/blockComments';
-import { markCommentAsRead, fetchResourceComments } from '../api/comments';
-import { applyCommentDeleted } from '../features/comments/commentCache';
+import { useQueryClient } from '@tanstack/react-query';
+import { useTemplateCommentsQuery } from '../features/templates/hooks/useTemplateComments';
+import {
+  appendCommentToTemplateCache,
+  markCommentAsReadInTemplateCache,
+  markCommentDeletedInTemplateCache,
+  markBlockCommentsAsReadInTemplateCache,
+  patchTemplateCommentCache,
+} from '../features/comments/commentCache';
 
 // Re-use the shared BlockComment type (has resolved, parent_id, etc.)
-type ReviewComment = BlockComment;
 
 // Estado: clases en `statusBadgeClass` (módulo `@ceedcv-maya/shared-ui-react/badges`).
 
@@ -115,6 +121,7 @@ export function TemplatePreviewPage() {
   const handleBack = () => goBack();
 
   const { profile, hasPermission } = useUserProfile();
+  const queryClient = useQueryClient();
 
   const [template, setTemplate] = useState<Template | null>(null);
   const [blocks, setBlocks] = useState<TemplateBlock[]>([]);
@@ -142,9 +149,14 @@ export function TemplatePreviewPage() {
   const { hierarchy } = useHierarchy();
   const [historicalVersionDetail, setHistoricalVersionDetail] = useState<TemplateVersionDetail | null>(null);
 
-  // Review comments (only loaded when owner & has_review_comments)
-  const [reviewComments, setReviewComments] = useState<ReviewComment[]>([]);
-  const [reviewCommentsLoading, setReviewCommentsLoading] = useState(false);
+  const templateCommentsEnabled = !!id && !!template && !templateVersionId;
+  const templateCommentsQuery = useTemplateCommentsQuery(id ?? '', {
+    enabled: templateCommentsEnabled,
+  });
+  const reviewComments = templateCommentsEnabled
+    ? templateCommentsQuery.data?.data ?? []
+    : [];
+  const [commentSubmitLoading, setCommentSubmitLoading] = useState(false);
   const [reviewCommentSubmitError, setReviewCommentSubmitError] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<{ blockId: string; mode: 'comments' | 'info' } | null>(null);
   // Ref for the comment card header.
@@ -166,7 +178,6 @@ export function TemplatePreviewPage() {
         setError(null);
         setSnapshotVersionNumber(null);
         setHistoricalVersionDetail(null);
-        setReviewComments([]);
 
         if (templateVersionId) {
           const [tRes, vRes] = await Promise.all([fetchTemplate(id), fetchTemplateVersion(templateVersionId)]);
@@ -197,13 +208,6 @@ export function TemplatePreviewPage() {
           } else if (!cancelled) {
             setBlocks([]);
           }
-          if (!cancelled) {
-            if (t.has_review_comments) {
-              void fetchResourceComments(`templates/${id}/comments`)
-                .then((res) => { if (!cancelled) setReviewComments(res.data); })
-                .catch(() => { /* TODO: send to error tracker */ });
-            }
-          }
         }
       } catch (e) {
         if (!cancelled) {
@@ -220,48 +224,52 @@ export function TemplatePreviewPage() {
   const handleSendMessage = async (parentId: string | null, body: string) => {
     if (!activeView?.blockId || !id) return;
     setReviewCommentSubmitError(null);
-    setReviewCommentsLoading(true);
+    setCommentSubmitLoading(true);
     try {
       const blockableId = resolveCommentBlockableId(
         parentId,
         reviewComments,
         activeView.blockId,
       );
-      const res = await apiFetchJson<{ data: ReviewComment }>(`templates/${id}/comments`, {
+      const res = await apiFetchJson<{ data: BlockComment }>(`templates/${id}/comments`, {
         method: 'POST',
         body: { body, parent_id: parentId, blockable_id: blockableId },
       });
-      setReviewComments(prev => [...prev, res.data]);
+      appendCommentToTemplateCache(queryClient, id, res.data);
     } catch {
       setReviewCommentSubmitError('No se pudo guardar el comentario.');
       throw new Error('comment-send-failed');
     } finally {
-      setReviewCommentsLoading(false);
+      setCommentSubmitLoading(false);
     }
   };
 
   const handleEditComment = async (commentId: string, newBody: string) => {
-    const res = await apiFetchJson<{ data: ReviewComment }>(`comments/${commentId}`, {
+    if (!id) return;
+    const res = await apiFetchJson<{ data: BlockComment }>(`comments/${commentId}`, {
       method: 'PATCH',
       body: { body: newBody },
     });
-    setReviewComments(prev => prev.map(c => c.id === commentId ? res.data : c));
-  };
-
-  const handleDeleteComment = async (commentId: string) => {
-    await apiFetchJson(`comments/${commentId}`, { method: 'DELETE' });
-    setReviewComments(prev =>
-      prev.map(c => (c.id === commentId ? applyCommentDeleted(c, profile?.name) : c)),
+    patchTemplateCommentCache(queryClient, id, (comments) =>
+      comments.map((c) => (c.id === commentId ? res.data : c)),
     );
   };
 
-  const handleMarkCommentAsRead = async (commentId: string) => {
-    const updated = await markCommentAsRead(commentId);
-    setReviewComments(prev => prev.map(c => (c.id === commentId ? updated : c)));
+  const handleDeleteComment = async (commentId: string) => {
+    if (!id) return;
+    await apiFetchJson(`comments/${commentId}`, { method: 'DELETE' });
+    markCommentDeletedInTemplateCache(queryClient, id, commentId, profile?.name);
   };
 
+  const handleMarkCommentAsRead = async (commentId: string) => {
+    if (!id) return;
+    await markCommentAsReadInTemplateCache(queryClient, id, commentId);
+  };
 
-
+  const handleMarkAllBlockCommentsAsRead = async () => {
+    if (!id || !activeView?.blockId) return;
+    await markBlockCommentsAsReadInTemplateCache(queryClient, id, activeView.blockId);
+  };
   const isDraft = template?.status === 'draft' || template?.status === 'rejected';
   const isOwner = profile?.id === template?.created_by;
   const isPublished = template?.status === 'published';
@@ -644,7 +652,7 @@ export function TemplatePreviewPage() {
                 blockSortOrder={(blocks.findIndex((b) => b.id === activeView.blockId) + 1) || '?'}
                 blockComments={getCommentsForBlock(activeView.blockId, reviewComments)}
                 allComments={reviewComments}
-                commentLoading={reviewCommentsLoading}
+                commentLoading={commentSubmitLoading}
                 submitError={reviewCommentSubmitError}
                 onSendMessage={handleSendMessage}
                 headerRef={commentCardHeaderRef}
@@ -654,6 +662,7 @@ export function TemplatePreviewPage() {
                 onEditComment={handleEditComment}
                 onDeleteComment={handleDeleteComment}
                 onMarkAsRead={handleMarkCommentAsRead}
+                onMarkAllBlockAsRead={handleMarkAllBlockCommentsAsRead}
               />
             );
           }

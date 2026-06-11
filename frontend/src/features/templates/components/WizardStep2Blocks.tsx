@@ -29,7 +29,7 @@ import { CoverDesignEditor } from '../cover/CoverDesignEditor';
 import { parseCoverContent } from '../cover/coverModel';
 import { IndexBlockEditor, parseIndexConfig } from './IndexBlockEditor';
 import { useCompletedBlocks } from '../../documents/hooks/useCompletedBlocks';
-import { useTemplateCommentsQuery, templateCommentsKey, type TemplateCommentsResponse } from '../hooks/useTemplateComments';
+import { useTemplateCommentsQuery } from '../hooks/useTemplateComments';
 import { type BlockUiState, BLOCK_UI_STATE_CONFIG, blockToUiState } from '../blockUiState';
 import { htmlToTiptapDoc, buildMayaEditorExtensions } from '@ceedcv-maya/shared-editor-react';
 import { DocxBlockSplitter } from './DocxBlockSplitter';
@@ -38,8 +38,12 @@ import { useAutoSave, useFlushOnPageLeave } from '@ceedcv-maya/shared-hooks-reac
 import { apiFetchJson } from '../../../api/http';
 import { uploadMedia } from '../../../api/media';
 import { BlockCommentsCard, type BlockComment } from './BlockCommentsCard';
-import { countUnreadCommentsForBlock, resolveCommentBlockableId } from '../../../utils/blockComments';
-import { markCommentAsReadInTemplateCache, markCommentDeletedInTemplateCache } from '../../comments/commentCache';
+import {
+  countUnreadCommentsForBlock,
+  getCommentsForBlock,
+  resolveCommentBlockableId,
+} from '../../../utils/blockComments';
+import { appendCommentToTemplateCache, patchTemplateCommentCache, markCommentAsReadInTemplateCache, markCommentDeletedInTemplateCache, markBlockCommentsAsReadInTemplateCache } from '../../comments/commentCache';
 import { useUserProfile } from '../../user-profile';
 import { canCreateBlockComment, canDeleteBlockComment } from '../../../permissions';
 import { useQueryClient } from '@tanstack/react-query';
@@ -96,13 +100,13 @@ function SortableBlockItem({
   block,
   itemState,
   onClick,
-  hasReviewComments,
+  hasUnreadComments,
   isCompleted,
 }: {
   block: TemplateBlock;
   itemState: 'default' | 'selected' | 'multi-queued' | 'multi-current' | 'multi-saved';
   onClick: () => void;
-  hasReviewComments?: boolean;
+  hasUnreadComments?: boolean;
   isCompleted?: boolean;
 }) {
   const { t } = useTranslation('documents');
@@ -125,7 +129,7 @@ function SortableBlockItem({
         title={block.title || ''}
         variant={itemState}
         locked={isLocked}
-        hasReviewComments={hasReviewComments}
+        hasUnreadComments={hasUnreadComments}
         isCompleted={isCompleted}
         stateLabel={BLOCK_UI_STATE_CONFIG[ui].label}
         onClick={onClick}
@@ -156,7 +160,6 @@ interface WizardStep2BlocksProps {
   onBlocksChange?: (blocks: TemplateBlock[]) => void;
   onContinue?: () => void;
   onInvalidBlocksChange?: (hasInvalid: boolean) => void;
-  onCommentAdded?: (comment: BlockComment) => void;
 }
 
 export type WizardStep2BlocksHandle = {
@@ -172,7 +175,6 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   onBlocksChange,
   onContinue,
   onInvalidBlocksChange,
-  onCommentAdded,
 }, ref) => {
   const { t } = useTranslation(['documents', 'common']);
   const commentsQuery = useTemplateCommentsQuery(template.id);
@@ -293,7 +295,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const selectedBlockIndex = selectedBlock ? blocks.findIndex((b) => b.id === selectedBlock.id) : -1;
 
   const blockComments: BlockComment[] = activeSingleId
-    ? reviewComments.filter((c) => c.blockable_id === activeSingleId)
+    ? getCommentsForBlock(activeSingleId, reviewComments)
     : [];
 
   useEffect(() => {
@@ -683,14 +685,14 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
         method: 'POST',
         body: { body, parent_id: parentId, blockable_id: blockableId },
       });
-      onCommentAdded?.(res.data);
+      appendCommentToTemplateCache(queryClient, template.id, res.data);
     } catch {
       setCommentSubmitError('No se pudo guardar el comentario.');
       throw new Error('comment-send-failed');
     } finally {
       setCommentSubmitLoading(false);
     }
-  }, [activeSingleId, reviewComments, template.id, onCommentAdded]);
+  }, [activeSingleId, queryClient, reviewComments, template.id]);
 
   /**
    * Anchored comment on a text selection from inside the editor.
@@ -733,14 +735,14 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
         } catch (e) {
           console.warn('[WizardStep2Blocks] anchor save failed', e);
         }
-        onCommentAdded?.(res.data);
+        appendCommentToTemplateCache(queryClient, template.id, res.data);
         return commentId;
       } catch (e) {
         console.error('[WizardStep2Blocks] comment create failed', e);
         return null;
       }
     },
-    [activeSingleId, template.id, onCommentAdded],
+    [activeSingleId, queryClient, template.id],
   );
 
   const handleEditComment = useCallback(async (commentId: string, newBody: string) => {
@@ -748,12 +750,8 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
       method: 'PATCH',
       body: { body: newBody },
     });
-    queryClient.setQueryData<TemplateCommentsResponse>(
-      templateCommentsKey(template.id),
-      (current) => {
-        if (!current) return current;
-        return { ...current, data: current.data.map(c => c.id === commentId ? res.data : c) };
-      },
+    patchTemplateCommentCache(queryClient, template.id, (comments) =>
+      comments.map((c) => (c.id === commentId ? res.data : c)),
     );
   }, [queryClient, template.id]);
 
@@ -765,6 +763,11 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const handleMarkCommentAsRead = useCallback(async (commentId: string) => {
     await markCommentAsReadInTemplateCache(queryClient, template.id, commentId);
   }, [queryClient, template.id]);
+
+  const handleMarkAllBlockCommentsAsRead = useCallback(async () => {
+    if (!activeSingleId) return;
+    await markBlockCommentsAsReadInTemplateCache(queryClient, template.id, activeSingleId);
+  }, [activeSingleId, queryClient, template.id]);
 
   const renderSaveStatus = () => {
     if (saveStatus === 'saving') return <span className="text-xs text-text-muted italic">Guardando…</span>;
@@ -815,7 +818,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                             block={block}
                             itemState={activeSingleId === block.id ? 'selected' : (selectedBlockIds.includes(block.id) ? 'multi-queued' : 'default')}
                             onClick={() => handleBlockClick(block.id)}
-                            hasReviewComments={reviewComments.some(c => c.blockable_id === block.id)}
+                            hasUnreadComments={countUnreadCommentsForBlock(block.id, reviewComments) > 0}
                             isCompleted={completedBlocks.isCompleted(block.id)}
                           />
                         ))}
@@ -1287,6 +1290,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
             onEditComment={handleEditComment}
             onDeleteComment={handleDeleteComment}
             onMarkAsRead={handleMarkCommentAsRead}
+            onMarkAllBlockAsRead={handleMarkAllBlockCommentsAsRead}
           />
         </div>
       )}

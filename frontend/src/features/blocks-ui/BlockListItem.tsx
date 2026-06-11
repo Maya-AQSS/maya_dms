@@ -11,7 +11,8 @@ type Props = {
   title: string;
   variant?: BlockListItemVariant;
   locked?: boolean;
-  hasReviewComments?: boolean;
+  /** Hay mensajes de otros usuarios sin leer en este bloque. */
+  hasUnreadComments?: boolean;
   stateLabel?: string | null;
   dragHandle?: ReactNode;
   isEmpty?: boolean;
@@ -53,7 +54,7 @@ export function BlockListItem({
   title,
   variant = 'default',
   locked = false,
-  hasReviewComments = false,
+  hasUnreadComments = false,
   stateLabel,
   dragHandle,
   isEmpty = false,
@@ -69,7 +70,7 @@ export function BlockListItem({
     <div
       className={[
         'flex items-center gap-2 rounded-lg px-3 py-2.5 border transition-all cursor-pointer group',
-        hasReviewComments && variant === 'default'
+        hasUnreadComments && variant === 'default'
           ? 'bg-warning-light/20 dark:bg-warning/10 border-warning/40 dark:border-warning/30 hover:border-warning/60'
           : VARIANT_CLS[variant],
         isCompleted ? 'ring-2 ring-success/60 ring-offset-1 dark:ring-offset-ui-dark-card' : '',
@@ -94,10 +95,10 @@ export function BlockListItem({
           <span className={`flex-1 truncate text-xs font-bold ${titleColor}`}>
             {title || '(Sin título)'}
           </span>
-          {hasReviewComments && (
+          {hasUnreadComments && (
             <span
               className="w-2 h-2 rounded-full bg-warning shadow-[0_0_8px_rgba(255,193,7,0.5)]"
-              title="Comentarios pendientes"
+              title="Mensajes sin leer"
             />
           )}
           {isEmpty && (

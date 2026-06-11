@@ -1,7 +1,8 @@
 import { useState, useEffect, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ceedcv-maya/shared-ui-react';
+import { Button, useToast } from '@ceedcv-maya/shared-ui-react';
 import { canEditOwnBlockComment } from '../../../permissions';
+import { ApiHttpError } from '../../../api/http';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -37,6 +38,12 @@ const formatTime = (isoString: string) => {
     </span>
   );
 };
+
+function markReadErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof ApiHttpError) return err.message;
+  if (err instanceof Error && err.message) return err.message;
+  return fallback;
+}
 
 // ── ViewCardHeader ─────────────────────────────────────────────────────────────
 
@@ -138,6 +145,7 @@ function CommentItem({
   onEditComment,
   onDeleteComment,
   onMarkAsRead,
+  currentUserId,
 }: {
   comment: BlockComment;
   mode: CommentMode;
@@ -150,7 +158,10 @@ function CommentItem({
   onEditComment?: (commentId: string, newBody: string) => Promise<void>;
   onDeleteComment?: (commentId: string) => Promise<void>;
   onMarkAsRead?: (commentId: string) => Promise<void>;
+  currentUserId?: string;
 }) {
+  const { t } = useTranslation('templates');
+  const { show: showToast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [editBody, setEditBody] = useState(comment.body);
   const [editLoading, setEditLoading] = useState(false);
@@ -159,7 +170,7 @@ function CommentItem({
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [markReadLoading, setMarkReadLoading] = useState(false);
 
-  const isUnread = comment.is_read_by_me !== true;
+  const isUnread = comment.is_read_by_me !== true && comment.author_id !== currentUserId;
 
   useEffect(() => {
     if (!isEditing) setEditBody(comment.body);
@@ -209,6 +220,11 @@ function CommentItem({
     setMarkReadLoading(true);
     try {
       await onMarkAsRead(comment.id);
+    } catch (err) {
+      showToast({
+        title: markReadErrorMessage(err, t('comments.markAsReadError')),
+        tone: 'danger',
+      });
     } finally {
       setMarkReadLoading(false);
     }
@@ -288,26 +304,9 @@ function CommentItem({
           )}
           {comment.body}
 
-          {/* Hover action pill */}
-          {(canEdit || canDelete || (isUnread && onMarkAsRead)) && !confirmDelete && (
+          {/* Hover action pill — edit/delete only; read is a visible link below */}
+          {(canEdit || canDelete) && !confirmDelete && (
             <span className="absolute -top-3 right-2 opacity-0 group-hover/comment:opacity-100 transition-opacity duration-150 inline-flex items-center gap-0.5 bg-white dark:bg-ui-dark-card border border-ui-border dark:border-ui-dark-border rounded-full shadow-md px-1 py-0.5 z-10">
-              {isUnread && onMarkAsRead && (
-                <button
-                  type="button"
-                  onClick={handleMarkAsRead}
-                  disabled={markReadLoading}
-                  aria-label="Marcar como leído"
-                  title="Marcar como leído"
-                  className="p-1 rounded-full text-text-muted hover:text-odoo-purple hover:bg-odoo-purple/10 transition-colors disabled:opacity-40"
-                >
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                </button>
-              )}
-              {isUnread && onMarkAsRead && (canEdit || canDelete) && (
-                <span className="w-px h-3 bg-ui-border dark:bg-ui-dark-border" />
-              )}
               {canEdit && (
                 <button
                   type="button"
@@ -364,6 +363,19 @@ function CommentItem({
         </div>
       )}
 
+      {isUnread && onMarkAsRead && !isEditing && !confirmDelete && (
+        <div className="mt-1">
+          <button
+            type="button"
+            onClick={handleMarkAsRead}
+            disabled={markReadLoading}
+            className="text-xs font-bold text-odoo-purple hover:underline disabled:opacity-40"
+          >
+            {markReadLoading ? t('comments.markAsReadLoading') : t('comments.markAsRead')}
+          </button>
+        </div>
+      )}
+
       {/* Reply button — visible on hover */}
       {mode !== 'creator-readonly' && !isEditing && !confirmDelete && (
         <div className="mt-1 h-5">
@@ -402,7 +414,8 @@ type BlockCommentsCardProps = {
   onEditComment?: (commentId: string, newBody: string) => Promise<void>;
   onDeleteComment?: (commentId: string) => Promise<void>;
   onMarkAsRead?: (commentId: string) => Promise<void>;
-  autoMarkUnreadOnOpen?: boolean;
+  /** Marca en bloque (1 petición API) los no leídos del bloque activo. */
+  onMarkAllBlockAsRead?: () => Promise<void>;
 };
 
 export function BlockCommentsCard({
@@ -422,43 +435,50 @@ export function BlockCommentsCard({
   onEditComment,
   onDeleteComment,
   onMarkAsRead,
-  autoMarkUnreadOnOpen = true,
+  onMarkAllBlockAsRead,
 }: BlockCommentsCardProps) {
   const { t } = useTranslation(['templates', 'documents']);
+  const { show: showToast } = useToast();
   const [replyingTo, setReplyingTo] = useState<{ id: string; name: string } | null>(null);
   const [replyBody, setReplyBody] = useState('');
   const [highlightedCommentId, setHighlightedCommentId] = useState<string | null>(null);
   const [deletedOpen, setDeletedOpen] = useState(false);
+  const [markAllLoading, setMarkAllLoading] = useState(false);
 
   const commentById = new Map(allComments.map(c => [c.id, c]));
 
   const sortedComments = [...blockComments].sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
   );
 
   const activeComments = sortedComments.filter(c => !c.is_deleted);
   const deletedComments = sortedComments.filter(c => c.is_deleted);
 
-  const unreadSignature = activeComments
-    .filter((c) => c.is_read_by_me !== true)
-    .map((c) => c.id)
-    .sort()
-    .join('|');
+  const unreadFromOthers = activeComments.filter(
+    (c) => c.is_read_by_me !== true && c.author_id !== currentUserId,
+  );
 
-  useEffect(() => {
-    if (!autoMarkUnreadOnOpen || !onMarkAsRead || !unreadSignature) return;
-
-    const unreadIds = unreadSignature.split('|');
-    void (async () => {
-      for (const commentId of unreadIds) {
-        try {
+  const handleMarkAllAsRead = async () => {
+    if (unreadFromOthers.length === 0 || markAllLoading) return;
+    setMarkAllLoading(true);
+    try {
+      if (onMarkAllBlockAsRead) {
+        await onMarkAllBlockAsRead();
+      } else if (onMarkAsRead) {
+        const unreadIds = unreadFromOthers.map((c) => c.id);
+        for (const commentId of unreadIds) {
           await onMarkAsRead(commentId);
-        } catch {
-          break;
         }
       }
-    })();
-  }, [autoMarkUnreadOnOpen, blockSortOrder, onMarkAsRead, unreadSignature]);
+    } catch (err) {
+      showToast({
+        title: markReadErrorMessage(err, t('comments.markAllAsReadError')),
+        tone: 'danger',
+      });
+    } finally {
+      setMarkAllLoading(false);
+    }
+  };
 
   const canEditComment = (comment: BlockComment) =>
     !commentingClosed && canEditOwnBlockComment(currentUserId, comment.author_id);
@@ -509,7 +529,21 @@ export function BlockCommentsCard({
         </div>
       )}
 
-      {/* Flat message list — newest first */}
+      {(onMarkAsRead || onMarkAllBlockAsRead) && (
+        <div className="px-4 py-2 border-b border-ui-border dark:border-ui-dark-border bg-ui-body/20 dark:bg-ui-dark-bg/30 shrink-0 flex justify-end">
+          <button
+            type="button"
+            onClick={() => void handleMarkAllAsRead()}
+            disabled={markAllLoading || unreadFromOthers.length === 0}
+            title={unreadFromOthers.length === 0 ? t('comments.markAllAsReadNone') : undefined}
+            className="text-2xs font-black uppercase tracking-widest text-odoo-purple hover:text-odoo-purple/80 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-odoo-purple transition-colors"
+          >
+            {markAllLoading ? t('comments.markAllAsReadLoading') : t('comments.markAllAsRead')}
+          </button>
+        </div>
+      )}
+
+      {/* Flat message list — oldest first */}
       <div className="flex-1 overflow-y-auto custom-scrollbar px-4 pt-4 pb-4 space-y-5">
         {activeComments.length === 0 && deletedComments.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 text-center opacity-40">
@@ -540,6 +574,7 @@ export function BlockCommentsCard({
                 onEditComment={onEditComment}
                 onDeleteComment={onDeleteComment}
                 onMarkAsRead={onMarkAsRead}
+                currentUserId={currentUserId}
               />
             );
           })}

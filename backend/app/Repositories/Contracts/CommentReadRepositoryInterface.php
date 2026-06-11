@@ -9,7 +9,10 @@ interface CommentReadRepositoryInterface
     /**
      * Marca un comentario como leído para el usuario (idempotente).
      */
-    public function markAsRead(string $commentId, string $userId): void;
+    /**
+     * @return bool true si el comentario quedó recién marcado; false si ya estaba leído.
+     */
+    public function markAsRead(string $commentId, string $userId): bool;
 
     /**
      * Marca como leídos todos los comentarios activos de un bloque para el usuario.

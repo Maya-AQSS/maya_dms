@@ -65,7 +65,14 @@
   "comments": {
     "closePanelAria": "Close panel",
     "title": "Review comments",
-    "messagePlaceholder": "Write a message..."
+    "messagePlaceholder": "Write a message...",
+    "markAsRead": "Mark as read",
+    "markAsReadLoading": "Marking…",
+    "markAllAsRead": "Mark all as read",
+    "markAllAsReadLoading": "Marking all…",
+    "markAllAsReadNone": "No unread comments",
+    "markAsReadError": "Could not mark as read.",
+    "markAllAsReadError": "Could not mark all as read."
   },
   "review": {
     "blockDescriptionTitle": "Block description",

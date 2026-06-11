@@ -65,7 +65,14 @@
   "comments": {
     "closePanelAria": "Cerrar panel",
     "title": "Comentarios de Revisión",
-    "messagePlaceholder": "Escribe un mensaje..."
+    "messagePlaceholder": "Escribe un mensaje...",
+    "markAsRead": "Marcar como leído",
+    "markAsReadLoading": "Marcando…",
+    "markAllAsRead": "Marcar todos como leídos",
+    "markAllAsReadLoading": "Marcando todos…",
+    "markAllAsReadNone": "No hay comentarios pendientes de leer",
+    "markAsReadError": "No se pudo marcar como leído.",
+    "markAllAsReadError": "No se pudo marcar todos como leídos."
   },
   "review": {
     "blockDescriptionTitle": "Descripción del Bloque",

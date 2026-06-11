@@ -305,3 +305,49 @@ it('allows document edit-share collaborator to comment when rejected', function 
         'body' => 'Nota del colaborador',
     ])->assertCreated();
 });
+
+it('marks all unread block comments as read in one request for template reviewer', function () {
+    grantCommentPermissions('template.show', 'template.review');
+
+    $ctx = seedTemplateInReview(test()->otherUserId, test()->userId);
+
+    $commentIds = [];
+    foreach (['Primera observación', 'Segunda observación'] as $body) {
+        $commentId = (string) Str::uuid();
+        $commentIds[] = $commentId;
+        Comment::query()->forceCreate([
+            'id' => $commentId,
+            'commentable_type' => Template::class,
+            'commentable_id' => $ctx['templateId'],
+            'commentable_version' => 1,
+            'blockable_type' => TemplateBlock::class,
+            'blockable_id' => $ctx['blockId'],
+            'author_id' => test()->otherUserId,
+            'body' => $body,
+        ]);
+    }
+
+    $response = $this->postJson("/api/v1/templates/{$ctx['templateId']}/comments/mark-block-read", [
+        'blockable_id' => $ctx['blockId'],
+    ])->assertOk();
+
+    $response->assertJsonCount(2, 'data');
+    $response->assertJsonPath('data.0.is_read_by_me', true);
+    $response->assertJsonPath('data.1.is_read_by_me', true);
+
+    expect(DB::table('comment_reads')->where('user_id', test()->userId)->count())->toBe(2);
+
+    $this->postJson("/api/v1/templates/{$ctx['templateId']}/comments/mark-block-read", [
+        'blockable_id' => $ctx['blockId'],
+    ])->assertOk();
+
+    expect(DB::table('comment_reads')->where('user_id', test()->userId)->count())->toBe(2);
+});
+
+it('denies mark-block-read without view permission on template', function () {
+    $ctx = seedTemplateInReview(test()->otherUserId, test()->userId);
+
+    $this->postJson("/api/v1/templates/{$ctx['templateId']}/comments/mark-block-read", [
+        'blockable_id' => $ctx['blockId'],
+    ])->assertForbidden();
+});
