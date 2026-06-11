@@ -5,14 +5,13 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Events\DocumentDownloaded;
-use App\Jobs\GenerateDocumentPdf;
 use App\Models\Document;
 use App\Models\Process;
 use App\Models\Template;
+use App\Services\Contracts\DocumentPdfServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Maya\Auth\Contracts\JwksServiceInterface;
 use Tests\Concerns\AssignsTestUserPermissions;
@@ -23,6 +22,9 @@ use Tests\TestCase;
  * La descarga del PDF (HEAD vivo) debe registrar un evento de auditoría
  * `DocumentDownloaded` (action='downloaded'), que el wildcard del package
  * shared-messaging publica al exchange `maya.audit`.
+ *
+ * El PDF se genera bajo demanda (síncrono, efímero) — no hay cola ni estado
+ * en caché. Se mockea DocumentPdfServiceInterface para evitar invocar WeasyPrint.
  */
 final class DocumentDownloadAuditTest extends TestCase
 {
@@ -109,14 +111,12 @@ final class DocumentDownloadAuditTest extends TestCase
 
         $docId = $this->createDocument();
 
-        // Simula un PDF ya generado: estado en caché + fichero real en disco.
-        $relative = sprintf('documents/%s/v1/document.pdf', $docId);
-        Storage::disk('local')->put($relative, "%PDF-1.4\n%fake\n");
-        Cache::put(GenerateDocumentPdf::keyFor($docId), [
-            'state' => 'ready',
-            'document_id' => $docId,
-            'path' => $relative,
-        ], 600);
+        // Mock DocumentPdfServiceInterface to return fake PDF bytes.
+        // This avoids invoking WeasyPrint in tests.
+        $this->mock(DocumentPdfServiceInterface::class)
+            ->shouldReceive('generateBytes')
+            ->once()
+            ->andReturn("%PDF-1.4\n%fake\n");
 
         $response = $this->get("/api/v1/documents/{$docId}/pdf", $this->authHeaders);
 
@@ -132,5 +132,39 @@ final class DocumentDownloadAuditTest extends TestCase
                 && $payload['applicationSlug'] === 'maya-dms'
                 && $e->userId === $this->userId;
         });
+    }
+
+    public function test_unauthenticated_request_is_rejected(): void
+    {
+        $docId = $this->createDocument();
+
+        $response = $this->get("/api/v1/documents/{$docId}/pdf");
+
+        $this->assertContains($response->getStatusCode(), [401, 403]);
+    }
+
+    public function test_user_without_access_cannot_download_pdf(): void
+    {
+        $docId = $this->createDocument();
+
+        $otherUserId = (string) Str::uuid();
+        $this->assignUserPermissions($otherUserId, [], false);
+
+        auth()->forgetUser();
+        [$privatePem, $publicPem] = $this->generateRsaKeyPairForTests();
+        $this->mock(JwksServiceInterface::class)
+            ->shouldReceive('getPublicKey')
+            ->andReturn($publicPem);
+        $token = $this->buildJwtForSub(
+            $privatePem, $publicPem,
+            'kid-other', $otherUserId,
+            'test-issuer', 'test-audience',
+            [], [],
+        );
+        $otherHeaders = ['Authorization' => 'Bearer '.$token];
+
+        $response = $this->get("/api/v1/documents/{$docId}/pdf", $otherHeaders);
+
+        $this->assertContains($response->getStatusCode(), [403, 404]);
     }
 }

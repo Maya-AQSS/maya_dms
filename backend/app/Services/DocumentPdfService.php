@@ -11,7 +11,6 @@ use App\Services\Contracts\DocumentPdfServiceInterface;
 use App\Services\Contracts\DocumentRenderServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Support\WeasyPrintRunner;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * Genera PDF/UA-1 tagged usando el binario WeasyPrint instalado en el container
@@ -25,15 +24,12 @@ use Illuminate\Support\Facades\Storage;
  *   - Control directo sobre el flag --pdf-variant pdf/ua-1 (requisito legal).
  *   - Cero deps composer nuevas. Si más adelante se quiere multi-driver
  *     (Browsershot/Gotenberg para casos no archivísticos), migrar a Spatie.
+ *
+ * Los PDFs se generan bajo demanda (efímero, en memoria), igual que templates
+ * y themes. No se persisten en disco.
  */
 class DocumentPdfService implements DocumentPdfServiceInterface
 {
-    /** Disco donde se persisten los PDFs (configurable por env si hiciera falta). */
-    private const DISK = 'local';
-
-    /** Subdirectorio raíz para los PDFs de documentos dentro del disco. */
-    private const PREFIX = 'documents';
-
     /** Timeout duro del proceso WeasyPrint, segundos. */
     private const PROCESS_TIMEOUT = 60;
 
@@ -44,30 +40,12 @@ class DocumentPdfService implements DocumentPdfServiceInterface
         private readonly WeasyPrintRunner $runner,
     ) {}
 
-    public function generate(string $documentId, ?string $versionId = null): string
-    {
-        [$html, $version] = $this->buildHtml($documentId, $versionId);
-
-        $relative = sprintf('%s/%s/v%d/document.pdf', self::PREFIX, $documentId, $version);
-        $absolute = Storage::disk(self::DISK)->path($relative);
-
-        Storage::disk(self::DISK)->makeDirectory(
-            sprintf('%s/%s/v%d', self::PREFIX, $documentId, $version),
-        );
-
-        // weasyprint - <out> : lee HTML por stdin y escribe a $absolute.
-        $this->runner->run($html, self::PROCESS_TIMEOUT, $absolute, 'para documento '.$documentId);
-
-        return $relative;
-    }
-
     public function generateBytes(string $documentId, ?string $versionId = null): string
     {
         [$html] = $this->buildHtml($documentId, $versionId);
 
         // `weasyprint - -` lee el HTML por stdin y escribe el PDF por stdout:
-        // generación SÍNCRONA en memoria (igual que el PDF de muestra de themes),
-        // sin tocar disco ni la infraestructura de colas/estado del export real.
+        // generación SÍNCRONA en memoria, sin tocar disco.
         return $this->runner->run($html, self::PROCESS_TIMEOUT, '-', 'para documento '.$documentId);
     }
 

@@ -7,14 +7,11 @@ namespace App\Http\Controllers\Api;
 use App\DTOs\Versioning\DocumentVersionDetailDto;
 use App\Events\DocumentDownloaded;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Documents\ExportPdfRequest;
-use App\Http\Resources\DocumentPdfExportResource;
 use App\Models\Document;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Services\Contracts\DocumentExportServiceInterface;
 use App\Services\Contracts\DocumentPdfServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -28,40 +25,6 @@ class DocumentExportController extends Controller
         private readonly DocumentServiceInterface $documentService,
         private readonly DocumentPdfServiceInterface $pdfService,
     ) {}
-
-    /**
-     * POST /api/v1/documents/{document}/export-pdf
-     * Encola la generación del PDF/UA. Idempotente: si ya hay un job en curso
-     * para este documento, devuelve el estado actual sin reencolar.
-     */
-    public function start(ExportPdfRequest $request, string $document): JsonResponse
-    {
-        $model = $this->documentRepository->findOrFail($document);
-        $this->authorize('view', $model);
-
-        $userId = (string) $request->user()->getAuthIdentifier();
-        $status = $this->exportService->startPdfExport($document, $userId);
-
-        return response()->json(
-            ['data' => new DocumentPdfExportResource($status)],
-            Response::HTTP_ACCEPTED
-        );
-    }
-
-    /**
-     * GET /api/v1/documents/{document}/export-status
-     * Devuelve el estado actual del job. Estados: queued | processing | ready | failed | none.
-     */
-    public function status(string $document): JsonResponse
-    {
-        $this->documentRepository->findOrFail($document);
-
-        $status = $this->exportService->getPdfExportStatus($document);
-
-        return response()->json([
-            'data' => new DocumentPdfExportResource($status),
-        ]);
-    }
 
     /**
      * GET /api/v1/documents/{document}/pdf
@@ -79,38 +42,6 @@ class DocumentExportController extends Controller
         $filename = $this->exportService->sanitizeFilename((string) ($model->title ?? 'documento')).'.pdf';
 
         return $this->pdfResponse($bytes, $filename);
-    }
-
-    /**
-     * POST /api/v1/documents/{document}/versions/{version}/export-pdf
-     * Encola la generación del PDF de una versión histórica (snapshot congelado).
-     */
-    public function startVersion(ExportPdfRequest $request, string $document, string $version): JsonResponse
-    {
-        $this->resolveDocumentForHistory($document);
-        $this->assertVersionBelongs($document, $version);
-
-        $userId = (string) $request->user()->getAuthIdentifier();
-        $status = $this->exportService->startPdfExport($document, $userId, $version);
-
-        return response()->json(
-            ['data' => new DocumentPdfExportResource($status)],
-            Response::HTTP_ACCEPTED
-        );
-    }
-
-    /**
-     * GET /api/v1/documents/{document}/versions/{version}/export-status
-     */
-    public function statusVersion(string $document, string $version): JsonResponse
-    {
-        $this->resolveDocumentForHistory($document);
-
-        $status = $this->exportService->getPdfExportStatus($document, $version);
-
-        return response()->json([
-            'data' => new DocumentPdfExportResource($status),
-        ]);
     }
 
     /**

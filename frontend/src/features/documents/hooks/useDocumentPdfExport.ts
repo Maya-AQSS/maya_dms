@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { downloadDocumentPdf, type DocumentExportState } from '../../../api/documents';
+import { downloadDocumentPdf } from '../../../api/documents';
+
+export type DocumentPdfExportState = 'idle' | 'downloading' | 'ready' | 'failed';
 
 export interface UseDocumentPdfExportResult {
   /** Estado del flujo. */
-  state: DocumentExportState | 'idle' | 'downloading';
+  state: DocumentPdfExportState;
   /** Mensaje de error legible (cuando state === 'failed'). */
   error: string | null;
   /** Genera y descarga el PDF. No-op si ya está en curso. */
@@ -24,7 +26,7 @@ export function useDocumentPdfExport(
   documentName: string | undefined,
   versionId?: string,
 ): UseDocumentPdfExportResult {
-  const [state, setState] = useState<DocumentExportState | 'idle' | 'downloading'>('idle');
+  const [state, setState] = useState<DocumentPdfExportState>('idle');
   const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
 

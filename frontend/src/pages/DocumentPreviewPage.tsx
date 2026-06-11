@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useBackNavigation } from '@ceedcv-maya/shared-hooks-react';
 import {
   fetchDocument,
   fetchDocumentReviews,
@@ -237,25 +238,29 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const previewState = location.state as {
     returnToStep?: string;
     returnToValidate?: boolean;
-    backTo?: string;
+    backTo?: string | string[];
     forceBackTo?: boolean;
   } | null;
   const cameFromSummary = previewState?.returnToStep === 'summary';
   const cameFromValidate = previewState?.returnToValidate === true;
-  const backTo = previewState?.backTo ?? '/dashboard';
 
   const backLabel = cameFromSummary
     ? cameFromValidate ? 'Volver a validar' : 'Volver al resumen'
     : 'Volver';
 
+  const { goBack, backTarget, hasBackState } = useBackNavigation({
+    fallback: selectedProcessId ? `/procesos/${selectedProcessId}` : '/dashboard',
+  });
+
   const handleBack = () => {
-    if (window.history.length <= 1 || !selectedProcessId) {
-      navigate("/dashboard");
-    } else {
-      navigate(selectedProcessId ? `/procesos/${selectedProcessId}` : '/dashboard', {
-        state: { tab: 'documents' },
-      })
+    if (hasBackState) {
+      goBack();
+      return;
     }
+    // Sin pila de retorno (acceso directo): destino canónico con la pestaña activa.
+    navigate(selectedProcessId ? `/procesos/${selectedProcessId}` : '/dashboard', {
+      state: { tab: 'documents' },
+    });
   };
 
   const isDraft = detail?.status === 'draft' || detail?.status === 'rejected';
@@ -547,7 +552,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     setDeleteError(null);
     try {
       await deleteDocument(documentId);
-      navigate(backTo);
+      goBack({ replace: true });
     } catch (e) {
       setDeleteError(e instanceof Error ? e.message : 'No se pudo eliminar el documento.');
       setDeleteLoading(false);
@@ -650,7 +655,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       await queryClient.invalidateQueries({ queryKey: ['documents'] });
       await refreshDmsDashboardQuery(queryClient);
       setValidateConfirm(null);
-      navigate(backTo, {
+      navigate(backTarget, {
         state: { documentValidationBanner: validationSuccessBannerMessage(updated, 'approve'), tab: 'documents' },
       });
     } catch (e) {
@@ -675,7 +680,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       await queryClient.invalidateQueries({ queryKey: ['documents'] });
       await refreshDmsDashboardQuery(queryClient);
       setValidateConfirm(null);
-      navigate(backTo, {
+      navigate(backTarget, {
         state: { documentValidationBanner: validationSuccessBannerMessage(updated, 'reject'), tab: 'documents' },
       });
     } catch (e) {
@@ -805,19 +810,11 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           type="button"
           variant="outline"
           size="sm"
-          loading={
-            pdfExport.state === 'queued' ||
-            pdfExport.state === 'processing' ||
-            pdfExport.state === 'downloading'
-          }
+          loading={pdfExport.state === 'downloading'}
           onClick={() => void pdfExport.start()}
           title={pdfExport.error ?? (isHistoricalSnapshot ? 'Generar y descargar el PDF de esta versión' : 'Generar y descargar el PDF firmable del documento')}
         >
-          {pdfExport.state === 'queued' || pdfExport.state === 'processing'
-            ? 'Generando…'
-            : pdfExport.state === 'downloading'
-              ? 'Descargando…'
-              : 'Descargar PDF'}
+          {pdfExport.state === 'downloading' ? 'Descargando…' : 'Descargar PDF'}
         </Button>
       )}
       {!isValidateMode && canClone && (

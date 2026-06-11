@@ -485,43 +485,15 @@ export async function deleteDocumentBlock(documentId: string, documentBlockId: s
   );
 }
 
-/* ─── Export PDF/UA ───────────────────────────────────────────────────── */
-
-export type DocumentExportState = 'none' | 'queued' | 'processing' | 'ready' | 'failed';
-
-export interface DocumentExportPayload {
-  state: DocumentExportState;
-  document_id: string;
-  path?: string;
-  error?: string;
-  queued_at?: string;
-  ready_at?: string;
-}
+/* ─── PDF on-demand download ──────────────────────────────────────────── */
 
 /**
- * Prefijo de ruta del export: el HEAD vivo cuelga de `documents/{id}`; una
+ * Prefijo de ruta del PDF: el HEAD vivo cuelga de `documents/{id}`; una
  * versión histórica cuelga de `documents/{id}/versions/{versionId}`.
  */
 function exportBasePath(documentId: string, versionId?: string): string {
   const base = `documents/${encodeURIComponent(documentId)}`;
   return versionId ? `${base}/versions/${encodeURIComponent(versionId)}` : base;
-}
-
-/** POST /api/v1/documents/{id}[/versions/{versionId}]/export-pdf — encola la generación (idempotente). */
-export async function exportDocumentPdf(documentId: string, versionId?: string): Promise<DocumentExportPayload> {
-  const res = await apiFetchJson<{ data: DocumentExportPayload }>(
-    `${exportBasePath(documentId, versionId)}/export-pdf`,
-    { method: 'POST' },
-  );
-  return res.data;
-}
-
-/** GET /api/v1/documents/{id}[/versions/{versionId}]/export-status — polling del estado. */
-export async function getDocumentExportStatus(documentId: string, versionId?: string): Promise<DocumentExportPayload> {
-  const res = await apiGetJson<{ data: DocumentExportPayload }>(
-    `${exportBasePath(documentId, versionId)}/export-status`,
-  );
-  return res.data;
 }
 
 /**

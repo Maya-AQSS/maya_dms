@@ -7,23 +7,9 @@ namespace App\Services\Contracts;
 interface DocumentPdfServiceInterface
 {
     /**
-     * Genera el PDF/UA del documento aplicando su theme y lo guarda en el
-     * disco `local` bajo `documents/{id}/v{version}/document.pdf`. Devuelve
-     * la ruta relativa al disco.
-     *
-     * Lanza RuntimeException si WeasyPrint falla. Idempotente: sobreescribe
-     * la ruta si el documento se re-exporta.
-     *
-     * Si se pasa `$versionId`, genera el PDF de esa versión histórica
-     * renderizando su snapshot congelado en lugar del HEAD vivo; la ruta usa
-     * el número de versión del snapshot.
-     */
-    public function generate(string $documentId, ?string $versionId = null): string;
-
-    /**
-     * Igual que {@see generate()} pero SÍNCRONO: devuelve los bytes del PDF en
-     * memoria (WeasyPrint a stdout) sin tocar disco ni colas. Pensado para la
-     * descarga directa del botón (mismo patrón que el PDF de muestra de themes).
+     * Genera el PDF/UA del documento en memoria (WeasyPrint a stdout) y
+     * devuelve los bytes. Síncrono, efímero, sin tocar disco ni colas.
+     * Igual al PDF de muestra de themes/templates.
      *
      * Lanza RuntimeException si WeasyPrint falla.
      */
