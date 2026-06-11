@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Theme;
 use App\Services\Contracts\ThemePdfServiceInterface;
 use App\Services\Contracts\ThemeRenderServiceInterface;
+use App\Services\Contracts\ThemeServiceInterface;
 use App\Support\PreviewHeaders;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
@@ -22,6 +23,7 @@ class ThemePreviewController extends Controller
     public function __construct(
         private readonly ThemeRenderServiceInterface $renderer,
         private readonly ThemePdfServiceInterface $pdf,
+        private readonly ThemeServiceInterface $service,
     ) {}
 
     /**
@@ -54,7 +56,13 @@ class ThemePreviewController extends Controller
 
     private function authorizeView(string $themeId): void
     {
-        $model = Theme::query()->findOrFail($themeId);
+        $dto = $this->service->get($themeId);
+
+        $model = new Theme;
+        $model->id = $dto->id;
+        $model->created_by = $dto->createdBy;
+        $model->status = $dto->status;
+        $model->is_system = $dto->isSystem;
 
         if (! Gate::forUser(request()->user())->allows('view', $model)) {
             abort(404);

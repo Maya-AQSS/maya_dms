@@ -61,16 +61,16 @@ class ThemeController extends Controller
 
     public function publish(string $theme): ThemeResource
     {
-        $model = Theme::query()->findOrFail($theme);
-        $this->authorize('update', $model);
+        $dto = $this->service->get($theme);
+        $this->authorize('update', $this->modelForPolicy($dto));
 
         return new ThemeResource($this->service->publish($theme));
     }
 
     public function archive(string $theme): ThemeResource
     {
-        $model = Theme::query()->findOrFail($theme);
-        $this->authorize('update', $model);
+        $dto = $this->service->get($theme);
+        $this->authorize('update', $this->modelForPolicy($dto));
 
         return new ThemeResource($this->service->archive($theme));
     }
