@@ -65,7 +65,11 @@
   "comments": {
     "closePanelAria": "Cerrar panel",
     "title": "Comentarios de Revisión",
-    "messagePlaceholder": "Escribe un mensaje..."
+    "messagePlaceholder": "Escribe un mensaje...",
+    "markAsRead": "Marcar como leído",
+    "markAsReadLoading": "Marcando…",
+    "markAllAsRead": "Marcar todos como leídos",
+    "markAllAsReadLoading": "Marcando todos…"
   },
   "review": {
     "blockDescriptionTitle": "Descripción del Bloque",

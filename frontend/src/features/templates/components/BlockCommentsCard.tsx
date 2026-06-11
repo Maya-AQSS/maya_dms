@@ -151,6 +151,7 @@ function CommentItem({
   onDeleteComment?: (commentId: string) => Promise<void>;
   onMarkAsRead?: (commentId: string) => Promise<void>;
 }) {
+  const { t } = useTranslation('templates');
   const [isEditing, setIsEditing] = useState(false);
   const [editBody, setEditBody] = useState(comment.body);
   const [editLoading, setEditLoading] = useState(false);
@@ -288,26 +289,9 @@ function CommentItem({
           )}
           {comment.body}
 
-          {/* Hover action pill */}
-          {(canEdit || canDelete || (isUnread && onMarkAsRead)) && !confirmDelete && (
+          {/* Hover action pill — edit/delete only; read is a visible link below */}
+          {(canEdit || canDelete) && !confirmDelete && (
             <span className="absolute -top-3 right-2 opacity-0 group-hover/comment:opacity-100 transition-opacity duration-150 inline-flex items-center gap-0.5 bg-white dark:bg-ui-dark-card border border-ui-border dark:border-ui-dark-border rounded-full shadow-md px-1 py-0.5 z-10">
-              {isUnread && onMarkAsRead && (
-                <button
-                  type="button"
-                  onClick={handleMarkAsRead}
-                  disabled={markReadLoading}
-                  aria-label="Marcar como leído"
-                  title="Marcar como leído"
-                  className="p-1 rounded-full text-text-muted hover:text-odoo-purple hover:bg-odoo-purple/10 transition-colors disabled:opacity-40"
-                >
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                </button>
-              )}
-              {isUnread && onMarkAsRead && (canEdit || canDelete) && (
-                <span className="w-px h-3 bg-ui-border dark:bg-ui-dark-border" />
-              )}
               {canEdit && (
                 <button
                   type="button"
@@ -364,6 +348,19 @@ function CommentItem({
         </div>
       )}
 
+      {isUnread && onMarkAsRead && !isEditing && !confirmDelete && (
+        <div className="mt-1">
+          <button
+            type="button"
+            onClick={handleMarkAsRead}
+            disabled={markReadLoading}
+            className="text-xs font-bold text-odoo-purple hover:underline disabled:opacity-40"
+          >
+            {markReadLoading ? t('comments.markAsReadLoading') : t('comments.markAsRead')}
+          </button>
+        </div>
+      )}
+
       {/* Reply button — visible on hover */}
       {mode !== 'creator-readonly' && !isEditing && !confirmDelete && (
         <div className="mt-1 h-5">
@@ -402,7 +399,6 @@ type BlockCommentsCardProps = {
   onEditComment?: (commentId: string, newBody: string) => Promise<void>;
   onDeleteComment?: (commentId: string) => Promise<void>;
   onMarkAsRead?: (commentId: string) => Promise<void>;
-  autoMarkUnreadOnOpen?: boolean;
 };
 
 export function BlockCommentsCard({
@@ -422,13 +418,13 @@ export function BlockCommentsCard({
   onEditComment,
   onDeleteComment,
   onMarkAsRead,
-  autoMarkUnreadOnOpen = true,
 }: BlockCommentsCardProps) {
   const { t } = useTranslation(['templates', 'documents']);
   const [replyingTo, setReplyingTo] = useState<{ id: string; name: string } | null>(null);
   const [replyBody, setReplyBody] = useState('');
   const [highlightedCommentId, setHighlightedCommentId] = useState<string | null>(null);
   const [deletedOpen, setDeletedOpen] = useState(false);
+  const [markAllLoading, setMarkAllLoading] = useState(false);
 
   const commentById = new Map(allComments.map(c => [c.id, c]));
 
@@ -439,26 +435,25 @@ export function BlockCommentsCard({
   const activeComments = sortedComments.filter(c => !c.is_deleted);
   const deletedComments = sortedComments.filter(c => c.is_deleted);
 
-  const unreadSignature = activeComments
-    .filter((c) => c.is_read_by_me !== true)
-    .map((c) => c.id)
-    .sort()
-    .join('|');
+  const unreadFromOthers = activeComments.filter(
+    (c) => c.is_read_by_me !== true && c.author_id !== currentUserId,
+  );
 
-  useEffect(() => {
-    if (!autoMarkUnreadOnOpen || !onMarkAsRead || !unreadSignature) return;
-
-    const unreadIds = unreadSignature.split('|');
-    void (async () => {
+  const handleMarkAllAsRead = async () => {
+    if (!onMarkAsRead) return;
+    const unreadIds = activeComments
+      .filter((c) => c.is_read_by_me !== true && c.author_id !== currentUserId)
+      .map((c) => c.id);
+    if (unreadIds.length === 0) return;
+    setMarkAllLoading(true);
+    try {
       for (const commentId of unreadIds) {
-        try {
-          await onMarkAsRead(commentId);
-        } catch {
-          break;
-        }
+        await onMarkAsRead(commentId);
       }
-    })();
-  }, [autoMarkUnreadOnOpen, blockSortOrder, onMarkAsRead, unreadSignature]);
+    } finally {
+      setMarkAllLoading(false);
+    }
+  };
 
   const canEditComment = (comment: BlockComment) =>
     !commentingClosed && canEditOwnBlockComment(currentUserId, comment.author_id);
@@ -506,6 +501,19 @@ export function BlockCommentsCard({
           <p className="text-xs text-text-muted dark:text-text-dark-muted font-bold uppercase tracking-widest text-center">
             Comentarios cerrados
           </p>
+        </div>
+      )}
+
+      {onMarkAsRead && unreadFromOthers.length > 0 && (
+        <div className="px-4 py-2 border-b border-ui-border dark:border-ui-dark-border bg-ui-body/20 dark:bg-ui-dark-bg/30 shrink-0 flex justify-end">
+          <button
+            type="button"
+            onClick={() => void handleMarkAllAsRead()}
+            disabled={markAllLoading}
+            className="text-2xs font-black uppercase tracking-widest text-odoo-purple hover:text-odoo-purple/80 disabled:opacity-40 transition-colors"
+          >
+            {markAllLoading ? t('comments.markAllAsReadLoading') : t('comments.markAllAsRead')}
+          </button>
         </div>
       )}
 

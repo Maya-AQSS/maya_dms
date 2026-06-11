@@ -65,7 +65,11 @@
   "comments": {
     "closePanelAria": "Tancar panell",
     "title": "Comentaris de Revisió",
-    "messagePlaceholder": "Escriu un missatge..."
+    "messagePlaceholder": "Escriu un missatge...",
+    "markAsRead": "Marcar com a llegit",
+    "markAsReadLoading": "Marcant…",
+    "markAllAsRead": "Marcar tots com a llegits",
+    "markAllAsReadLoading": "Marcant tots…"
   },
   "review": {
     "blockDescriptionTitle": "Descripció del Bloc",
