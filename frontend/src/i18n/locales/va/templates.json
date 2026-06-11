@@ -69,7 +69,10 @@
     "markAsRead": "Marcar com a llegit",
     "markAsReadLoading": "Marcant…",
     "markAllAsRead": "Marcar tots com a llegits",
-    "markAllAsReadLoading": "Marcant tots…"
+    "markAllAsReadLoading": "Marcant tots…",
+    "markAllAsReadNone": "No hi ha comentaris pendents de llegir",
+    "markAsReadError": "No s'ha pogut marcar com a llegit.",
+    "markAllAsReadError": "No s'han pogut marcar tots com a llegits."
   },
   "review": {
     "blockDescriptionTitle": "Descripció del Bloc",
