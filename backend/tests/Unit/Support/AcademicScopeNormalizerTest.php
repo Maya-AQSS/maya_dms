@@ -6,8 +6,8 @@ namespace Tests\Unit\Support;
 
 use App\Enums\TemplateVisibilityLevel;
 use App\Repositories\Contracts\AcademicHierarchyRepositoryInterface;
-use App\Support\AcademicScopeNormalizer;
 use App\Support\AcademicScopeContext;
+use App\Support\AcademicScopeNormalizer;
 use Illuminate\Validation\ValidationException;
 use Mockery;
 use Tests\TestCase;

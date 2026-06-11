@@ -110,6 +110,7 @@ final class WeasyPrintRunnerTest extends TestCase
 
         Process::assertRan(function ($process): bool {
             $cmd = $process->command;
+
             // Last two args: stdin='-' and output='-'
             return end($cmd) === '-';
         });
