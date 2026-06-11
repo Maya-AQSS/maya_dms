@@ -9,6 +9,7 @@ use App\DTOs\Versioning\VersionBlockLayerDto;
 use App\Repositories\Contracts\DocumentVersionBlockLayerRepositoryInterface;
 use App\Repositories\Contracts\DocumentVersionRepositoryInterface;
 use App\Services\DocumentVersionBlockLayerResolver;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
 use Mockery;
 use Tests\TestCase;
@@ -262,7 +263,7 @@ final class DocumentVersionBlockLayerResolverTest extends TestCase
             ->with('dv-uuid-1', 'block-1')
             ->andReturn($inheritsLayer);
 
-        $versionRepo->shouldNotReceive('findByDocumentAndVersionNumberAsSnapshot');
+        $versionRepo->shouldNotReceive('findOrFailByDocumentAndVersionNumberAsSnapshot');
 
         $result = $this->makeResolver($versionRepo, $layerRepo)->resolveBlocksSnapshot('dv-uuid-1');
 
@@ -313,7 +314,7 @@ final class DocumentVersionBlockLayerResolverTest extends TestCase
             ->with('dv-uuid-3', 'block-1')
             ->andReturn($inheritsLayer);
 
-        $versionRepo->shouldReceive('findByDocumentAndVersionNumberAsSnapshot')
+        $versionRepo->shouldReceive('findOrFailByDocumentAndVersionNumberAsSnapshot')
             ->once()
             ->with('doc-uuid', 2)
             ->andReturn($parentVersion);
@@ -384,9 +385,9 @@ final class DocumentVersionBlockLayerResolverTest extends TestCase
         $this->assertSame([], $result);
     }
 
-    // ─── inherits + versionNumber > 1, parent returns null → overridePayload ──
+    // ─── inherits + versionNumber > 1, parent ausente → ModelNotFoundException ──
 
-    public function test_effective_block_inherits_parent_null_returns_override_payload(): void
+    public function test_effective_block_inherits_missing_parent_throws(): void
     {
         $version = $this->makeSnapshot(['versionNumber' => 2]);
         $listLayer = $this->makeLayer(['blockId' => 'block-1', 'removed' => false]);
@@ -408,15 +409,15 @@ final class DocumentVersionBlockLayerResolverTest extends TestCase
             ->with('dv-uuid-1', 'block-1')
             ->andReturn($inheritsLayer);
 
-        // Parent lookup returns null (orphaned version)
-        $versionRepo->shouldReceive('findByDocumentAndVersionNumberAsSnapshot')
+        // La versión padre no existe: inconsistencia de datos → la excepción
+        // del repositorio debe aflorar (semántica findOrFail original).
+        $versionRepo->shouldReceive('findOrFailByDocumentAndVersionNumberAsSnapshot')
             ->once()
             ->with('doc-uuid', 1)
-            ->andReturn(null);
+            ->andThrow(new ModelNotFoundException);
 
-        $result = $this->makeResolver($versionRepo, $layerRepo)->resolveBlocksSnapshot('dv-uuid-1');
+        $this->expectException(ModelNotFoundException::class);
 
-        $this->assertCount(1, $result);
-        $this->assertSame('fallback', $result[0]['content']);
+        $this->makeResolver($versionRepo, $layerRepo)->resolveBlocksSnapshot('dv-uuid-1');
     }
 }

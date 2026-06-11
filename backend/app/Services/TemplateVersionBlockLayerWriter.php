@@ -50,7 +50,7 @@ final class TemplateVersionBlockLayerWriter extends AbstractBlockLayerWriter
             return null;
         }
 
-        return $previous->blocksSnapshotRows;
+        return array_values($previous->blocksSnapshotRows);
     }
 
     protected function blockDtoId(mixed $blockDto): string

@@ -77,17 +77,10 @@ final class AcademicScopeNormalizer
                 $normalized['module_id'] = null;
             }
 
-            if ($ctx->strictTemplateIds) {
-                $normalized['study_id'] = $ctx->templateStudyId;
-                $normalized['study_type_id'] = $ctx->templateStudyTypeId;
-            } else {
-                if ($ctx->templateStudyId !== null) {
-                    $normalized['study_id'] = $ctx->templateStudyId;
-                }
-                if ($ctx->templateStudyTypeId !== null) {
-                    $normalized['study_type_id'] = $ctx->templateStudyTypeId;
-                }
-            }
+            // En AMBOS dominios el original escribía estos campos sin guard
+            // (incluso null): el scope Module fija study/study_type del template.
+            $normalized['study_id'] = $ctx->templateStudyId;
+            $normalized['study_type_id'] = $ctx->templateStudyTypeId;
 
             return $normalized;
         }
@@ -115,11 +108,8 @@ final class AcademicScopeNormalizer
                 $normalized['module_id'] = $moduleId;
             }
 
-            if ($ctx->strictTemplateIds) {
-                $normalized['study_type_id'] = $ctx->templateStudyTypeId;
-            } elseif ($ctx->templateStudyTypeId !== null) {
-                $normalized['study_type_id'] = $ctx->templateStudyTypeId;
-            }
+            // Incondicional en ambos dominios en el código original.
+            $normalized['study_type_id'] = $ctx->templateStudyTypeId;
 
             return $normalized;
         }

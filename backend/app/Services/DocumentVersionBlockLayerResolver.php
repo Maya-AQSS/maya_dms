@@ -33,7 +33,9 @@ final class DocumentVersionBlockLayerResolver extends AbstractBlockLayerResolver
 
     protected function loadParentSnapshot(mixed $snapshotDto): ?DocumentVersionSnapshotDto
     {
-        return $this->documentVersionRepository->findByDocumentAndVersionNumberAsSnapshot(
+        // findOrFail: si la versión padre no existe es una inconsistencia de
+        // datos y debe aflorar, no degradar en silencio a override-only.
+        return $this->documentVersionRepository->findOrFailByDocumentAndVersionNumberAsSnapshot(
             $snapshotDto->documentId,
             $snapshotDto->versionNumber - 1,
         );
