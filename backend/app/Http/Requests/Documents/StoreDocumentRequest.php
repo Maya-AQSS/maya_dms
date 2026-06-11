@@ -6,16 +6,20 @@ namespace App\Http\Requests\Documents;
 
 use App\DTOs\Documents\CreateDocumentDto;
 use App\Models\Document;
-use App\Models\EntityVersion;
 use App\Models\JwtUser;
 use App\Models\Template;
+use App\Repositories\Contracts\TemplateRepositoryInterface;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class StoreDocumentRequest extends FormRequest
 {
+    /** @var Template|null|false Cache: null = sin plantilla, false = no inicializado */
+    private Template|false|null $resolvedTemplate = false;
+
     /**
      * Verifica si el usuario puede crear un documento.
      */
@@ -30,18 +34,7 @@ class StoreDocumentRequest extends FormRequest
             return true;
         }
 
-        $template = null;
-        if ($this->filled('template_id')) {
-            $template = Template::query()->find($this->input('template_id'));
-        } elseif ($this->filled('template_version_id')) {
-            $ev = EntityVersion::query()
-                ->whereKey($this->input('template_version_id'))
-                ->where('versionable_type', Template::class)
-                ->first();
-            if ($ev !== null) {
-                $template = Template::query()->find($ev->versionable_id);
-            }
-        }
+        $template = $this->resolveTemplate();
 
         return $template !== null && $user->can('view', $template);
     }
@@ -92,18 +85,7 @@ class StoreDocumentRequest extends FormRequest
                 return;
             }
 
-            $template = null;
-            if ($this->filled('template_id')) {
-                $template = Template::query()->find($this->input('template_id'));
-            } elseif ($this->filled('template_version_id')) {
-                $ev = EntityVersion::query()
-                    ->whereKey($this->input('template_version_id'))
-                    ->where('versionable_type', Template::class)
-                    ->first();
-                if ($ev !== null) {
-                    $template = Template::query()->find($ev->versionable_id);
-                }
-            }
+            $template = $this->resolveTemplate();
 
             if ($template === null) {
                 return;
@@ -119,6 +101,38 @@ class StoreDocumentRequest extends FormRequest
     }
 
     /**
+     * Resuelve la plantilla referenciada (por template_id o template_version_id) exactamente
+     * una vez por request. Devuelve null cuando no hay referencia de plantilla en la petición
+     * o cuando el ID no existe en base de datos.
+     */
+    private function resolveTemplate(): ?Template
+    {
+        if ($this->resolvedTemplate !== false) {
+            return $this->resolvedTemplate;
+        }
+
+        $repo = app(TemplateRepositoryInterface::class);
+
+        if ($this->filled('template_id')) {
+            try {
+                $this->resolvedTemplate = $repo->findOrFailWithoutCatalogScope((string) $this->input('template_id'));
+            } catch (ModelNotFoundException) {
+                $this->resolvedTemplate = null;
+            }
+        } elseif ($this->filled('template_version_id')) {
+            try {
+                $this->resolvedTemplate = $repo->findOrFailByVersionId((string) $this->input('template_version_id'));
+            } catch (ModelNotFoundException) {
+                $this->resolvedTemplate = null;
+            }
+        } else {
+            $this->resolvedTemplate = null;
+        }
+
+        return $this->resolvedTemplate;
+    }
+
+    /**
      * Convierte los datos de la solicitud en un DTO.
      */
     public function toDto(string $createdBy, string $ownerId): CreateDocumentDto
@@ -127,10 +141,7 @@ class StoreDocumentRequest extends FormRequest
         $templateId = $this->validated('template_id');
 
         if (! is_string($templateId) && is_string($templateVersionId)) {
-            $templateId = (string) (EntityVersion::query()
-                ->whereKey($templateVersionId)
-                ->where('versionable_type', Template::class)
-                ->value('versionable_id') ?? '');
+            $templateId = (string) ($this->resolveTemplate()?->id ?? '');
         }
 
         $migratedBlocks = $this->validated('migrated_blocks');

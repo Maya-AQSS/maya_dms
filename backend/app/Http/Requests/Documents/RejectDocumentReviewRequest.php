@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Requests\Documents;
 
 use App\Http\Requests\Documents\Concerns\ResolvesDocumentForAuthorization;
-use App\Models\Comment;
 use App\Models\Document;
+use App\Repositories\Contracts\CommentRepositoryInterface;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -86,11 +86,10 @@ class RejectDocumentReviewRequest extends FormRequest
             return false;
         }
 
-        return Comment::withoutGlobalScopes()
-            ->where('commentable_id', $documentId)
-            ->where('commentable_type', Document::class)
-            ->where('author_id', $userId)
-            ->whereNull('deleted_at')
-            ->exists();
+        return app(CommentRepositoryInterface::class)->authorHasActiveCommentOnCommentable(
+            Document::class,
+            $documentId,
+            $userId,
+        );
     }
 }

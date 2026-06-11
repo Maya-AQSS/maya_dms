@@ -71,4 +71,17 @@ interface CommentRepositoryInterface
      * solo devuelve true si el usuario autenticado puede ver al menos uno.
      */
     public function existsForCommentable(string $commentableType, string $commentableId): bool;
+
+    /**
+     * Indica si el autor indicado tiene al menos un comentario activo (no eliminado) sobre
+     * el recurso comentable. Ignora los scopes globales del modelo para que funcione
+     * también en contextos donde el usuario no es el autenticado actual.
+     *
+     * Semántica exacta: withoutGlobalScopes + author_id + whereNull('deleted_at').
+     */
+    public function authorHasActiveCommentOnCommentable(
+        string $commentableType,
+        string $commentableId,
+        string $authorId,
+    ): bool;
 }

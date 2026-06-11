@@ -187,6 +187,25 @@ class CommentRepository implements CommentRepositoryInterface
     }
 
     /**
+     * Indica si el autor indicado tiene al menos un comentario activo (no eliminado) sobre
+     * el recurso comentable. Ignora los scopes globales del modelo (withoutGlobalScopes),
+     * filtra por author_id y whereNull('deleted_at'), replicando exactamente la query
+     * que usaba RejectDocumentReviewRequest::validatorHasCommented().
+     */
+    public function authorHasActiveCommentOnCommentable(
+        string $commentableType,
+        string $commentableId,
+        string $authorId,
+    ): bool {
+        return Comment::withoutGlobalScopes()
+            ->where('commentable_id', $commentableId)
+            ->where('commentable_type', $commentableType)
+            ->where('author_id', $authorId)
+            ->whereNull('deleted_at')
+            ->exists();
+    }
+
+    /**
      * Enriquece la consulta con `is_read_by_me` para el usuario lector.
      */
     private function applyReaderState(Builder $query, ?string $readerUserId): void

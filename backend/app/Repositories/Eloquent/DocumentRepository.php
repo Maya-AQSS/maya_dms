@@ -1024,6 +1024,7 @@ class DocumentRepository implements DocumentRepositoryInterface
      * Carga los bloques y revisiones del documento para construcción de snapshot.
      *
      * @return array{
+     *     document: \App\Models\Document,
      *     blocks: list<array{id: mixed, template_block_id: mixed, content: mixed, is_filled: bool, sort_order: int, last_edited_by: mixed, locked_by: mixed, locked_at: ?string}>,
      *     reviews: list<array{reviewer_id: string, stage: int|null, status: string}>
      * }
@@ -1057,6 +1058,6 @@ class DocumentRepository implements DocumentRepositoryInterface
             ];
         })->values()->all();
 
-        return ['blocks' => $blocks, 'reviews' => $reviews];
+        return ['document' => $document, 'blocks' => $blocks, 'reviews' => $reviews];
     }
 }

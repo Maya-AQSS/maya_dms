@@ -9,7 +9,6 @@ use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Documents\UpdateDocumentBlockRequest;
 use App\Http\Resources\DocumentBlockResource;
-use App\Repositories\Contracts\DocumentBlockRepositoryInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -21,7 +20,6 @@ class DocumentBlockController extends Controller
 
     public function __construct(
         private readonly DocumentServiceInterface $documentService,
-        private readonly DocumentBlockRepositoryInterface $documentBlockRepository,
     ) {}
 
     /**
@@ -73,9 +71,6 @@ class DocumentBlockController extends Controller
         $this->assertOptionalProcessContextMatches((string) $doc->process_id);
 
         $this->authorize('deleteDocumentBlock', $doc);
-
-        $blockModel = $this->documentBlockRepository->findInDocumentOrFail($block, $document);
-        $blockModel->setRelation('document', $doc);
 
         $this->documentService->deleteOptionalBlock(new DeleteDocumentBlockDto(
             documentId: $document,

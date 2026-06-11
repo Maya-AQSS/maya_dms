@@ -76,9 +76,9 @@ class SnapshotService implements SnapshotServiceInterface
     private function buildDocumentVersionSnapshot(Document $document, int $snapshotVersionNumber): array
     {
         $documentId = (string) $document->id;
-        $document = $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
 
         $data = $this->documentRepository->loadBlocksAndReviewsData($documentId);
+        $document = $data['document'];
 
         $lifecycle = $this->snapshotDocumentLifecycleIso8601($document);
 
