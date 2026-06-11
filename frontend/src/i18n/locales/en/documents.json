@@ -181,7 +181,15 @@
     "viewBlockDescriptionTitle": "View block description",
     "unresolvedCommentsBlocked": "You cannot submit for validation while there are unresolved review comments",
     "createNewVersionTitle": "Create new version?",
-    "draftAlreadyExistsTitle": "A draft version already exists",
+    "draftAlreadyExistsTitle": "New version unavailable",
+    "draftAlreadyExistsDescription": "You cannot create a new version of this document because {{author}} is already working on one.",
+    "draftAlreadyExistsDuration_minutes_one": "They have been working on the draft for {{count}} minute.",
+    "draftAlreadyExistsDuration_minutes_other": "They have been working on the draft for {{count}} minutes.",
+    "draftAlreadyExistsDuration_hours_one": "They have been working on the draft for {{count}} hour.",
+    "draftAlreadyExistsDuration_hours_other": "They have been working on the draft for {{count}} hours.",
+    "draftAlreadyExistsDuration_days_one": "They have been working on the draft for {{count}} day.",
+    "draftAlreadyExistsDuration_days_other": "They have been working on the draft for {{count}} days.",
+    "draftAlreadyExistsUnknownAuthor": "another user",
     "discardNewVersionTitle": "Discard new version?"
   },
   "fields": {

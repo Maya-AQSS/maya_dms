@@ -7,6 +7,7 @@ import type {
   TemplateVisibilityLevel,
 } from '../types/templates';
 import { apiFetchJson, apiGetJson, buildApiUrl, getBearerToken, ApiHttpError } from './http';
+import { postNewVersion } from './newVersion';
 import { fetchAllPaginatedPages, normalizePaginatedResponse } from './paginatedList';
 
 /**
@@ -305,7 +306,7 @@ export async function cloneTemplate(id: string): Promise<{ data: Template }> {
 
 /** POST /api/v1/templates/{id}/new-version — publicada → borrador (misma plantilla). */
 export async function startTemplateNewVersion(id: string): Promise<{ data: Template }> {
-  return apiFetchJson<{ data: Template }>(`templates/${id}/new-version`, { method: 'POST', body: {} });
+  return postNewVersion<{ data: Template }>(`templates/${id}/new-version`);
 }
 
 /** DELETE /api/v1/templates/{id}/versions/{versionId} — descarta borrador/en revisión y restaura última publicada. */

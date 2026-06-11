@@ -1,5 +1,6 @@
 import type { Document, DocumentDetail } from '../types/documents';
 import { apiFetchJson, apiGetJson, buildApiUrl, getBearerToken, ApiHttpError } from './http';
+import { postNewVersion } from './newVersion';
 import { fetchAllPaginatedPages, normalizePaginatedResponse } from './paginatedList';
 import {
   migrationPayloadSchema,
@@ -388,9 +389,8 @@ export async function submitDocumentForReview(documentId: string, changelog: str
 
 /** POST /api/v1/documents/{id}/new-version — publicado → borrador (mismo expediente). */
 export async function startDocumentNewVersion(documentId: string): Promise<DocumentDetail> {
-  const body = await apiFetchJson<DocumentDetailApiResponse>(
+  const body = await postNewVersion<DocumentDetailApiResponse>(
     `documents/${encodeURIComponent(documentId)}/new-version`,
-    { method: 'POST', body: {} },
   );
   return body.data;
 }

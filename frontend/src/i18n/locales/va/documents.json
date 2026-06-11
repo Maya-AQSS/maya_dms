@@ -180,7 +180,15 @@
     "viewBlockDescriptionTitle": "Veure descripció del bloc",
     "unresolvedCommentsBlocked": "No pots enviar a validar mentre hi hagi comentaris de revisió sense resoldre",
     "createNewVersionTitle": "Crear nova versió?",
-    "draftAlreadyExistsTitle": "Ja existeix una versió en esborrany",
+    "draftAlreadyExistsTitle": "Nova versió no disponible",
+    "draftAlreadyExistsDescription": "No pots crear una nova versió d'aquest document perquè {{author}} n'està realitzant una.",
+    "draftAlreadyExistsDuration_minutes_one": "Porta {{count}} minut treballant en l'esborrany.",
+    "draftAlreadyExistsDuration_minutes_other": "Porta {{count}} minuts treballant en l'esborrany.",
+    "draftAlreadyExistsDuration_hours_one": "Porta {{count}} hora treballant en l'esborrany.",
+    "draftAlreadyExistsDuration_hours_other": "Porta {{count}} hores treballant en l'esborrany.",
+    "draftAlreadyExistsDuration_days_one": "Porta {{count}} dia treballant en l'esborrany.",
+    "draftAlreadyExistsDuration_days_other": "Porta {{count}} dies treballant en l'esborrany.",
+    "draftAlreadyExistsUnknownAuthor": "un altre usuari",
     "discardNewVersionTitle": "Descartar nova versió?"
   },
   "fields": {
