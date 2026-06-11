@@ -90,6 +90,7 @@ import { BlockListItem } from '../../blocks-ui/BlockListItem';
 import { getCommentsForBlock, countUnreadCommentsForBlock, resolveCommentBlockableId } from '../../../utils/blockComments';
 import { markCommentAsReadInDocumentCache, markCommentDeletedInDocumentCache, markBlockCommentsAsReadInDocumentCache } from '../../comments/commentCache';
 import { uploadMedia } from '../../../api/media';
+import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
 
 const BlockNoteEditorPanel = lazy(() =>
   import('../../templates/components/BlockNoteEditorPanel').then(
@@ -126,7 +127,6 @@ import {
   type ReviewerView,
   DOCUMENT_STATUS_LABELS,
   dateIsoToInput,
-  blockEditorContent,
   validationSuccessBannerMessage,
   effectiveDocumentReviewMode,
   pickActionableDocumentReview,
@@ -1102,7 +1102,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
     );
     if (!block) return;
 
-    const editorBaseline = blockEditorContent(block);
+    const editorBaseline = normalizeBlockContentForEditor(block.content);
     applyLocalContent(editorBaseline);
     // Misma base que muestra el editor (content persistido o default_content de plantilla).
     lastSavedContentRef.current = editorBaseline;
@@ -2472,7 +2472,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                               key={activeBlockKey ?? 'none'}
                             >
                               <BlockNoteEditorPanel
-                                initialContent={blockEditorContent(activeBlock)}
+                                initialContent={normalizeBlockContentForEditor(activeBlock.content)}
                                 editable
                                 isDark={isDark}
                                 onChange={handleDocumentContentChange}
@@ -2492,7 +2492,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                             if (isStructuralBlockType(activeBlock.block_type)) {
                               return <StructuralBlockPreview block={activeBlock} allBlocks={sortedBlocks} />;
                             }
-                            const nodes = blockEditorContent(activeBlock);
+                            const nodes = normalizeBlockContentForEditor(activeBlock.content);
                             const hasNodes = nodes.length > 0;
                             return hasNodes ? (
                               <BlockContentHtml content={nodes} />
@@ -2723,7 +2723,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                     {selectedSummaryBlock ? (
                       summaryBlockTab === 'content' ? (
                         (() => {
-                          const nodes = blockEditorContent(selectedSummaryBlock);
+                          const nodes = normalizeBlockContentForEditor(selectedSummaryBlock.content);
                           const hasNodes = nodes.length > 0;
                           return hasNodes ? (
                             <BlockContentHtml content={nodes} />

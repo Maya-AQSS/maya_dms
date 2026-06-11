@@ -4,7 +4,7 @@ import type { DocumentDisplayBlock } from '../../../types/documents';
 import { PaperBlocksArticle, type PaperArticleBlock } from './PaperBlocksArticle';
 import { BlockContentHtml } from '../../templates/components/BlockContentHtml';
 import { StructuralBlockPreview, isStructuralBlockType } from './StructuralBlockPreview';
-import { blockEditorContent } from './documentWizardUtils';
+import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
 import { blockToUiState } from '../../templates/blockUiState';
 import type { SaveStatus } from '@ceedcv-maya/shared-hooks-react';
 import type { TiptapDoc } from '@ceedcv-maya/shared-editor-react';
@@ -112,7 +112,7 @@ export function ContinuousDocumentEditor({
         title: b.title,
         mandatory: b.mandatory,
         isLocked: blockToUiState(b) === 'locked',
-        nodes: blockEditorContent(b),
+        nodes: normalizeBlockContentForEditor(b.content),
       })),
     [blocks],
   );
@@ -138,7 +138,7 @@ export function ContinuousDocumentEditor({
           key={`${block.id}-editor`}
         >
           <BlockNoteEditorPanel
-            initialContent={blockEditorContent(original)}
+            initialContent={normalizeBlockContentForEditor(original.content)}
             editable
             isDark={isDark}
             onChange={onContentChange}
@@ -287,7 +287,7 @@ export function ContinuousDocumentEditor({
                       )
                 )
               : (() => {
-                  const nodes = blockEditorContent(original);
+                  const nodes = normalizeBlockContentForEditor(original.content);
                   return nodes.length > 0 ? (
                     <BlockContentHtml content={nodes} />
                   ) : (
