@@ -13,13 +13,13 @@ class CommentReadRepository implements CommentReadRepositoryInterface
     /**
      * Marca un comentario como leído para el usuario (idempotente).
      */
-    public function markAsRead(string $commentId, string $userId): void
+    public function markAsRead(string $commentId, string $userId): bool
     {
-        DB::table('comment_reads')->insertOrIgnore([
+        return DB::table('comment_reads')->insertOrIgnore([
             'user_id' => $userId,
             'comment_id' => $commentId,
             'read_at' => now(),
-        ]);
+        ]) > 0;
     }
 
     /**

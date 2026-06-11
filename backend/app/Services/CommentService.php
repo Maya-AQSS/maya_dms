@@ -5,6 +5,11 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DTOs\Comments\CommentDto;
+use App\Events\BlockCommentCreated;
+use App\Events\BlockCommentDeleted;
+use App\Events\BlockCommentMarkedRead;
+use App\Events\BlockCommentsMarkedRead;
+use App\Events\BlockCommentUpdated;
 use App\Models\Comment;
 use App\Models\Document;
 use App\Models\DocumentBlock;
@@ -104,24 +109,39 @@ class CommentService implements CommentServiceInterface
             'body' => $body,
         ]);
 
+        BlockCommentCreated::dispatch($comment, $authorId);
+
         return $this->findOrFail((string) $comment->id, $authorId);
     }
 
     public function update(string $commentId, string $body, string $editedBy, ?string $readerUserId = null): CommentDto
     {
-        $this->commentRepository->update($commentId, $body, $editedBy);
+        $before = $this->commentRepository->findOrFail($commentId);
+        $previousBody = (string) $before->body;
+
+        $comment = $this->commentRepository->update($commentId, $body, $editedBy);
+
+        BlockCommentUpdated::dispatch($comment, $editedBy, $previousBody);
 
         return $this->findOrFail($commentId, $readerUserId);
     }
 
     public function delete(string $commentId, string $deletedBy, string $deletedByName): void
     {
+        $comment = $this->commentRepository->findOrFail($commentId);
+
         $this->commentRepository->delete($commentId, $deletedBy, $deletedByName);
+
+        BlockCommentDeleted::dispatch($comment, $deletedBy);
     }
 
     public function markAsRead(string $commentId, string $userId): CommentDto
     {
-        $this->commentReadRepository->markAsRead($commentId, $userId);
+        $comment = $this->commentRepository->findOrFail($commentId, $userId);
+
+        if ($this->commentReadRepository->markAsRead($commentId, $userId)) {
+            BlockCommentMarkedRead::dispatch($comment, $userId);
+        }
 
         return $this->findOrFail($commentId, $userId);
     }
@@ -162,7 +182,7 @@ class CommentService implements CommentServiceInterface
             $blockableId,
         );
 
-        $this->commentReadRepository->markBlockAsRead(
+        $markedCount = $this->commentReadRepository->markBlockAsRead(
             $userId,
             $commentableType,
             $commentableId,
@@ -170,6 +190,18 @@ class CommentService implements CommentServiceInterface
             $blockableType,
             $blockableId,
         );
+
+        if ($markedCount > 0) {
+            BlockCommentsMarkedRead::dispatch(
+                commentableType: $commentableType,
+                commentableId: $commentableId,
+                commentableVersion: $commentableVersion,
+                blockableType: $blockableType,
+                blockableId: $blockableId,
+                readerUserId: $userId,
+                markedCount: $markedCount,
+            );
+        }
 
         return $this->commentRepository
             ->listForBlock(

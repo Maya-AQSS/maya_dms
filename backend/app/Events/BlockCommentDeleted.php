@@ -1,0 +1,35 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Events;
+
+use App\Models\Comment;
+use App\Support\CommentAuditPayload;
+use Illuminate\Foundation\Events\Dispatchable;
+use Maya\Messaging\Contracts\AuditableEvent;
+
+class BlockCommentDeleted implements AuditableEvent
+{
+    use Dispatchable;
+
+    public function __construct(
+        public readonly Comment $comment,
+        public readonly string $actorId,
+    ) {}
+
+    public function toAuditPayload(): array
+    {
+        return [
+            'applicationSlug' => 'maya-dms',
+            'entityType' => CommentAuditPayload::entityTypeFor($this->comment),
+            'entityId' => (string) $this->comment->commentable_id,
+            'action' => 'comment_deleted',
+            'userId' => $this->actorId,
+            'blockId' => $this->comment->blockable_id !== null
+                ? (string) $this->comment->blockable_id
+                : null,
+            'previousValue' => CommentAuditPayload::snapshot($this->comment),
+        ];
+    }
+}
