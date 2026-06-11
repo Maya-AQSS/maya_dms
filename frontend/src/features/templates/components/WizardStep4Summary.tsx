@@ -7,6 +7,8 @@ import { BLOCK_UI_STATE_CONFIG, blockToUiState } from '../blockUiState';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
 import { TemplatePreviewModal } from './TemplatePreviewModal';
 import { BlockContentHtml } from './BlockContentHtml';
+import { normalizeBlockContentForEditor } from '../../documents/lib/normalizeBlockContent';
+import { StructuralBlockPreview, isStructuralBlockType } from '../../documents/components/StructuralBlockPreview';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -262,21 +264,24 @@ export function WizardStep4Summary({
               {/* Contenido del tab */}
               <div className="flex-1 min-h-0 p-4 overflow-y-auto">
                 {(() => {
-                  const content = activeTab === 'Descripción' ? selectedBlock?.description : selectedBlock?.default_content;
-                  if (!content) return <span className="text-xs text-text-muted italic">{activeTab === 'Descripción' ? 'Sin descripción.' : 'Este bloque no tiene contenido.'}</span>;
-
-                  let parsed: unknown[] | null = null;
-                  if (Array.isArray(content)) {
-                    if (content.length > 0) parsed = content;
-                  } else if (typeof content === 'string') {
-                    try {
-                      const p = JSON.parse(content);
-                      if (Array.isArray(p) && p.length > 0) parsed = p;
-                    } catch { /* fallback to plain text */ }
+                  // Bloques estructurales (portada/índice/blanco) no tienen cuerpo Tiptap.
+                  if (activeTab === 'Contenido' && selectedBlock && isStructuralBlockType(selectedBlock.block_type)) {
+                    return <StructuralBlockPreview block={selectedBlock} allBlocks={blocks} />;
                   }
 
-                  if (parsed) return <BlockContentHtml content={parsed} />;
-                  if (typeof content === 'string') return <p className="text-xs text-text-secondary dark:text-text-dark-secondary leading-relaxed">{content}</p>;
+                  const raw = activeTab === 'Descripción' ? selectedBlock?.description : selectedBlock?.default_content;
+                  if (!raw) return <span className="text-xs text-text-muted italic">{activeTab === 'Descripción' ? 'Sin descripción.' : 'Este bloque no tiene contenido.'}</span>;
+
+                  // Acepta las 3 formas: array de nodos, doc Tiptap {type:'doc'} y JSON serializado.
+                  let value: unknown = raw;
+                  if (typeof value === 'string') {
+                    try { value = JSON.parse(value); } catch { /* texto plano */ }
+                  }
+                  const nodes = normalizeBlockContentForEditor(value);
+                  if (nodes.length > 0) return <BlockContentHtml content={nodes} />;
+                  if (typeof raw === 'string' && raw.trim() !== '') {
+                    return <p className="text-xs text-text-secondary dark:text-text-dark-secondary leading-relaxed">{raw}</p>;
+                  }
 
                   return <span className="text-xs text-text-muted italic">{activeTab === 'Descripción' ? 'Sin descripción.' : 'Este bloque no tiene contenido.'}</span>;
                 })()}
