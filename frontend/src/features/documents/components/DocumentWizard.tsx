@@ -43,7 +43,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { refreshDmsDashboardQuery } from '../../dashboard/hooks/useDmsDashboard';
 import { ApiHttpError, apiFetchJson } from '../../../api/http';
 import { useUserProfile } from '../../user-profile';
-import { canDeleteBlockComment } from '../../../permissions';
+import { canCommentOnDocument, canDeleteBlockComment } from '../../../permissions';
 import { useProcessesQuery } from '../../../hooks/useProcesses';
 import { fetchTemplate } from '../../../api/templates';
 import { useDocumentCommentsQuery } from '../hooks/useDocumentComments';
@@ -2196,7 +2196,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                               commentLoading={documentCommentLoading}
                               submitError={documentCommentSubmitError}
                               onClose={() => setShowDocumentCommentPanel(false)}
-                              canAddComments={detail?.status !== 'published'}
+                              canAddComments={canCommentOnDocument(detail?.status)}
                               currentUserId={currentUserId ?? undefined}
                               canDeleteAnyComment={canDeleteBlockComment(hasPermission)}
                               onEditComment={handleDocumentCommentEdit}
@@ -2425,7 +2425,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                             {isSaving && (
                               <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 dark:bg-ui-dark-card/70">
                                 <div className="flex items-center gap-2">
-                                  <div className="h-5 w-5 rounded-full border-2 border-gray-300 border-t-purple-800 animate-spin" />
+                                  <Spinner size="md" />
                                   <span>Guardando cambios...</span>
                                 </div>
                               </div>
@@ -2496,7 +2496,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                 commentLoading={documentCommentLoading}
                 submitError={documentCommentSubmitError}
                 onClose={() => setShowDocumentCommentPanel(false)}
-                canAddComments={detail?.status !== 'published'}
+                canAddComments={canCommentOnDocument(detail?.status)}
                 currentUserId={currentUserId ?? undefined}
                 canDeleteAnyComment={canDeleteBlockComment(hasPermission)}
                 onEditComment={handleDocumentCommentEdit}

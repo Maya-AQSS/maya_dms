@@ -45,7 +45,7 @@ import {
 } from '../../../utils/blockComments';
 import { appendCommentToTemplateCache, patchTemplateCommentCache, markCommentAsReadInTemplateCache, markCommentDeletedInTemplateCache, markBlockCommentsAsReadInTemplateCache } from '../../comments/commentCache';
 import { useUserProfile } from '../../user-profile';
-import { canCreateBlockComment, canDeleteBlockComment } from '../../../permissions';
+import { canCommentOnDocument, canCreateBlockComment, canDeleteBlockComment } from '../../../permissions';
 import { useQueryClient } from '@tanstack/react-query';
 
 const BlockNoteEditorPanel = lazy(() =>
@@ -1206,7 +1206,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                           {isSaving && (
                             <div className="p-4 flex items-center justify-center min-h-[100px]">
                               <div className="flex items-center gap-2">
-                                <div className="h-5 w-5 rounded-full border-2 border-gray-300 border-t-purple-800 animate-spin" />
+                                <Spinner size="md" />
                                 <span>Guardando cambios...</span>
                               </div>
                             </div>
@@ -1284,7 +1284,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
             commentLoading={commentSubmitLoading}
             submitError={commentSubmitError}
             onClose={() => setShowCommentPanel(false)}
-            canAddComments={template.status !== 'published' && mayComment}
+            canAddComments={canCommentOnDocument(template.status) && mayComment}
             currentUserId={profile?.id}
             canDeleteAnyComment={canDeleteBlockComment(hasPermission)}
             onEditComment={handleEditComment}

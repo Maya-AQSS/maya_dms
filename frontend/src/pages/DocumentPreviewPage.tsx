@@ -37,7 +37,7 @@ import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { refreshDmsDashboardQuery } from '../features/dashboard/hooks/useDmsDashboard';
 import { useUserProfile } from '../features/user-profile';
-import { canCreateBlockComment, canDeleteBlockComment, DMS_PERMISSIONS } from '../permissions';
+import { canCommentOnDocument, canCreateBlockComment, canDeleteBlockComment, DMS_PERMISSIONS } from '../permissions';
 import { useDocumentVersionSummariesQuery } from '../features/documents/hooks/useDocumentVersionSummaries';
 import {
   canDeleteUnpublishedEntity,
@@ -1013,7 +1013,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                         onSendMessage={handleValidateSendMessage}
                         commentLoading={validateCommentLoading}
                         submitError={validateCommentSubmitError}
-                        canAddComments={isDocumentReviewer && !isPublished}
+                        canAddComments={isDocumentReviewer && canCommentOnDocument(detail?.status)}
                         headerRef={validateViewHeaderRef}
                         onClose={() => setValidateActiveView(null)}
                         currentUserId={profile?.id}
@@ -1298,7 +1298,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                 headerRef={pageHeaderRef}
                 canAddComments={
                   !isHistoricalSnapshot &&
-                  !isPublished &&
+                  canCommentOnDocument(detail?.status) &&
                   canCreateBlockComment(hasPermission) &&
                   (isCreator || isOwner || isDocumentReviewer)
                 }

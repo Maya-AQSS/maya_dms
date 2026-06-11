@@ -19,7 +19,7 @@ import type { User } from '../../../types/users';
 import { searchDocumentReviewerCandidates, searchTemplateReviewerCandidates, type ReviewerCandidateAcademicContext } from '../../../api/users';
 import { useUserProfile } from '../../../features/user-profile';
 import { DMS_PERMISSIONS } from '../../../permissions';
-import { Button, TextInput } from '@ceedcv-maya/shared-ui-react';
+import { ConfirmDialog, TextInput } from '@ceedcv-maya/shared-ui-react';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -212,53 +212,23 @@ function ValidatorSection({
         </p>
       )}
 
-      {confirmDelete !== null && !readOnly && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-in fade-in"
-          onClick={(e) => { if (e.target === e.currentTarget) setConfirmDelete(null); }}
-        >
-          <div className="bg-white dark:bg-ui-dark-card rounded-xl shadow-xl p-6 max-w-sm mx-4 w-full animate-in zoom-in-95">
-            <div className="flex justify-center mb-4">
-              <span className="flex items-center justify-center w-14 h-14 rounded-full bg-danger/10 text-danger">
-                <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </span>
-            </div>
-            <h2 className="text-base font-bold text-text-primary dark:text-text-dark-primary text-center mb-2">
-              ¿Eliminar a {pendingValidator?.name ?? 'este validador'}?
-            </h2>
-            <p className="text-xs text-text-secondary dark:text-text-dark-secondary text-center mb-4">
-              Estás a punto de eliminar este validador de la plantilla.
+      <ConfirmDialog
+        open={confirmDelete !== null && !readOnly}
+        title={`¿Eliminar a ${pendingValidator?.name ?? 'este validador'}?`}
+        description={
+          <>
+            <p>Estás a punto de eliminar este validador de la plantilla.</p>
+            <p className="mt-3 font-bold text-danger-dark">
+              Esta acción es irreversible y no se puede deshacer.
             </p>
-            <div className="p-3 bg-danger/5 border border-danger/20 rounded-lg mb-5">
-              <p className="text-xs text-danger-dark font-bold text-center">
-                Esta acción es irreversible y no se puede deshacer.
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <Button
-                type="button"
-                variant="secondary"
-                size="md"
-                className="flex-1"
-                onClick={() => setConfirmDelete(null)}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="button"
-                variant="danger"
-                size="md"
-                className="flex-1"
-                onClick={handleConfirmRemove}
-              >
-                Eliminar definitivamente
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+          </>
+        }
+        confirmLabel="Eliminar definitivamente"
+        cancelLabel="Cancelar"
+        variant="danger"
+        onConfirm={handleConfirmRemove}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }

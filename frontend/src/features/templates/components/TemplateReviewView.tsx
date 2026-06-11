@@ -18,7 +18,7 @@ import { SubmissionChangelogReadonly } from '../../../components/VersionChangelo
 import { Button, ConfirmDialog } from '@ceedcv-maya/shared-ui-react';
 import { approveTemplateReview, rejectTemplateReview } from '../../../api/templates';
 import { refreshDmsDashboardQuery } from '../../dashboard/hooks/useDmsDashboard';
-import { canCreateBlockComment, canDeleteBlockComment, DMS_PERMISSIONS } from '../../../permissions';
+import { canCommentOnDocument, canCreateBlockComment, canDeleteBlockComment, DMS_PERMISSIONS } from '../../../permissions';
 import { apiFetchJson, ApiHttpError } from '../../../api/http';
 import { useUserProfile } from '../../user-profile';
 import { useProcessesQuery } from '../../../hooks/useProcesses';
@@ -473,7 +473,7 @@ export function TemplateReviewView({ template }: Props) {
                   commentLoading={commentLoading}
                   submitError={commentSubmitError}
                   canAddComments={
-                    template.status !== 'published' &&
+                    canCommentOnDocument(template.status) &&
                     canCreateBlockComment(hasPermission) &&
                     (isCreator || (isReviewer && template.status === 'in_review'))
                   }
