@@ -157,6 +157,11 @@ Route::prefix('v1')->group(function () {
         Route::match(['put', 'patch', 'delete'], 'template-versions/{template_version}', fn () => abort(403, 'Los snapshots de plantilla son de solo inserción (append-only).'))
             ->whereUuid('template_version');
 
+        // Export PDF de una versión histórica de plantilla (síncrono, bajo demanda). Gate viewHistory.
+        Route::get('templates/{template}/versions/{version}/pdf', [TemplateVersionController::class, 'downloadVersion'])
+            ->whereUuid('template')
+            ->whereUuid('version');
+
         // Documentos — lookups y opciones (DocumentOptionsController)
         Route::get('documents/creation-options', [DocumentOptionsController::class, 'creationOptions']);
         Route::post('documents/create-from-module', [DocumentOptionsController::class, 'createFromModule']);
@@ -195,11 +200,7 @@ Route::prefix('v1')->group(function () {
         Route::get('documents/{document}/preview', [DocumentPreviewController::class, 'show'])
             ->whereUuid('document');
 
-        // Export a PDF/UA via WeasyPrint (async, encolado en RabbitMQ/Redis).
-        Route::post('documents/{document}/export-pdf', [DocumentExportController::class, 'start'])
-            ->whereUuid('document');
-        Route::get('documents/{document}/export-status', [DocumentExportController::class, 'status'])
-            ->whereUuid('document');
+        // Export a PDF/UA via WeasyPrint (síncrono, bajo demanda, efímero).
         Route::get('documents/{document}/pdf', [DocumentExportController::class, 'download'])
             ->whereUuid('document');
 
@@ -218,13 +219,7 @@ Route::prefix('v1')->group(function () {
             ->whereUuid('document')
             ->whereUuid('version');
 
-        // Export PDF de una versión histórica (snapshot congelado). Gate viewHistory.
-        Route::post('documents/{document}/versions/{version}/export-pdf', [DocumentExportController::class, 'startVersion'])
-            ->whereUuid('document')
-            ->whereUuid('version');
-        Route::get('documents/{document}/versions/{version}/export-status', [DocumentExportController::class, 'statusVersion'])
-            ->whereUuid('document')
-            ->whereUuid('version');
+        // Export PDF de una versión histórica (síncrono, bajo demanda). Gate viewHistory.
         Route::get('documents/{document}/versions/{version}/pdf', [DocumentExportController::class, 'downloadVersion'])
             ->whereUuid('document')
             ->whereUuid('version');

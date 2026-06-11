@@ -379,3 +379,44 @@ export async function rejectTemplateReview(id: string): Promise<{ data: Template
   });
 }
 
+/**
+ * GET /api/v1/templates/{id}/versions/{versionId}/pdf — descarga binaria autenticada
+ * del PDF de una versión histórica publicada. Mismo patrón que downloadTemplatePdf
+ * y downloadDocumentPdf (fetch + blob + <a> sintético).
+ */
+export async function downloadTemplateVersionPdf(
+  templateId: string,
+  versionId: string,
+  filename: string,
+): Promise<void> {
+  const token = await getBearerToken();
+  const response = await fetch(
+    buildApiUrl(
+      `templates/${encodeURIComponent(templateId)}/versions/${encodeURIComponent(versionId)}/pdf`,
+    ),
+    { headers: token ? { Authorization: `Bearer ${token}` } : undefined },
+  );
+  if (!response.ok) {
+    let message = response.statusText;
+    try {
+      const body = (await response.json()) as { message?: string };
+      if (body?.message) message = body.message;
+    } catch {
+      /* keep statusText */
+    }
+    throw new ApiHttpError(message, response.status);
+  }
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  try {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+

@@ -8,6 +8,7 @@ import { VersionComparePanel, type CompareVersionOption } from './VersionCompare
 import { ApiHttpError } from '../api/http';
 import type { DocumentVersionSummary } from '../api/documents';
 import type { TemplateVersionSummary } from '../api/templates';
+import { downloadTemplateVersionPdf } from '../api/templates';
 import { useDocumentVersionSummariesQuery } from '../features/documents/hooks/useDocumentVersionSummaries';
 import { useTemplateVersionSummariesQuery } from '../features/templates/hooks/useTemplateVersionSummaries';
 
@@ -142,6 +143,28 @@ export function VersionHistoryPanel({
   useEffect(() => {
     if (!open) setView('list');
   }, [open]);
+
+  const [downloadingVersionId, setDownloadingVersionId] = useState<string | null>(null);
+
+  async function handleDownloadTemplateVersionPdf(
+    e: React.MouseEvent,
+    row: TemplateVersionSummary,
+  ) {
+    e.stopPropagation();
+    if (downloadingVersionId) return;
+    setDownloadingVersionId(row.id);
+    try {
+      await downloadTemplateVersionPdf(
+        entityId,
+        row.id,
+        `plantilla-v${row.version_number}.pdf`,
+      );
+    } catch {
+      /* errors surfaced via the browser — no inline UI needed */
+    } finally {
+      setDownloadingVersionId(null);
+    }
+  }
 
   const versionOptions = useMemo<CompareVersionOption[]>(
     () =>
@@ -299,7 +322,31 @@ export function VersionHistoryPanel({
                       ) : null}
                     </div>
 
-                    <div className="mt-2.5 flex justify-end">
+                    <div className="mt-2.5 flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={(e) => handleDownloadTemplateVersionPdf(e, row)}
+                        disabled={downloadingVersionId === row.id}
+                        aria-label={`Descargar PDF versión ${row.version_number}`}
+                        className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded border border-ui-border dark:border-ui-dark-border text-text-muted dark:text-text-dark-muted hover:border-primary/40 hover:text-primary dark:hover:text-primary-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {downloadingVersionId === row.id ? (
+                          <>
+                            <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                            </svg>
+                            Generando…
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v3a1 1 0 001 1h16a1 1 0 001-1v-3" />
+                            </svg>
+                            PDF
+                          </>
+                        )}
+                      </button>
                       <span className="text-[10px] font-semibold text-primary/40 dark:text-primary-light/40 group-hover:text-primary dark:group-hover:text-primary-light transition-colors uppercase tracking-wider">
                         Ver versión →
                       </span>

@@ -38,4 +38,17 @@ class TemplatePdfService implements TemplatePdfServiceInterface
             'de la plantilla '.$templateId,
         );
     }
+
+    public function generateForVersion(string $templateId, string $versionId): string
+    {
+        // previewMode=false: HTML plano para WeasyPrint (sin paged.js).
+        $html = $this->renderer->renderHtmlForVersion($templateId, $versionId, previewMode: false);
+
+        return $this->runner->run(
+            $html,
+            self::PROCESS_TIMEOUT,
+            '-',
+            'de la plantilla '.$templateId.' versión '.$versionId,
+        );
+    }
 }

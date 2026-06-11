@@ -18,4 +18,19 @@ interface TemplateRenderServiceInterface
      * Lanza NotFoundHttpException si la plantilla no existe o no es visible.
      */
     public function renderHtml(string $templateId, bool $previewMode = false): string;
+
+    /**
+     * Renderiza el HTML de una versión histórica de la plantilla a partir del
+     * contenido CONGELADO en su snapshot. Reconstruye los bloques vía
+     * TemplateVersionBlockLayerResolver (misma lógica que el historial de versiones)
+     * y los renderiza con el mismo pipeline que renderHtml. Los bloques ausentes del
+     * snapshot no se incluyen (el snapshot define la estructura de esa versión).
+     *
+     * @param  string  $templateId  UUID de la plantilla.
+     * @param  string  $versionId  UUID del entity_version publicado.
+     * @param  bool  $previewMode  true → carga paged.js (preview en navegador).
+     *
+     * Lanza NotFoundHttpException si la plantilla o la versión no existen.
+     */
+    public function renderHtmlForVersion(string $templateId, string $versionId, bool $previewMode = false): string;
 }
