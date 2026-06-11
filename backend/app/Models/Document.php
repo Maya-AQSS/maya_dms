@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\Concerns\HasAcademicOverlapScope;
 use App\Models\Concerns\HasCommentingStatus;
+use App\Models\Concerns\HasEntityVersionHead;
 use App\Observers\DocumentObserver;
 use App\Support\DocumentHeadSnapshot;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
@@ -20,7 +22,6 @@ use Illuminate\Database\Query\Expression;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 /**
  * Ancla en proceso/plantilla; metadatos de título, ámbito, titularidad y estado del ciclo en la versión cabezal ({@see EntityVersion}, número 0).
@@ -28,7 +29,7 @@ use Illuminate\Support\Str;
 #[ObservedBy(DocumentObserver::class)]
 class Document extends Model
 {
-    use HasCommentingStatus, HasUuids, SoftDeletes;
+    use HasAcademicOverlapScope, HasCommentingStatus, HasEntityVersionHead, HasUuids, SoftDeletes;
 
     /**
      * Visibilidad efectiva (SQL):
@@ -106,80 +107,36 @@ class Document extends Model
             });
         });
 
-        static::creating(function (Document $document): void {
-            if ($document->head_entity_version_id !== null) {
-                foreach (DocumentHeadSnapshot::DELEGATED_ATTRIBUTES as $attr) {
-                    if (array_key_exists($attr, $document->getAttributes())) {
-                        $document->offsetUnset($attr);
-                    }
-                }
+        static::registerEntityVersionHeadHook();
+    }
 
-                return;
-            }
+    protected static function delegatedAttributes(): array
+    {
+        return DocumentHeadSnapshot::DELEGATED_ATTRIBUTES;
+    }
 
-            $attrs = $document->getAttributes();
-            $hasDelegated = false;
-            foreach (DocumentHeadSnapshot::DELEGATED_ATTRIBUTES as $attr) {
-                if (array_key_exists($attr, $attrs)) {
-                    $hasDelegated = true;
-                    break;
-                }
-            }
+    protected static function buildHeadSnapshot(array $row, string $modelId, string $processId): array
+    {
+        $templateId = (string) ($row['template_id'] ?? '');
 
-            if (! $hasDelegated) {
-                return;
-            }
+        return DocumentHeadSnapshot::buildPayloadFromLegacyRow($row, $modelId, $processId, $templateId);
+    }
 
-            if (empty($document->process_id)) {
-                $document->process_id = Process::query()->value('id') ?? '00000000-0000-0000-0000-000000000001';
-            }
-            if (empty($document->template_id)) {
-                throw new \RuntimeException('Documento sin template_id.');
-            }
+    protected static function snapshotCreatedByKey(): array
+    {
+        return ['document', 'created_by'];
+    }
 
-            $row = $document->getAttributes();
-            $documentId = (string) $document->getKey();
-            $snapshot = DocumentHeadSnapshot::buildPayloadFromLegacyRow(
-                $row,
-                $documentId,
-                (string) $document->process_id,
-                (string) $document->template_id,
-            );
+    protected static function validateBeforeHeadSnapshot(self $model): void
+    {
+        if (empty($model->template_id)) {
+            throw new \RuntimeException('Documento sin template_id.');
+        }
+    }
 
-            $headId = (string) Str::uuid();
-            $now = now();
-            $status = (string) ($row['status'] ?? 'draft');
-            if ($status === 'published') {
-                $status = 'draft';
-            }
-            $createdBy = (string) ($row['created_by'] ?? $snapshot['document']['created_by'] ?? '');
-
-            DB::table('entity_versions')->insert([
-                'id' => $headId,
-                'versionable_type' => self::class,
-                'versionable_id' => $documentId,
-                'version_number' => 0,
-                'base_version_id' => null,
-                'change_set' => null,
-                'status' => $status,
-                'created_by' => $createdBy,
-                'published_by' => null,
-                'published_at' => null,
-                'changelog' => null,
-                'snapshot_data' => json_encode($snapshot, JSON_THROW_ON_ERROR),
-                'is_snapshot_immutable' => false,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ]);
-
-            $document->setAttribute('head_entity_version_id', $headId);
-
-            foreach (DocumentHeadSnapshot::DELEGATED_ATTRIBUTES as $attr) {
-                if (array_key_exists($attr, $document->getAttributes())) {
-                    $document->offsetUnset($attr);
-                }
-            }
-        });
+    protected static function headSnapshotJsonFieldExpression(string $alias, string $field): string
+    {
+        return DocumentHeadSnapshot::jsonDocumentFieldExpression($alias, $field);
     }
 
     /**
@@ -241,59 +198,6 @@ class Document extends Model
     public static function applyAcademicOverlapOnDocumentsTable(Builder|QueryBuilder $query, string $userId): void
     {
         self::applyAcademicOverlapForTableAlias($query, $userId, 'documents');
-    }
-
-    /**
-     * Misma regla con prefijo de tabla personalizado (p. ej. `d` en JOIN).
-     */
-    public static function applyAcademicOverlapForTableAlias(Builder|QueryBuilder $query, string $userId, string $alias): void
-    {
-        $t = rtrim($alias, '.');
-        $query->where(function ($w) use ($userId, $t) {
-            $w->whereExists(function ($sub) use ($userId, $t) {
-                $sub->select(DB::raw(1))
-                    ->from('entity_versions')
-                    ->whereColumn('entity_versions.versionable_id', $t.'.id')
-                    ->where('entity_versions.versionable_type', self::class)
-                    ->where('entity_versions.version_number', 0)
-                    ->whereExists(function ($inner) use ($userId) {
-                        $inner->select(DB::raw(1))
-                            ->from('user_study_types')
-                            ->where('user_study_types.user_id', $userId)
-                            ->whereRaw(
-                                'user_study_types.study_type_id = '.DocumentHeadSnapshot::jsonDocumentFieldExpression('entity_versions', 'study_type_id')
-                            );
-                    });
-            })->orWhereExists(function ($sub) use ($userId, $t) {
-                $sub->select(DB::raw(1))
-                    ->from('entity_versions')
-                    ->whereColumn('entity_versions.versionable_id', $t.'.id')
-                    ->where('entity_versions.versionable_type', self::class)
-                    ->where('entity_versions.version_number', 0)
-                    ->whereExists(function ($inner) use ($userId) {
-                        $inner->select(DB::raw(1))
-                            ->from('user_studies')
-                            ->where('user_studies.user_id', $userId)
-                            ->whereRaw(
-                                'user_studies.study_id = '.DocumentHeadSnapshot::jsonDocumentFieldExpression('entity_versions', 'study_id')
-                            );
-                    });
-            })->orWhereExists(function ($sub) use ($userId, $t) {
-                $sub->select(DB::raw(1))
-                    ->from('entity_versions')
-                    ->whereColumn('entity_versions.versionable_id', $t.'.id')
-                    ->where('entity_versions.versionable_type', self::class)
-                    ->where('entity_versions.version_number', 0)
-                    ->whereExists(function ($inner) use ($userId) {
-                        $inner->select(DB::raw(1))
-                            ->from('user_course_modules')
-                            ->where('user_course_modules.user_id', $userId)
-                            ->whereRaw(
-                                'user_course_modules.module_id = '.DocumentHeadSnapshot::jsonDocumentFieldExpression('entity_versions', 'module_id')
-                            );
-                    });
-            });
-        });
     }
 
     /**

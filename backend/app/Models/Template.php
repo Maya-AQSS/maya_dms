@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\TemplateVisibilityLevel;
+use App\Models\Concerns\HasAcademicOverlapScope;
 use App\Models\Concerns\HasCommentingStatus;
+use App\Models\Concerns\HasEntityVersionHead;
 use App\Observers\TemplateObserver;
 use App\Policies\TemplatePolicy;
 use App\Support\TemplateHeadSnapshot;
@@ -20,7 +22,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 /**
  * Ancla en proceso; metadatos de nombre, visibilidad, revisión, etc. en la versión cabezal ({@see EntityVersion}, número 0).
@@ -28,7 +29,7 @@ use Illuminate\Support\Str;
 #[ObservedBy(TemplateObserver::class)]
 class Template extends Model
 {
-    use HasCommentingStatus, HasUuids, SoftDeletes;
+    use HasAcademicOverlapScope, HasCommentingStatus, HasEntityVersionHead, HasUuids, SoftDeletes;
 
     /**
      * Visibilidad efectiva (solo SQL; la lectura API exige además `templates.read` en {@see TemplatePolicy}):
@@ -100,74 +101,27 @@ class Template extends Model
             });
         });
 
-        static::creating(function (Template $template): void {
-            if ($template->head_entity_version_id !== null) {
-                foreach (TemplateHeadSnapshot::DELEGATED_ATTRIBUTES as $attr) {
-                    if (array_key_exists($attr, $template->getAttributes())) {
-                        $template->offsetUnset($attr);
-                    }
-                }
+        static::registerEntityVersionHeadHook();
+    }
 
-                return;
-            }
+    protected static function delegatedAttributes(): array
+    {
+        return TemplateHeadSnapshot::DELEGATED_ATTRIBUTES;
+    }
 
-            $attrs = $template->getAttributes();
-            $hasDelegated = false;
-            foreach (TemplateHeadSnapshot::DELEGATED_ATTRIBUTES as $attr) {
-                if (array_key_exists($attr, $attrs)) {
-                    $hasDelegated = true;
-                    break;
-                }
-            }
+    protected static function buildHeadSnapshot(array $row, string $modelId, string $processId): array
+    {
+        return TemplateHeadSnapshot::buildPayloadFromLegacyRow($row, $modelId, $processId);
+    }
 
-            if (! $hasDelegated) {
-                return;
-            }
+    protected static function snapshotCreatedByKey(): array
+    {
+        return ['template', 'created_by'];
+    }
 
-            if (empty($template->process_id)) {
-                $defaultProcess = '00000000-0000-0000-0000-000000000001';
-                $template->process_id = Process::query()->value('id') ?? $defaultProcess;
-            }
-
-            $row = $template->getAttributes();
-            $templateId = (string) $template->getKey();
-            $processId = (string) $template->process_id;
-            $snapshot = TemplateHeadSnapshot::buildPayloadFromLegacyRow($row, $templateId, $processId);
-
-            $headId = (string) Str::uuid();
-            $now = now();
-            $status = (string) ($row['status'] ?? 'draft');
-            if ($status === 'published') {
-                $status = 'draft';
-            }
-            $createdBy = (string) ($row['created_by'] ?? $snapshot['template']['created_by'] ?? '');
-
-            DB::table('entity_versions')->insert([
-                'id' => $headId,
-                'versionable_type' => self::class,
-                'versionable_id' => $templateId,
-                'version_number' => 0,
-                'base_version_id' => null,
-                'change_set' => null,
-                'status' => $status,
-                'created_by' => $createdBy,
-                'published_by' => null,
-                'published_at' => null,
-                'changelog' => null,
-                'snapshot_data' => json_encode($snapshot, JSON_THROW_ON_ERROR),
-                'is_snapshot_immutable' => false,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ]);
-
-            $template->setAttribute('head_entity_version_id', $headId);
-
-            foreach (TemplateHeadSnapshot::DELEGATED_ATTRIBUTES as $attr) {
-                if (array_key_exists($attr, $template->getAttributes())) {
-                    $template->offsetUnset($attr);
-                }
-            }
-        });
+    protected static function headSnapshotJsonFieldExpression(string $alias, string $field): string
+    {
+        return TemplateHeadSnapshot::jsonTemplateFieldExpression($alias, $field);
     }
 
     /**
@@ -261,58 +215,6 @@ class Template extends Model
         });
     }
 
-    /**
-     * Solapa académico en BD para alias de plantilla (p.ej. templates / t).
-     */
-    public static function applyAcademicOverlapForTableAlias(Builder|QueryBuilder $query, string $userId, string $alias): void
-    {
-        $t = rtrim($alias, '.');
-        $query->where(function ($w) use ($userId, $t) {
-            $w->whereExists(function ($sub) use ($userId, $t) {
-                $sub->select(DB::raw(1))
-                    ->from('entity_versions')
-                    ->whereColumn('entity_versions.versionable_id', $t.'.id')
-                    ->where('entity_versions.versionable_type', self::class)
-                    ->where('entity_versions.version_number', 0)
-                    ->whereExists(function ($inner) use ($userId) {
-                        $inner->select(DB::raw(1))
-                            ->from('user_study_types')
-                            ->where('user_study_types.user_id', $userId)
-                            ->whereRaw(
-                                'user_study_types.study_type_id = '.TemplateHeadSnapshot::jsonTemplateFieldExpression('entity_versions', 'study_type_id')
-                            );
-                    });
-            })->orWhereExists(function ($sub) use ($userId, $t) {
-                $sub->select(DB::raw(1))
-                    ->from('entity_versions')
-                    ->whereColumn('entity_versions.versionable_id', $t.'.id')
-                    ->where('entity_versions.versionable_type', self::class)
-                    ->where('entity_versions.version_number', 0)
-                    ->whereExists(function ($inner) use ($userId) {
-                        $inner->select(DB::raw(1))
-                            ->from('user_studies')
-                            ->where('user_studies.user_id', $userId)
-                            ->whereRaw(
-                                'user_studies.study_id = '.TemplateHeadSnapshot::jsonTemplateFieldExpression('entity_versions', 'study_id')
-                            );
-                    });
-            })->orWhereExists(function ($sub) use ($userId, $t) {
-                $sub->select(DB::raw(1))
-                    ->from('entity_versions')
-                    ->whereColumn('entity_versions.versionable_id', $t.'.id')
-                    ->where('entity_versions.versionable_type', self::class)
-                    ->where('entity_versions.version_number', 0)
-                    ->whereExists(function ($inner) use ($userId) {
-                        $inner->select(DB::raw(1))
-                            ->from('user_course_modules')
-                            ->where('user_course_modules.user_id', $userId)
-                            ->whereRaw(
-                                'user_course_modules.module_id = '.TemplateHeadSnapshot::jsonTemplateFieldExpression('entity_versions', 'module_id')
-                            );
-                    });
-            });
-        });
-    }
 
     protected $keyType = 'string';
 
