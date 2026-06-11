@@ -34,6 +34,8 @@ use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
+use App\Support\AcademicScopeContext;
+use App\Support\AcademicScopeNormalizer;
 use App\Support\CloneDeadlinePolicy;
 use App\Support\DocumentReviewModeResolver;
 use App\Support\ReviewValidationNotificationRecipients;
@@ -69,6 +71,7 @@ class DocumentService implements DocumentServiceInterface
         private readonly DocumentMigrationPayloadResolver $migrationPayloadResolver,
         private readonly UserDirectoryRepositoryInterface $userDirectoryRepository,
         private readonly CommentRepositoryInterface $commentRepository,
+        private readonly EntityVersionDestroyService $entityVersionDestroyService,
     ) {}
 
     /**
@@ -890,129 +893,43 @@ class DocumentService implements DocumentServiceInterface
      */
     private function normalizeUpdateAttributesAgainstDocumentAndTemplate(Document $document, array $attributes): array
     {
-        $normalized = $attributes;
         $templateMeta = $this->resolveTemplateMetaForDocument($document);
         if ($templateMeta === null) {
-            return $normalized;
+            return $attributes;
         }
 
         $visibility = $templateMeta['visibility_level'] ?? null;
         if (! is_string($visibility) || $visibility === '') {
-            return $normalized;
+            return $attributes;
         }
 
-        $studyTypeId = array_key_exists('study_type_id', $attributes) ? $attributes['study_type_id'] : $document->study_type_id;
-        $studyId = array_key_exists('study_id', $attributes) ? $attributes['study_id'] : $document->study_id;
-        $moduleId = array_key_exists('module_id', $attributes) ? $attributes['module_id'] : $document->module_id;
+        $visibilityLevel = TemplateVisibilityLevel::from($visibility);
 
-        $templateStudyTypeId = isset($templateMeta['study_type_id']) && is_string($templateMeta['study_type_id']) && $templateMeta['study_type_id'] !== ''
-            ? $templateMeta['study_type_id']
-            : null;
-        $templateStudyId = isset($templateMeta['study_id']) && is_string($templateMeta['study_id']) && $templateMeta['study_id'] !== ''
-            ? $templateMeta['study_id']
-            : null;
-        $templateModuleId = isset($templateMeta['module_id']) && is_string($templateMeta['module_id']) && $templateMeta['module_id'] !== ''
-            ? $templateMeta['module_id']
-            : null;
+        $ctx = new AcademicScopeContext(
+            visibilityLevel: $visibilityLevel,
+            templateStudyTypeId: isset($templateMeta['study_type_id']) && is_string($templateMeta['study_type_id']) && $templateMeta['study_type_id'] !== ''
+                ? $templateMeta['study_type_id']
+                : null,
+            templateStudyId: isset($templateMeta['study_id']) && is_string($templateMeta['study_id']) && $templateMeta['study_id'] !== ''
+                ? $templateMeta['study_id']
+                : null,
+            templateModuleId: isset($templateMeta['module_id']) && is_string($templateMeta['module_id']) && $templateMeta['module_id'] !== ''
+                ? $templateMeta['module_id']
+                : null,
+            entityStudyTypeId: is_string($document->study_type_id) && $document->study_type_id !== '' ? $document->study_type_id : null,
+            entityStudyId: is_string($document->study_id) && $document->study_id !== '' ? $document->study_id : null,
+            entityModuleId: is_string($document->module_id) && $document->module_id !== '' ? $document->module_id : null,
+            onModuleConflict: 'El documento debe mantenerse en el mismo módulo de la plantilla.',
+            onStudyConflict: 'El documento debe mantenerse en el mismo estudio de la plantilla.',
+            onModuleStudyMismatch: 'El módulo debe pertenecer al mismo estudio de la plantilla.',
+            onModuleTypeMismatch: 'El módulo debe pertenecer a un estudio del mismo tipo que la plantilla.',
+            onStudyTypeMismatch: 'El estudio debe pertenecer al mismo tipo de estudio de la plantilla.',
+            onModuleNotFound: 'El módulo seleccionado no existe.',
+            onStudyModuleMismatch: 'El estudio indicado no corresponde con el módulo seleccionado.',
+            strictTemplateIds: false,
+        );
 
-        if ($visibility === TemplateVisibilityLevel::Personal->value || $visibility === TemplateVisibilityLevel::Team->value) {
-            $normalized['study_type_id'] = $templateStudyTypeId;
-            $normalized['study_id'] = $templateStudyId;
-            $normalized['module_id'] = $templateModuleId;
-
-            return $normalized;
-        }
-
-        if ($visibility === TemplateVisibilityLevel::Module->value) {
-            if ($templateModuleId !== null) {
-                if ($moduleId !== null && $moduleId !== $templateModuleId) {
-                    throw ValidationException::withMessages([
-                        'module_id' => ['El documento debe mantenerse en el mismo módulo de la plantilla.'],
-                    ]);
-                }
-                $normalized['module_id'] = $templateModuleId;
-            }
-            $normalized['study_id'] = $templateStudyId;
-            $normalized['study_type_id'] = $templateStudyTypeId;
-
-            return $normalized;
-        }
-
-        if ($visibility === TemplateVisibilityLevel::Study->value) {
-            if ($templateStudyId !== null) {
-                if ($studyId !== null && $studyId !== $templateStudyId) {
-                    throw ValidationException::withMessages([
-                        'study_id' => ['El documento debe mantenerse en el mismo estudio de la plantilla.'],
-                    ]);
-                }
-                $normalized['study_id'] = $templateStudyId;
-            }
-            if (is_string($moduleId) && $moduleId !== '') {
-                $moduleStudyId = $this->academicHierarchyRepository->findStudyIdByModuleId($moduleId);
-                if ($moduleStudyId === null || $moduleStudyId !== $templateStudyId) {
-                    throw ValidationException::withMessages([
-                        'module_id' => ['El módulo debe pertenecer al mismo estudio de la plantilla.'],
-                    ]);
-                }
-                $normalized['module_id'] = $moduleId;
-            }
-            $normalized['study_type_id'] = $templateStudyTypeId;
-
-            return $normalized;
-        }
-
-        if ($visibility === TemplateVisibilityLevel::StudyType->value) {
-            if ($templateStudyTypeId !== null) {
-                $normalized['study_type_id'] = $templateStudyTypeId;
-            }
-
-            if (is_string($moduleId) && $moduleId !== '') {
-                $module = $this->academicHierarchyRepository->findStudyAndTypeByModuleId($moduleId);
-                if ($module === null || $module['study_type_id'] !== $templateStudyTypeId) {
-                    throw ValidationException::withMessages([
-                        'module_id' => ['El módulo debe pertenecer a un estudio del mismo tipo que la plantilla.'],
-                    ]);
-                }
-                if (is_string($studyId) && $studyId !== '' && $studyId !== $module['study_id']) {
-                    throw ValidationException::withMessages([
-                        'study_id' => ['El estudio indicado no corresponde con el módulo seleccionado.'],
-                    ]);
-                }
-                $normalized['module_id'] = $moduleId;
-                $normalized['study_id'] = $module['study_id'];
-
-                return $normalized;
-            }
-
-            if (is_string($studyId) && $studyId !== '') {
-                $studyTypeFromStudy = $this->academicHierarchyRepository->findStudyTypeIdByStudyId($studyId);
-                if ($studyTypeFromStudy === null || $studyTypeFromStudy !== $templateStudyTypeId) {
-                    throw ValidationException::withMessages([
-                        'study_id' => ['El estudio debe pertenecer al mismo tipo de estudio de la plantilla.'],
-                    ]);
-                }
-            }
-
-            return $normalized;
-        }
-
-        if ($visibility === TemplateVisibilityLevel::Global->value) {
-            if (is_string($moduleId) && $moduleId !== '') {
-                $moduleStudyId = $this->academicHierarchyRepository->findStudyIdByModuleId($moduleId);
-                if ($moduleStudyId === null) {
-                    throw ValidationException::withMessages([
-                        'module_id' => ['El módulo seleccionado no existe.'],
-                    ]);
-                }
-                if (is_string($studyId) && $studyId !== '' && $studyId !== $moduleStudyId) {
-                    throw ValidationException::withMessages([
-                        'study_id' => ['El estudio indicado no corresponde con el módulo seleccionado.'],
-                    ]);
-                }
-            }
-        }
-
-        return $normalized;
+        return AcademicScopeNormalizer::normalize($this->academicHierarchyRepository, $ctx, $attributes);
     }
 
     /**
@@ -1080,36 +997,22 @@ class DocumentService implements DocumentServiceInterface
             $document->loadMissing('headVersion');
             $head = $document->headVersion;
 
-            if ($head === null || (string) $head->id !== $versionId || (int) $head->version_number !== 0) {
-                throw ValidationException::withMessages([
-                    'version' => ['Solo se puede descartar la versión de trabajo actual del documento.'],
-                ]);
-            }
+            // Shared guards + entity_version reset (delegated to EntityVersionDestroyService).
+            $publishedSnapshot = $this->entityVersionDestroyService->assertAndResetToPublished(
+                entityClass: Document::class,
+                entityId: $documentId,
+                targetVersionId: $versionId,
+                head: $head,
+                notCurrentMessage: 'Solo se puede descartar la versión de trabajo actual del documento.',
+                statusMessage: 'Solo se pueden descartar versiones no publicadas (draft/in_review/rejected).',
+                noPublishedMessage: 'No existe una versión publicada a la que restaurar.',
+            );
 
-            if (! in_array((string) $head->status, ['draft', 'in_review', 'rejected'], true)) {
-                throw ValidationException::withMessages([
-                    'version' => ['Solo se pueden descartar versiones no publicadas (draft/in_review/rejected).'],
-                ]);
-            }
-
-            $latestPublished = $this->entityVersionRepository->findLatestPublishedForEntity(Document::class, $documentId);
-            if ($latestPublished === null || ! is_array($latestPublished->snapshot_data)) {
-                throw ValidationException::withMessages([
-                    'version' => ['No existe una versión publicada a la que restaurar.'],
-                ]);
-            }
-
-            $publishedSnapshot = $latestPublished->snapshot_data;
             $publishedBlocks = isset($publishedSnapshot['blocks']) && is_array($publishedSnapshot['blocks'])
                 ? $publishedSnapshot['blocks']
                 : [];
 
-            $this->entityVersionRepository->update($head, [
-                'snapshot_data' => $publishedSnapshot,
-                'status' => 'published',
-                'changelog' => null,
-            ]);
-
+            // Domain-specific restoration (blocks + reviews + status sync) remains here.
             $this->restorePublishedDocumentBlocks($documentId, $publishedBlocks);
             $this->documentRepository->deleteReviewsForDocument($documentId);
 

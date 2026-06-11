@@ -24,6 +24,8 @@ use App\Repositories\Contracts\TemplateReviewerRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Services\Contracts\TemplateServiceInterface;
+use App\Support\AcademicScopeContext;
+use App\Support\AcademicScopeNormalizer;
 use App\Support\TemplateHeadSnapshot;
 use App\Support\WorkingRevisionConflictResolver;
 use Illuminate\Support\Collection;
@@ -47,6 +49,7 @@ class TemplateService implements TemplateServiceInterface
         private readonly DocumentBlockRepositoryInterface $documentBlockRepository,
         private readonly AcademicHierarchyRepositoryInterface $academicHierarchyRepository,
         private readonly UserDirectoryRepositoryInterface $userDirectoryRepository,
+        private readonly EntityVersionDestroyService $entityVersionDestroyService,
     ) {}
 
     /**
@@ -496,36 +499,22 @@ class TemplateService implements TemplateServiceInterface
             $template->loadMissing('headVersion');
             $head = $template->headVersion;
 
-            if ($head === null || (string) $head->id !== $versionId || (int) $head->version_number !== 0) {
-                throw ValidationException::withMessages([
-                    'version' => ['Solo se puede descartar la versión de trabajo actual de la plantilla.'],
-                ]);
-            }
+            // Shared guards + entity_version reset (delegated to EntityVersionDestroyService).
+            $publishedSnapshot = $this->entityVersionDestroyService->assertAndResetToPublished(
+                entityClass: Template::class,
+                entityId: $templateId,
+                targetVersionId: $versionId,
+                head: $head,
+                notCurrentMessage: 'Solo se puede descartar la versión de trabajo actual de la plantilla.',
+                statusMessage: 'Solo se pueden descartar versiones no publicadas (draft/in_review/rejected).',
+                noPublishedMessage: 'No existe una versión publicada a la que restaurar.',
+            );
 
-            if (! in_array((string) $head->status, ['draft', 'in_review', 'rejected'], true)) {
-                throw ValidationException::withMessages([
-                    'version' => ['Solo se pueden descartar versiones no publicadas (draft/in_review/rejected).'],
-                ]);
-            }
-
-            $latestPublished = $this->entityVersionRepository->findLatestPublishedForEntity(Template::class, $templateId);
-            if ($latestPublished === null || ! is_array($latestPublished->snapshot_data)) {
-                throw ValidationException::withMessages([
-                    'version' => ['No existe una versión publicada a la que restaurar.'],
-                ]);
-            }
-
-            $publishedSnapshot = $latestPublished->snapshot_data;
             $publishedTemplate = isset($publishedSnapshot['template']) && is_array($publishedSnapshot['template'])
                 ? $publishedSnapshot['template']
                 : [];
 
-            $this->entityVersionRepository->update($head, [
-                'snapshot_data' => $publishedSnapshot,
-                'status' => 'published',
-                'changelog' => null,
-            ]);
-
+            // Domain-specific restoration (blocks + reviewers) remains here.
             $this->restoreTemplateBlocksFromPublishedSnapshot($template, $publishedSnapshot);
             $this->restoreReviewersFromPublishedSnapshotIfPresent($template, $publishedSnapshot);
 
@@ -1047,113 +1036,28 @@ class TemplateService implements TemplateServiceInterface
      */
     private function normalizeUpdateAttributesAgainstTemplateScope(Template $template, array $attributes): array
     {
-        $normalized = $attributes;
-        $visibility = $this->normalizeTemplateVisibilityLevelValue($template->visibility_level);
+        $visibilityValue = $this->normalizeTemplateVisibilityLevelValue($template->visibility_level);
+        $visibilityLevel = TemplateVisibilityLevel::from($visibilityValue);
 
-        $templateStudyTypeId = is_string($template->study_type_id) && $template->study_type_id !== '' ? $template->study_type_id : null;
-        $templateStudyId = is_string($template->study_id) && $template->study_id !== '' ? $template->study_id : null;
-        $templateModuleId = is_string($template->module_id) && $template->module_id !== '' ? $template->module_id : null;
+        $ctx = new AcademicScopeContext(
+            visibilityLevel: $visibilityLevel,
+            templateStudyTypeId: is_string($template->study_type_id) && $template->study_type_id !== '' ? $template->study_type_id : null,
+            templateStudyId: is_string($template->study_id) && $template->study_id !== '' ? $template->study_id : null,
+            templateModuleId: is_string($template->module_id) && $template->module_id !== '' ? $template->module_id : null,
+            entityStudyTypeId: is_string($template->study_type_id) && $template->study_type_id !== '' ? $template->study_type_id : null,
+            entityStudyId: is_string($template->study_id) && $template->study_id !== '' ? $template->study_id : null,
+            entityModuleId: is_string($template->module_id) && $template->module_id !== '' ? $template->module_id : null,
+            onModuleConflict: 'La plantilla debe mantenerse en el mismo módulo.',
+            onStudyConflict: 'La plantilla debe mantenerse en el mismo estudio.',
+            onModuleStudyMismatch: 'El módulo debe pertenecer al mismo estudio de la plantilla.',
+            onModuleTypeMismatch: 'El módulo debe pertenecer a un estudio del mismo tipo que la plantilla.',
+            onStudyTypeMismatch: 'El estudio debe pertenecer al mismo tipo de estudio de la plantilla.',
+            onModuleNotFound: 'El módulo seleccionado no existe.',
+            onStudyModuleMismatch: 'El estudio indicado no corresponde con el módulo seleccionado.',
+            strictTemplateIds: true,
+        );
 
-        $studyTypeId = array_key_exists('study_type_id', $attributes) ? $attributes['study_type_id'] : $template->study_type_id;
-        $studyId = array_key_exists('study_id', $attributes) ? $attributes['study_id'] : $template->study_id;
-        $moduleId = array_key_exists('module_id', $attributes) ? $attributes['module_id'] : $template->module_id;
-
-        if ($visibility === TemplateVisibilityLevel::Personal->value || $visibility === TemplateVisibilityLevel::Team->value) {
-            $normalized['study_type_id'] = $templateStudyTypeId;
-            $normalized['study_id'] = $templateStudyId;
-            $normalized['module_id'] = $templateModuleId;
-
-            return $normalized;
-        }
-
-        if ($visibility === TemplateVisibilityLevel::Module->value) {
-            if ($templateModuleId !== null && $moduleId !== null && $moduleId !== $templateModuleId) {
-                throw ValidationException::withMessages([
-                    'module_id' => ['La plantilla debe mantenerse en el mismo módulo.'],
-                ]);
-            }
-
-            $normalized['module_id'] = $templateModuleId;
-            $normalized['study_id'] = $templateStudyId;
-            $normalized['study_type_id'] = $templateStudyTypeId;
-
-            return $normalized;
-        }
-
-        if ($visibility === TemplateVisibilityLevel::Study->value) {
-            if ($templateStudyId !== null && $studyId !== null && $studyId !== $templateStudyId) {
-                throw ValidationException::withMessages([
-                    'study_id' => ['La plantilla debe mantenerse en el mismo estudio.'],
-                ]);
-            }
-
-            $normalized['study_id'] = $templateStudyId;
-            $normalized['study_type_id'] = $templateStudyTypeId;
-
-            if (is_string($moduleId) && $moduleId !== '') {
-                $moduleStudyId = $this->academicHierarchyRepository->findStudyIdByModuleId($moduleId);
-                if ($moduleStudyId === null || $moduleStudyId !== $templateStudyId) {
-                    throw ValidationException::withMessages([
-                        'module_id' => ['El módulo debe pertenecer al mismo estudio de la plantilla.'],
-                    ]);
-                }
-                $normalized['module_id'] = $moduleId;
-            }
-
-            return $normalized;
-        }
-
-        if ($visibility === TemplateVisibilityLevel::StudyType->value) {
-            $normalized['study_type_id'] = $templateStudyTypeId;
-
-            if (is_string($moduleId) && $moduleId !== '') {
-                $module = $this->academicHierarchyRepository->findStudyAndTypeByModuleId($moduleId);
-
-                if ($module === null || $module['study_type_id'] !== $templateStudyTypeId) {
-                    throw ValidationException::withMessages([
-                        'module_id' => ['El módulo debe pertenecer a un estudio del mismo tipo que la plantilla.'],
-                    ]);
-                }
-
-                if (is_string($studyId) && $studyId !== '' && $studyId !== $module['study_id']) {
-                    throw ValidationException::withMessages([
-                        'study_id' => ['El estudio indicado no corresponde con el módulo seleccionado.'],
-                    ]);
-                }
-
-                $normalized['module_id'] = $moduleId;
-                $normalized['study_id'] = $module['study_id'];
-
-                return $normalized;
-            }
-
-            if (is_string($studyId) && $studyId !== '') {
-                $studyTypeFromStudy = $this->academicHierarchyRepository->findStudyTypeIdByStudyId($studyId);
-                if ($studyTypeFromStudy === null || $studyTypeFromStudy !== $templateStudyTypeId) {
-                    throw ValidationException::withMessages([
-                        'study_id' => ['El estudio debe pertenecer al mismo tipo de estudio de la plantilla.'],
-                    ]);
-                }
-            }
-
-            return $normalized;
-        }
-
-        if ($visibility === TemplateVisibilityLevel::Global->value && is_string($moduleId) && $moduleId !== '') {
-            $moduleStudyId = $this->academicHierarchyRepository->findStudyIdByModuleId($moduleId);
-            if ($moduleStudyId === null) {
-                throw ValidationException::withMessages([
-                    'module_id' => ['El módulo seleccionado no existe.'],
-                ]);
-            }
-            if (is_string($studyId) && $studyId !== '' && $studyId !== $moduleStudyId) {
-                throw ValidationException::withMessages([
-                    'study_id' => ['El estudio indicado no corresponde con el módulo seleccionado.'],
-                ]);
-            }
-        }
-
-        return $normalized;
+        return AcademicScopeNormalizer::normalize($this->academicHierarchyRepository, $ctx, $attributes);
     }
 
     /**
