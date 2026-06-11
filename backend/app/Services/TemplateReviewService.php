@@ -33,7 +33,15 @@ class TemplateReviewService
     ) {}
 
     /**
-     * Envia el borrador a revisión.
+     * Envía el borrador a revisión.
+     *
+     * Excepción B4 consciente: devuelve el Model Eloquent (no TemplateDto) porque
+     * TemplateStateController::submitForReview adjunta atributos derivados vía
+     * setAttribute() (can_clone, can_view_history, can_create_new_version) sobre
+     * el modelo antes de convertirlo a TemplateDto::fromModel(). El DTO es readonly
+     * y no admite esas mutaciones post-construcción.
+     *
+     * Relaciones garantizadas en el retorno: reviewers, headVersion (via loadMissing).
      */
     public function submitForReview(string $templateId, string $actorId, string $changelog): Template
     {
@@ -186,6 +194,13 @@ class TemplateReviewService
      * Rechaza la revisión de la plantilla.
      *
      * En modo secuencial solo puede actuar el revisor de la etapa pendiente activa.
+     *
+     * Excepción B4 consciente: devuelve el Model Eloquent por la misma razón que
+     * submitForReview — el controller adjunta can_clone/can_view_history/can_create_new_version
+     * vía setAttribute() antes de la conversión a TemplateDto::fromModel().
+     *
+     * Relaciones garantizadas en el retorno: ninguna adicional; el modelo devuelto
+     * por transitionStatus es el modelo post-transición (fresh o actualizado).
      */
     public function rejectReview(string $templateId, string $actorId): Template
     {
@@ -265,6 +280,14 @@ class TemplateReviewService
      *
      * En modo secuencial verifica que los stages anteriores hayan aprobado primero.
      * Si todos los revisores han aprobado, la plantilla se publica automáticamente.
+     *
+     * Excepción B4 consciente: devuelve el Model Eloquent por la misma razón que
+     * submitForReview — el controller adjunta can_clone/can_view_history/can_create_new_version
+     * vía setAttribute() antes de la conversión a TemplateDto::fromModel().
+     *
+     * Relaciones garantizadas en el retorno: headVersion (via publishWithSnapshot o
+     * fresh()); en aprobación intermedia la relación reviewers no se recarga —
+     * TemplateDto::fromModel() detecta que no está cargada y omite el campo.
      */
     public function approveReview(string $templateId, string $actorId): Template
     {

@@ -75,11 +75,18 @@ interface TemplateServiceInterface
 
     /**
      * Envía el borrador a revisión. Solo el creador puede ejecutar esta acción.
+     *
+     * Excepción B4 (ver docblock de clase): devuelve Template (no TemplateDto) porque
+     * el controller adjunta atributos derivados vía setAttribute() antes de llamar a
+     * TemplateDto::fromModel(). Relaciones garantizadas: reviewers, headVersion.
      */
     public function submitForReview(string $templateId, string $actorId, string $changelog): Template;
 
     /**
      * Rechaza la revisión de la plantilla. Solo un revisor asignado puede ejecutar esta acción.
+     *
+     * Excepción B4 (ver docblock de clase): devuelve Template (no TemplateDto) por la
+     * misma razón que submitForReview.
      */
     public function rejectReview(string $templateId, string $actorId): Template;
 
@@ -179,6 +186,10 @@ interface TemplateServiceInterface
      *
      * En modo secuencial verifica que los stages anteriores estén aprobados antes
      * de permitir que el actor apruebe.
+     *
+     * Excepción B4 (ver docblock de clase): devuelve Template (no TemplateDto) por la
+     * misma razón que submitForReview. Relaciones garantizadas: headVersion; reviewers
+     * solo si la aprobación desencadena publicación (publishWithSnapshot las carga).
      */
     public function approveReview(string $templateId, string $actorId): Template;
 
