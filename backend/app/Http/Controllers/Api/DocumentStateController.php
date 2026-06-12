@@ -153,6 +153,10 @@ class DocumentStateController extends Controller
 
         $actorId = (string) $request->user()->getAuthIdentifier();
         $updated = $this->documentService->destroyVersion($model->id, $version, $actorId);
+        // destroyVersion queda fuera del lote DTO (excepción documentada en changes.md):
+        // este orden attach→fromModel es equivalente al patrón $beforeMap del resto de
+        // métodos — DocumentDto::fromModel mapea can_clone del atributo que setea
+        // attachCanCloneMeta, así que el meta llega igual a la respuesta.
         $this->attachCanCloneMeta($updated, $request);
         $blocks = $this->documentService->blocksForDisplay((string) $updated->id);
 

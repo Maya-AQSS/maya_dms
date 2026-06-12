@@ -352,3 +352,21 @@ PRESERVADAS (con veredicto definitivo):
 - **Endpoint(s) afectado(s)**: ninguno (JSON byte-idéntico; verificado con la
   suite Feature completa en baseline).
 - **Decidido por**: tarea F4-B1 (auditoría de capas), aprobada por el usuario.
+
+## [F3.2] PostLoginBehavior: redirección a /dashboard en primer login y cierre del ProcessesDrawer al navegar
+- **Fecha**: 2026-06-12
+- **Severidad**: LOW
+- **Qué cambió**: con la migración al shell compartido, dms añade un componente local PostLoginBehavior: (a) en la primera autenticación de la sesión redirige a /dashboard; (b) el ProcessesDrawer se cierra automáticamente al cambiar de ruta. Antes el primer render aterrizaba en la ruta actual y el drawer mantenía su estado.
+- **Por qué**: comportamiento de shell que el componente compartido no impone; se materializa como adición local de dms.
+- **Endpoint(s)/pantalla(s) afectados**: arranque de sesión y drawer de procesos (solo frontend).
+- **Impacto en cliente**: observable sí (navegación inicial).
+- **Decidido por**: agente F3.2; documentado a posteriori en review final F6.
+
+## [F6 M-02] MediaController::show deja de propagar el mensaje interno de excepción
+- **Fecha**: 2026-06-12
+- **Severidad**: MEDIUM (seguridad)
+- **Qué cambió**: en error, el endpoint de media firmado devolvía `$e->getMessage()` verbatim (podía contener rutas de storage); ahora devuelve mensajes genéricos «Media no encontrada.» (404) / «Acceso denegado.» (403).
+- **Por qué**: hallazgo M-02 de la security review final — el endpoint sirve URLs firmadas sin guard JWT y el renderer compartido pasa los mensajes 4xx al cliente.
+- **Endpoint(s) afectado(s)**: GET media firmada (show).
+- **Impacto en cliente**: observable sí (texto del error; códigos HTTP intactos).
+- **Decidido por**: security review F6.
