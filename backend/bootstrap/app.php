@@ -5,9 +5,10 @@ declare(strict_types=1);
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use Illuminate\Http\Middleware\HandleCors;
 use Maya\Auth\Middleware\JwtMiddleware;
 use Maya\Auth\Middleware\RequirePermissionMiddleware;
+use Maya\Http\Exceptions\JsonExceptionRenderer;
+use Maya\Http\Support\CommonMiddleware;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -18,21 +19,30 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Block rich-content fields contain inline text nodes whose leading/trailing
-        // spaces are semantically significant (spaces between bold/italic runs).
-        // TrimStrings must not recurse into these fields; SanitizesBlockContent
-        // handles sanitization for them after the request is parsed.
-        $middleware->trimStrings(except: [
-            'default_content.*',
-            'description.*',
-            'content.*',
-        ]);
-        $middleware->alias([
+        // Configuración común Maya (CORS primero en el grupo api + trustProxies)
+        // con las opciones propias de dms:
+        // - alias jwt/permission (idénticos a la config previa);
+        // - trimStrings except: los campos rich-content de bloques contienen
+        //   nodos de texto inline cuyos espacios iniciales/finales son
+        //   semánticamente significativos (espacios entre runs bold/italic).
+        //   TrimStrings no debe recorrerlos; SanitizesBlockContent se encarga
+        //   de su saneado tras parsear la request.
+        // NOTA: dms antes no llamaba a trustProxies; el default del helper lo
+        // activa (at: '*'), necesario tras Traefik. Ver changes.md.
+        CommonMiddleware::register($middleware, [
             'jwt' => JwtMiddleware::class,
             'permission' => RequirePermissionMiddleware::class,
+        ], [
+            'trimStringsExcept' => [
+                'default_content.*',
+                'description.*',
+                'content.*',
+            ],
         ]);
-        $middleware->api(prepend: [HandleCors::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // Renderer JSON uniforme para api/* (envelope {"message": ...} +
+        // {"errors": ...} en 422). dms antes usaba el render por defecto de
+        // Laravel — CAMBIO FUNCIONAL, ver changes.md.
+        JsonExceptionRenderer::register($exceptions);
     })->create();

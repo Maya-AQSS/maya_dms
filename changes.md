@@ -204,3 +204,36 @@ PRESERVADAS (con veredicto definitivo):
 - **Riesgo residual**: una BD antigua no reseedeada mostraría bloques
   estructurales como 'content' en el histórico de versiones. Solución: reseed.
 - **Decidido por**: usuario.
+
+## [ADOPCIÓN 0.16] Renderer JSON de excepciones compartido (JsonExceptionRenderer)
+
+- **Fecha**: 2026-06-12
+- **Severidad**: HIGH (wire format de errores)
+- **Qué cambió**: dms usaba el render de excepciones por defecto de Laravel.
+  Ahora `Maya\Http\Exceptions\JsonExceptionRenderer::register` aplica a `api/*`
+  el envelope uniforme de las apps Maya: `{"message": ...}` siempre y
+  `{"errors": {...}}` adicional en 422 de validación. Los códigos HTTP no
+  cambian; puede cambiar el cuerpo exacto de errores no-422 (p. ej. mensajes
+  genéricos en 500 en lugar del render HTML/JSON por defecto).
+- **Por qué**: adopción de `ceedcv-maya/shared-http-laravel` 0.16 — mismo
+  contrato de error en las 5 apps.
+- **Endpoint(s) afectado(s)**: todos los `api/*` cuando lanzan excepción.
+- **Impacto en cliente**: el frontend ya parsea `message`/`errors` (formato que
+  Laravel emitía en 422); el cambio observable es en errores no-422.
+- **Verificación**: Feature 293✓/1⨯ idéntico a baseline (el fallo es preexistente).
+- **Decidido por**: spec de adopción 0.16 (cambio funcional registrado).
+
+## [ADOPCIÓN 0.16] CommonMiddleware activa trustProxies (antes ausente)
+
+- **Fecha**: 2026-06-12
+- **Severidad**: MEDIUM
+- **Qué cambió**: el bootstrap de middleware se delega en
+  `Maya\Http\Support\CommonMiddleware::register` (CORS prepend en grupo api +
+  alias jwt/permission + trimStrings except — opciones idénticas a las previas
+  de dms). Diferencia real: el helper llama a `trustProxies(at: '*')`, que dms
+  no configuraba. Tras Traefik esto hace que `$request->ip()`/esquema reflejen
+  los headers X-Forwarded-* (antes, la IP del proxy).
+- **Endpoint(s) afectado(s)**: transversal (afecta a logging/auditoría de IP y
+  generación de URLs absolutas, no a payloads de negocio).
+- **Impacto en cliente**: ninguno directo.
+- **Decidido por**: spec de adopción 0.16.
