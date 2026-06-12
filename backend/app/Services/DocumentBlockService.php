@@ -177,7 +177,7 @@ class DocumentBlockService
             $this->appendModifiableBlockVersionSnapshotsIfNeeded($document, $block, $definition, $dto);
 
             $isFilled = $isStructuralFill
-                ? ($dto->content !== null && $dto->content !== [])
+                ? ($dto->content !== null)
                 : $this->isContentFilled($dto->content);
             if (! $isStructuralFill && $state === 'editable') {
                 $default = $definition['default_content'] ?? null;

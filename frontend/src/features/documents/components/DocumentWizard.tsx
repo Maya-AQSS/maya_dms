@@ -1066,7 +1066,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
     );
     if (!block) return;
 
-    const editorBaseline = normalizeBlockContentForEditor(block.content);
+    const editorBaseline = normalizeBlockContentForEditor(activeBlock.content);
     applyLocalContent(editorBaseline);
     // Misma base que muestra el editor (content persistido o default_content de plantilla).
     lastSavedContentRef.current = editorBaseline;
@@ -2436,7 +2436,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                               key={activeBlockKey ?? 'none'}
                             >
                               <BlockNoteEditorPanel
-                                initialContent={normalizeBlockContentForEditor(activeBlock.content)}
+                                initialContent={normalizeBlockContentForEditor(activeBlock.content ?? activeBlock.default_content)}
                                 editable
                                 isDark={isDark}
                                 onChange={handleDocumentContentChange}
