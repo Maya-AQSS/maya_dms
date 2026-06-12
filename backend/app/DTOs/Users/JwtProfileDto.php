@@ -4,17 +4,27 @@ declare(strict_types=1);
 
 namespace App\DTOs\Users;
 
+use Maya\Auth\Dtos\JwtProfileDto as BaseJwtProfileDto;
+
 /**
  * DTO que encapsula los datos mínimos extraídos del JWT para fallback de perfil.
+ *
+ * Extiende el DTO base compartido ({@see BaseJwtProfileDto}, readonly no-final
+ * con `id` + `claims`) añadiendo los claims académicos tipados propios de dms.
+ * Los claims crudos completos quedan accesibles vía `$claims` (propiedad del base).
  *
  * Se usa en UserProfileService::getProfile() como parámetro tipado en lugar de
  * un array sin estructura. Contiene solo los claims accesibles del token que pueden
  * servir como fallback si la consulta FDW falla.
  */
-final readonly class JwtProfileDto
+final readonly class JwtProfileDto extends BaseJwtProfileDto
 {
+    /**
+     * @param  array<string, mixed>  $claims  Claims crudos completos del JWT.
+     */
     public function __construct(
-        public string $id,
+        string $id,
+        array $claims = [],
         public ?string $email = null,
         public ?string $name = null,
         public ?string $department = null,
@@ -27,15 +37,21 @@ final readonly class JwtProfileDto
         public array $moduleIds = [],
         /** @var list<string> */
         public array $courseModuleIds = [],
-    ) {}
+    ) {
+        parent::__construct(id: $id, claims: $claims);
+    }
 
     /**
      * Construye el DTO desde un array raw del JWT (típicamente de $jwtProfile del middleware).
+     *
+     * A diferencia del base (que devuelve null si falta `id`), conserva el
+     * contrato histórico de dms: siempre devuelve instancia (id '' si falta).
      */
     public static function fromArray(array $data): self
     {
         return new self(
             id: (string) ($data['id'] ?? ''),
+            claims: $data,
             email: self::nullableString($data['email'] ?? null),
             name: self::nullableString($data['name'] ?? null),
             department: self::nullableString($data['department'] ?? null),
