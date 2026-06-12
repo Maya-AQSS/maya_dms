@@ -369,12 +369,12 @@ class TemplatePolicyTest extends TestCase
         $this->assertTrue($this->policy->clone($creator, $template));
     }
 
-    public function test_clone_requires_template_clone_and_update_for_non_creator(): void
+    public function test_clone_requires_template_clone_for_non_creator(): void
     {
         $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
         $withSlug = $this->makeJwtUser(
             '11111111-2222-3333-4444-555555555555',
-            ['template.show', 'template.create', 'template.clone', 'template.update'],
+            ['template.show', 'template.create', 'template.clone'],
         );
         auth()->setUser($withSlug);
         $template = $this->makeTemplate(
@@ -386,12 +386,21 @@ class TemplatePolicyTest extends TestCase
 
         $this->assertTrue($this->policy->clone($withSlug, $template));
 
-        $cloneOnly = $this->makeJwtUser(
+        $withoutClone = $this->makeJwtUser(
             '22222222-3333-4444-5555-666666666666',
-            ['template.show', 'template.create', 'template.clone'],
+            ['template.show', 'template.create'],
         );
-        auth()->setUser($cloneOnly);
-        $this->assertFalse($this->policy->clone($cloneOnly, $template));
+        auth()->setUser($withoutClone);
+        $this->assertFalse($this->policy->clone($withoutClone, $template));
+    }
+
+    public function test_clone_allows_creator_on_unpublished_draft(): void
+    {
+        $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+        $creator = $this->makeJwtUser($creatorId);
+        $template = $this->makeTemplate(createdBy: $creatorId, status: 'draft');
+
+        $this->assertTrue($this->policy->clone($creator, $template));
     }
 
     public function test_view_history_allows_creator_without_slug(): void

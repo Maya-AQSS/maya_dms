@@ -447,8 +447,9 @@ class TemplateService implements TemplateServiceInterface
     /**
      * Clona una plantilla origen hacia una nueva en borrador.
      *
-     * Si existe versión publicada en {@see EntityVersion}, la copia se materializa desde ese
-     * snapshot; si no, desde bloques y revisores vivos.
+     * Si el origen está en ciclo de trabajo (draft/in_review/rejected), copia bloques y
+     * revisores vivos. Si está publicada y existe snapshot en {@see EntityVersion},
+     * materializa desde ese snapshot; si no, desde el estado vivo.
      */
     public function clone(string $sourceTemplateId, string $actorId): Template
     {
@@ -458,6 +459,10 @@ class TemplateService implements TemplateServiceInterface
             $source->delivery_deadline,
             $source->visibility_level,
         );
+
+        if (in_array((string) $source->status, ['draft', 'in_review', 'rejected'], true)) {
+            return $this->cloneTemplateFromLiveSource($source, $actorId);
+        }
 
         $published = $this->resolveLatestPublishedTemplateSnapshotForClone((string) $source->id);
         if ($published !== null) {

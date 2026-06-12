@@ -2,9 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Enums\BlockState;
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\EntityVersion;
 use App\Models\Template;
+use App\Models\TemplateBlock;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Events\RouteMatched;
 use Illuminate\Support\Facades\DB;
@@ -105,8 +107,8 @@ it('denies clone on foreign published without template.clone', function () {
         ->assertForbidden();
 });
 
-it('allows clone on foreign published with template.clone and template.update', function () {
-    grantVersionCloneHistoryPermissions('template.clone', 'template.update');
+it('allows clone on foreign published with template.clone only', function () {
+    grantVersionCloneHistoryPermissions('template.clone');
 
     $templateId = seedPublishedGlobalTemplate(test()->otherUserId);
 
@@ -142,4 +144,97 @@ it('allows versions list for creator without template.history.view', function ()
 
     $this->getJson("/api/v1/templates/{$templateId}/versions")
         ->assertOk();
+});
+
+it('allows creator to clone unpublished draft', function () {
+    $templateId = (string) Str::uuid();
+
+    Template::query()->forceCreate([
+        'id' => $templateId,
+        'process_id' => '00000000-0000-0000-0000-000000000001',
+        'name' => 'Borrador sin publicar',
+        'description' => null,
+        'visibility_level' => TemplateVisibilityLevel::Personal->value,
+        'delivery_deadline' => now()->addWeek(),
+        'study_type_id' => null,
+        'study_id' => null,
+        'module_id' => null,
+        'team_id' => null,
+        'created_by' => test()->userId,
+        'status' => 'draft',
+        'review_stages' => 0,
+        'review_mode' => 'parallel',
+    ]);
+
+    TemplateBlock::query()->forceCreate([
+        'id' => (string) Str::uuid(),
+        'template_id' => $templateId,
+        'title' => 'Bloque borrador',
+        'block_state' => BlockState::Editable->value,
+        'sort_order' => 0,
+    ]);
+
+    $this->postJson("/api/v1/templates/{$templateId}/clone")
+        ->assertCreated()
+        ->assertJsonPath('data.name', 'Borrador sin publicar (copia)');
+});
+
+it('clones working draft blocks instead of published snapshot', function () {
+    $templateId = (string) Str::uuid();
+    $publishedBlockId = (string) Str::uuid();
+    $draftBlockId = (string) Str::uuid();
+
+    Template::query()->forceCreate([
+        'id' => $templateId,
+        'process_id' => '00000000-0000-0000-0000-000000000001',
+        'name' => 'Plantilla en nueva versión',
+        'description' => null,
+        'visibility_level' => TemplateVisibilityLevel::Personal->value,
+        'delivery_deadline' => now()->addWeek(),
+        'study_type_id' => null,
+        'study_id' => null,
+        'module_id' => null,
+        'team_id' => null,
+        'created_by' => test()->userId,
+        'status' => 'draft',
+        'review_stages' => 0,
+        'review_mode' => 'parallel',
+    ]);
+
+    EntityVersion::query()->forceCreate([
+        'id' => (string) Str::uuid(),
+        'versionable_type' => Template::class,
+        'versionable_id' => $templateId,
+        'version_number' => 1,
+        'status' => 'published',
+        'snapshot_data' => [
+            'template' => ['name' => 'Plantilla en nueva versión'],
+            'blocks' => [[
+                'id' => $publishedBlockId,
+                'title' => 'Título publicado',
+                'block_state' => 'editable',
+                'sort_order' => 0,
+            ]],
+        ],
+        'changelog' => 'v1',
+        'created_by' => test()->userId,
+        'published_at' => now(),
+        'published_by' => test()->userId,
+    ]);
+
+    TemplateBlock::query()->forceCreate([
+        'id' => $draftBlockId,
+        'template_id' => $templateId,
+        'title' => 'Título borrador',
+        'block_state' => BlockState::Editable->value,
+        'sort_order' => 0,
+    ]);
+
+    $response = $this->postJson("/api/v1/templates/{$templateId}/clone")
+        ->assertCreated();
+
+    $clonedId = $response->json('data.id');
+    $clonedBlock = TemplateBlock::query()->where('template_id', $clonedId)->first();
+
+    expect($clonedBlock?->title)->toBe('Título borrador');
 });

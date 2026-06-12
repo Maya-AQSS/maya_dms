@@ -31,7 +31,7 @@ use Illuminate\Support\Facades\DB;
  * - `template.review`: aprobar/rechazar; además debe figurar en `template_reviewers`.
  * - `template.assign-review`: asignar revisores en plantillas no personales; en personal solo el creador en borrador/rechazado.
  * - `template.version`: abrir ciclo de nueva versión sobre publicada (no creador).
- * - `template.clone`: clonar publicada (no creador); además `template.update` o ser creador del origen.
+ * - `template.clone`: clonar plantilla visible (no creador); el creador del origen no requiere este slug.
  * - `template.history.view`: listar/ver snapshots publicados (no creador).
  * - La visibilidad no personal (compartida) exige además `template.create`.
  *
@@ -244,11 +244,11 @@ class TemplatePolicy
     }
 
     /**
-     * Clonar plantilla publicada en un borrador nuevo.
+     * Clonar plantilla visible en un borrador nuevo.
      *
-     * Requiere poder ver el origen, `template.create` en la visibilidad del clon,
-     * y (creador del origen o `template.clone`). Quien no es creador del origen
-     * necesita además `template.update` (misma línea que editar publicadas ajenas).
+     * Requiere poder ver el origen, `template.create` en la visibilidad del clon
+     * y (creador del origen o `template.clone`). Aplica en borrador, revisión,
+     * rechazada o publicada; la visibilidad de catálogo ya restringe quién ve cada estado.
      */
     public function clone(JwtUser $user, Template $template): bool
     {
@@ -261,10 +261,6 @@ class TemplatePolicy
             return false;
         }
 
-        if (! $this->templateService->hasPublishedSnapshot($templateId)) {
-            return false;
-        }
-
         $visibility = $template->visibility_level instanceof TemplateVisibilityLevel
             ? $template->visibility_level->value
             : (string) $template->visibility_level;
@@ -273,16 +269,11 @@ class TemplatePolicy
             return false;
         }
 
-        $isCreator = (string) $user->getAuthIdentifier() === (string) $template->created_by;
-
-        if ($isCreator) {
+        if ((string) $user->getAuthIdentifier() === (string) $template->created_by) {
             return true;
         }
 
-        // Quien no es creador del origen necesita `template.clone` y además
-        // `template.update` (misma línea que editar publicadas ajenas).
-        return $user->hasPermission('template.clone')
-            && $user->hasPermission('template.update');
+        return $user->hasPermission('template.clone');
     }
 
     /**
