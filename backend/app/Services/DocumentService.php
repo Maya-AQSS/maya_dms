@@ -15,6 +15,7 @@ use App\DTOs\Documents\DocumentDto;
 use App\DTOs\Documents\DocumentFilterDto;
 use App\DTOs\Documents\DocumentMigrationPayloadDto;
 use App\DTOs\Documents\DocumentReviewDto;
+use App\DTOs\Documents\ReviewerCandidateDto;
 use App\DTOs\Documents\ReviewerPoolDto;
 use App\DTOs\Documents\TemplateVersionStatusDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
@@ -1392,11 +1393,11 @@ class DocumentService implements DocumentServiceInterface
             return new ReviewerPoolDto(
                 kind: 'document',
                 reviewMode: $reviewMode,
-                reviewers: array_map(fn (array $c) => [
-                    'id' => $c['reviewer_id'],
-                    'name' => $this->userDirectoryRepository->findNameById($c['reviewer_id']),
-                    'stage' => $c['stage'],
-                ], $candidates),
+                reviewers: array_map(fn (array $c) => new ReviewerCandidateDto(
+                    id: $c['reviewer_id'],
+                    name: $this->userDirectoryRepository->findNameById($c['reviewer_id']),
+                    stage: $c['stage'],
+                ), $candidates),
             );
         }
 
@@ -1405,11 +1406,11 @@ class DocumentService implements DocumentServiceInterface
             return new ReviewerPoolDto(
                 kind: 'template_fallback',
                 reviewMode: $reviewMode,
-                reviewers: array_map(fn (string $id) => [
-                    'id' => $id,
-                    'name' => $this->userDirectoryRepository->findNameById($id),
-                    'stage' => null,
-                ], $templateReviewerIds),
+                reviewers: array_map(fn (string $id) => new ReviewerCandidateDto(
+                    id: $id,
+                    name: $this->userDirectoryRepository->findNameById($id),
+                    stage: null,
+                ), $templateReviewerIds),
             );
         }
 

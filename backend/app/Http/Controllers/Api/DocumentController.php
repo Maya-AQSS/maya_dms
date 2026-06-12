@@ -16,6 +16,7 @@ use App\Http\Requests\Documents\StoreDocumentRequest;
 use App\Http\Requests\Documents\UpdateDocumentRequest;
 use App\Http\Resources\DocumentResource;
 use App\Http\Resources\DocumentWithBlocksResource;
+use App\Http\Resources\ReviewerPoolResource;
 use App\Models\Document;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
@@ -156,8 +157,9 @@ class DocumentController extends Controller
     public function reviewers(ShowDocumentRequest $request, string $document): JsonResponse
     {
         $resolved = $request->resolveDocument();
+        $pool = $this->documentService->getDocumentReviewerPool($resolved);
 
-        return response()->json(['data' => $this->documentService->getDocumentReviewerPool($resolved)]);
+        return response()->json(['data' => (new ReviewerPoolResource($pool))->toArray($request)]);
     }
 
     /**
