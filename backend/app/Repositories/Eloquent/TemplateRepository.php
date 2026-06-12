@@ -14,7 +14,6 @@ use App\Models\TemplateBlock;
 use App\Models\TemplateReviewer;
 use App\Policies\TemplatePolicy;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
-use App\Support\SearchAccentFold;
 use App\Support\TemplateHeadSnapshot;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -25,6 +24,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Maya\Search\AccentFold;
 use RuntimeException;
 
 class TemplateRepository extends AbstractVersionableEntityRepository implements TemplateRepositoryInterface
@@ -185,16 +185,20 @@ class TemplateRepository extends AbstractVersionableEntityRepository implements 
         }
 
         if ($filter->search !== null && trim($filter->search) !== '') {
-            $needle = SearchAccentFold::fold($filter->search);
+            $needle = AccentFold::fold($filter->search);
             if ($needle !== '') {
-                [$authorExpr, $authorTr] = SearchAccentFold::sqlFoldedLowerColumn('users.name');
+                $driver = DB::connection()->getDriverName();
+                [$authorExpr, $authorTr] = AccentFold::sqlFoldedLowerColumn('users.name', $driver);
+                // Expresión JSON construida por el desarrollador (no input de
+                // usuario) → variante para expresiones confiables.
                 $nameColumn = TemplateHeadSnapshot::jsonTemplateFieldExpression('template_head_ev', 'name');
-                [$nameExpr, $nameTr] = SearchAccentFold::sqlFoldedLowerColumn($nameColumn);
-                $like = '%'.SearchAccentFold::escapeLike($needle).'%';
+                [$nameExpr, $nameTr] = AccentFold::sqlFoldedLowerExpression($nameColumn, $driver);
+                $like = '%'.AccentFold::escapeLike($needle).'%';
                 // Coincide por nombre de la plantilla o por nombre del autor.
+                // Bindings con spread: en sqlite la expresión no lleva bindings.
                 $query->where(function ($q) use ($authorExpr, $authorTr, $nameExpr, $nameTr, $like) {
-                    $q->whereRaw("{$nameExpr} LIKE ?", [$nameTr[0], $nameTr[1], $like])
-                        ->orWhereRaw("{$authorExpr} LIKE ?", [$authorTr[0], $authorTr[1], $like]);
+                    $q->whereRaw("{$nameExpr} LIKE ?", [...$nameTr, $like])
+                        ->orWhereRaw("{$authorExpr} LIKE ?", [...$authorTr, $like]);
                 });
             }
         }
@@ -296,11 +300,12 @@ class TemplateRepository extends AbstractVersionableEntityRepository implements 
             $query->where('template_head_ev.snapshot_data->template->team_id', $filters->teamId);
         }
         if ($filters->authorName !== null && trim($filters->authorName) !== '') {
-            $needle = SearchAccentFold::fold($filters->authorName);
+            $needle = AccentFold::fold($filters->authorName);
             if ($needle !== '') {
-                [$expr, $tr] = SearchAccentFold::sqlFoldedLowerColumn('users.name');
-                $like = '%'.SearchAccentFold::escapeLike($needle).'%';
-                $query->whereRaw("{$expr} LIKE ?", [$tr[0], $tr[1], $like]);
+                $driver = DB::connection()->getDriverName();
+                [$expr, $tr] = AccentFold::sqlFoldedLowerColumn('users.name', $driver);
+                $like = '%'.AccentFold::escapeLike($needle).'%';
+                $query->whereRaw("{$expr} LIKE ?", [...$tr, $like]);
             }
         }
         if ($filters->deliveryDeadline !== null) {
