@@ -112,13 +112,9 @@ use App\Services\ThemeService;
 use App\Services\UserDirectoryService;
 use App\Services\UserFavoriteService;
 use App\Services\UserProfileService;
-use App\Support\FdwTeardown;
-use Illuminate\Console\Events\CommandStarting;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Broadcast;
-use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Maya\Platform\Support\RegistersFdwBootstrap;
 use Maya\Profile\Migrations as ProfileMigrations;
 use Maya\Profile\Repositories\Contracts\UserProfileResolverInterface;
 
@@ -186,66 +182,56 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // Migraciones compartidas con el resto de apps Maya (paquete
-        // `maya/shared-profile-laravel`). dms consume la vista resuelta de
-        // permisos vía FDW (`v_dms_user_permissions` en maya_authorization)
-        // — eliminada la tabla local `user_permissions`.
-        // Broadcasting auth endpoint protegido por JWT y bajo prefijo /api/v1 para
-        // consistencia con el resto de la API. Anula el `/broadcasting/auth` que
-        // Laravel registra por defecto con middleware `web` (basado en sesión).
-        Broadcast::routes([
-            'prefix' => 'api/v1',
-            'middleware' => ['api', 'jwt'],
+        // Bloque de bootstrap compartido entre las 5 apps Maya (paquete
+        // `ceedcv-maya/shared-platform-laravel`): Broadcast::routes bajo
+        // /api/v1 con middleware ['api','jwt'], migraciones de shared-profile
+        // (dms consume la vista resuelta de permisos vía FDW
+        // `v_dms_user_permissions` — eliminada la tabla local), teardown FDW
+        // antes de migrate:fresh/db:wipe, y guard `jwt-token`.
+        //
+        // El resolver del guard es propio de dms: enriquece el perfil JWT con
+        // los scopes académicos/permissions resueltos por UserProfileService
+        // (FDW o fallback JWT) y devuelve un JwtUser, en lugar del resolver
+        // por defecto del paquete (lookup de User Eloquent).
+        RegistersFdwBootstrap::register($this, [
+            'broadcastMiddleware' => ['api', 'jwt'],
+            'profileMigrations' => [
+                ProfileMigrations::users(),
+                ProfileMigrations::academicAssignments(),
+                ProfileMigrations::academicCatalogs(),
+                ProfileMigrations::teams(),
+                ProfileMigrations::userPermissions(),
+            ],
+            'viaRequestResolver' => function ($request) {
+                $jwtProfile = $request->attributes->get('jwt_user');
+
+                if (! $jwtProfile) {
+                    return null;
+                }
+
+                $userId = (string) $jwtProfile['id'];
+
+                /** @var array<string, mixed> $fromDb Perfil unificado (FDW o fallback JWT vía {@see UserProfileService}). */
+                $fromDb = app(UserProfileServiceInterface::class)->getProfile($userId, JwtProfileDto::fromArray($jwtProfile));
+
+                $profile = array_merge($jwtProfile, [
+                    'study_type_ids' => $fromDb['study_type_ids'] ?? [],
+                    'study_type_id' => null,
+                    'study_ids' => $fromDb['study_ids'] ?? [],
+                    'study_id' => null,
+                    'module_ids' => $fromDb['module_ids'] ?? [],
+                    'module_id' => null,
+                    'course_module_ids' => null,
+                    'course_module_id' => null,
+                    'team_ids' => $fromDb['team_ids'] ?? [],
+                    'team_id' => null,
+                ]);
+
+                $profile['permissions'] = $fromDb['permissions'] ?? [];
+
+                return new JwtUser($profile);
+            },
         ]);
-
-        $this->loadMigrationsFrom(ProfileMigrations::users());
-        $this->loadMigrationsFrom(ProfileMigrations::academicAssignments());
-        $this->loadMigrationsFrom(ProfileMigrations::academicCatalogs());
-        $this->loadMigrationsFrom(ProfileMigrations::teams());
-        $this->loadMigrationsFrom(ProfileMigrations::userPermissions());
-
-        // db:wipe no elimina vistas ni foreign tables FDW (las crea el paquete
-        // shared-profile). Las limpiamos antes de migrate:fresh/db:wipe para que
-        // la reconstrucción sea reproducible (si no, el rewrite de la vista
-        // `teams` falla con «cannot drop columns from view»).
-        Event::listen(CommandStarting::class, static function (CommandStarting $event): void {
-            if (in_array($event->command, ['migrate:fresh', 'db:wipe'], true)) {
-                FdwTeardown::dropAllInPublicSchema();
-            }
-        });
-
-        // Guard JWT stateless: resuelve el usuario desde el atributo 'jwt_user'
-        // que JwtMiddleware deposita en el request tras validar el token.
-        // Auth::user() / $request->user() lo invocan de forma diferida, sin sesión.
-        Auth::viaRequest('jwt-token', function ($request) {
-            $jwtProfile = $request->attributes->get('jwt_user');
-
-            if (! $jwtProfile) {
-                return null;
-            }
-
-            $userId = (string) $jwtProfile['id'];
-
-            /** @var array<string, mixed> $fromDb Perfil unificado (FDW o fallback JWT vía {@see UserProfileService}). */
-            $fromDb = app(UserProfileServiceInterface::class)->getProfile($userId, JwtProfileDto::fromArray($jwtProfile));
-
-            $profile = array_merge($jwtProfile, [
-                'study_type_ids' => $fromDb['study_type_ids'] ?? [],
-                'study_type_id' => null,
-                'study_ids' => $fromDb['study_ids'] ?? [],
-                'study_id' => null,
-                'module_ids' => $fromDb['module_ids'] ?? [],
-                'module_id' => null,
-                'course_module_ids' => null,
-                'course_module_id' => null,
-                'team_ids' => $fromDb['team_ids'] ?? [],
-                'team_id' => null,
-            ]);
-
-            $profile['permissions'] = $fromDb['permissions'] ?? [];
-
-            return new JwtUser($profile);
-        });
 
         // Registro de políticas
         Gate::policy(Comment::class, CommentPolicy::class);
