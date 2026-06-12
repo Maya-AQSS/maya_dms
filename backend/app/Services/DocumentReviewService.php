@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DTOs\Documents\CreateDocumentSnapshotDto;
+use App\DTOs\Documents\DocumentDto;
+use App\DTOs\Documents\DocumentReviewDto;
 use App\Events\DocumentReviewApproved;
 use App\Models\Document;
 use App\Models\DocumentReview;
@@ -39,19 +41,20 @@ class DocumentReviewService
 
     /**
      * @param  string  $documentId  ID ya verificado por el llamador (controller).
-     * @return Collection<int, DocumentReview>
+     * @return Collection<int, DocumentReviewDto>
      */
     public function listReviews(string $documentId): Collection
     {
-        return $this->documentRepository->listReviewsForDocument($documentId);
+        return $this->documentRepository->listReviewsForDocument($documentId)
+            ->map(static fn (DocumentReview $r) => DocumentReviewDto::fromModel($r));
     }
 
     /**
      * Aprueba una revisión del documento.
      */
-    public function approveReview(string $documentId, string $reviewId, string $actorId, ?string $publicationChangelog = null): Document
+    public function approveReview(string $documentId, string $reviewId, string $actorId, ?string $publicationChangelog = null): DocumentDto
     {
-        return $this->documentRepository->transaction(function () use ($documentId, $reviewId, $actorId, $publicationChangelog) {
+        $approved = $this->documentRepository->transaction(function () use ($documentId, $reviewId, $actorId, $publicationChangelog) {
             $document = $this->documentRepository->findOrFail($documentId);
 
             if ($document->status !== 'in_review') {
@@ -129,6 +132,8 @@ class DocumentReviewService
 
             return $refreshed;
         });
+
+        return DocumentDto::fromModel($approved);
     }
 
     private function notifyPendingValidationRequest(Document $document): void
@@ -276,9 +281,9 @@ class DocumentReviewService
     /**
      * Rechaza una revisión del documento.
      */
-    public function rejectReview(string $documentId, string $reviewId, string $actorId, ?string $reason = null): Document
+    public function rejectReview(string $documentId, string $reviewId, string $actorId, ?string $reason = null): DocumentDto
     {
-        return $this->documentRepository->transaction(function () use ($documentId, $reviewId, $actorId, $reason) {
+        $rejected = $this->documentRepository->transaction(function () use ($documentId, $reviewId, $actorId, $reason) {
             $document = $this->documentRepository->findOrFail($documentId);
 
             if ($document->status !== 'in_review') {
@@ -328,6 +333,8 @@ class DocumentReviewService
 
             return $refreshed;
         });
+
+        return DocumentDto::fromModel($rejected);
     }
 
     /**

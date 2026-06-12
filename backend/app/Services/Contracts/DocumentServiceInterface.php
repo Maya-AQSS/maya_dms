@@ -13,6 +13,7 @@ use App\DTOs\Documents\DeleteDocumentBlockDto;
 use App\DTOs\Documents\DocumentDto;
 use App\DTOs\Documents\DocumentFilterDto;
 use App\DTOs\Documents\DocumentMigrationPayloadDto;
+use App\DTOs\Documents\DocumentReviewDto;
 use App\DTOs\Documents\ReviewerPoolDto;
 use App\DTOs\Documents\TemplateVersionStatusDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
@@ -22,20 +23,22 @@ use App\DTOs\Versioning\DocumentVersionSummaryDto;
 use App\DTOs\Versioning\WorkingRevisionConflictDto;
 use App\Http\Controllers\Api\DocumentController;
 use App\Models\Document;
-use App\Models\DocumentReview;
 use App\Models\EntityVersion;
 use Illuminate\Support\Collection;
 use Maya\Http\Pagination\PaginatedDto;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
- * Excepción B4 documentada: la mayoría de métodos de mutación devuelven el
- * Model Eloquent (no DTO). Razón: el {@see DocumentController}
- * adjunta atributos derivados (`can_clone`, `review_mode`, `is_shared_with_me`,
- * etc.) mediante `setAttribute()` sobre el Model resultante antes de presentar
- * como DTO. La conversión final a DTO se hace en el Controller con
- * `DocumentDto::fromModel($model)` antes de pasar al Resource (que es
- * `DocumentDto`-only estricto).
+ * Los métodos de mutación devuelven {@see DocumentDto}. La presentación derivada
+ * (`can_clone`, `review_mode`, team embebido, …) que el {@see DocumentController}
+ * adjunta con `setAttribute()` sobre el Model se inyecta mediante el callback
+ * opcional `$beforeMap` (mismo patrón que {@see self::paginate}), que recibe el
+ * Model justo antes de la conversión a DTO.
+ *
+ * Excepción documentada (mantener): `findModelOrFail*` y los resolvers de Model
+ * existen SOLO para `authorize($ability, $model)` con Policies (exigen Model) y
+ * para flujos de presentación de `show` que componen meta derivada sobre el
+ * modelo resuelto por el FormRequest. Ver changes.md (F4-B1).
  */
 interface DocumentServiceInterface
 {
@@ -73,23 +76,27 @@ interface DocumentServiceInterface
     public function findLatestPublishedVersion(string $documentId): ?EntityVersion;
 
     /**
-     * Crea un documento a partir de un DTO. Devuelve Model — ver excepción B4
-     * documentada en el docblock del interface.
+     * Crea un documento a partir de un DTO.
+     *
+     * @param  callable(Document): void|null  $beforeMap
      */
-    public function create(CreateDocumentDto $dto): Document;
+    public function create(CreateDocumentDto $dto, ?callable $beforeMap = null): DocumentDto;
 
     /**
      * Clona un documento visible hacia un nuevo borrador con el mismo ancla
-     * de plantilla y contenido de bloques copiado. Devuelve Model.
+     * de plantilla y contenido de bloques copiado.
+     *
+     * @param  callable(Document): void|null  $beforeMap
      */
-    public function clone(string $sourceDocumentId, string $actorId): Document;
+    public function clone(string $sourceDocumentId, string $actorId, ?callable $beforeMap = null): DocumentDto;
 
     /**
-     * Actualiza metadatos editables del documento. Devuelve Model.
+     * Actualiza metadatos editables del documento.
      *
      * @param  array<string, mixed>  $attributes
+     * @param  callable(Document): void|null  $beforeMap
      */
-    public function update(string $documentId, array $attributes): Document;
+    public function update(string $documentId, array $attributes, ?callable $beforeMap = null): DocumentDto;
 
     /**
      * Borrado lógico del documento.
@@ -101,7 +108,7 @@ interface DocumentServiceInterface
      *
      * @return list<BlockDisplayDto>
      */
-    public function blocksForDisplay(Document $document): array;
+    public function blocksForDisplay(string $documentId): array;
 
     /**
      * Actualiza el contenido de un bloque de documento.
@@ -114,11 +121,12 @@ interface DocumentServiceInterface
     public function deleteOptionalBlock(DeleteDocumentBlockDto $dto): void;
 
     /**
-     * Transiciona el documento a un nuevo estado. Devuelve Model.
+     * Transiciona el documento a un nuevo estado.
      *
      * @param  array<string, mixed>  $extraAttributes
+     * @param  callable(Document): void|null  $beforeMap
      */
-    public function transition(string $documentId, string $newStatus, string $actorId, array $extraAttributes = []): Document;
+    public function transition(string $documentId, string $newStatus, string $actorId, array $extraAttributes = [], ?callable $beforeMap = null): DocumentDto;
 
     /**
      * Envia el documento a revisión. Devuelve Model.
@@ -126,22 +134,28 @@ interface DocumentServiceInterface
     public function submitToReview(string $documentId, string $actorId, string $changelog): Document;
 
     /**
-     * Publica el documento. Devuelve Model.
+     * Publica el documento.
+     *
+     * @param  callable(Document): void|null  $beforeMap
      */
-    public function publishDocument(string $documentId, string $actorId, ?string $changelog): Document;
+    public function publishDocument(string $documentId, string $actorId, ?string $changelog, ?callable $beforeMap = null): DocumentDto;
 
     /**
-     * Publicado → borrador para iniciar un nuevo ciclo de edición/revisión. Devuelve Model.
+     * Publicado → borrador para iniciar un nuevo ciclo de edición/revisión.
+     *
+     * @param  callable(Document): void|null  $beforeMap
      */
-    public function startNewRevisionCycle(string $documentId, string $actorId): Document;
+    public function startNewRevisionCycle(string $documentId, string $actorId, ?callable $beforeMap = null): DocumentDto;
 
     /**
      * Actualiza in-situ un documento (en ciclo de nueva versión, borrador) a una versión
      * de plantilla más reciente: re-ancla `template_version_id` y reconcilia los bloques
      * (crea los nuevos, aplica el contenido migrado salvo en locked, y elimina/mantiene
-     * los removidos según la elección). Devuelve el Model refrescado.
+     * los removidos según la elección).
+     *
+     * @param  callable(Document): void|null  $beforeMap
      */
-    public function applyTemplateMigration(ApplyTemplateMigrationDto $dto): Document;
+    public function applyTemplateMigration(ApplyTemplateMigrationDto $dto, ?callable $beforeMap = null): DocumentDto;
 
     /**
      * Descarta una versión no publicada en curso y restaura la última publicación. Devuelve Model.
@@ -149,23 +163,23 @@ interface DocumentServiceInterface
     public function destroyVersion(string $documentId, string $versionId, string $actorId): Document;
 
     /**
-     * Delega la propiedad del documento a otro usuario. Devuelve Model.
+     * Delega la propiedad del documento a otro usuario.
+     *
+     * @param  callable(Document): void|null  $beforeMap
      */
-    public function delegateOwner(string $documentId, string $newOwnerId, string $actorId): Document;
+    public function delegateOwner(string $documentId, string $newOwnerId, string $actorId, ?callable $beforeMap = null): DocumentDto;
 
     /**
-     * Lista las revisiones del documento. Devuelve Collection<DocumentReview>
-     * (Eloquent) — uso interno del Controller para `ReviewResource`. Aplicable
-     * a la misma excepción B4 documentada arriba.
+     * Lista las revisiones del documento.
      *
-     * @return Collection<int, DocumentReview>
+     * @return Collection<int, DocumentReviewDto>
      */
     public function listReviews(string $documentId): Collection;
 
     /**
-     * Aprueba una revisión del documento. Devuelve Model.
+     * Aprueba una revisión del documento.
      */
-    public function approveReview(string $documentId, string $reviewId, string $actorId, ?string $publicationChangelog = null): Document;
+    public function approveReview(string $documentId, string $reviewId, string $actorId, ?string $publicationChangelog = null): DocumentDto;
 
     /**
      * Localiza una versión snapshot del documento por id (legacy o polimórfico).
@@ -185,9 +199,9 @@ interface DocumentServiceInterface
     public function listDocumentVersions(string $documentId): array;
 
     /**
-     * Rechaza una revisión del documento. Devuelve Model.
+     * Rechaza una revisión del documento.
      */
-    public function rejectReview(string $documentId, string $reviewId, string $actorId, ?string $reason = null): Document;
+    public function rejectReview(string $documentId, string $reviewId, string $actorId, ?string $reason = null): DocumentDto;
 
     /**
      * Listado paginado de documentos con filtros de dominio (ADR-C).
@@ -202,11 +216,9 @@ interface DocumentServiceInterface
     ): PaginatedDto;
 
     /**
-     * Lista documentos visibles para el usuario actual. Devuelve Collection<Document>
-     * (Eloquent) porque el Controller adjunta `can_clone`, `is_shared_with_me`,
-     * `team`, etc. a cada item antes de presentar como DTO.
+     * Lista documentos visibles para el usuario actual ordenados por creación desc.
      *
-     * @return Collection<int, Document>
+     * @return Collection<int, DocumentDto>
      */
     public function listOrderedByCreatedAtDesc(?string $processId = null): Collection;
 
@@ -218,7 +230,9 @@ interface DocumentServiceInterface
     public function creationOptionsForModule(string $moduleId): array;
 
     /**
-     * Crea documento desde la vista de módulo. Devuelve Model.
+     * Crea documento desde la vista de módulo.
+     *
+     * @param  callable(Document): void|null  $beforeMap
      */
     public function createFromModule(
         string $moduleId,
@@ -226,7 +240,8 @@ interface DocumentServiceInterface
         string $processId,
         ?string $templateVersionId = null,
         ?string $deliveryDeadline = null,
-    ): Document;
+        ?callable $beforeMap = null,
+    ): DocumentDto;
 
     /**
      * Comparación ligera entre la versión de plantilla anclada al documento y la última publicada.

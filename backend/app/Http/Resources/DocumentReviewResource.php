@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
-use App\Models\DocumentReview;
+use App\DTOs\Documents\DocumentReviewDto;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @property DocumentReview $resource
+ * @property DocumentReviewDto $resource
  */
 class DocumentReviewResource extends JsonResource
 {
@@ -18,20 +18,20 @@ class DocumentReviewResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        /** @var DocumentReview $review */
-        $review = $this->resource;
+        /** @var DocumentReviewDto $dto */
+        $dto = $this->resource;
 
         return [
-            'id' => (string) $review->id,
-            'document_id' => (string) $review->document_id,
-            'reviewer_id' => (string) $review->reviewer_id,
-            'reviewer_name' => $review->relationLoaded('reviewer') ? ($review->reviewer?->name ?? null) : null,
-            'stage' => (int) $review->stage,
-            'status' => (string) $review->status,
-            'rejection_reason' => $review->rejection_reason,
-            'reviewed_at' => $review->reviewed_at?->toIso8601String(),
-            'created_at' => $review->created_at?->toIso8601String(),
-            'updated_at' => $review->updated_at?->toIso8601String(),
+            'id' => $dto->id,
+            'document_id' => $dto->documentId,
+            'reviewer_id' => $dto->reviewerId,
+            'reviewer_name' => $dto->reviewerName,
+            'stage' => $dto->stage,
+            'status' => $dto->status,
+            'rejection_reason' => $dto->rejectionReason,
+            'reviewed_at' => $dto->reviewedAt,
+            'created_at' => $dto->createdAt,
+            'updated_at' => $dto->updatedAt,
         ];
     }
 }

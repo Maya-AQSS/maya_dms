@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services;
 
+use App\DTOs\Documents\DocumentDto;
 use App\Events\OwnershipTransferred;
 use App\Models\Document;
 use App\Models\EntityVersion;
@@ -60,7 +61,11 @@ class DocumentServiceOwnershipTransferTest extends TestCase
         $current->setRelation('headVersion', $headVersion);
 
         $updated = new Document;
-        $updated->forceFill(['id' => $documentId]);
+        // current_version precargado: evita el subquery fallback del accessor en la conversión a DTO.
+        $updated->forceFill(['id' => $documentId, 'current_version' => 1, 'submitted_at' => null, 'published_at' => null]);
+        $updatedHead = new EntityVersion;
+        $updatedHead->forceFill(['snapshot_data' => ['document' => ['owner_id' => $newOwnerId]]]);
+        $updated->setRelation('headVersion', $updatedHead);
 
         $docRepo->shouldReceive('findOrFail')->once()->with($documentId)->andReturn($current);
         $docRepo->shouldReceive('updateOwner')->once()->with($current, $newOwnerId)->andReturn($updated);
@@ -72,7 +77,8 @@ class DocumentServiceOwnershipTransferTest extends TestCase
 
         $result = $service->delegateOwner($documentId, $newOwnerId, $actorId);
 
-        $this->assertSame($updated, $result);
+        $this->assertInstanceOf(DocumentDto::class, $result);
+        $this->assertSame($documentId, $result->id);
 
         Event::assertDispatched(
             OwnershipTransferred::class,

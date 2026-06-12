@@ -33,7 +33,7 @@ class DocumentBlockController extends Controller
         $this->authorize('listDocumentBlocks', $doc);
         $this->assertOptionalProcessContextMatches((string) $doc->process_id);
 
-        $blocks = $this->documentService->blocksForDisplay($doc);
+        $blocks = $this->documentService->blocksForDisplay((string) $doc->id);
 
         return DocumentBlockResource::collection($blocks);
     }

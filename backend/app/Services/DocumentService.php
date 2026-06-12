@@ -14,6 +14,7 @@ use App\DTOs\Documents\DeleteDocumentBlockDto;
 use App\DTOs\Documents\DocumentDto;
 use App\DTOs\Documents\DocumentFilterDto;
 use App\DTOs\Documents\DocumentMigrationPayloadDto;
+use App\DTOs\Documents\DocumentReviewDto;
 use App\DTOs\Documents\ReviewerPoolDto;
 use App\DTOs\Documents\TemplateVersionStatusDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
@@ -26,7 +27,6 @@ use App\Events\DocumentSubmittedForReview;
 use App\Events\OwnershipTransferred;
 use App\Models\Document;
 use App\Models\DocumentBlock;
-use App\Models\DocumentReview;
 use App\Models\DocumentVersion;
 use App\Models\EntityVersion;
 use App\Models\Template;
@@ -90,6 +90,22 @@ class DocumentService implements DocumentServiceInterface
     }
 
     /**
+     * Aplica el callback de presentación (adjunta atributos derivados sobre el
+     * Model: can_clone, team embebido, …) y convierte a DTO. Patrón espejo del
+     * `$beforeMap` de {@see self::paginate}.
+     *
+     * @param  callable(Document): void|null  $beforeMap
+     */
+    private function toDto(Document $document, ?callable $beforeMap = null): DocumentDto
+    {
+        if ($beforeMap !== null) {
+            $beforeMap($document);
+        }
+
+        return DocumentDto::fromModel($document);
+    }
+
+    /**
      * Variante de uso interno: devuelve el Model. Necesario cuando el caller
      * adjunta atributos derivados (`can_clone`, `review_mode`, etc.) antes de
      * representar como DTO, o cuando invoca `authorize($ability, $model)`.
@@ -130,8 +146,10 @@ class DocumentService implements DocumentServiceInterface
 
     /**
      * Crea un documento a partir de un DTO.
+     *
+     * @param  callable(Document): void|null  $beforeMap
      */
-    public function create(CreateDocumentDto $dto): Document
+    public function create(CreateDocumentDto $dto, ?callable $beforeMap = null): DocumentDto
     {
         $this->templateRepository->findOrFail($dto->templateId);
 
@@ -190,7 +208,7 @@ class DocumentService implements DocumentServiceInterface
         $templateMeta = is_array($ev->snapshot_data ?? null) ? ($ev->snapshot_data['template'] ?? null) : null;
         $ctx = $this->contextResolver->resolve($dto, is_array($templateMeta) ? $templateMeta : null);
 
-        return $this->documentRepository->createDocumentWithBlocks([
+        return $this->toDto($this->documentRepository->createDocumentWithBlocks([
             'process_id' => $dto->processId,
             'template_id' => $dto->templateId,
             'template_version_id' => (string) $ev->id,
@@ -203,7 +221,7 @@ class DocumentService implements DocumentServiceInterface
             'created_by' => $dto->createdBy,
             'owner_id' => $dto->ownerId,
             'status' => 'draft',
-        ], $blockRows);
+        ], $blockRows), $beforeMap);
     }
 
     /**
@@ -211,10 +229,12 @@ class DocumentService implements DocumentServiceInterface
      *
      * Si existe al menos una versión publicada en {@see DocumentVersion}, el borrador copiado se materializa desde el
      * último snapshot con trigger_event «published» (no desde los bloques vivos del documento).
+     *
+     * @param  callable(Document): void|null  $beforeMap
      */
-    public function clone(string $sourceDocumentId, string $actorId): Document
+    public function clone(string $sourceDocumentId, string $actorId, ?callable $beforeMap = null): DocumentDto
     {
-        return $this->documentRepository->transaction(function () use ($sourceDocumentId, $actorId) {
+        $copy = $this->documentRepository->transaction(function () use ($sourceDocumentId, $actorId) {
             $source = $this->documentRepository->findOrFail($sourceDocumentId);
 
             $publishedSnapshot = $this->documentRepository->findLatestPublishedDocumentVersion($sourceDocumentId);
@@ -278,6 +298,8 @@ class DocumentService implements DocumentServiceInterface
                 'status' => 'draft',
             ], $blockRows);
         });
+
+        return $this->toDto($copy, $beforeMap);
     }
 
     /**
@@ -390,8 +412,9 @@ class DocumentService implements DocumentServiceInterface
      * Actualiza metadatos editables del documento.
      *
      * @param  array<string, mixed>  $attributes
+     * @param  callable(Document): void|null  $beforeMap
      */
-    public function update(string $documentId, array $attributes): Document
+    public function update(string $documentId, array $attributes, ?callable $beforeMap = null): DocumentDto
     {
         $document = $this->documentRepository->findOrFail($documentId);
 
@@ -407,7 +430,10 @@ class DocumentService implements DocumentServiceInterface
             $merged['delivery_deadline'] ?? $document->delivery_deadline,
         );
 
-        return $this->documentRepository->updateDocumentMetadata($document, $merged);
+        return $this->toDto(
+            $this->documentRepository->updateDocumentMetadata($document, $merged),
+            $beforeMap,
+        );
     }
 
     /**
@@ -492,6 +518,8 @@ class DocumentService implements DocumentServiceInterface
 
     /**
      * Crea un documento desde la vista de módulo resolviendo plantilla/version disponibles.
+     *
+     * @param  callable(Document): void|null  $beforeMap
      */
     public function createFromModule(
         string $moduleId,
@@ -499,7 +527,8 @@ class DocumentService implements DocumentServiceInterface
         string $processId,
         ?string $templateVersionId = null,
         ?string $deliveryDeadline = null,
-    ): Document {
+        ?callable $beforeMap = null,
+    ): DocumentDto {
         $options = $this->creationOptionsForModule($moduleId);
         if ($options === []) {
             throw ValidationException::withMessages([
@@ -553,7 +582,7 @@ class DocumentService implements DocumentServiceInterface
             moduleId: $moduleContext['module_id'],
             deliveryDeadline: $deliveryDeadline,
             templateVersionId: $selected->templateVersionId,
-        ));
+        ), $beforeMap);
     }
 
     /**
@@ -710,11 +739,12 @@ class DocumentService implements DocumentServiceInterface
     /**
      * Lista documentos visibles para el usuario actual ordenados por fecha de creación descendente.
      *
-     * @return Collection<int, Document>
+     * @return Collection<int, DocumentDto>
      */
     public function listOrderedByCreatedAtDesc(?string $processId = null): Collection
     {
-        return $this->documentRepository->listOrderedByCreatedAtDesc($processId);
+        return $this->documentRepository->listOrderedByCreatedAtDesc($processId)
+            ->map(static fn (Document $doc) => DocumentDto::fromModel($doc));
     }
 
     /**
@@ -722,9 +752,9 @@ class DocumentService implements DocumentServiceInterface
      *
      * @return list<BlockDisplayDto>
      */
-    public function blocksForDisplay(Document $document): array
+    public function blocksForDisplay(string $documentId): array
     {
-        return $this->documentBlockService->blocksForDisplay((string) $document->id);
+        return $this->documentBlockService->blocksForDisplay($documentId);
     }
 
     /**
@@ -744,16 +774,22 @@ class DocumentService implements DocumentServiceInterface
      * Transiciona el documento a un nuevo estado y emite el evento de dominio DocumentStateChanged.
      *
      * @param  array<string, mixed>  $extraAttributes
+     * @param  callable(Document): void|null  $beforeMap
      */
-    public function transition(string $documentId, string $newStatus, string $actorId, array $extraAttributes = []): Document
+    public function transition(string $documentId, string $newStatus, string $actorId, array $extraAttributes = [], ?callable $beforeMap = null): DocumentDto
     {
-        return $this->documentStateService->transition($documentId, $newStatus, $actorId, $extraAttributes);
+        return $this->toDto(
+            $this->documentStateService->transition($documentId, $newStatus, $actorId, $extraAttributes),
+            $beforeMap,
+        );
     }
 
     /**
      * Publicado → borrador para preparar una nueva versión publicada del mismo expediente.
+     *
+     * @param  callable(Document): void|null  $beforeMap
      */
-    public function startNewRevisionCycle(string $documentId, string $actorId): Document
+    public function startNewRevisionCycle(string $documentId, string $actorId, ?callable $beforeMap = null): DocumentDto
     {
         $document = $this->documentRepository->findOrFail($documentId);
 
@@ -763,17 +799,20 @@ class DocumentService implements DocumentServiceInterface
             ]);
         }
 
-        return $this->documentStateService->transition($documentId, 'draft', $actorId, [
+        return $this->toDto($this->documentStateService->transition($documentId, 'draft', $actorId, [
             // Igual que en plantillas: quien abre la nueva versión pasa a ser el
             // editor titular del ciclo en curso, evitando dobles editores en borrador.
             'owner_id' => $actorId,
             'created_by' => $actorId,
-        ]);
+        ]), $beforeMap);
     }
 
-    public function applyTemplateMigration(ApplyTemplateMigrationDto $dto): Document
+    /**
+     * @param  callable(Document): void|null  $beforeMap
+     */
+    public function applyTemplateMigration(ApplyTemplateMigrationDto $dto, ?callable $beforeMap = null): DocumentDto
     {
-        return $this->documentRepository->transaction(function () use ($dto): Document {
+        $updated = $this->documentRepository->transaction(function () use ($dto): Document {
             $document = $this->documentRepository->findOrFail($dto->documentId);
 
             if ($document->status !== 'draft') {
@@ -824,6 +863,8 @@ class DocumentService implements DocumentServiceInterface
 
             return $this->documentRepository->findOrFailForRefreshAfterMutation($dto->documentId);
         });
+
+        return $this->toDto($updated, $beforeMap);
     }
 
     /**
@@ -1420,8 +1461,10 @@ class DocumentService implements DocumentServiceInterface
 
     /**
      * Publica el documento.
+     *
+     * @param  callable(Document): void|null  $beforeMap
      */
-    public function publishDocument(string $documentId, string $actorId, ?string $changelog): Document
+    public function publishDocument(string $documentId, string $actorId, ?string $changelog, ?callable $beforeMap = null): DocumentDto
     {
         $document = $this->documentRepository->findOrFail($documentId);
 
@@ -1448,7 +1491,7 @@ class DocumentService implements DocumentServiceInterface
             ]);
         }
 
-        return $this->documentRepository->transaction(function () use ($documentId, $actorId, $changelog) {
+        $published = $this->documentRepository->transaction(function () use ($documentId, $actorId, $changelog) {
             $document = $this->documentRepository->findOrFail($documentId);
             $this->documentRepository->loadHeadVersion($document);
             $resolvedChangelog = VersionSubmissionChangelog::requireNonEmpty(
@@ -1496,14 +1539,18 @@ class DocumentService implements DocumentServiceInterface
 
             return $refreshed;
         });
+
+        return $this->toDto($published, $beforeMap);
     }
 
     /**
      * Delega la propiedad del documento a otro usuario.
      * Solo el titular actual puede delegar; esta invariante se refuerza aquí
      * además de en la policy del controlador, para proteger llamadas desde otros entrypoints.
+     *
+     * @param  callable(Document): void|null  $beforeMap
      */
-    public function delegateOwner(string $documentId, string $newOwnerId, string $actorId): Document
+    public function delegateOwner(string $documentId, string $newOwnerId, string $actorId, ?callable $beforeMap = null): DocumentDto
     {
         $document = $this->documentRepository->findOrFail($documentId);
 
@@ -1533,13 +1580,13 @@ class DocumentService implements DocumentServiceInterface
             $request?->userAgent(),
         );
 
-        return $updated;
+        return $this->toDto($updated, $beforeMap);
     }
 
     /**
      * Lista las revisiones del documento.
      *
-     * @return Collection<int, DocumentReview>
+     * @return Collection<int, DocumentReviewDto>
      */
     public function listReviews(string $documentId): Collection
     {
@@ -1549,7 +1596,7 @@ class DocumentService implements DocumentServiceInterface
     /**
      * Aprueba una revisión del documento.
      */
-    public function approveReview(string $documentId, string $reviewId, string $actorId, ?string $publicationChangelog = null): Document
+    public function approveReview(string $documentId, string $reviewId, string $actorId, ?string $publicationChangelog = null): DocumentDto
     {
         return $this->documentReviewService->approveReview($documentId, $reviewId, $actorId, $publicationChangelog);
     }
@@ -1557,7 +1604,7 @@ class DocumentService implements DocumentServiceInterface
     /**
      * Rechaza una revisión del documento.
      */
-    public function rejectReview(string $documentId, string $reviewId, string $actorId, ?string $reason = null): Document
+    public function rejectReview(string $documentId, string $reviewId, string $actorId, ?string $reason = null): DocumentDto
     {
         return $this->documentReviewService->rejectReview($documentId, $reviewId, $actorId, $reason);
     }

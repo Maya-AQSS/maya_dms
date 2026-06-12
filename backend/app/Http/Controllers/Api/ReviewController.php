@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
-use App\DTOs\Documents\DocumentDto;
 use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Documents\ApproveDocumentReviewRequest;
@@ -55,7 +54,7 @@ class ReviewController extends Controller
             $request->validated('changelog'),
         );
 
-        return response()->json(['data' => new DocumentResource(DocumentDto::fromModel($updated))]);
+        return response()->json(['data' => new DocumentResource($updated)]);
     }
 
     /**
@@ -75,6 +74,6 @@ class ReviewController extends Controller
             $request->validated('rejection_reason'),
         );
 
-        return response()->json(['data' => new DocumentResource(DocumentDto::fromModel($updated))]);
+        return response()->json(['data' => new DocumentResource($updated)]);
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services;
 
+use App\DTOs\Documents\DocumentDto;
 use App\Models\Document;
 use App\Models\EntityVersion;
 use App\Repositories\Contracts\AcademicHierarchyRepositoryInterface;
@@ -132,7 +133,8 @@ class DocumentServicePublishTest extends TestCase
 
         $repo = Mockery::mock(DocumentRepositoryInterface::class);
         $doc = new Document;
-        $doc->forceFill(['id' => 'doc-uuid']);
+        // current_version precargado: evita el subquery fallback del accessor en la conversión a DTO.
+        $doc->forceFill(['id' => 'doc-uuid', 'current_version' => 1, 'submitted_at' => null, 'published_at' => null]);
         $doc->setRelation('headVersion', $headEv);
 
         $repo->shouldReceive('findOrFail')
@@ -184,6 +186,7 @@ class DocumentServicePublishTest extends TestCase
 
         $result = $service->publishDocument('doc-uuid', 'actor-uuid', null);
 
-        $this->assertInstanceOf(Document::class, $result);
+        $this->assertInstanceOf(DocumentDto::class, $result);
+        $this->assertSame('doc-uuid', $result->id);
     }
 }

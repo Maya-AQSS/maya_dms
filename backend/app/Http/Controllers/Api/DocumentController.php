@@ -64,14 +64,18 @@ class DocumentController extends Controller
     public function store(StoreDocumentRequest $request): JsonResponse
     {
         $userId = (string) $request->user()->getAuthIdentifier();
-        $document = $this->documentService->create($request->toDto($userId, $userId));
-        $this->attachCanCloneMeta($document, $request);
-        $this->apiTeamEmbedService->embedOnDocument($document, $userId);
-        $blocks = $this->documentService->blocksForDisplay($document);
+        $document = $this->documentService->create(
+            $request->toDto($userId, $userId),
+            function (Document $model) use ($request, $userId): void {
+                $this->attachCanCloneMeta($model, $request);
+                $this->apiTeamEmbedService->embedOnDocument($model, $userId);
+            },
+        );
+        $blocks = $this->documentService->blocksForDisplay($document->id);
 
         return response()->json([
             'data' => array_merge(
-                (new DocumentResource(DocumentDto::fromModel($document)))->toArray($request),
+                (new DocumentResource($document))->toArray($request),
                 ['blocks' => DocumentBlockResource::resolveDisplayList($request, $blocks)],
             ),
         ], 201);
@@ -86,14 +90,19 @@ class DocumentController extends Controller
         $this->assertOptionalProcessContextMatches((string) $source->process_id);
 
         $userId = (string) $request->user()->getAuthIdentifier();
-        $copy = $this->documentService->clone($document, $userId);
-        $this->attachCanCloneMeta($copy, $request);
-        $this->apiTeamEmbedService->embedOnDocument($copy, $userId);
-        $blocks = $this->documentService->blocksForDisplay($copy);
+        $copy = $this->documentService->clone(
+            $document,
+            $userId,
+            function (Document $model) use ($request, $userId): void {
+                $this->attachCanCloneMeta($model, $request);
+                $this->apiTeamEmbedService->embedOnDocument($model, $userId);
+            },
+        );
+        $blocks = $this->documentService->blocksForDisplay($copy->id);
 
         return response()->json([
             'data' => array_merge(
-                (new DocumentResource(DocumentDto::fromModel($copy)))->toArray($request),
+                (new DocumentResource($copy))->toArray($request),
                 ['blocks' => DocumentBlockResource::resolveDisplayList($request, $blocks)],
             ),
         ], 201);
@@ -125,7 +134,7 @@ class DocumentController extends Controller
             $this->documentService->attachLatestPublishedVersionMeta(collect([$resolved]));
             $this->documentService->attachShareMetadataForViewer(collect([$resolved]), $viewerId);
             $this->apiTeamEmbedService->embedOnDocument($resolved, $viewerId);
-            $blocks = $this->documentService->blocksForDisplay($resolved);
+            $blocks = $this->documentService->blocksForDisplay((string) $resolved->id);
 
             return response()->json([
                 'data' => array_merge(
@@ -140,7 +149,7 @@ class DocumentController extends Controller
         $this->documentService->attachLatestPublishedVersionMeta(collect([$resolved]));
         $this->documentService->attachShareMetadataForViewer(collect([$resolved]), $viewerId);
         $this->apiTeamEmbedService->embedOnDocument($resolved, $viewerId);
-        $blocks = $this->documentService->blocksForDisplay($resolved);
+        $blocks = $this->documentService->blocksForDisplay((string) $resolved->id);
 
         return response()->json([
             'data' => array_merge(
@@ -171,14 +180,17 @@ class DocumentController extends Controller
         $model = $request->resolveDocument();
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
-        $updated = $this->documentService->update($document, $request->toDto()->toArray());
-        $this->attachCanCloneMeta($updated, $request);
-        $this->apiTeamEmbedService->embedOnDocument(
-            $updated,
-            (string) $request->user()->getAuthIdentifier(),
+        $userId = (string) $request->user()->getAuthIdentifier();
+        $updated = $this->documentService->update(
+            $document,
+            $request->toDto()->toArray(),
+            function (Document $doc) use ($request, $userId): void {
+                $this->attachCanCloneMeta($doc, $request);
+                $this->apiTeamEmbedService->embedOnDocument($doc, $userId);
+            },
         );
 
-        return response()->json(['data' => (new DocumentResource(DocumentDto::fromModel($updated)))->toArray($request)]);
+        return response()->json(['data' => (new DocumentResource($updated))->toArray($request)]);
     }
 
     /**

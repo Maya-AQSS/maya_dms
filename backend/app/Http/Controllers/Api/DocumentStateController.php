@@ -15,6 +15,7 @@ use App\Http\Requests\Documents\StartNewDocumentRevisionRequest;
 use App\Http\Requests\Documents\SubmitDocumentForReviewRequest;
 use App\Http\Resources\DocumentBlockResource;
 use App\Http\Resources\DocumentResource;
+use App\Models\Document;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\DocumentReviewService;
@@ -71,10 +72,10 @@ class DocumentStateController extends Controller
             $document->id,
             $actorId,
             $request->validated('changelog'),
+            fn (Document $model) => $this->attachCanCloneMeta($model, $request),
         );
-        $this->attachCanCloneMeta($updated, $request);
 
-        return new DocumentResource(DocumentDto::fromModel($updated));
+        return new DocumentResource($updated);
     }
 
     /**
@@ -102,15 +103,19 @@ class DocumentStateController extends Controller
         $this->authorize('startRevision', $model);
 
         $userId = (string) $request->user()->getAuthIdentifier();
-        $updated = $this->documentService->startNewRevisionCycle($model->id, $userId);
-        $this->attachCanCloneMeta($updated, $request);
-
-        $this->apiTeamEmbedService->embedOnDocument($updated, $userId);
-        $blocks = $this->documentService->blocksForDisplay($updated);
+        $updated = $this->documentService->startNewRevisionCycle(
+            $model->id,
+            $userId,
+            function (Document $doc) use ($request, $userId): void {
+                $this->attachCanCloneMeta($doc, $request);
+                $this->apiTeamEmbedService->embedOnDocument($doc, $userId);
+            },
+        );
+        $blocks = $this->documentService->blocksForDisplay($updated->id);
 
         return response()->json([
             'data' => array_merge(
-                (new DocumentResource(DocumentDto::fromModel($updated)))->toArray($request),
+                (new DocumentResource($updated))->toArray($request),
                 ['blocks' => DocumentBlockResource::resolveDisplayList($request, $blocks)],
             ),
         ]);
@@ -125,16 +130,19 @@ class DocumentStateController extends Controller
         $model = $this->documentService->findModelOrFail($document);
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
-        $updated = $this->documentService->applyTemplateMigration($request->toDto());
-        $this->attachCanCloneMeta($updated, $request);
-
         $userId = (string) $request->user()->getAuthIdentifier();
-        $this->apiTeamEmbedService->embedOnDocument($updated, $userId);
-        $blocks = $this->documentService->blocksForDisplay($updated);
+        $updated = $this->documentService->applyTemplateMigration(
+            $request->toDto(),
+            function (Document $doc) use ($request, $userId): void {
+                $this->attachCanCloneMeta($doc, $request);
+                $this->apiTeamEmbedService->embedOnDocument($doc, $userId);
+            },
+        );
+        $blocks = $this->documentService->blocksForDisplay($updated->id);
 
         return response()->json([
             'data' => array_merge(
-                (new DocumentResource(DocumentDto::fromModel($updated)))->toArray($request),
+                (new DocumentResource($updated))->toArray($request),
                 ['blocks' => DocumentBlockResource::resolveDisplayList($request, $blocks)],
             ),
         ]);
@@ -152,7 +160,7 @@ class DocumentStateController extends Controller
         $actorId = (string) $request->user()->getAuthIdentifier();
         $updated = $this->documentService->destroyVersion($model->id, $version, $actorId);
         $this->attachCanCloneMeta($updated, $request);
-        $blocks = $this->documentService->blocksForDisplay($updated);
+        $blocks = $this->documentService->blocksForDisplay((string) $updated->id);
 
         return response()->json([
             'data' => array_merge(
@@ -176,9 +184,9 @@ class DocumentStateController extends Controller
             $id,
             (string) $request->validated('new_owner_id'),
             $actorId,
+            fn (Document $model) => $this->attachCanCloneMeta($model, $request),
         );
-        $this->attachCanCloneMeta($updated, $request);
 
-        return new DocumentResource(DocumentDto::fromModel($updated));
+        return new DocumentResource($updated);
     }
 }
