@@ -45,11 +45,11 @@ class EntityVersionLifecycleServiceTest extends TestCase
         );
 
         $this->assertSame('published', $published->status);
-        $this->assertTrue($published->is_snapshot_immutable);
-        $this->assertSame($actorId, $published->published_by);
-        $this->assertNotNull($published->published_at);
+        $this->assertTrue($published->isSnapshotImmutable);
+        $this->assertSame($actorId, $published->publishedBy);
+        $this->assertNotNull($published->publishedAt);
         $this->assertSame('Versión publicada', $published->changelog);
-        $this->assertSame('Snapshot final', $published->snapshot_data['name']);
+        $this->assertSame('Snapshot final', $published->snapshotData['name']);
     }
 
     public function test_publish_fails_when_status_is_not_publishable(): void
@@ -121,11 +121,11 @@ class EntityVersionLifecycleServiceTest extends TestCase
         );
 
         $this->assertSame('published', $created->status);
-        $this->assertSame(1, $created->version_number);
-        $this->assertTrue($created->is_snapshot_immutable);
-        $this->assertSame($actorId, $created->published_by);
+        $this->assertSame(1, $created->versionNumber);
+        $this->assertTrue($created->isSnapshotImmutable);
+        $this->assertSame($actorId, $created->publishedBy);
         $this->assertSame('Publicación inicial', $created->changelog);
-        $this->assertNull($created->base_version_id);
+        $this->assertNull($created->baseVersionId);
     }
 
     public function test_create_published_snapshot_version_links_previous_published_version_as_base(): void
@@ -153,8 +153,8 @@ class EntityVersionLifecycleServiceTest extends TestCase
             'v2',
         );
 
-        $this->assertSame($v1->id, $v2->base_version_id);
-        $this->assertSame(2, $v2->version_number);
+        $this->assertSame($v1->id, $v2->baseVersionId);
+        $this->assertSame(2, $v2->versionNumber);
     }
 
     private function createEntityVersion(string $templateId, string $status): EntityVersion

@@ -56,7 +56,7 @@ class TemplateVersionController extends Controller
     public function show(string $template_version): TemplateVersionResource
     {
         $version = $this->templateService->findVersionOrFail($template_version);
-        $templateId = (string) $version->versionable_id;
+        $templateId = $version->versionableId;
 
         $template = $this->templateService->findOrFailWithoutCatalogScope($templateId);
         if (! Gate::forUser(Auth::user())->allows('viewHistory', $template)) {

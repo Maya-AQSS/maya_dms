@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DTOs\TemplateBlocks\TemplateBlockPayloadDto;
+use App\DTOs\Templates\TemplateDto;
 use App\Enums\BlockType;
 use App\Events\TemplateStateChanged;
 use App\Models\Template;
@@ -76,10 +77,15 @@ class TemplatePublishingService
      * que el endpoint /publish respeta el mismo orden de etapas que approveReview.
      * Cuando el actor es el creador (publicación directa sin revisores), la validación
      * se omite porque no existe ningún revisor con stage previo.
+     *
+     * Devuelve TemplateDto; la presentación derivada se adjunta sobre el Model con
+     * el callback `$beforeMap` antes de la conversión.
+     *
+     * @param  callable(Template): void|null  $beforeMap
      */
-    public function publishWithSnapshot(string $templateId, ?string $changelog, string $actorId): Template
+    public function publishWithSnapshot(string $templateId, ?string $changelog, string $actorId, ?callable $beforeMap = null): TemplateDto
     {
-        return $this->templateRepository->transaction(function () use ($templateId, $changelog, $actorId) {
+        $published = $this->templateRepository->transaction(function () use ($templateId, $changelog, $actorId) {
             $template = $this->templateRepository->findOrFailForUpdate($templateId);
 
             if (! in_array($template->status, ['draft', 'in_review'], true)) {
@@ -192,13 +198,13 @@ class TemplatePublishingService
                 $resolvedChangelog,
             );
 
-            $this->templateVersionBlockLayerWriter->syncLayersForNewPublication((string) $entityVersion->id, (string) $template->id);
+            $this->templateVersionBlockLayerWriter->syncLayersForNewPublication($entityVersion->id, (string) $template->id);
 
             // Migrar favoritos: los que apuntaban a la versión publicada anterior pasan a la nueva.
-            if ($entityVersion->base_version_id !== null) {
+            if ($entityVersion->baseVersionId !== null) {
                 $this->userFavoriteRepository->migrateFavoriteTemplateVersion(
-                    (string) $entityVersion->base_version_id,
-                    (string) $entityVersion->id,
+                    $entityVersion->baseVersionId,
+                    $entityVersion->id,
                 );
             }
 
@@ -316,6 +322,12 @@ class TemplatePublishingService
 
             return $updated;
         });
+
+        if ($beforeMap !== null) {
+            $beforeMap($published);
+        }
+
+        return TemplateDto::fromModel($published);
     }
 
     /**

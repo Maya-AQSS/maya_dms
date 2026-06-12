@@ -67,15 +67,16 @@ class TemplateController extends Controller
      */
     public function store(StoreTemplateRequest $request): JsonResponse
     {
-        $template = $this->templateService->create($request->toCreateDto());
-        $this->attachCanCloneMeta($template, $request);
-
-        $this->apiTeamEmbedService->embedOnTemplate(
-            $template,
-            (string) $request->user()->getAuthIdentifier(),
+        $viewerId = (string) $request->user()->getAuthIdentifier();
+        $template = $this->templateService->create(
+            $request->toCreateDto(),
+            function (Template $model) use ($request, $viewerId): void {
+                $this->attachCanCloneMeta($model, $request);
+                $this->apiTeamEmbedService->embedOnTemplate($model, $viewerId);
+            },
         );
 
-        return (new TemplateResource(TemplateDto::fromModel($template)))->response()->setStatusCode(201);
+        return (new TemplateResource($template))->response()->setStatusCode(201);
     }
 
     /**
@@ -133,15 +134,17 @@ class TemplateController extends Controller
 
         $dto = $request->toUpdateDto();
 
-        $updated = $this->templateService->update($model, $dto);
-        $this->attachCanCloneMeta($updated, $request);
-
-        $this->apiTeamEmbedService->embedOnTemplate(
-            $updated,
-            (string) $request->user()->getAuthIdentifier(),
+        $viewerId = (string) $request->user()->getAuthIdentifier();
+        $updated = $this->templateService->update(
+            $model,
+            $dto,
+            function (Template $template) use ($request, $viewerId): void {
+                $this->attachCanCloneMeta($template, $request);
+                $this->apiTeamEmbedService->embedOnTemplate($template, $viewerId);
+            },
         );
 
-        return new TemplateResource(TemplateDto::fromModel($updated));
+        return new TemplateResource($updated);
     }
 
     /**
@@ -159,7 +162,7 @@ class TemplateController extends Controller
             return response()->noContent();
         }
 
-        return (new TemplateResource(TemplateDto::fromModel($this->templateService->findModelOrFail($model->id))))->response();
+        return (new TemplateResource($this->templateService->findOrFail($model->id)))->response();
     }
 
     /**
@@ -171,9 +174,12 @@ class TemplateController extends Controller
         $this->authorize('clone', $model);
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
-        $copy = $this->templateService->clone($template, (string) Auth::id());
-        $this->attachCanCloneMeta($copy, $_request);
+        $copy = $this->templateService->clone(
+            $template,
+            (string) Auth::id(),
+            fn (Template $clone) => $this->attachCanCloneMeta($clone, $_request),
+        );
 
-        return (new TemplateResource(TemplateDto::fromModel($copy)))->response()->setStatusCode(201);
+        return (new TemplateResource($copy))->response()->setStatusCode(201);
     }
 }

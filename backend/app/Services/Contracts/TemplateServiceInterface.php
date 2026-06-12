@@ -10,6 +10,7 @@ use App\DTOs\Templates\SyncUsersDto;
 use App\DTOs\Templates\TemplateDto;
 use App\DTOs\Templates\TemplateFilterDto;
 use App\DTOs\Templates\UpdateTemplateDto;
+use App\DTOs\Versioning\EntityVersionDto;
 use App\DTOs\Versioning\WorkingRevisionConflictDto;
 use App\Http\Controllers\Api\TemplateController;
 use App\Models\EntityVersion;
@@ -19,13 +20,15 @@ use Illuminate\Support\Collection;
 use Maya\Http\Pagination\PaginatedDto;
 
 /**
- * Excepción B4 documentada: análoga a {@see DocumentServiceInterface} —
- * la mayoría de métodos de mutación devuelven el Model Eloquent porque el
- * {@see TemplateController} adjunta atributos
- * derivados (`can_clone`, `review_mode`, etc.) mediante `setAttribute()` antes
- * de presentar como DTO. La conversión final a DTO se hace en el Controller
- * con `TemplateDto::fromModel($model)` antes de pasar al Resource (que es
- * `TemplateDto`-only estricto).
+ * Los métodos de mutación devuelven {@see TemplateDto}. La presentación derivada
+ * (`can_clone`, team embebido, …) que el {@see TemplateController} adjunta con
+ * `setAttribute()` sobre el Model se inyecta mediante el callback opcional
+ * `$beforeMap` (mismo patrón que {@see self::paginateFiltered}), aplicado justo
+ * antes de la conversión a DTO.
+ *
+ * Excepción documentada (mantener): `findModelOrFail` / `findOrFailWithoutCatalogScope`
+ * existen SOLO para `authorize($ability, $model)` con Policies (exigen Model) y para
+ * el flujo de presentación de `show` sobre el modelo resuelto. Ver changes.md (F4-B1).
  */
 interface TemplateServiceInterface
 {
@@ -66,39 +69,38 @@ interface TemplateServiceInterface
     /**
      * Localiza una versión de plantilla por su ID.
      */
-    public function findVersionOrFail(string $versionId): EntityVersion;
+    public function findVersionOrFail(string $versionId): EntityVersionDto;
 
     /**
      * Localiza una versión polimórfica por su ID.
      */
-    public function findEntityVersionOrFail(string $versionId): EntityVersion;
+    public function findEntityVersionOrFail(string $versionId): EntityVersionDto;
 
     /**
      * Envía el borrador a revisión. Solo el creador puede ejecutar esta acción.
      *
-     * Excepción B4 (ver docblock de clase): devuelve Template (no TemplateDto) porque
-     * el controller adjunta atributos derivados vía setAttribute() antes de llamar a
-     * TemplateDto::fromModel(). Relaciones garantizadas: reviewers, headVersion.
+     * @param  callable(Template): void|null  $beforeMap
      */
-    public function submitForReview(string $templateId, string $actorId, string $changelog): Template;
+    public function submitForReview(string $templateId, string $actorId, string $changelog, ?callable $beforeMap = null): TemplateDto;
 
     /**
      * Rechaza la revisión de la plantilla. Solo un revisor asignado puede ejecutar esta acción.
      *
-     * Excepción B4 (ver docblock de clase): devuelve Template (no TemplateDto) por la
-     * misma razón que submitForReview.
+     * @param  callable(Template): void|null  $beforeMap
      */
-    public function rejectReview(string $templateId, string $actorId): Template;
+    public function rejectReview(string $templateId, string $actorId, ?callable $beforeMap = null): TemplateDto;
 
     /**
      * Publica la plantilla con un snapshot y emite el evento de dominio TemplatePublished.
+     *
+     * @param  callable(Template): void|null  $beforeMap
      */
-    public function publishWithSnapshot(string $templateId, ?string $changelog, string $actorId): Template;
+    public function publishWithSnapshot(string $templateId, ?string $changelog, string $actorId, ?callable $beforeMap = null): TemplateDto;
 
     /**
      * Lista todas las versiones publicadas de una plantilla ordenadas por número de versión.
      *
-     * @return Collection<int, EntityVersion>
+     * @return Collection<int, EntityVersionDto>
      */
     public function listPublishedVersions(string $templateId): Collection;
 
@@ -117,7 +119,7 @@ interface TemplateServiceInterface
     /**
      * Listado con filtros visible para el usuario (sin paginación en servidor).
      *
-     * @return Collection<int, Template>
+     * @return Collection<int, TemplateDto>
      */
     public function listFiltered(FilterTemplatesDto $filters): Collection;
 
@@ -142,14 +144,18 @@ interface TemplateServiceInterface
 
     /**
      * Crea una plantilla con los atributos dados.
+     *
+     * @param  callable(Template): void|null  $beforeMap
      */
-    public function create(CreateTemplateDto $dto): Template;
+    public function create(CreateTemplateDto $dto, ?callable $beforeMap = null): TemplateDto;
 
     /**
      * Actualiza una plantilla con los atributos dados.
      * Recibe el modelo ya resuelto para evitar una query redundante.
+     *
+     * @param  callable(Template): void|null  $beforeMap
      */
-    public function update(Template $template, UpdateTemplateDto $dto): Template;
+    public function update(Template $template, UpdateTemplateDto $dto, ?callable $beforeMap = null): TemplateDto;
 
     /**
      * Elimina una plantilla de forma recuperable.
@@ -163,13 +169,17 @@ interface TemplateServiceInterface
 
     /**
      * Clona una plantilla origen hacia una nueva destino.
+     *
+     * @param  callable(Template): void|null  $beforeMap
      */
-    public function clone(string $sourceTemplateId, string $actorId): Template;
+    public function clone(string $sourceTemplateId, string $actorId, ?callable $beforeMap = null): TemplateDto;
 
     /**
      * Plantilla publicada → borrador para iniciar el ciclo de una nueva versión.
+     *
+     * @param  callable(Template): void|null  $beforeMap
      */
-    public function startNewRevisionCycle(string $templateId, string $actorId): Template;
+    public function startNewRevisionCycle(string $templateId, string $actorId, ?callable $beforeMap = null): TemplateDto;
 
     public function hasPublishedSnapshot(string $templateId): bool;
 
@@ -177,8 +187,10 @@ interface TemplateServiceInterface
 
     /**
      * Descarta una versión no publicada en curso y restaura la última publicación.
+     *
+     * @param  callable(Template): void|null  $beforeMap
      */
-    public function destroyVersion(string $templateId, string $versionId, string $actorId): Template;
+    public function destroyVersion(string $templateId, string $versionId, string $actorId, ?callable $beforeMap = null): TemplateDto;
 
     /**
      * Registra la aprobación del revisor activo. Si todos los revisores han aprobado,
@@ -187,11 +199,9 @@ interface TemplateServiceInterface
      * En modo secuencial verifica que los stages anteriores estén aprobados antes
      * de permitir que el actor apruebe.
      *
-     * Excepción B4 (ver docblock de clase): devuelve Template (no TemplateDto) por la
-     * misma razón que submitForReview. Relaciones garantizadas: headVersion; reviewers
-     * solo si la aprobación desencadena publicación (publishWithSnapshot las carga).
+     * @param  callable(Template): void|null  $beforeMap
      */
-    public function approveReview(string $templateId, string $actorId): Template;
+    public function approveReview(string $templateId, string $actorId, ?callable $beforeMap = null): TemplateDto;
 
     /**
      * Sincroniza los revisores de la plantilla normativa.

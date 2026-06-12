@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\EntityVersion;
+use App\DTOs\Versioning\EntityVersionDto;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Services\Contracts\EntityVersionLifecycleServiceInterface;
 use Illuminate\Validation\ValidationException;
@@ -23,7 +23,7 @@ class EntityVersionLifecycleService implements EntityVersionLifecycleServiceInte
         array $snapshotData,
         string $actorId,
         ?string $changelog = null,
-    ): EntityVersion {
+    ): EntityVersionDto {
         return $this->entityVersionRepository->transaction(function () use ($versionId, $snapshotData, $actorId, $changelog) {
             $version = $this->entityVersionRepository->findOrFailForUpdate($versionId);
 
@@ -50,14 +50,14 @@ class EntityVersionLifecycleService implements EntityVersionLifecycleServiceInte
                 $resolvedChangelog = null;
             }
 
-            return $this->entityVersionRepository->update($version, [
+            return EntityVersionDto::fromModel($this->entityVersionRepository->update($version, [
                 'status' => 'published',
                 'snapshot_data' => $snapshotData,
                 'is_snapshot_immutable' => true,
                 'published_by' => $actorId,
                 'published_at' => now(),
                 'changelog' => $resolvedChangelog,
-            ]);
+            ]));
         });
     }
 
@@ -71,7 +71,7 @@ class EntityVersionLifecycleService implements EntityVersionLifecycleServiceInte
         array $snapshotData,
         string $actorId,
         ?string $changelog = null,
-    ): EntityVersion {
+    ): EntityVersionDto {
         if ($versionNumber < 1) {
             throw ValidationException::withMessages([
                 'version_number' => ['El número de versión debe ser mayor o igual a 1.'],
@@ -99,7 +99,7 @@ class EntityVersionLifecycleService implements EntityVersionLifecycleServiceInte
         ) {
             $baseVersion = $this->entityVersionRepository->findLatestPublishedForEntity($versionableType, $versionableId);
 
-            return $this->entityVersionRepository->create([
+            return EntityVersionDto::fromModel($this->entityVersionRepository->create([
                 'versionable_type' => $versionableType,
                 'versionable_id' => $versionableId,
                 'version_number' => $versionNumber,
@@ -112,7 +112,7 @@ class EntityVersionLifecycleService implements EntityVersionLifecycleServiceInte
                 'changelog' => $resolvedChangelog,
                 'snapshot_data' => $snapshotData,
                 'is_snapshot_immutable' => true,
-            ]);
+            ]));
         });
     }
 }

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
-use App\DTOs\Templates\TemplateDto;
 use App\Http\Concerns\AttachesCanCloneMeta;
 use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
@@ -12,6 +11,7 @@ use App\Http\Requests\Templates\PublishTemplateRequest;
 use App\Http\Requests\Templates\StartNewTemplateRevisionRequest;
 use App\Http\Requests\Templates\SubmitTemplateForReviewRequest;
 use App\Http\Resources\TemplateResource;
+use App\Models\Template;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\TemplateServiceInterface;
@@ -48,10 +48,10 @@ class TemplateStateController extends Controller
             $model->id,
             (string) Auth::id(),
             (string) $request->validated('changelog'),
+            fn (Template $template) => $this->attachCanCloneMeta($template, $request),
         );
-        $this->attachCanCloneMeta($updated, $request);
 
-        return new TemplateResource(TemplateDto::fromModel($updated));
+        return new TemplateResource($updated);
     }
 
     /**
@@ -63,10 +63,13 @@ class TemplateStateController extends Controller
         $this->authorize('review', $model);
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
-        $updated = $this->templateService->rejectReview($model->id, (string) Auth::id());
-        $this->attachCanCloneMeta($updated, $request);
+        $updated = $this->templateService->rejectReview(
+            $model->id,
+            (string) Auth::id(),
+            fn (Template $template) => $this->attachCanCloneMeta($template, $request),
+        );
 
-        return new TemplateResource(TemplateDto::fromModel($updated));
+        return new TemplateResource($updated);
     }
 
     /**
@@ -81,10 +84,13 @@ class TemplateStateController extends Controller
         $this->authorize('review', $model);
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
-        $updated = $this->templateService->approveReview($model->id, (string) Auth::id());
-        $this->attachCanCloneMeta($updated, $request);
+        $updated = $this->templateService->approveReview(
+            $model->id,
+            (string) Auth::id(),
+            fn (Template $template) => $this->attachCanCloneMeta($template, $request),
+        );
 
-        return new TemplateResource(TemplateDto::fromModel($updated));
+        return new TemplateResource($updated);
     }
 
     /**
@@ -100,10 +106,10 @@ class TemplateStateController extends Controller
             $model->id,
             $request->validated('changelog'),
             (string) Auth::id(),
+            fn (Template $template) => $this->attachCanCloneMeta($template, $request),
         );
-        $this->attachCanCloneMeta($updated, $request);
 
-        return new TemplateResource(TemplateDto::fromModel($updated));
+        return new TemplateResource($updated);
     }
 
     /**
@@ -130,18 +136,17 @@ class TemplateStateController extends Controller
 
         $this->authorize('startRevision', $model);
 
+        $viewerId = (string) $request->user()->getAuthIdentifier();
         $updated = $this->templateService->startNewRevisionCycle(
             $model->id,
-            (string) $request->user()->getAuthIdentifier(),
-        );
-        $this->attachCanCloneMeta($updated, $request);
-
-        $this->apiTeamEmbedService->embedOnTemplate(
-            $updated,
-            (string) $request->user()->getAuthIdentifier(),
+            $viewerId,
+            function (Template $template) use ($request, $viewerId): void {
+                $this->attachCanCloneMeta($template, $request);
+                $this->apiTeamEmbedService->embedOnTemplate($template, $viewerId);
+            },
         );
 
-        return new TemplateResource(TemplateDto::fromModel($updated));
+        return new TemplateResource($updated);
     }
 
     /**
@@ -153,18 +158,17 @@ class TemplateStateController extends Controller
         $this->authorize('discard', $model);
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
+        $viewerId = (string) $request->user()->getAuthIdentifier();
         $updated = $this->templateService->destroyVersion(
             $model->id,
             $version,
-            (string) $request->user()->getAuthIdentifier(),
-        );
-        $this->attachCanCloneMeta($updated, $request);
-
-        $this->apiTeamEmbedService->embedOnTemplate(
-            $updated,
-            (string) $request->user()->getAuthIdentifier(),
+            $viewerId,
+            function (Template $template) use ($request, $viewerId): void {
+                $this->attachCanCloneMeta($template, $request);
+                $this->apiTeamEmbedService->embedOnTemplate($template, $viewerId);
+            },
         );
 
-        return new TemplateResource(TemplateDto::fromModel($updated));
+        return new TemplateResource($updated);
     }
 }

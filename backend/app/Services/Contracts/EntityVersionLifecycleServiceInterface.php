@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Contracts;
 
-use App\Models\EntityVersion;
+use App\DTOs\Versioning\EntityVersionDto;
 
 interface EntityVersionLifecycleServiceInterface
 {
@@ -18,7 +18,7 @@ interface EntityVersionLifecycleServiceInterface
         array $snapshotData,
         string $actorId,
         ?string $changelog = null,
-    ): EntityVersion;
+    ): EntityVersionDto;
 
     /**
      * Crea una nueva versión publicada inmutable para una entidad versionable.
@@ -32,5 +32,5 @@ interface EntityVersionLifecycleServiceInterface
         array $snapshotData,
         string $actorId,
         ?string $changelog = null,
-    ): EntityVersion;
+    ): EntityVersionDto;
 }

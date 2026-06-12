@@ -10,6 +10,7 @@ use App\DTOs\Templates\SyncUsersDto;
 use App\DTOs\Templates\TemplateDto;
 use App\DTOs\Templates\TemplateFilterDto;
 use App\DTOs\Templates\UpdateTemplateDto;
+use App\DTOs\Versioning\EntityVersionDto;
 use App\DTOs\Versioning\WorkingRevisionConflictDto;
 use App\Enums\TemplateVisibilityLevel;
 use App\Events\OwnershipTransferred;
@@ -61,6 +62,22 @@ class TemplateService implements TemplateServiceInterface
     }
 
     /**
+     * Aplica el callback de presentación (adjunta atributos derivados sobre el
+     * Model: can_clone, team embebido, …) y convierte a DTO. Patrón espejo del
+     * `$beforeMap` de {@see self::paginateFiltered}.
+     *
+     * @param  callable(Template): void|null  $beforeMap
+     */
+    private function toDto(Template $template, ?callable $beforeMap = null): TemplateDto
+    {
+        if ($beforeMap !== null) {
+            $beforeMap($template);
+        }
+
+        return TemplateDto::fromModel($template);
+    }
+
+    /**
      * Variante de uso interno: devuelve el Model. Necesario para attachs
      * (`can_clone`, `review_mode`, etc.), policies y encadenado con otros
      * métodos del Service que reciben Model.
@@ -102,17 +119,17 @@ class TemplateService implements TemplateServiceInterface
     /**
      * Localiza una versión de plantilla por su ID.
      */
-    public function findVersionOrFail(string $versionId): EntityVersion
+    public function findVersionOrFail(string $versionId): EntityVersionDto
     {
-        return $this->templateVersionRepository->findOrFail($versionId);
+        return EntityVersionDto::fromModel($this->templateVersionRepository->findOrFail($versionId));
     }
 
     /**
      * Localiza una versión polimórfica por su ID.
      */
-    public function findEntityVersionOrFail(string $versionId): EntityVersion
+    public function findEntityVersionOrFail(string $versionId): EntityVersionDto
     {
-        return $this->entityVersionRepository->findOrFail($versionId);
+        return EntityVersionDto::fromModel($this->entityVersionRepository->findOrFail($versionId));
     }
 
     /**
@@ -122,10 +139,12 @@ class TemplateService implements TemplateServiceInterface
      * - Con revisores → resetea sus estados a `pending` (necesario para rondas
      *   sucesivas: en draft post-rechazo los estados quedan visibles para el autor,
      *   y solo se limpian al reenviar) y transiciona a `in_review`.
+     *
+     * @param  callable(Template): void|null  $beforeMap
      */
-    public function submitForReview(string $templateId, string $actorId, string $changelog): Template
+    public function submitForReview(string $templateId, string $actorId, string $changelog, ?callable $beforeMap = null): TemplateDto
     {
-        return $this->templateReviewService->submitForReview($templateId, $actorId, $changelog);
+        return $this->templateReviewService->submitForReview($templateId, $actorId, $changelog, $beforeMap);
     }
 
     /**
@@ -134,10 +153,12 @@ class TemplateService implements TemplateServiceInterface
      * Registra el rechazo del actor en `template_reviewers` (auditoría de quién rechazó)
      * y transiciona la plantilla a borrador. Los estados quedan visibles en draft
      * para que el autor sepa quién rechazó; se limpian al reenviar.
+     *
+     * @param  callable(Template): void|null  $beforeMap
      */
-    public function rejectReview(string $templateId, string $actorId): Template
+    public function rejectReview(string $templateId, string $actorId, ?callable $beforeMap = null): TemplateDto
     {
-        return $this->templateReviewService->rejectReview($templateId, $actorId);
+        return $this->templateReviewService->rejectReview($templateId, $actorId, $beforeMap);
     }
 
     /**
@@ -146,28 +167,33 @@ class TemplateService implements TemplateServiceInterface
      * En modo secuencial exige que todos los stages anteriores estén aprobados.
      * Si tras esta aprobación todos los revisores están en `approved`, publica
      * la plantilla automáticamente con un snapshot.
+     *
+     * @param  callable(Template): void|null  $beforeMap
      */
-    public function approveReview(string $templateId, string $actorId): Template
+    public function approveReview(string $templateId, string $actorId, ?callable $beforeMap = null): TemplateDto
     {
-        return $this->templateReviewService->approveReview($templateId, $actorId);
+        return $this->templateReviewService->approveReview($templateId, $actorId, $beforeMap);
     }
 
     /**
      * Publica la plantilla con un snapshot y emite el evento de dominio TemplatePublished.
+     *
+     * @param  callable(Template): void|null  $beforeMap
      */
-    public function publishWithSnapshot(string $templateId, ?string $changelog, string $actorId): Template
+    public function publishWithSnapshot(string $templateId, ?string $changelog, string $actorId, ?callable $beforeMap = null): TemplateDto
     {
-        return $this->templatePublishingService->publishWithSnapshot($templateId, $changelog, $actorId);
+        return $this->templatePublishingService->publishWithSnapshot($templateId, $changelog, $actorId, $beforeMap);
     }
 
     /**
      * Lista todas las versiones publicadas de una plantilla ordenadas por número de versión.
      *
-     * @return Collection<int, EntityVersion>
+     * @return Collection<int, EntityVersionDto>
      */
     public function listPublishedVersions(string $templateId): Collection
     {
-        return $this->entityVersionRepository->listPublishedForEntityOrdered(Template::class, $templateId);
+        return $this->entityVersionRepository->listPublishedForEntityOrdered(Template::class, $templateId)
+            ->map(static fn (EntityVersion $v) => EntityVersionDto::fromModel($v));
     }
 
     /**
@@ -206,13 +232,15 @@ class TemplateService implements TemplateServiceInterface
     /**
      * Listado con filtros (sin paginación en servidor; el front pagina en cliente).
      * Enriquece cada plantilla con metadatos de la última versión publicada para el API.
+     *
+     * @return Collection<int, TemplateDto>
      */
     public function listFiltered(FilterTemplatesDto $filters): Collection
     {
         $templates = $this->templateRepository->listFiltered($filters);
         $this->templateRepository->attachLatestPublishedVersionMeta($templates);
 
-        return $templates;
+        return $templates->map(static fn (Template $t) => TemplateDto::fromModel($t));
     }
 
     public function attachLatestPublishedVersionMeta(Collection $templates): void
@@ -295,8 +323,10 @@ class TemplateService implements TemplateServiceInterface
 
     /**
      * Crea una plantilla con los atributos dados.
+     *
+     * @param  callable(Template): void|null  $beforeMap
      */
-    public function create(CreateTemplateDto $dto): Template
+    public function create(CreateTemplateDto $dto, ?callable $beforeMap = null): TemplateDto
     {
         $userId = Auth::id();
         if ($userId === null) {
@@ -308,7 +338,7 @@ class TemplateService implements TemplateServiceInterface
             $dto->visibilityLevel,
         );
 
-        return $this->templateRepository->create([
+        return $this->toDto($this->templateRepository->create([
             'process_id' => $dto->processId,
             'name' => $dto->name,
             'description' => $dto->description,
@@ -324,14 +354,16 @@ class TemplateService implements TemplateServiceInterface
             'review_stages' => $dto->reviewStages,
             'review_mode' => $dto->reviewMode,
             'document_review_mode' => $dto->documentReviewMode ?? $dto->reviewMode,
-        ]);
+        ]), $beforeMap);
     }
 
     /**
      * Actualiza una plantilla con los atributos dados.
      * Recibe el modelo ya resuelto para evitar una query redundante.
+     *
+     * @param  callable(Template): void|null  $beforeMap
      */
-    public function update(Template $template, UpdateTemplateDto $dto): Template
+    public function update(Template $template, UpdateTemplateDto $dto, ?callable $beforeMap = null): TemplateDto
     {
         $previousCreatedBy = (string) $template->created_by;
         $attributes = [];
@@ -398,7 +430,7 @@ class TemplateService implements TemplateServiceInterface
             );
         }
 
-        return $updated;
+        return $this->toDto($updated, $beforeMap);
     }
 
     /**
@@ -449,8 +481,10 @@ class TemplateService implements TemplateServiceInterface
      *
      * Si existe versión publicada en {@see EntityVersion}, la copia se materializa desde ese
      * snapshot; si no, desde bloques y revisores vivos.
+     *
+     * @param  callable(Template): void|null  $beforeMap
      */
-    public function clone(string $sourceTemplateId, string $actorId): Template
+    public function clone(string $sourceTemplateId, string $actorId, ?callable $beforeMap = null): TemplateDto
     {
         $source = $this->templateRepository->findOrFail($sourceTemplateId);
         $this->assertTemplateMetadataInvariants(
@@ -460,11 +494,11 @@ class TemplateService implements TemplateServiceInterface
         );
 
         $published = $this->resolveLatestPublishedTemplateSnapshotForClone((string) $source->id);
-        if ($published !== null) {
-            return $this->cloneTemplateFromPublishedSnapshot($source, $published, $actorId);
-        }
+        $copy = $published !== null
+            ? $this->cloneTemplateFromPublishedSnapshot($source, $published, $actorId)
+            : $this->cloneTemplateFromLiveSource($source, $actorId);
 
-        return $this->cloneTemplateFromLiveSource($source, $actorId);
+        return $this->toDto($copy, $beforeMap);
     }
 
     /**
@@ -480,7 +514,10 @@ class TemplateService implements TemplateServiceInterface
         return $this->entityVersionRepository->findLatestPublishedForEntity(Template::class, $templateId);
     }
 
-    public function startNewRevisionCycle(string $templateId, string $actorId): Template
+    /**
+     * @param  callable(Template): void|null  $beforeMap
+     */
+    public function startNewRevisionCycle(string $templateId, string $actorId, ?callable $beforeMap = null): TemplateDto
     {
         $template = $this->templateRepository->findOrFail($templateId);
 
@@ -490,20 +527,22 @@ class TemplateService implements TemplateServiceInterface
             ]);
         }
 
-        return $this->templatePublishingService->transitionStatus(
+        return $this->toDto($this->templatePublishingService->transitionStatus(
             $template,
             'draft',
             $actorId,
             ['created_by' => $actorId],
-        );
+        ), $beforeMap);
     }
 
     /**
      * Descarta la versión de trabajo actual (head mutable) y restaura snapshot/revisores de la última publicación.
+     *
+     * @param  callable(Template): void|null  $beforeMap
      */
-    public function destroyVersion(string $templateId, string $versionId, string $actorId): Template
+    public function destroyVersion(string $templateId, string $versionId, string $actorId, ?callable $beforeMap = null): TemplateDto
     {
-        return $this->templateRepository->transaction(function () use ($templateId, $versionId) {
+        $restored = $this->templateRepository->transaction(function () use ($templateId, $versionId) {
             $template = $this->templateRepository->findOrFail($templateId);
             $this->templateRepository->loadHeadVersion($template);
             $head = $template->headVersion;
@@ -540,6 +579,8 @@ class TemplateService implements TemplateServiceInterface
 
             return $template;
         });
+
+        return $this->toDto($restored, $beforeMap);
     }
 
     /**

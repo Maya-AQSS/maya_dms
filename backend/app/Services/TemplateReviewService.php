@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DTOs\TemplateBlocks\TemplateBlockPayloadDto;
+use App\DTOs\Templates\TemplateDto;
 use App\Enums\BlockType;
 use App\Enums\TemplateVisibilityLevel;
 use App\Events\TemplateReviewApproved;
@@ -36,19 +37,17 @@ class TemplateReviewService
     /**
      * Envía el borrador a revisión.
      *
-     * Excepción B4 consciente: devuelve el Model Eloquent (no TemplateDto) porque
-     * TemplateStateController::submitForReview adjunta atributos derivados vía
-     * setAttribute() (can_clone, can_view_history, can_create_new_version) sobre
-     * el modelo antes de convertirlo a TemplateDto::fromModel(). El DTO es readonly
-     * y no admite esas mutaciones post-construcción.
+     * Devuelve TemplateDto; los atributos derivados de presentación (can_clone,
+     * can_view_history, can_create_new_version) se adjuntan sobre el Model vía el
+     * callback `$beforeMap` justo antes de la conversión.
      *
-     * Relaciones garantizadas en el retorno: reviewers, headVersion (via loadMissing).
+     * @param  callable(Template): void|null  $beforeMap
      */
-    public function submitForReview(string $templateId, string $actorId, string $changelog): Template
+    public function submitForReview(string $templateId, string $actorId, string $changelog, ?callable $beforeMap = null): TemplateDto
     {
         $normalizedChangelog = VersionSubmissionChangelog::normalize($changelog);
 
-        return $this->templateRepository->transaction(function () use ($templateId, $actorId, $normalizedChangelog) {
+        return $this->templateRepository->transaction(function () use ($templateId, $actorId, $normalizedChangelog, $beforeMap) {
             $template = $this->templateRepository->findOrFail($templateId);
 
             if (! in_array($template->status, ['draft', 'rejected'], true)) {
@@ -126,7 +125,7 @@ class TemplateReviewService
                     ]);
                 }
 
-                return $this->templatePublishingService->publishWithSnapshot($templateId, $normalizedChangelog, $actorId);
+                return $this->templatePublishingService->publishWithSnapshot($templateId, $normalizedChangelog, $actorId, $beforeMap);
             }
 
             if ($template->visibility_level !== TemplateVisibilityLevel::Personal
@@ -184,7 +183,11 @@ class TemplateReviewService
                 $normalizedChangelog,
             );
 
-            return $inReview;
+            if ($beforeMap !== null) {
+                $beforeMap($inReview);
+            }
+
+            return TemplateDto::fromModel($inReview);
         });
     }
 
@@ -192,17 +195,13 @@ class TemplateReviewService
      * Rechaza la revisión de la plantilla.
      *
      * En modo secuencial solo puede actuar el revisor de la etapa pendiente activa.
+     * Devuelve TemplateDto; presentación derivada vía `$beforeMap` (ver submitForReview).
      *
-     * Excepción B4 consciente: devuelve el Model Eloquent por la misma razón que
-     * submitForReview — el controller adjunta can_clone/can_view_history/can_create_new_version
-     * vía setAttribute() antes de la conversión a TemplateDto::fromModel().
-     *
-     * Relaciones garantizadas en el retorno: ninguna adicional; el modelo devuelto
-     * por transitionStatus es el modelo post-transición (fresh o actualizado).
+     * @param  callable(Template): void|null  $beforeMap
      */
-    public function rejectReview(string $templateId, string $actorId): Template
+    public function rejectReview(string $templateId, string $actorId, ?callable $beforeMap = null): TemplateDto
     {
-        return $this->templateRepository->transaction(function () use ($templateId, $actorId) {
+        return $this->templateRepository->transaction(function () use ($templateId, $actorId, $beforeMap) {
             $template = $this->templateRepository->findOrFailForUpdate($templateId);
 
             if ($template->status !== 'in_review') {
@@ -285,7 +284,11 @@ class TemplateReviewService
                 }
             }
 
-            return $rejected;
+            if ($beforeMap !== null) {
+                $beforeMap($rejected);
+            }
+
+            return TemplateDto::fromModel($rejected);
         });
     }
 
@@ -295,17 +298,15 @@ class TemplateReviewService
      * En modo secuencial verifica que los stages anteriores hayan aprobado primero.
      * Si todos los revisores han aprobado, la plantilla se publica automáticamente.
      *
-     * Excepción B4 consciente: devuelve el Model Eloquent por la misma razón que
-     * submitForReview — el controller adjunta can_clone/can_view_history/can_create_new_version
-     * vía setAttribute() antes de la conversión a TemplateDto::fromModel().
-     *
-     * Relaciones garantizadas en el retorno: headVersion (via publishWithSnapshot o
-     * fresh()); en aprobación intermedia la relación reviewers no se recarga —
+     * Devuelve TemplateDto; presentación derivada vía `$beforeMap` (ver submitForReview).
+     * En aprobación intermedia la relación reviewers no se recarga —
      * TemplateDto::fromModel() detecta que no está cargada y omite el campo.
+     *
+     * @param  callable(Template): void|null  $beforeMap
      */
-    public function approveReview(string $templateId, string $actorId): Template
+    public function approveReview(string $templateId, string $actorId, ?callable $beforeMap = null): TemplateDto
     {
-        return $this->templateRepository->transaction(function () use ($templateId, $actorId) {
+        return $this->templateRepository->transaction(function () use ($templateId, $actorId, $beforeMap) {
             $template = $this->templateRepository->findOrFailForUpdate($templateId);
 
             if ($template->status !== 'in_review') {
@@ -348,6 +349,7 @@ class TemplateReviewService
                     $templateId,
                     null,
                     $actorId,
+                    $beforeMap,
                 );
             }
 
@@ -365,7 +367,12 @@ class TemplateReviewService
                 $this->notifyTemplateValidationRequested($fresh);
             }
 
-            return $fresh ?? $template;
+            $result = $fresh ?? $template;
+            if ($beforeMap !== null) {
+                $beforeMap($result);
+            }
+
+            return TemplateDto::fromModel($result);
         });
     }
 
