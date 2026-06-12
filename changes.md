@@ -277,6 +277,29 @@ PRESERVADAS (con veredicto definitivo):
   Otros consumidores API directos verían las claves de paginación al nivel raíz.
 - **Decidido por**: tarea F4-B1 (auditoría de capas), aprobada por el usuario.
 
+## [F5-D2 S-01] Etiquetas de estado via keys i18n existentes (frontend)
+
+- **Fecha**: 2026-06-12
+- **Severidad**: MEDIUM (solo presentación)
+- **Qué cambió**: los mapas hardcodeados en castellano `STATUS_LABEL`
+  (TemplatePreviewPage, ThemesListPage, ThemeShowPage) y
+  `DOCUMENT_STATUS_LABELS` (documentWizardUtils, usado por DocumentPreviewPage
+  y DocumentWizard) se sustituyen por las keys i18n YA existentes:
+  `templates:table.status.*`, `themes:identity.statusOptions.*`,
+  `documents:table.status.*` y `values.all` (canon shared) para el «Todos» del
+  filtro de temas. `DOCUMENT_STATUS_LABELS` se elimina en favor del helper
+  `documentStatusLabel(status, t)` (movido desde DocumentsContent, que ya lo
+  usaba — ahora compartido).
+- **Por qué**: ítem S-01 del análisis de unificación — las keys existían en
+  es/va/en y se ignoraban; las tablas (DocumentsTable/TemplatesTable) ya
+  traducían y las páginas de detalle no.
+- **Impacto en cliente**: en locale `es` cero cambio (textos byte-idénticos,
+  verificado contra los JSON). En `va`/`en` los badges de estado de las páginas
+  de detalle/preview y el filtro de temas pasan de castellano fijo al idioma
+  del usuario (igual que ya hacían los listados). Fallback al slug crudo si
+  falta la key (antes: slug crudo si faltaba en el mapa — misma semántica).
+- **Decidido por**: tarea F5-D2 (G2), derivada del análisis aprobado.
+
 ## [F4-B1] Excepción aceptada: findModelOrFail*/resolvers de Model en Services
 
 - **Fecha**: 2026-06-12

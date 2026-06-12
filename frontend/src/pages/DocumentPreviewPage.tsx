@@ -20,7 +20,7 @@ import {
 import { fetchTemplate } from '../api/templates';
 import { useDocumentCommentsQuery, documentCommentsKey } from '../features/documents/hooks/useDocumentComments';
 import {
-  DOCUMENT_STATUS_LABELS,
+  documentStatusLabel,
   effectiveDocumentReviewMode,
   pickActionableDocumentReview,
   validationSuccessBannerMessage,
@@ -737,7 +737,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       ) : (
         <>
           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadgeClass(detail.status)}`}>
-            {DOCUMENT_STATUS_LABELS[detail.status] ?? detail.status}
+            {documentStatusLabel(detail.status, t)}
           </span>
           {detail.status !== 'draft' && (
           <span className="text-xs font-mono bg-ui-body dark:bg-ui-dark-bg border border-ui-border dark:border-ui-dark-border px-2 py-0.5 rounded-full text-text-secondary dark:text-text-dark-secondary">

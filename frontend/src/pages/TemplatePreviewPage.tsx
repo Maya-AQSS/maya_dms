@@ -54,15 +54,8 @@ import {
 
 // Re-use the shared BlockComment type (has resolved, parent_id, etc.)
 
-// Estado: clases en `statusBadgeClass` (módulo `@ceedcv-maya/shared-ui-react/badges`).
-
-const STATUS_LABEL: Record<string, string> = {
-  draft: 'Borrador',
-  in_review: 'En revisión',
-  published: 'Publicada',
-  archived: 'Archivada',
-  rejected: 'Rechazada',
-};
+// Estado: clases en `statusBadgeClass` (módulo `@ceedcv-maya/shared-ui-react/badges`);
+// etiquetas via keys i18n `templates:table.status.*` (S-01 — mismas que TemplatesTable).
 
 function blockContentNodes(block: TemplateBlock): unknown[] {
   const fromContent = normalizeBlockContentForEditor(block.default_content);
@@ -498,7 +491,7 @@ export function TemplatePreviewPage() {
       ) : (
         <>
           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadgeClass(template.status)}`}>
-            {STATUS_LABEL[template.status] ?? template.status}
+            {t(`table.status.${template.status}`, { defaultValue: template.status })}
           </span>
           {template.status !== 'draft' && (
             <span className="text-xs font-mono bg-ui-body dark:bg-ui-dark-bg border border-ui-border dark:border-ui-dark-border px-2 py-0.5 rounded-full text-text-secondary dark:text-text-dark-secondary">

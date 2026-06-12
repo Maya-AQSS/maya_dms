@@ -27,6 +27,7 @@ import { useUserProfile } from '../features/user-profile';
 import { useFavoritesIds } from '../hooks/useFavoritesIds';
 import { FavoriteInlineMark } from './FavoriteInlineMark';
 import { DMS_PERMISSIONS, canOpenDocument } from '../permissions';
+import { documentStatusLabel } from '../features/documents/components/documentWizardUtils';
 import type { Document, DocumentStatus } from '../types/documents';
 import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
 import { BLOCK_STATE_LABELS, type BlockState } from '../types/blocks';
@@ -40,18 +41,6 @@ function snapshotBlockStateLabel(raw: string | undefined): string {
 
 function snapshotNodesForPreview(block: TemplateVersionSnapshotBlock): unknown[] {
   return normalizeBlockContentForEditor(block.default_content);
-}
-
-/** Etiqueta i18n del estado (mismas keys que DocumentsTable; fallback al slug). */
-function documentStatusLabel(
-  status: string | null | undefined,
-  t: (key: string, options?: Record<string, unknown>) => string,
-): string {
-  if (!status) {
-    return t('documents:table.notAvailable');
-  }
-  const label = t(`documents:table.status.${status as DocumentStatus}`, { defaultValue: '' });
-  return label || status;
 }
 
 // NOTA S-02: clases locales mantenidas a propósito — NO coinciden token a token

@@ -19,18 +19,9 @@ import { canCreateTheme } from '../../../permissions';
 import { useServerThemesTable } from '../hooks/useServerThemesTable';
 import type { Theme, ThemeStatus } from '../../../types/themes';
 
-const STATUS_LABEL: Record<ThemeStatus, string> = {
-  draft: 'Borrador',
-  published: 'Publicado',
-  archived: 'Archivado',
-};
-
-const STATUS_OPTIONS: { value: '' | ThemeStatus; label: string }[] = [
-  { value: '', label: 'Todos' },
-  { value: 'draft', label: 'Borrador' },
-  { value: 'published', label: 'Publicado' },
-  { value: 'archived', label: 'Archivado' },
-];
+// S-01: etiquetas de estado via keys i18n existentes (`themes:identity.statusOptions.*`
+// y `values.all` del canon shared) — textos es byte-idénticos a los antiguos literales.
+const STATUS_VALUES: ThemeStatus[] = ['draft', 'published', 'archived'];
 
 export function ThemesListPage() {
   const navigate = useNavigate();
@@ -97,12 +88,12 @@ export function ThemesListPage() {
           <span
             className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass(theme.status)}`}
           >
-            {STATUS_LABEL[theme.status]}
+            {t(`themes:identity.statusOptions.${theme.status}`, { defaultValue: theme.status })}
           </span>
         ),
       },
     ],
-    [],
+    [t],
   );
 
   return (
@@ -170,9 +161,10 @@ export function ThemesListPage() {
                   setFilter('status', (e.target.value as ThemeStatus) || undefined)
                 }
               >
-                {STATUS_OPTIONS.map((o) => (
-                  <option key={o.value || 'all'} value={o.value}>
-                    {o.label}
+                <option value="">{t('themes:values.all')}</option>
+                {STATUS_VALUES.map((value) => (
+                  <option key={value} value={value}>
+                    {t(`themes:identity.statusOptions.${value}`, { defaultValue: value })}
                   </option>
                 ))}
               </Select>

@@ -125,7 +125,7 @@ import {
   type ReviewModeView,
   type VisibilityRuleMode,
   type ReviewerView,
-  DOCUMENT_STATUS_LABELS,
+  documentStatusLabel,
   dateIsoToInput,
   validationSuccessBannerMessage,
   effectiveDocumentReviewMode,
@@ -2536,7 +2536,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                 <DocSummaryRow label="Título" value={detail?.title} />
                 <DocSummaryRow
                   label="Estado"
-                  value={detail ? (DOCUMENT_STATUS_LABELS[detail.status] ?? detail.status) : ''}
+                  value={detail ? documentStatusLabel(detail.status, t) : ''}
                 />
                 <DocSummaryRow label="Versión" value={detail ? `v${detail.current_version}` : ''} />
                 <DocSummaryRow label="Tipo de estudio" value={detail?.study_type_id} />

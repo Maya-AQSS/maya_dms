@@ -17,13 +17,8 @@ import {
 import { PagedThemedPreview } from '../../documents/components/PagedThemedPreview';
 import { useTheme } from '../hooks/useTheme';
 import { useThemes } from '../hooks/useThemes';
-import type { ThemeStatus } from '../../../types/themes';
-
-const STATUS_LABEL: Record<ThemeStatus, string> = {
-  draft: 'Borrador',
-  published: 'Publicado',
-  archived: 'Archivado',
-};
+// S-01: etiquetas de estado via keys i18n existentes (`themes:identity.statusOptions.*`)
+// — textos es byte-idénticos a los antiguos literales hardcodeados.
 
 const labelClass = 'block text-sm font-medium text-text-secondary dark:text-text-dark-secondary';
 const displayClass =
@@ -179,7 +174,7 @@ export function ThemeShowPage() {
             <span className={labelClass}>Estado</span>
             <div className={displayClass}>
               <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass(theme.status)}`}>
-                {STATUS_LABEL[theme.status]}
+                {t(`themes:identity.statusOptions.${theme.status}`, { defaultValue: theme.status })}
               </span>
             </div>
           </div>

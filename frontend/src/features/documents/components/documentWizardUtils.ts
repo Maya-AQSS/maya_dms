@@ -20,13 +20,22 @@ export type ReviewerView = {
   resolved: boolean;
 };
 
-export const DOCUMENT_STATUS_LABELS: Record<DocumentStatus, string> = {
-  draft: 'Borrador',
-  in_review: 'En revisión',
-  published: 'Publicado',
-  rejected: 'Rechazado',
-  archived: 'Archivado',
-};
+/**
+ * Etiqueta i18n del estado de un documento (keys `documents:table.status.*`,
+ * compartidas con DocumentsTable/DocumentsContent; fallback al slug crudo).
+ * Sustituye al mapa hardcodeado DOCUMENT_STATUS_LABELS (S-01: las keys i18n
+ * ya existían en es/va/en y los textos es son byte-idénticos).
+ */
+export function documentStatusLabel(
+  status: string | null | undefined,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  if (!status) {
+    return t('documents:table.notAvailable');
+  }
+  const label = t(`documents:table.status.${status as DocumentStatus}`, { defaultValue: '' });
+  return label || status;
+}
 
 export function dateIsoToInput(value: string | null | undefined): string {
   if (!value) return '';
