@@ -236,7 +236,7 @@ class DocumentService implements DocumentServiceInterface
                 }
             }
 
-            $source->load(['blocks' => fn ($q) => $q->orderBy('sort_order')]);
+            $this->documentRepository->loadOrderedBlocks($source);
 
             /** @var list<array{template_block_id: string, content: mixed, sort_order: int, is_filled?: bool, last_edited_by?: ?string}> $blockRows */
             $blockRows = $source->blocks->map(function (DocumentBlock $b) use ($actorId): array {
@@ -421,7 +421,7 @@ class DocumentService implements DocumentServiceInterface
 
         $latestPublished = $this->entityVersionRepository->findLatestPublishedForEntity(Document::class, $documentId);
         if ($latestPublished !== null) {
-            $document->loadMissing('headVersion');
+            $this->documentRepository->loadHeadVersion($document);
             $head = $document->headVersion;
 
             if ($head !== null && (int) $head->version_number === 0 && in_array((string) $head->status, ['draft', 'in_review'], true)) {
@@ -998,7 +998,7 @@ class DocumentService implements DocumentServiceInterface
     {
         return $this->documentRepository->transaction(function () use ($documentId, $versionId) {
             $document = $this->documentRepository->findOrFail($documentId);
-            $document->loadMissing('headVersion');
+            $this->documentRepository->loadHeadVersion($document);
             $head = $document->headVersion;
 
             // Shared guards + entity_version reset (delegated to EntityVersionDestroyService).
@@ -1157,7 +1157,7 @@ class DocumentService implements DocumentServiceInterface
                 return $autoPublished;
             }
 
-            $document->load(['blocks' => fn ($q) => $q->orderBy('sort_order')]);
+            $this->documentRepository->loadOrderedBlocks($document);
             $blocksSnapshot = $document->blocks->map(fn ($b) => [
                 'document_block_id' => (string) $b->id,
                 'template_block_id' => (string) $b->template_block_id,
@@ -1450,7 +1450,7 @@ class DocumentService implements DocumentServiceInterface
 
         return $this->documentRepository->transaction(function () use ($documentId, $actorId, $changelog) {
             $document = $this->documentRepository->findOrFail($documentId);
-            $document->loadMissing('headVersion');
+            $this->documentRepository->loadHeadVersion($document);
             $resolvedChangelog = VersionSubmissionChangelog::requireNonEmpty(
                 $changelog,
                 $document->headVersion?->changelog,
@@ -1747,7 +1747,8 @@ class DocumentService implements DocumentServiceInterface
 
     public function resolveWorkingRevisionConflict(Document $document): WorkingRevisionConflictDto
     {
-        $document->loadMissing(['headVersion', 'owner']);
+        $this->documentRepository->loadHeadVersion($document);
+        $this->documentRepository->loadOwner($document);
         $editorName = $document->owner?->name;
         if (($editorName === null || $editorName === '') && $document->owner_id !== null) {
             $editorName = $this->userDirectoryRepository->findNameById($document->owner_id);
@@ -1780,7 +1781,7 @@ class DocumentService implements DocumentServiceInterface
         bool $isAssignedReviewer = false,
     ): void {
         // Cargar propietario si no está cargado
-        $document->loadMissing(['owner']);
+        $this->documentRepository->loadOwner($document);
 
         // Si se proporciona última versión publicada, establecerla como relación
         if ($latestPublished !== null) {

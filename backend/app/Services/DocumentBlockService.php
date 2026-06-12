@@ -294,7 +294,7 @@ class DocumentBlockService
             return $this->blockDefinitionsFromLiveTemplate((string) $document->template_id);
         }
 
-        $document->loadMissing('templateVersion');
+        $this->documentRepository->loadTemplateVersion($document);
 
         $ev = $document->templateVersion;
         if ($ev === null) {

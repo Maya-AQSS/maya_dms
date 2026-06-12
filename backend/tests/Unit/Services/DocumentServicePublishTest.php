@@ -148,6 +148,11 @@ class DocumentServicePublishTest extends TestCase
         $repo->shouldReceive('transaction')
             ->andReturnUsing(fn ($cb) => $cb());
 
+        // La relación headVersion ya está seteada en el modelo; la carga es no-op.
+        $repo->shouldReceive('loadHeadVersion')
+            ->once()
+            ->with($doc);
+
         $repo->shouldReceive('findOrFailForRefreshAfterMutation')
             ->once()
             ->andReturn($doc);

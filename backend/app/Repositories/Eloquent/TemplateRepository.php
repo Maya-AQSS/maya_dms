@@ -945,6 +945,46 @@ class TemplateRepository extends AbstractVersionableEntityRepository implements 
     }
 
     /**
+     * Borrado lógico (soft delete) de la plantilla.
+     */
+    public function delete(Template $template): void
+    {
+        $template->delete();
+    }
+
+    /**
+     * Carga la relación headVersion en el modelo si no está cargada.
+     */
+    public function loadHeadVersion(Template $template): void
+    {
+        $template->loadMissing('headVersion');
+    }
+
+    /**
+     * Carga la relación reviewers (y opcionalmente documentReviewers) si no están cargadas.
+     */
+    public function loadReviewers(Template $template, bool $withDocumentReviewers = false): void
+    {
+        $template->loadMissing($withDocumentReviewers ? ['reviewers', 'documentReviewers'] : 'reviewers');
+    }
+
+    /**
+     * Carga la relación blocks en el modelo si no está cargada.
+     */
+    public function loadBlocks(Template $template): void
+    {
+        $template->loadMissing('blocks');
+    }
+
+    /**
+     * Recarga el modelo desde la base de datos (equivalente a Model::fresh()).
+     */
+    public function refresh(Template $template): ?Template
+    {
+        return $template->fresh();
+    }
+
+    /**
      * Añade exists de comentarios de revisión (cualquiera) y no leídos por el usuario autenticado.
      *
      * @param  \Illuminate\Database\Eloquent\Builder<Template>  $query

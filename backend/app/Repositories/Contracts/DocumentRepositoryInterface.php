@@ -341,4 +341,30 @@ interface DocumentRepositoryInterface
      * }
      */
     public function loadBlocksAndReviewsData(string $documentId): array;
+
+    /**
+     * Carga la relación headVersion en el modelo si no está cargada.
+     */
+    public function loadHeadVersion(Document $document): void;
+
+    /**
+     * Carga la relación owner en el modelo si no está cargada.
+     */
+    public function loadOwner(Document $document): void;
+
+    /**
+     * (Re)carga los bloques del documento ordenados por sort_order.
+     * Fuerza la recarga (load, no loadMissing) para garantizar el orden.
+     */
+    public function loadOrderedBlocks(Document $document): void;
+
+    /**
+     * Carga la relación template en el modelo si no está cargada.
+     */
+    public function loadTemplate(Document $document): void;
+
+    /**
+     * Carga la relación templateVersion en el modelo si no está cargada.
+     */
+    public function loadTemplateVersion(Document $document): void;
 }

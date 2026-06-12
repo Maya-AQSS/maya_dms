@@ -63,12 +63,13 @@ class TemplateReviewService
                 ]);
             }
 
-            $this->templateReviewerRepository->loadBlocksForTemplate($template);
-            $blocksSnapshot = $template->blocks
-                ->map(fn ($b) => TemplateBlockPayloadDto::fromModel($b)->toArray())
-                ->values()->all();
+            $blockPayloads = $this->templateReviewerRepository->blockPayloadSnapshot((string) $template->getKey());
+            $blocksSnapshot = array_map(
+                fn (TemplateBlockPayloadDto $b): array => $b->toArray(),
+                $blockPayloads,
+            );
 
-            $template->loadMissing('headVersion');
+            $this->templateRepository->loadHeadVersion($template);
             $headVersion = $template->headVersion;
             if ($headVersion !== null) {
                 $cycles = is_array($headVersion->change_set) ? $headVersion->change_set : [];
@@ -82,8 +83,8 @@ class TemplateReviewService
                 $this->templateRepository->updateHeadVersionSnapshot($templateId, ['change_set' => $cycles]);
             }
 
-            $hasEditableBlock = $template->blocks->contains(
-                fn ($b) => in_array((string) $b->block_state, ['editable', 'modifiable'], true)
+            $hasEditableBlock = collect($blockPayloads)->contains(
+                fn (TemplateBlockPayloadDto $b) => in_array((string) $b->blockState, ['editable', 'modifiable'], true)
             );
             if (! $hasEditableBlock) {
                 throw ValidationException::withMessages([
@@ -91,15 +92,15 @@ class TemplateReviewService
                 ]);
             }
 
-            $isEmptyContent = fn ($b) => is_null($b->default_content)
-                || (is_array($b->default_content) && count($b->default_content) === 0);
+            $isEmptyContent = fn (TemplateBlockPayloadDto $b) => is_null($b->defaultContent)
+                || (is_array($b->defaultContent) && count($b->defaultContent) === 0);
             // Los bloques estructurales sin cuerpo (hoja en blanco) están exentos
             // de la invariante de "no vacío". Fuente: BlockType::requiresBodyContent().
-            $requiresContent = fn ($b) => ! ($b->block_type instanceof BlockType)
-                || $b->block_type->requiresBodyContent();
+            $requiresContent = fn (TemplateBlockPayloadDto $b) => ! ($b->blockType instanceof BlockType)
+                || $b->blockType->requiresBodyContent();
 
-            $emptyModifiableBlock = $template->blocks->first(
-                fn ($b) => (string) $b->block_state === 'modifiable' && $isEmptyContent($b) && $requiresContent($b)
+            $emptyModifiableBlock = collect($blockPayloads)->first(
+                fn (TemplateBlockPayloadDto $b) => (string) $b->blockState === 'modifiable' && $isEmptyContent($b) && $requiresContent($b)
             );
             if ($emptyModifiableBlock !== null) {
                 throw ValidationException::withMessages([
@@ -107,8 +108,8 @@ class TemplateReviewService
                 ]);
             }
 
-            $emptyLockedBlock = $template->blocks->first(
-                fn ($b) => (string) $b->block_state === 'locked' && $isEmptyContent($b) && $requiresContent($b)
+            $emptyLockedBlock = collect($blockPayloads)->first(
+                fn (TemplateBlockPayloadDto $b) => (string) $b->blockState === 'locked' && $isEmptyContent($b) && $requiresContent($b)
             );
             if ($emptyLockedBlock !== null) {
                 throw ValidationException::withMessages([
@@ -137,12 +138,8 @@ class TemplateReviewService
 
             $this->templateRepository->updateReviewersStatus($templateId, 'pending');
 
-            // Use repository to update head version snapshot
-            $blocksSnapshot = $template->blocks
-                ->map(fn ($b) => TemplateBlockPayloadDto::fromModel($b)->toArray())
-                ->values()->all();
-
-            $template->loadMissing('headVersion');
+            // Mismo payload de bloques calculado arriba (no hay mutaciones entre medias).
+            $this->templateRepository->loadHeadVersion($template);
             $headEv = $template->headVersion;
             if ($headEv !== null) {
                 $existing = is_array($headEv->snapshot_data) ? $headEv->snapshot_data : (array) ($headEv->snapshot_data ?? []);
@@ -162,7 +159,7 @@ class TemplateReviewService
 
             $this->notifyTemplateValidationRequested($inReview);
 
-            $inReview->loadMissing('reviewers');
+            $this->templateRepository->loadReviewers($inReview);
             $visibility = $inReview->visibility_level instanceof TemplateVisibilityLevel
                 ? $inReview->visibility_level->value
                 : (is_string($inReview->visibility_level) ? $inReview->visibility_level : null);
@@ -363,7 +360,7 @@ class TemplateReviewService
                 $this->userDirectoryRepository->findNameById($actorId),
             );
 
-            $fresh = $template->fresh();
+            $fresh = $this->templateRepository->refresh($template);
             if ($fresh !== null && $fresh->review_mode === 'sequential') {
                 $this->notifyTemplateValidationRequested($fresh);
             }
@@ -395,7 +392,7 @@ class TemplateReviewService
 
     private function notifyTemplateValidationRequested(Template $template): void
     {
-        $template->loadMissing('reviewers');
+        $this->templateRepository->loadReviewers($template);
 
         $pending = $template->reviewers
             ->filter(static fn (TemplateReviewer $r): bool => ($r->status ?? 'pending') === 'pending')

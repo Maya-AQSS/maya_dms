@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\TeamReadServiceInterface;
 use App\Support\ApiEmbeddedTeamResponse;
@@ -12,6 +13,7 @@ class ApiTeamEmbedService implements ApiTeamEmbedServiceInterface
 {
     public function __construct(
         private readonly TeamReadServiceInterface $teamReadService,
+        private readonly DocumentRepositoryInterface $documentRepository,
     ) {}
 
     /**
@@ -80,7 +82,7 @@ class ApiTeamEmbedService implements ApiTeamEmbedServiceInterface
     public function embedOnDocument($document, string $viewerUserId): void
     {
         // Extract team_id from document and its template relation without accepting model as type
-        $document->loadMissing('template');
+        $this->documentRepository->loadTemplate($document);
         $teamCatalogId = $document->team_id ?? $document->template?->team_id ?? null;
         $team = $this->resolveDocumentTeam($teamCatalogId, $viewerUserId);
         $document->setAttribute(ApiEmbeddedTeamResponse::ATTRIBUTE_KEY, $team);

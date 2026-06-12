@@ -211,4 +211,29 @@ interface TemplateRepositoryInterface
      * @return Collection<int, TemplateBlockPayloadDto>
      */
     public function findBlocksAsPayloadDtosForTemplate(string $templateId): Collection;
+
+    /**
+     * Borrado lógico (soft delete) de la plantilla.
+     */
+    public function delete(Template $template): void;
+
+    /**
+     * Carga la relación headVersion en el modelo si no está cargada.
+     */
+    public function loadHeadVersion(Template $template): void;
+
+    /**
+     * Carga la relación reviewers (y opcionalmente documentReviewers) si no están cargadas.
+     */
+    public function loadReviewers(Template $template, bool $withDocumentReviewers = false): void;
+
+    /**
+     * Carga la relación blocks en el modelo si no está cargada.
+     */
+    public function loadBlocks(Template $template): void;
+
+    /**
+     * Recarga el modelo desde la base de datos (equivalente a Model::fresh()).
+     */
+    public function refresh(Template $template): ?Template;
 }

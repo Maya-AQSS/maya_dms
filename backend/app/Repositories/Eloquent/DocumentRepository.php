@@ -1035,4 +1035,45 @@ class DocumentRepository extends AbstractVersionableEntityRepository implements 
 
         return ['document' => $document, 'blocks' => $blocks, 'reviews' => $reviews];
     }
+
+    /**
+     * Carga la relación headVersion en el modelo si no está cargada.
+     */
+    public function loadHeadVersion(Document $document): void
+    {
+        $document->loadMissing('headVersion');
+    }
+
+    /**
+     * Carga la relación owner en el modelo si no está cargada.
+     */
+    public function loadOwner(Document $document): void
+    {
+        $document->loadMissing('owner');
+    }
+
+    /**
+     * (Re)carga los bloques del documento ordenados por sort_order.
+     * Fuerza la recarga (load, no loadMissing) para garantizar el orden.
+     */
+    public function loadOrderedBlocks(Document $document): void
+    {
+        $document->load(['blocks' => fn ($q) => $q->orderBy('sort_order')]);
+    }
+
+    /**
+     * Carga la relación template en el modelo si no está cargada.
+     */
+    public function loadTemplate(Document $document): void
+    {
+        $document->loadMissing('template');
+    }
+
+    /**
+     * Carga la relación templateVersion en el modelo si no está cargada.
+     */
+    public function loadTemplateVersion(Document $document): void
+    {
+        $document->loadMissing('templateVersion');
+    }
 }

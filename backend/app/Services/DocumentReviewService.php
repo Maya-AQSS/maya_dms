@@ -84,7 +84,7 @@ class DocumentReviewService
             $review = $this->documentRepository->findReviewInDocument((string) $review->id, $documentId);
 
             if ($this->documentRepository->countPendingReviewsForDocument($documentId) === 0) {
-                $document->loadMissing('headVersion');
+                $this->documentRepository->loadHeadVersion($document);
                 $changelog = VersionSubmissionChangelog::requireNonEmpty(
                     $publicationChangelog,
                     $document->headVersion?->changelog,

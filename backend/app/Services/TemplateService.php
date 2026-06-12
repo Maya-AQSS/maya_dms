@@ -222,7 +222,7 @@ class TemplateService implements TemplateServiceInterface
 
     public function resolveWorkingRevisionConflict(Template $template): WorkingRevisionConflictDto
     {
-        $template->loadMissing('headVersion');
+        $this->templateRepository->loadHeadVersion($template);
         $realHead = $template->headVersion;
         $editorId = (string) (
             data_get($realHead?->snapshot_data, TemplateHeadSnapshot::JSON_TEMPLATE_KEY.'.created_by')
@@ -416,7 +416,7 @@ class TemplateService implements TemplateServiceInterface
 
         $latestPublished = $this->entityVersionRepository->findLatestPublishedForEntity(Template::class, $templateId);
         if ($latestPublished !== null) {
-            $template->loadMissing('headVersion');
+            $this->templateRepository->loadHeadVersion($template);
             $head = $template->headVersion;
 
             if ($head !== null && (int) $head->version_number === 0 && in_array((string) $head->status, ['draft', 'in_review'], true)) {
@@ -439,7 +439,7 @@ class TemplateService implements TemplateServiceInterface
             return false;
         }
 
-        $template->delete();
+        $this->templateRepository->delete($template);
 
         return true;
     }
@@ -505,7 +505,7 @@ class TemplateService implements TemplateServiceInterface
     {
         return $this->templateRepository->transaction(function () use ($templateId, $versionId) {
             $template = $this->templateRepository->findOrFail($templateId);
-            $template->loadMissing('headVersion');
+            $this->templateRepository->loadHeadVersion($template);
             $head = $template->headVersion;
 
             // Shared guards + entity_version reset (delegated to EntityVersionDestroyService).
@@ -536,7 +536,9 @@ class TemplateService implements TemplateServiceInterface
                     : $currentCreatorId,
             ]);
 
-            return $template->loadMissing(['reviewers', 'documentReviewers']);
+            $this->templateRepository->loadReviewers($template, withDocumentReviewers: true);
+
+            return $template;
         });
     }
 
@@ -722,7 +724,8 @@ class TemplateService implements TemplateServiceInterface
     private function cloneTemplateFromLiveSource(Template $source, string $actorId): Template
     {
         return $this->templateRepository->transaction(function () use ($source, $actorId) {
-            $source->loadMissing(['blocks', 'reviewers', 'documentReviewers']);
+            $this->templateRepository->loadBlocks($source);
+            $this->templateRepository->loadReviewers($source, withDocumentReviewers: true);
             $cloneVisibility = $source->visibility_level instanceof TemplateVisibilityLevel
                 ? $source->visibility_level->value
                 : $source->visibility_level;
@@ -984,7 +987,7 @@ class TemplateService implements TemplateServiceInterface
 
     private function resolveStoredDocumentReviewModeForClone(Template $source): string
     {
-        $source->loadMissing('headVersion');
+        $this->templateRepository->loadHeadVersion($source);
         $fields = data_get($source->headVersion?->snapshot_data, TemplateHeadSnapshot::JSON_TEMPLATE_KEY);
 
         if (is_array($fields)) {

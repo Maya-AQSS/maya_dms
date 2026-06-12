@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repositories\Eloquent;
 
+use App\DTOs\TemplateBlocks\TemplateBlockPayloadDto;
 use App\Models\Template;
 use App\Models\TemplateBlock;
 use App\Models\TemplateDocumentReviewer;
@@ -178,5 +179,22 @@ class TemplateReviewerRepository implements TemplateReviewerRepositoryInterface
         ]);
 
         return $template;
+    }
+
+    /**
+     * Bloques de la plantilla como payload DTOs ordenados por sort_order, para
+     * construir snapshots e invariantes sin iterar la relación Eloquent.
+     *
+     * @return list<TemplateBlockPayloadDto>
+     */
+    public function blockPayloadSnapshot(string $templateId): array
+    {
+        return TemplateBlock::query()
+            ->where('template_id', $templateId)
+            ->orderBy('sort_order')
+            ->get()
+            ->map(fn (TemplateBlock $b) => TemplateBlockPayloadDto::fromModel($b))
+            ->values()
+            ->all();
     }
 }

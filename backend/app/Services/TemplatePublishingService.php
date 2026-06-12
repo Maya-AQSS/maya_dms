@@ -149,7 +149,7 @@ class TemplatePublishingService
                 ->all();
 
             $next = $this->entityVersionRepository->nextVersionNumber(Template::class, $templateId);
-            $template->loadMissing('headVersion');
+            $this->templateRepository->loadHeadVersion($template);
             $resolvedChangelog = VersionSubmissionChangelog::requireNonEmpty(
                 $changelog,
                 $template->headVersion?->changelog,

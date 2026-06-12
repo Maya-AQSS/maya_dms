@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repositories\Contracts;
 
+use App\DTOs\TemplateBlocks\TemplateBlockPayloadDto;
 use App\Models\Template;
 use App\Models\TemplateReviewer;
 
@@ -77,4 +78,12 @@ interface TemplateReviewerRepositoryInterface
      * Returns the same model instance with all three relations loaded.
      */
     public function loadRelationsForSnapshot(Template $template): Template;
+
+    /**
+     * Bloques de la plantilla como payload DTOs ordenados por sort_order, para
+     * construir snapshots e invariantes sin iterar la relación Eloquent.
+     *
+     * @return list<TemplateBlockPayloadDto>
+     */
+    public function blockPayloadSnapshot(string $templateId): array;
 }
