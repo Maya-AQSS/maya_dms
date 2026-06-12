@@ -300,6 +300,33 @@ PRESERVADAS (con veredicto definitivo):
   falta la key (antes: slug crudo si faltaba en el mapa — misma semántica).
 - **Decidido por**: tarea F5-D2 (G2), derivada del análisis aprobado.
 
+## [F5-D2 DMS-F02] Validador hasMeaningfulContent puro en el editor de bloques de plantilla
+
+- **Fecha**: 2026-06-12
+- **Severidad**: MEDIUM (frontend; corrige condicionales de UI)
+- **Qué cambió**: el validador recursivo inline de WizardStep2Blocks mutaba
+  estado React (`setMeaningFullContent`) DENTRO de la recursión por nodo, de
+  modo que: (1) el flag dependía del último nodo visitado; (2) valía `false`
+  hasta el primer autosave (los avisos «debe tener contenido predeterminado»
+  se mostraban al cargar un bloque CON contenido y solo se corregían ~1.5s
+  después de teclear); (3) con contenido en forma doc `{type:'doc'}` nunca se
+  actualizaba; y (4) cuando había contenido válido se renderizaba un `<p>`
+  VACÍO encima del editor (`<p>{boolean}</p>`). Ahora el chequeo es una función
+  pura (`hasMeaningfulTiptapNode`/`tiptapContentHasMeaning` en
+  lib/blockValidation, 15 tests nuevos), el flag de los avisos es un derivado
+  `useMemo(formContent)` (reacciona al instante y entiende ambas formas de
+  contenido) y el párrafo vacío desaparece.
+- **Qué NO cambió**: la ruta de guardado es idéntica — un array pelado sin
+  contenido con sustancia se sigue persistiendo como `null`, con la misma
+  tabla de verdad (texto con `trim()`, y los tipos image/table/bulletList/
+  orderedList/iframe/alert cuentan como contenido — fix histórico
+  description-flatten preservado y ahora cubierto por tests).
+- **Endpoint(s) afectado(s)**: ninguno (solo UI; el payload de
+  PUT del bloque es el mismo para cualquier contenido dado).
+- **Impacto en cliente**: avisos de contenido obligatorio correctos desde el
+  primer render; desaparece un hueco visual espurio sobre el editor.
+- **Decidido por**: tarea F5-D2 (G3), ítem DMS-F02 del análisis aprobado.
+
 ## [F4-B1] Excepción aceptada: findModelOrFail*/resolvers de Model en Services
 
 - **Fecha**: 2026-06-12

@@ -46,6 +46,13 @@ import {
 import { appendCommentToTemplateCache, patchTemplateCommentCache, markCommentAsReadInTemplateCache, markCommentDeletedInTemplateCache, markBlockCommentsAsReadInTemplateCache } from '../../comments/commentCache';
 import { useUserProfile } from '../../user-profile';
 import { canCommentOnDocument, canCreateBlockComment, canDeleteBlockComment } from '../../../permissions';
+import {
+  hasMeaningfulTiptapNode,
+  safeJsonParse,
+  tiptapContentHasMeaning,
+  validateBlockName,
+  type TiptapNode,
+} from '../lib/blockValidation';
 import { useQueryClient } from '@tanstack/react-query';
 
 const BlockNoteEditorPanel = lazy(() =>
@@ -258,7 +265,13 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const [formName, setFormName] = useState('');
   const [formDesc, setFormDesc] = useState('');
   const [formContent, setFormContent] = useState('');
-  const [meaningFullContent, setMeaningFullContent] = useState(false);
+  // DMS-F02: derivado PURO del contenido del formulario. Antes era estado React
+  // mutado con side-effects dentro del validador recursivo del autosave (valor
+  // según el último nodo visitado y siempre false hasta el primer guardado).
+  const meaningfulContent = useMemo(
+    () => tiptapContentHasMeaning(safeJsonParse(formContent)),
+    [formContent],
+  );
   const [formUiState, setFormUiState] = useState<BlockUiState>('editable');
   const [formBlockType, setFormBlockType] = useState<BlockType>('content');
   const [formPageBreakAfter, setFormPageBreakAfter] = useState(false);
@@ -323,11 +336,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   };
 
   // ── useAutoSave (debounce 1500ms) — compartido en edit y multi ───────────────
-  const validateBlockName = (name: string): string => {
-    if (!name.trim()) return 'El nombre del bloque es obligatorio';
-    if (name.trim().toLowerCase() === 'bloque sin nombre') return '"Bloque sin nombre" no es un nombre válido';
-    return '';
-  };
+  // validateBlockName importado de ../lib/blockValidation (antes copia inline idéntica).
 
   const doSave = useCallback(async () => {
     const blockId = activeSingleIdRef.current;
@@ -343,47 +352,14 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     let parsedDesc: unknown = null;
     try { parsedContent = formContent ? JSON.parse(formContent) : null; } catch { parsedContent = null; }
     try { parsedDesc = formDesc ? JSON.parse(formDesc) : null; } catch { parsedDesc = null; }
-    type TiptapNode = {
-      type?: string;
-      text?: string;
-      content?: TiptapNode[];
-    };
 
-    const hasMeaningfulContent = (node: TiptapNode): boolean => {
-      // Texto real
-      if (node.type === 'text') {
-        setMeaningFullContent(true)
-        return typeof node.text === 'string' && node.text.trim().length > 0;
-      }else{
-        setMeaningFullContent(false)
-      }
-
-      // Nodos no textuales que deben considerarse contenido
-      if (
-        node.type === 'image' ||
-        node.type === 'table' ||
-        node.type === 'bulletList' ||
-        node.type === 'orderedList' ||
-        node.type === 'iframe' ||
-        node.type === 'alert'
-      ) {
-        return true;
-      }
-      return Array.isArray(node.content)
-        ? node.content.some(hasMeaningfulContent)
-        : false;
-    };
-
-
-    if (Array.isArray(parsedContent)) {
-      const containsContent = parsedContent.some((node) =>
-        hasMeaningfulContent(node as TiptapNode),
-      );
-      setMeaningFullContent(true)
-      if (!containsContent) {
-        setMeaningFullContent(false)
-        parsedContent = null;
-      }
+    // DMS-F02: validador puro (lib/blockValidation). Igual que antes, un array
+    // pelado sin contenido con sustancia se persiste como null.
+    if (
+      Array.isArray(parsedContent) &&
+      !parsedContent.some((node) => hasMeaningfulTiptapNode(node as TiptapNode))
+    ) {
+      parsedContent = null;
     }
     await updateBlock(blockId, {
       title: formName.trim(),
@@ -1184,20 +1160,19 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                       </div>
                     ) : (
                       <div className="flex-1 min-h-0 flex flex-col gap-2">
-                        {meaningFullContent && (
-                          <p>{meaningFullContent}</p>
-                        )}
-                        {formUiState === 'modifiable'  && !meaningFullContent && (
+                        {/* DMS-F02: eliminado el `<p>{boolean}</p>` que renderizaba
+                            un párrafo vacío cuando había contenido válido. */}
+                        {formUiState === 'modifiable'  && !meaningfulContent && (
                           <p className="bg-warning/10 text-warning-dark rounded px-3 py-1.5 dark:bg-warning-dark/30 dark:text-warning-light">
                             Los bloques tipo modificable deben tener contenido predeterminado (obligatorio).
                           </p>
                         )}
-                        {formUiState === 'locked' && !meaningFullContent && (
+                        {formUiState === 'locked' && !meaningfulContent && (
                           <p className="bg-warning/10 text-warning-dark rounded px-3 py-1.5 dark:bg-warning-dark/30 dark:text-warning-light">
                             Los bloques tipo bloqueado deben tener contenido predeterminado (obligatorio).
                           </p>
                         )}
-                        {formUiState === 'editable' && !meaningFullContent && (
+                        {formUiState === 'editable' && !meaningfulContent && (
                           <p className="bg-info/10 text-info-dark rounded px-3 py-1.5 dark:bg-info-dark/30 dark:text-info-light">
                             Se recomienda añadir contenido predeterminado para los bloques editables.
                           </p>
