@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "b5cca4cecbce4b7c017c74057d32873a",
+    "content-hash": "9723e911133bd036c169cf0ab7aae669",
     "packages": [
         {
             "name": "brick/math",
@@ -137,16 +137,16 @@
         },
         {
             "name": "ceedcv-maya/shared-auth-laravel",
-            "version": "v0.15.0",
+            "version": "v0.16.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Maya-AQSS/shared-auth-laravel.git",
-                "reference": "7d00d59fd001b356c18303c4062c4778f6bbb8c6"
+                "reference": "a01acede2c91827d11fe8dc7d0597bbca74166c6"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Maya-AQSS/shared-auth-laravel/zipball/7d00d59fd001b356c18303c4062c4778f6bbb8c6",
-                "reference": "7d00d59fd001b356c18303c4062c4778f6bbb8c6",
+                "url": "https://api.github.com/repos/Maya-AQSS/shared-auth-laravel/zipball/a01acede2c91827d11fe8dc7d0597bbca74166c6",
+                "reference": "a01acede2c91827d11fe8dc7d0597bbca74166c6",
                 "shasum": ""
             },
             "require": {
@@ -205,11 +205,11 @@
                 "issues": "https://github.com/Maya-AQSS/maya_platform/issues",
                 "source": "https://github.com/Maya-AQSS/shared-auth-laravel"
             },
-            "time": "2026-05-28T14:07:14+00:00"
+            "time": "2026-06-12T19:55:26+00:00"
         },
         {
             "name": "ceedcv-maya/shared-editor-laravel",
-            "version": "v0.15.0",
+            "version": "v0.16.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Maya-AQSS/shared-editor-laravel.git",
@@ -290,16 +290,16 @@
         },
         {
             "name": "ceedcv-maya/shared-http-laravel",
-            "version": "v0.15.0",
+            "version": "v0.16.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Maya-AQSS/shared-http-laravel.git",
-                "reference": "d916779e04f953537ce9b41323b65c12325d389a"
+                "reference": "f1cf808a0f5753c1c726d4c0c1c0b6309b93adc7"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Maya-AQSS/shared-http-laravel/zipball/d916779e04f953537ce9b41323b65c12325d389a",
-                "reference": "d916779e04f953537ce9b41323b65c12325d389a",
+                "url": "https://api.github.com/repos/Maya-AQSS/shared-http-laravel/zipball/f1cf808a0f5753c1c726d4c0c1c0b6309b93adc7",
+                "reference": "f1cf808a0f5753c1c726d4c0c1c0b6309b93adc7",
                 "shasum": ""
             },
             "require": {
@@ -310,10 +310,17 @@
                 "illuminate/support": "^11.0 || ^12.0 || ^13.0",
                 "php": "^8.4"
             },
+            "require-dev": {
+                "mockery/mockery": "^1.6",
+                "orchestra/testbench": "^9.0 || ^10.0",
+                "pestphp/pest": "^3.0",
+                "pestphp/pest-plugin-laravel": "^3.0"
+            },
             "type": "library",
             "autoload": {
                 "psr-4": {
-                    "Maya\\Http\\": "src/"
+                    "Maya\\Http\\": "src/",
+                    "Maya\\Search\\": "src/Search/"
                 }
             },
             "notification-url": "https://packagist.org/downloads/",
@@ -327,35 +334,37 @@
                     "homepage": "https://ceedcv.es"
                 }
             ],
-            "description": "Reusable HTTP utilities for Laravel APIs: standardized JSON response envelope, health endpoint, app metadata controller, exception handler.",
+            "description": "Reusable HTTP utilities for Laravel APIs: standardized JSON response envelope, health endpoint, app metadata controller, exception handler, accent-fold search support.",
             "homepage": "https://github.com/Maya-AQSS/shared-http-laravel",
             "keywords": [
                 "Maya",
+                "accent-fold",
                 "api",
                 "ceedcv",
                 "health",
                 "http",
                 "laravel",
-                "response"
+                "response",
+                "search"
             ],
             "support": {
                 "issues": "https://github.com/Maya-AQSS/maya_platform/issues",
                 "source": "https://github.com/Maya-AQSS/shared-http-laravel"
             },
-            "time": "2026-05-28T14:07:15+00:00"
+            "time": "2026-06-12T19:55:30+00:00"
         },
         {
             "name": "ceedcv-maya/shared-messaging-laravel",
-            "version": "v0.15.0",
+            "version": "v0.16.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Maya-AQSS/shared-messaging-laravel.git",
-                "reference": "c27c3dc12203f9453726cd680bbb8e0e9f091516"
+                "reference": "188e54fdbbed766b464c732f3c344ca65c9c1a88"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Maya-AQSS/shared-messaging-laravel/zipball/c27c3dc12203f9453726cd680bbb8e0e9f091516",
-                "reference": "c27c3dc12203f9453726cd680bbb8e0e9f091516",
+                "url": "https://api.github.com/repos/Maya-AQSS/shared-messaging-laravel/zipball/188e54fdbbed766b464c732f3c344ca65c9c1a88",
+                "reference": "188e54fdbbed766b464c732f3c344ca65c9c1a88",
                 "shasum": ""
             },
             "require": {
@@ -415,28 +424,48 @@
                 "issues": "https://github.com/Maya-AQSS/maya_platform/issues",
                 "source": "https://github.com/Maya-AQSS/shared-messaging-laravel"
             },
-            "time": "2026-06-04T15:39:06+00:00"
+            "time": "2026-06-12T19:55:35+00:00"
         },
         {
             "name": "ceedcv-maya/shared-platform-laravel",
-            "version": "v0.15.0",
+            "version": "v0.16.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Maya-AQSS/shared-platform-laravel.git",
-                "reference": "c8f81b90f7cf7d7a67713f2cc622ee6f1c75cf4e"
+                "reference": "e813845d13cc2633e92c494ca1ffb138b8758209"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Maya-AQSS/shared-platform-laravel/zipball/c8f81b90f7cf7d7a67713f2cc622ee6f1c75cf4e",
-                "reference": "c8f81b90f7cf7d7a67713f2cc622ee6f1c75cf4e",
+                "url": "https://api.github.com/repos/Maya-AQSS/shared-platform-laravel/zipball/e813845d13cc2633e92c494ca1ffb138b8758209",
+                "reference": "e813845d13cc2633e92c494ca1ffb138b8758209",
                 "shasum": ""
             },
             "require": {
+                "illuminate/auth": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/broadcasting": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/cache": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/console": "^11.0 || ^12.0 || ^13.0",
                 "illuminate/database": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/events": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/filesystem": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/routing": "^11.0 || ^12.0 || ^13.0",
                 "illuminate/support": "^11.0 || ^12.0 || ^13.0",
                 "php": "^8.4"
             },
+            "require-dev": {
+                "mockery/mockery": "^1.6",
+                "orchestra/testbench": "^9.0 || ^10.0",
+                "pestphp/pest": "^3.0",
+                "pestphp/pest-plugin-laravel": "^3.0"
+            },
             "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Maya\\Platform\\Providers\\SharedPlatformServiceProvider"
+                    ]
+                }
+            },
             "autoload": {
                 "psr-4": {
                     "Maya\\Platform\\": "src/"
@@ -468,29 +497,36 @@
                 "issues": "https://github.com/Maya-AQSS/maya_platform/issues",
                 "source": "https://github.com/Maya-AQSS/shared-platform-laravel"
             },
-            "time": "2026-06-01T21:44:47+00:00"
+            "time": "2026-06-12T19:55:27+00:00"
         },
         {
             "name": "ceedcv-maya/shared-profile-laravel",
-            "version": "v0.15.0",
+            "version": "v0.16.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Maya-AQSS/shared-profile-laravel.git",
-                "reference": "dfc7131cc9fbfe7d2c1b7177d1270222095935b8"
+                "reference": "8634ff763bf9e8c4c73887fe6e2d5068e13c7552"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Maya-AQSS/shared-profile-laravel/zipball/dfc7131cc9fbfe7d2c1b7177d1270222095935b8",
-                "reference": "dfc7131cc9fbfe7d2c1b7177d1270222095935b8",
+                "url": "https://api.github.com/repos/Maya-AQSS/shared-profile-laravel/zipball/8634ff763bf9e8c4c73887fe6e2d5068e13c7552",
+                "reference": "8634ff763bf9e8c4c73887fe6e2d5068e13c7552",
                 "shasum": ""
             },
             "require": {
                 "illuminate/contracts": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/database": "^11.0 || ^12.0 || ^13.0",
                 "illuminate/http": "^11.0 || ^12.0 || ^13.0",
                 "illuminate/routing": "^11.0 || ^12.0 || ^13.0",
                 "illuminate/support": "^11.0 || ^12.0 || ^13.0",
                 "illuminate/validation": "^11.0 || ^12.0 || ^13.0",
                 "php": "^8.4"
+            },
+            "require-dev": {
+                "mockery/mockery": "^1.6",
+                "orchestra/testbench": "^9.0 || ^10.0",
+                "pestphp/pest": "^3.0",
+                "pestphp/pest-plugin-laravel": "^3.0"
             },
             "type": "library",
             "extra": {
@@ -531,7 +567,7 @@
                 "issues": "https://github.com/Maya-AQSS/maya_platform/issues",
                 "source": "https://github.com/Maya-AQSS/shared-profile-laravel"
             },
-            "time": "2026-06-10T09:55:40+00:00"
+            "time": "2026-06-12T19:55:28+00:00"
         },
         {
             "name": "clue/redis-protocol",
