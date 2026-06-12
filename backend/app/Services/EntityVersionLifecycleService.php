@@ -39,16 +39,9 @@ class EntityVersionLifecycleService implements EntityVersionLifecycleServiceInte
                 ]);
             }
 
-            if ($snapshotData === []) {
-                throw ValidationException::withMessages([
-                    'snapshot_data' => ['El snapshot de publicación es obligatorio.'],
-                ]);
-            }
+            $this->assertSnapshotNotEmpty($snapshotData);
 
-            $resolvedChangelog = is_string($changelog) ? trim($changelog) : null;
-            if ($resolvedChangelog === '') {
-                $resolvedChangelog = null;
-            }
+            $resolvedChangelog = $this->normalizeChangelog($changelog);
 
             return EntityVersionDto::fromModel($this->entityVersionRepository->update($version, [
                 'status' => 'published',
@@ -78,16 +71,9 @@ class EntityVersionLifecycleService implements EntityVersionLifecycleServiceInte
             ]);
         }
 
-        if ($snapshotData === []) {
-            throw ValidationException::withMessages([
-                'snapshot_data' => ['El snapshot de publicación es obligatorio.'],
-            ]);
-        }
+        $this->assertSnapshotNotEmpty($snapshotData);
 
-        $resolvedChangelog = is_string($changelog) ? trim($changelog) : null;
-        if ($resolvedChangelog === '') {
-            $resolvedChangelog = null;
-        }
+        $resolvedChangelog = $this->normalizeChangelog($changelog);
 
         return $this->entityVersionRepository->transaction(function () use (
             $versionableType,
@@ -114,5 +100,27 @@ class EntityVersionLifecycleService implements EntityVersionLifecycleServiceInte
                 'is_snapshot_immutable' => true,
             ]));
         });
+    }
+
+    /**
+     * Normaliza el changelog: trim y los vacíos pasan a null.
+     */
+    private function normalizeChangelog(?string $changelog): ?string
+    {
+        $resolved = is_string($changelog) ? trim($changelog) : null;
+
+        return $resolved === '' ? null : $resolved;
+    }
+
+    /**
+     * El snapshot de publicación es obligatorio e inmutable: nunca vacío.
+     */
+    private function assertSnapshotNotEmpty(array $snapshotData): void
+    {
+        if ($snapshotData === []) {
+            throw ValidationException::withMessages([
+                'snapshot_data' => ['El snapshot de publicación es obligatorio.'],
+            ]);
+        }
     }
 }
