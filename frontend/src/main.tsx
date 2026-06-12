@@ -1,49 +1,28 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { createBrowserRouter, RouterProvider } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import './index.css'
 import './i18n'
 import App from './App.tsx'
-import { AuthProvider } from '@ceedcv-maya/shared-auth-react'
-import { NotificationProvider } from '@ceedcv-maya/shared-sidebar-react'
-import { ToastProvider } from '@ceedcv-maya/shared-ui-react'
-import { ErrorBoundaryWrapper as ErrorBoundary } from './components/ErrorBoundaryWrapper'
+import { MayaProviders } from '@ceedcv-maya/shared-layout-react'
 import { oidcAuthService } from './auth/oidcAdapter'
-import { UserProfileProvider } from './features/user-profile'
-import { bootstrapRealtime } from './lib/realtimeBootstrap'
+import { fetchMe } from './api/users'
+import type { MeProfile } from './types/users'
 
-bootstrapRealtime()
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: { staleTime: 60_000, retry: 1 },
-  },
-})
-
-const router = createBrowserRouter([
-  {
-    path: '*',
-    element: (
-      <UserProfileProvider>
-        <App />
-      </UserProfileProvider>
-    ),
-  },
-])
+/** Adapta el `fetchMe()` local (envuelto en `{ data }`) al provider compartido. */
+async function fetchProfile(): Promise<MeProfile> {
+  const res = await fetchMe()
+  return res.data
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider keycloak={oidcAuthService.keycloak} enableLogging={import.meta.env.DEV}>
-        <ErrorBoundary>
-          <NotificationProvider>
-            <ToastProvider>
-              <RouterProvider router={router} />
-            </ToastProvider>
-          </NotificationProvider>
-        </ErrorBoundary>
-      </AuthProvider>
-    </QueryClientProvider>
+    <MayaProviders
+      authService={oidcAuthService}
+      serviceSlug="dms"
+      fetchProfile={fetchProfile}
+      withToasts
+    >
+      <App />
+    </MayaProviders>
   </StrictMode>,
 )

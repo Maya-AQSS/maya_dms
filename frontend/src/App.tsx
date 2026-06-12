@@ -2,17 +2,11 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { Spinner } from '@ceedcv-maya/shared-ui-react';
 import { useTranslation } from 'react-i18next';
 import { Route, Routes, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { AppLayout } from '@ceedcv-maya/shared-layout-react';
-import { NotificationsBell, SidebarFavorites } from '@ceedcv-maya/shared-sidebar-react';
-import { useKeycloakLocaleSync } from '@ceedcv-maya/shared-i18n-react';
-import { useOidcSession } from '@ceedcv-maya/shared-auth-react';
-import { useRequireAppAccess } from '@ceedcv-maya/shared-profile-react';
-import { useRealtimeNotifications } from '@ceedcv-maya/shared-realtime-react';
+import { MayaAppShell } from '@ceedcv-maya/shared-layout-react';
+import { resolveServiceUrl, useOidcSession } from '@ceedcv-maya/shared-auth-react';
 import { ProcessesDrawer } from './components/layout/ProcessesDrawer';
-import { useUserProfile, profileDisplayInitials } from './features/user-profile';
 import { HierarchyProvider } from './features/hierarchy/context/HierarchyContext';
 import { useNavItems } from './components/layout/navItems';
-import { resolveServiceUrl } from './lib/peerService';
 import { DMS_PERMISSIONS } from './permissions';
 
 // Lazy-loaded pages
@@ -38,6 +32,10 @@ const PlaceholderPage = lazy(() => import('./pages/PlaceholderPage').then(m => (
 const DASHBOARD_API_URL = resolveServiceUrl(
   import.meta.env.VITE_DASHBOARD_API_URL as string | undefined,
   'dashboard-api',
+);
+const DASHBOARD_URL = resolveServiceUrl(
+  import.meta.env.VITE_DASHBOARD_URL as string | undefined,
+  'dashboard',
 );
 
 /** Redirige las rutas antiguas en español a sus equivalentes en inglés. */
@@ -88,26 +86,28 @@ function AppRoutes() {
   );
 }
 
-function AppWithLayout() {
-  const { logout, user, isOidcSignedIn } = useOidcSession();
-  const { profile } = useUserProfile();
-  const [processesDrawerOpen, setProcessesDrawerOpen] = useState(false);
-  const openProcessesDrawer = useCallback(() => setProcessesDrawerOpen(true), []);
-  const closeProcessesDrawer = useCallback(() => setProcessesDrawerOpen(false), []);
-  const navItems = useNavItems({ onOpenProcessesDrawer: openProcessesDrawer });
+/**
+ * Comportamiento post-login que el shell compartido no cubre (específico dms):
+ * - Cierra el ProcessesDrawer en cada cambio de ruta (y en cambios de sesión).
+ * - Al completar el login, si la ruta era un wizard de creación
+ *   (`/templates/new`, `/documents/new`) o `/`, redirige a `/dashboard`.
+ *
+ * Se monta como hijo de MayaAppShell para conservar el timing original:
+ * solo existe una vez superado el gate de sesión + permiso.
+ */
+function PostLoginBehavior({ onRouteChange }: { onRouteChange: () => void }) {
+  const { isOidcSignedIn } = useOidcSession();
   const navigate = useNavigate();
   const location = useLocation();
   const wasAuthenticatedRef = useRef(false);
   const previousPathRef = useRef<string | null>(null);
-  useKeycloakLocaleSync();
-  useRealtimeNotifications({ userId: (user?.sub as string | undefined) ?? null });
 
   useEffect(() => {
     previousPathRef.current = location.pathname;
   }, [location.pathname]);
 
   useEffect(() => {
-    setProcessesDrawerOpen(false);
+    onRouteChange();
     const wasAuthenticated = wasAuthenticatedRef.current;
     if (!wasAuthenticated && isOidcSignedIn) {
       if (previousPathRef.current === '/templates/new' || previousPathRef.current === '/documents/new') {
@@ -120,95 +120,50 @@ function AppWithLayout() {
       }
     }
     wasAuthenticatedRef.current = isOidcSignedIn;
-  }, [isOidcSignedIn, location.pathname, navigate]);
+  }, [isOidcSignedIn, location.pathname, navigate, onRouteChange]);
 
-  const userName = profile?.name?.trim() ?? '';
-  const userInitials = profileDisplayInitials(profile);
-  const onProfile = () => {
-    const dashboardOrigin = resolveServiceUrl(
-      import.meta.env.VITE_DASHBOARD_URL as string | undefined,
-      'dashboard',
-    );
-    window.location.assign(`${dashboardOrigin}/profile`);
-  };
-
-  return (
-    <>
-      <AppLayout
-        navItems={navItems}
-        brandName="DocuCEED"
-        brandVersion="v1.0"
-        brandLogoUrl="/favicon.png"
-        userName={userName}
-        userInitials={userInitials}
-        onLogout={logout}
-        onProfile={onProfile}
-        favoritesSlot={<SidebarFavorites label="Favoritas" dashboardApiUrl={DASHBOARD_API_URL} />}
-        notificationsSlot={<NotificationsBell dashboardApiUrl={DASHBOARD_API_URL} />}
-      >
-        <AppRoutes />
-      </AppLayout>
-      <ProcessesDrawer open={processesDrawerOpen} onClose={closeProcessesDrawer} />
-    </>
-  );
-}
-
-function AuthLoadingScreen({ message }: { message: string }) {
-  return (
-    <div className="flex items-center justify-center h-screen bg-ui-body dark:bg-ui-dark-bg text-text-muted dark:text-text-dark-muted font-sans">
-      {message}
-    </div>
-  );
+  return null;
 }
 
 /**
- * Requiere `dms.login` en /me. Si falta:
- *  - Si el usuario tiene `dashboard.login`, redirige al portal (preserva SSO).
- *  - Si no, cierra sesión SSO.
+ * App shell unificado (@ceedcv-maya/shared-layout-react).
+ *
+ * El shell gestiona: init OIDC + redirect a login, gate de permiso
+ * (`dms.login` vía useRequireAppAccess con redirect al portal),
+ * AppLayout con NotificationsBell/SidebarFavorites/resolveUserDisplay,
+ * useKeycloakLocaleSync y useRealtimeNotifications.
+ *
+ * Específico dms: ProcessesDrawer en el slot `afterLayout` (su estado vive
+ * aquí) y HierarchyProvider envolviendo las rutas (post-gate, como antes).
  */
-function AppAfterProfile() {
-  const { t } = useTranslation('auth');
-  const dashboardOrigin = resolveServiceUrl(
-    import.meta.env.VITE_DASHBOARD_URL as string | undefined,
-    'dashboard',
-  );
-  const { profileLoading, lacksLoginPermission } = useRequireAppAccess(
-    DMS_PERMISSIONS.login,
-    { portalLoginSlug: 'dashboard.login', portalUrl: dashboardOrigin },
-  );
-
-  if (profileLoading) {
-    return <AuthLoadingScreen message={t('auth.initializing')} />;
-  }
-
-  if (lacksLoginPermission) {
-    return <AuthLoadingScreen message={t('signingOutNoPermission')} />;
-  }
-
-  return (
-    <HierarchyProvider>
-      <AppWithLayout />
-    </HierarchyProvider>
-  );
-}
-
 export default function App() {
   const { t } = useTranslation('auth');
-  const { isOidcLoading, isOidcSignedIn, beginSignIn } = useOidcSession();
+  const [processesDrawerOpen, setProcessesDrawerOpen] = useState(false);
+  const openProcessesDrawer = useCallback(() => setProcessesDrawerOpen(true), []);
+  const closeProcessesDrawer = useCallback(() => setProcessesDrawerOpen(false), []);
+  const navItems = useNavItems({ onOpenProcessesDrawer: openProcessesDrawer });
 
-  useEffect(() => {
-    if (!isOidcLoading && !isOidcSignedIn) {
-      beginSignIn();
-    }
-  }, [isOidcLoading, isOidcSignedIn, beginSignIn]);
-
-  if (isOidcLoading) {
-    return <AuthLoadingScreen message={t('auth.initializing')} />;
-  }
-
-  if (!isOidcSignedIn) {
-    return <AuthLoadingScreen message={t('auth.redirecting')} />;
-  }
-
-  return <AppAfterProfile />;
+  return (
+    <MayaAppShell
+      brandName="DocuCEED"
+      brandVersion="v1.0"
+      brandLogoUrl="/favicon.png"
+      dashboardUrl={DASHBOARD_URL}
+      dashboardApiUrl={DASHBOARD_API_URL}
+      navItems={navItems}
+      loginPermission={DMS_PERMISSIONS.login}
+      portalLoginSlug="dashboard.login"
+      loadingInitializingMessage={t('auth.initializing')}
+      loadingRedirectingMessage={t('auth.redirecting')}
+      loadingProfileMessage={t('auth.initializing')}
+      loadingNoPermissionMessage={t('signingOutNoPermission')}
+      favoritesLabel="Favoritas"
+      afterLayout={<ProcessesDrawer open={processesDrawerOpen} onClose={closeProcessesDrawer} />}
+    >
+      <HierarchyProvider>
+        <PostLoginBehavior onRouteChange={closeProcessesDrawer} />
+        <AppRoutes />
+      </HierarchyProvider>
+    </MayaAppShell>
+  );
 }

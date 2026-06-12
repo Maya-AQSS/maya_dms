@@ -26,32 +26,27 @@ const _sharedPackageAliases: Record<string, string> = _sharedOverrideDir
 // When shared packages are resolved from `MAYA_DEV_OVERRIDE_DIR` (outside the
 // consumer's node_modules), their transitive `import` calls (eg. `@tiptap/core`
 // from inside `shared-editor-react`) start their lookup from that location and
-// never reach the consumer's `node_modules`. Alias each consumer-installed
-// dependency to the resolved path under `/app/node_modules` so the imports
-// land in the same module instance the consumer already loaded.
-
-// Symlink the consumer's `node_modules` into every shared package directory so
-// that transitive `import` calls from inside the shared sources walk up to the
-// consumer's installs naturally. Done once at config eval (idempotent).
-import { existsSync, symlinkSync, mkdirSync } from 'node:fs'
+// walk up. Only `packages/js` is bind-mounted into the container, so any
+// per-package `node_modules` left there by a host pnpm install dangles and
+// can't satisfy them. Point the first walk-up stop outside the bind mount —
+// `<override>/../../node_modules` (eg. `/maya_platform/node_modules`,
+// container-local) — at the consumer's installs. Re-created on every config
+// eval, so it survives container recreation.
+import { lstatSync, readlinkSync, rmSync, symlinkSync } from 'node:fs'
 function _ensureSharedNodeModulesSymlink(): void {
   if (!_sharedOverrideDir) return
   const consumerNodeModules = path.join(appRoot, 'node_modules')
-  const sharedPackages = [
-    'shared-auth-react', 'shared-dashboard-react', 'shared-editor-react',
-    'shared-hooks-react', 'shared-i18n-react', 'shared-layout-react',
-    'shared-profile-react', 'shared-realtime-react', 'shared-sidebar-react',
-    'shared-styles', 'shared-ui-react',
-  ]
-  for (const pkg of sharedPackages) {
-    const pkgDir = path.join(_sharedOverrideDir, pkg)
-    if (!existsSync(pkgDir)) continue
-    const linkPath = path.join(pkgDir, 'node_modules')
-    if (existsSync(linkPath)) continue
-    try {
-      mkdirSync(path.dirname(linkPath), { recursive: true })
-      symlinkSync(consumerNodeModules, linkPath, 'dir')
-    } catch { /* readonly fs or already-linked from another consumer — ignore */ }
+  const linkPath = path.resolve(_sharedOverrideDir, '..', '..', 'node_modules')
+  try {
+    const current = lstatSync(linkPath, { throwIfNoEntry: false })
+    if (current && !current.isSymbolicLink()) return // real install (host run) — leave it
+    if (current?.isSymbolicLink()) {
+      if (readlinkSync(linkPath) === consumerNodeModules) return
+      rmSync(linkPath)
+    }
+    symlinkSync(consumerNodeModules, linkPath, 'dir')
+  } catch (err) {
+    console.warn(`[vite] Failed to symlink ${linkPath}:`, (err as Error).message)
   }
 }
 _ensureSharedNodeModulesSymlink()
