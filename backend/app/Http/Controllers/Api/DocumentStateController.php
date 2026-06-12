@@ -13,8 +13,8 @@ use App\Http\Requests\Documents\DelegateDocumentRequest;
 use App\Http\Requests\Documents\PublishDocumentRequest;
 use App\Http\Requests\Documents\StartNewDocumentRevisionRequest;
 use App\Http\Requests\Documents\SubmitDocumentForReviewRequest;
-use App\Http\Resources\DocumentBlockResource;
 use App\Http\Resources\DocumentResource;
+use App\Http\Resources\DocumentWithBlocksResource;
 use App\Models\Document;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
@@ -114,10 +114,7 @@ class DocumentStateController extends Controller
         $blocks = $this->documentService->blocksForDisplay($updated->id);
 
         return response()->json([
-            'data' => array_merge(
-                (new DocumentResource($updated))->toArray($request),
-                ['blocks' => DocumentBlockResource::resolveDisplayList($request, $blocks)],
-            ),
+            'data' => (new DocumentWithBlocksResource($updated, $blocks))->toArray($request),
         ]);
     }
 
@@ -141,10 +138,7 @@ class DocumentStateController extends Controller
         $blocks = $this->documentService->blocksForDisplay($updated->id);
 
         return response()->json([
-            'data' => array_merge(
-                (new DocumentResource($updated))->toArray($request),
-                ['blocks' => DocumentBlockResource::resolveDisplayList($request, $blocks)],
-            ),
+            'data' => (new DocumentWithBlocksResource($updated, $blocks))->toArray($request),
         ]);
     }
 
@@ -163,10 +157,7 @@ class DocumentStateController extends Controller
         $blocks = $this->documentService->blocksForDisplay((string) $updated->id);
 
         return response()->json([
-            'data' => array_merge(
-                (new DocumentResource(DocumentDto::fromModel($updated)))->toArray($request),
-                ['blocks' => DocumentBlockResource::resolveDisplayList($request, $blocks)],
-            ),
+            'data' => (new DocumentWithBlocksResource(DocumentDto::fromModel($updated), $blocks))->toArray($request),
         ]);
     }
 

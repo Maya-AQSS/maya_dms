@@ -14,8 +14,8 @@ use App\Http\Requests\Documents\ListDocumentsRequest;
 use App\Http\Requests\Documents\ShowDocumentRequest;
 use App\Http\Requests\Documents\StoreDocumentRequest;
 use App\Http\Requests\Documents\UpdateDocumentRequest;
-use App\Http\Resources\DocumentBlockResource;
 use App\Http\Resources\DocumentResource;
+use App\Http\Resources\DocumentWithBlocksResource;
 use App\Models\Document;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
@@ -74,10 +74,7 @@ class DocumentController extends Controller
         $blocks = $this->documentService->blocksForDisplay($document->id);
 
         return response()->json([
-            'data' => array_merge(
-                (new DocumentResource($document))->toArray($request),
-                ['blocks' => DocumentBlockResource::resolveDisplayList($request, $blocks)],
-            ),
+            'data' => (new DocumentWithBlocksResource($document, $blocks))->toArray($request),
         ], 201);
     }
 
@@ -101,10 +98,7 @@ class DocumentController extends Controller
         $blocks = $this->documentService->blocksForDisplay($copy->id);
 
         return response()->json([
-            'data' => array_merge(
-                (new DocumentResource($copy))->toArray($request),
-                ['blocks' => DocumentBlockResource::resolveDisplayList($request, $blocks)],
-            ),
+            'data' => (new DocumentWithBlocksResource($copy, $blocks))->toArray($request),
         ], 201);
     }
 
@@ -137,10 +131,7 @@ class DocumentController extends Controller
             $blocks = $this->documentService->blocksForDisplay((string) $resolved->id);
 
             return response()->json([
-                'data' => array_merge(
-                    (new DocumentResource(DocumentDto::fromModel($resolved)))->toArray($request),
-                    ['blocks' => DocumentBlockResource::resolveDisplayList($request, $blocks)],
-                ),
+                'data' => (new DocumentWithBlocksResource(DocumentDto::fromModel($resolved), $blocks))->toArray($request),
             ]);
         }
 
@@ -152,10 +143,7 @@ class DocumentController extends Controller
         $blocks = $this->documentService->blocksForDisplay((string) $resolved->id);
 
         return response()->json([
-            'data' => array_merge(
-                (new DocumentResource(DocumentDto::fromModel($resolved)))->toArray($request),
-                ['blocks' => DocumentBlockResource::resolveDisplayList($request, $blocks)],
-            ),
+            'data' => (new DocumentWithBlocksResource(DocumentDto::fromModel($resolved), $blocks))->toArray($request),
         ]);
     }
 
