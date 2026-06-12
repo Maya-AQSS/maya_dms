@@ -26,6 +26,13 @@ type Props = {
  * Panel unificado de cambios de un bloque con dos pestañas:
  * «Cambiado» (diferencias respecto a la plantilla) e «Histórico» (revisiones).
  * Reutiliza {@link DocumentDiffPanel} y {@link DocumentBlockHistoryPanel} en modo embebido.
+ *
+ * NOTA G1-Tabs: NO migrado a `Tabs` de shared-ui-react a propósito — la
+ * tipografía local (`text-2xs font-black uppercase tracking-[0.12em]`, activo
+ * `text-odoo-purple`) difiere del Trigger shared (`text-sm font-medium`, activo
+ * `text-text-primary`), y el botón de cierre vive dentro de la fila del
+ * tablist. Sustituir cambiaría el estilo visual (prohibido en esta fase).
+ * Candidato: parametrizar tipografía/color activo en maya_platform.
  */
 export function BlockChangesPanel({
   diffBlocks,

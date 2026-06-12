@@ -3,6 +3,15 @@
  * Extracted to reduce WizardStep2Blocks complexity.
  *
  * Tabs: Properties, Content, Description, Comments
+ *
+ * NOTA G1-Tabs: NO migrado a `Tabs` de shared-ui-react a propósito — paridad
+ * visual imposible hoy: el Trigger activo shared usa `text-text-primary`
+ * (#212529) y la List `border-ui-border-l` (#E9ECEF), vs `text-odoo-purple`
+ * (#714B67) activo y `border-ui-border` (#D0D0D0) aquí (convención de tabs de
+ * dms, ver TemplateReviewView/BlockChangesPanel). Override por className no es
+ * determinista en Tailwind (utilidades en conflicto). Además el badge de
+ * comentarios y el disabled global durante autosave no tienen equivalente.
+ * Candidato: parametrizar color activo/borde en maya_platform y migrar entonces.
  */
 import { useTranslation } from 'react-i18next';
 
