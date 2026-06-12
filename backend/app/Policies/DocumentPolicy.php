@@ -32,7 +32,7 @@ use Illuminate\Support\Facades\DB;
  *
  * VERSIONADO Y HISTORIAL (catálogo):
  * - `document.version`: abrir ciclo de nueva versión sobre publicada (no titular).
- * - `document.clone`: clonar publicada (no titular); además `document.update` o ser titular.
+ * - `document.clone`: clonar documento visible (no titular); el titular no requiere este slug.
  * - `document.history.view`: listar/ver snapshots publicados (`GET …/versions`).
  */
 class DocumentPolicy
@@ -228,10 +228,11 @@ class DocumentPolicy
     }
 
     /**
-     * Clonar documento publicado en un expediente nuevo.
+     * Clonar documento visible en un expediente nuevo en borrador.
      *
      * Requiere ver el origen, `document.create` y (titular o `document.clone`).
-     * Quien no es titular necesita además `document.update` (misma línea que editar ajenos).
+     * Aplica en borrador, revisión, rechazado o publicado; el scope `user_access`
+     * ya restringe quién ve cada estado.
      */
     public function clone(JwtUser $user, Document $document): bool
     {
@@ -244,10 +245,6 @@ class DocumentPolicy
             return false;
         }
 
-        if (! $this->documentService->hasPublishedSnapshot($documentId)) {
-            return false;
-        }
-
         if (! $user->hasPermission('document.create')) {
             return false;
         }
@@ -256,11 +253,7 @@ class DocumentPolicy
             return true;
         }
 
-        if (! $user->hasPermission('document.clone')) {
-            return false;
-        }
-
-        return $user->hasPermission('document.update');
+        return $user->hasPermission('document.clone');
     }
 
     /**

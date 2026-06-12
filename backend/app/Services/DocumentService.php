@@ -209,30 +209,33 @@ class DocumentService implements DocumentServiceInterface
     /**
      * Clona un documento origen hacia uno nuevo en borrador.
      *
-     * Si existe al menos una versión publicada en {@see DocumentVersion}, el borrador copiado se materializa desde el
-     * último snapshot con trigger_event «published» (no desde los bloques vivos del documento).
+     * Si el origen está en ciclo de trabajo (draft/in_review/rejected), copia bloques vivos.
+     * Si está publicado y existe versión publicada en {@see DocumentVersion}, materializa
+     * desde el último snapshot con trigger_event «published»; si no, desde el estado vivo.
      */
     public function clone(string $sourceDocumentId, string $actorId): Document
     {
         return $this->documentRepository->transaction(function () use ($sourceDocumentId, $actorId) {
             $source = $this->documentRepository->findOrFail($sourceDocumentId);
 
-            $publishedSnapshot = $this->documentRepository->findLatestPublishedDocumentVersion($sourceDocumentId);
+            if (! in_array((string) $source->status, ['draft', 'in_review', 'rejected'], true)) {
+                $publishedSnapshot = $this->documentRepository->findLatestPublishedDocumentVersion($sourceDocumentId);
 
-            $resolvedPublish = $publishedSnapshot !== null ? $publishedSnapshot->resolvedSnapshotData() : null;
-            if ($publishedSnapshot !== null && is_array($resolvedPublish)) {
-                $snap = $resolvedPublish;
-                $docSnap = isset($snap['document']) && is_array($snap['document']) ? $snap['document'] : [];
-                $blockSnapshots = isset($snap['blocks']) && is_array($snap['blocks']) ? $snap['blocks'] : [];
-                $blockRows = $this->cloneBlockRowsFromSnapshotBlocks($blockSnapshots, $actorId);
+                $resolvedPublish = $publishedSnapshot !== null ? $publishedSnapshot->resolvedSnapshotData() : null;
+                if ($publishedSnapshot !== null && is_array($resolvedPublish)) {
+                    $snap = $resolvedPublish;
+                    $docSnap = isset($snap['document']) && is_array($snap['document']) ? $snap['document'] : [];
+                    $blockSnapshots = isset($snap['blocks']) && is_array($snap['blocks']) ? $snap['blocks'] : [];
+                    $blockRows = $this->cloneBlockRowsFromSnapshotBlocks($blockSnapshots, $actorId);
 
-                if ($blockRows !== []) {
-                    $attributes = $this->cloneDocumentAttributesFromPublishedSnapshot($source, $docSnap, $actorId);
+                    if ($blockRows !== []) {
+                        $attributes = $this->cloneDocumentAttributesFromPublishedSnapshot($source, $docSnap, $actorId);
 
-                    return $this->documentRepository->createDocumentWithBlocks(
-                        $attributes,
-                        $blockRows,
-                    );
+                        return $this->documentRepository->createDocumentWithBlocks(
+                            $attributes,
+                            $blockRows,
+                        );
+                    }
                 }
             }
 

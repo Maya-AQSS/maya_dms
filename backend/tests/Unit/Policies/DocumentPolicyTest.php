@@ -380,7 +380,7 @@ class DocumentPolicyTest extends TestCase
         $this->assertFalse($this->policy->clone($user, $doc));
     }
 
-    public function test_clone_requires_document_clone_and_update_for_non_titular(): void
+    public function test_clone_requires_document_clone_for_non_titular(): void
     {
         $ownerId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
         $strangerId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
@@ -388,7 +388,6 @@ class DocumentPolicyTest extends TestCase
             'document.show',
             'document.create',
             'document.clone',
-            'document.update',
         ]);
         auth()->setUser($user);
         $doc = $this->makeDocument(
@@ -403,9 +402,9 @@ class DocumentPolicyTest extends TestCase
 
         $this->assertTrue($this->policy->clone($user, $doc));
 
-        $cloneOnly = $this->makeJwtUser($strangerId, ['document.show', 'document.create', 'document.clone']);
-        auth()->setUser($cloneOnly);
-        $this->assertFalse($this->policy->clone($cloneOnly, $doc));
+        $withoutClone = $this->makeJwtUser($strangerId, ['document.show', 'document.create']);
+        auth()->setUser($withoutClone);
+        $this->assertFalse($this->policy->clone($withoutClone, $doc));
     }
 
     public function test_clone_allowed_for_titular_with_document_create(): void
@@ -419,13 +418,13 @@ class DocumentPolicyTest extends TestCase
         $this->assertTrue($this->policy->clone($user, $doc));
     }
 
-    public function test_clone_denied_for_non_published_document(): void
+    public function test_clone_allowed_for_titular_on_unpublished_draft(): void
     {
         $userId = '11111111-1111-1111-1111-111111111111';
         $user = $this->makeJwtUser($userId, ['document.create']);
         $doc = $this->makeDocument(createdBy: $userId, ownerId: $userId, status: 'draft');
 
-        $this->assertFalse($this->policy->clone($user, $doc));
+        $this->assertTrue($this->policy->clone($user, $doc));
     }
 
     /**

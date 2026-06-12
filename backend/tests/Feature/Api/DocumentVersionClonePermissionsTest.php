@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\Document;
+use App\Models\DocumentBlock;
 use App\Models\EntityVersion;
 use App\Models\Template;
+use App\Models\TemplateBlock;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Events\RouteMatched;
 use Illuminate\Support\Facades\DB;
@@ -166,8 +168,8 @@ it('denies clone on foreign published without document.clone', function () {
         ->assertForbidden();
 });
 
-it('allows clone on foreign published with document.clone and document.update', function () {
-    grantDocumentVersionCloneHistoryPermissions('document.clone', 'document.update');
+it('allows clone on foreign published with document.clone only', function () {
+    grantDocumentVersionCloneHistoryPermissions('document.clone');
 
     $documentId = seedPublishedGlobalDocument(test()->otherUserId);
 
@@ -203,4 +205,185 @@ it('allows versions list for titular without document.history.view', function ()
 
     $this->getJson("/api/v1/documents/{$documentId}/versions")
         ->assertOk();
+});
+
+it('allows titular to clone unpublished draft', function () {
+    $templateId = (string) Str::uuid();
+    $documentId = (string) Str::uuid();
+    $templateBlockId = (string) Str::uuid();
+
+    Template::query()->forceCreate([
+        'id' => $templateId,
+        'process_id' => '00000000-0000-0000-0000-000000000001',
+        'name' => 'Plantilla',
+        'description' => null,
+        'visibility_level' => TemplateVisibilityLevel::Personal->value,
+        'delivery_deadline' => now()->addWeek(),
+        'study_type_id' => null,
+        'study_id' => null,
+        'module_id' => null,
+        'team_id' => null,
+        'created_by' => test()->userId,
+        'status' => 'published',
+        'review_stages' => 0,
+        'review_mode' => 'parallel',
+    ]);
+
+    TemplateBlock::query()->forceCreate([
+        'id' => $templateBlockId,
+        'template_id' => $templateId,
+        'title' => 'Bloque plantilla',
+        'block_state' => 'editable',
+        'sort_order' => 0,
+    ]);
+
+    Document::query()->forceCreate([
+        'id' => $documentId,
+        'process_id' => '00000000-0000-0000-0000-000000000001',
+        'template_id' => $templateId,
+        'title' => 'Borrador sin publicar',
+        'study_type_id' => null,
+        'study_id' => null,
+        'module_id' => null,
+        'delivery_deadline' => now()->addWeek()->toDateString(),
+        'created_by' => test()->userId,
+        'owner_id' => test()->userId,
+        'status' => 'draft',
+    ]);
+
+    DocumentBlock::query()->forceCreate([
+        'id' => (string) Str::uuid(),
+        'document_id' => $documentId,
+        'template_block_id' => $templateBlockId,
+        'content' => [
+            ['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'Contenido borrador']]],
+        ],
+        'is_filled' => true,
+        'sort_order' => 0,
+        'last_edited_by' => test()->userId,
+    ]);
+
+    $this->postJson("/api/v1/documents/{$documentId}/clone")
+        ->assertCreated()
+        ->assertJsonPath('data.title', 'Borrador sin publicar (copia)');
+});
+
+it('clones working draft blocks instead of published snapshot', function () {
+    $templateId = (string) Str::uuid();
+    $documentId = (string) Str::uuid();
+    $headId = (string) Str::uuid();
+    $templateBlockId = (string) Str::uuid();
+    $publishedBlockId = (string) Str::uuid();
+    $draftBlockId = (string) Str::uuid();
+
+    Template::query()->forceCreate([
+        'id' => $templateId,
+        'process_id' => '00000000-0000-0000-0000-000000000001',
+        'name' => 'Plantilla',
+        'description' => null,
+        'visibility_level' => TemplateVisibilityLevel::Personal->value,
+        'delivery_deadline' => now()->addWeek(),
+        'study_type_id' => null,
+        'study_id' => null,
+        'module_id' => null,
+        'team_id' => null,
+        'created_by' => test()->userId,
+        'status' => 'published',
+        'review_stages' => 0,
+        'review_mode' => 'parallel',
+    ]);
+
+    TemplateBlock::query()->forceCreate([
+        'id' => $templateBlockId,
+        'template_id' => $templateId,
+        'title' => 'Bloque plantilla',
+        'block_state' => 'editable',
+        'sort_order' => 0,
+    ]);
+
+    EntityVersion::query()->forceCreate([
+        'id' => $headId,
+        'versionable_type' => Document::class,
+        'versionable_id' => $documentId,
+        'version_number' => 0,
+        'status' => 'draft',
+        'snapshot_data' => [
+            'document' => [
+                'title' => 'Programación en nueva versión',
+                'status' => 'draft',
+                'created_by' => test()->userId,
+                'owner_id' => test()->userId,
+                'delivery_deadline' => now()->addWeek()->toDateString(),
+            ],
+        ],
+        'changelog' => 'head',
+        'created_by' => test()->userId,
+    ]);
+
+    EntityVersion::query()->forceCreate([
+        'id' => (string) Str::uuid(),
+        'versionable_type' => Document::class,
+        'versionable_id' => $documentId,
+        'version_number' => 1,
+        'status' => 'published',
+        'snapshot_data' => [
+            'document' => [
+                'title' => 'Programación en nueva versión',
+                'status' => 'published',
+                'created_by' => test()->userId,
+                'owner_id' => test()->userId,
+                'delivery_deadline' => now()->addWeek()->toDateString(),
+            ],
+            'blocks' => [[
+                'id' => $publishedBlockId,
+                'template_block_id' => $templateBlockId,
+                'content' => [
+                    ['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'Texto publicado']]],
+                ],
+                'is_filled' => true,
+                'sort_order' => 0,
+            ]],
+        ],
+        'changelog' => 'v1',
+        'created_by' => test()->userId,
+        'published_at' => now(),
+        'published_by' => test()->userId,
+    ]);
+
+    Document::query()->forceCreate([
+        'id' => $documentId,
+        'process_id' => '00000000-0000-0000-0000-000000000001',
+        'template_id' => $templateId,
+        'title' => 'Programación en nueva versión',
+        'study_type_id' => null,
+        'study_id' => null,
+        'module_id' => null,
+        'delivery_deadline' => now()->addWeek()->toDateString(),
+        'created_by' => test()->userId,
+        'owner_id' => test()->userId,
+        'status' => 'draft',
+        'head_entity_version_id' => $headId,
+    ]);
+
+    DocumentBlock::query()->forceCreate([
+        'id' => $draftBlockId,
+        'document_id' => $documentId,
+        'template_block_id' => $templateBlockId,
+        'content' => [
+            ['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'Texto borrador']]],
+        ],
+        'is_filled' => true,
+        'sort_order' => 0,
+        'last_edited_by' => test()->userId,
+    ]);
+
+    $response = $this->postJson("/api/v1/documents/{$documentId}/clone")
+        ->assertCreated();
+
+    $clonedId = $response->json('data.id');
+    $clonedBlock = DocumentBlock::query()->where('document_id', $clonedId)->first();
+
+    expect($clonedBlock?->content)->toBe([
+        ['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'Texto borrador']]],
+    ]);
 });
