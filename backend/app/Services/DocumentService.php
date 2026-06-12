@@ -47,6 +47,7 @@ use App\Support\CloneDeadlinePolicy;
 use App\Support\DocumentReviewModeResolver;
 use App\Support\ReviewValidationNotificationRecipients;
 use App\Support\VersionSubmissionChangelog;
+use App\Support\VersionSubmissionCycles;
 use App\Support\WorkingRevisionConflictResolver;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -1209,14 +1210,9 @@ class DocumentService implements DocumentServiceInterface
 
             $headVersion = $document->headVersion;
             if ($headVersion !== null) {
-                $cycles = is_array($headVersion->change_set) ? $headVersion->change_set : [];
-                $cycles[] = [
-                    'cycle' => count($cycles) + 1,
-                    'submitted_at' => now()->toIso8601String(),
-                    'submitted_by' => $actorId,
-                    'blocks' => $blocksSnapshot,
-                ];
-                $this->entityVersionRepository->update($headVersion, ['change_set' => $cycles]);
+                $this->entityVersionRepository->update($headVersion, [
+                    'change_set' => VersionSubmissionCycles::append($headVersion->change_set, $actorId, $blocksSnapshot),
+                ]);
             }
 
             $reviewMode = $this->documentReviewModeResolver->resolve($document);

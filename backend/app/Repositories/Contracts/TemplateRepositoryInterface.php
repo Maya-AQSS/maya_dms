@@ -177,9 +177,19 @@ interface TemplateRepositoryInterface
     public function updateReviewersStatus(string $templateId, string $status): void;
 
     /**
-     * Actualiza el snapshot de la versión cabezal (headVersion) con datos específicos.
+     * Añade un ciclo de envío a validación al change_set de la versión cabezal.
+     *
+     * @param  array<int, array<string, mixed>>  $blocksSnapshot
      */
-    public function updateHeadVersionSnapshot(string $templateId, array $snapshotData): void;
+    public function appendHeadVersionSubmissionCycle(string $templateId, string $actorId, array $blocksSnapshot): void;
+
+    /**
+     * Registra los bloques del envío actual en el snapshot de la versión cabezal,
+     * rotando el envío anterior al histórico (blocks_submission_history).
+     *
+     * @param  array<int, array<string, mixed>>  $blocksSnapshot
+     */
+    public function recordHeadVersionBlocksAtSubmission(string $templateId, array $blocksSnapshot): void;
 
     /**
      * Limpia datos de submission del head version snapshot (cuando se publica).

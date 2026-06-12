@@ -68,19 +68,10 @@ class TemplateReviewService
                 $blockPayloads,
             );
 
+            // La relación queda cargada para la conversión a DTO posterior; la
+            // mutación del ciclo se persiste vía repositorio.
             $this->templateRepository->loadHeadVersion($template);
-            $headVersion = $template->headVersion;
-            if ($headVersion !== null) {
-                $cycles = is_array($headVersion->change_set) ? $headVersion->change_set : [];
-                $cycles[] = [
-                    'cycle' => count($cycles) + 1,
-                    'submitted_at' => now()->toIso8601String(),
-                    'submitted_by' => $actorId,
-                    'blocks' => $blocksSnapshot,
-                ];
-                // Repository update instead of direct model mutation
-                $this->templateRepository->updateHeadVersionSnapshot($templateId, ['change_set' => $cycles]);
-            }
+            $this->templateRepository->appendHeadVersionSubmissionCycle($templateId, $actorId, $blocksSnapshot);
 
             $hasEditableBlock = collect($blockPayloads)->contains(
                 fn (TemplateBlockPayloadDto $b) => in_array((string) $b->blockState, ['editable', 'modifiable'], true)
@@ -139,20 +130,7 @@ class TemplateReviewService
 
             // Mismo payload de bloques calculado arriba (no hay mutaciones entre medias).
             $this->templateRepository->loadHeadVersion($template);
-            $headEv = $template->headVersion;
-            if ($headEv !== null) {
-                $existing = is_array($headEv->snapshot_data) ? $headEv->snapshot_data : (array) ($headEv->snapshot_data ?? []);
-                if (isset($existing['blocks_at_submission']) && is_array($existing['blocks_at_submission'])) {
-                    $history = isset($existing['blocks_submission_history']) && is_array($existing['blocks_submission_history'])
-                        ? $existing['blocks_submission_history']
-                        : [];
-                    $history[] = $existing['blocks_at_submission'];
-                    $existing['blocks_submission_history'] = $history;
-                    $existing['blocks_at_previous_submission'] = $existing['blocks_at_submission'];
-                }
-                $existing['blocks_at_submission'] = $blocksSnapshot;
-                $this->templateRepository->updateHeadVersionSnapshot($templateId, $existing);
-            }
+            $this->templateRepository->recordHeadVersionBlocksAtSubmission($templateId, $blocksSnapshot);
 
             $inReview = $this->templatePublishingService->transitionStatus($template, 'in_review', $actorId);
 

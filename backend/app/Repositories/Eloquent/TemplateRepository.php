@@ -15,6 +15,7 @@ use App\Models\TemplateReviewer;
 use App\Policies\TemplatePolicy;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Support\TemplateHeadSnapshot;
+use App\Support\VersionSubmissionCycles;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -844,20 +845,50 @@ class TemplateRepository extends AbstractVersionableEntityRepository implements 
     }
 
     /**
-     * Actualiza el snapshot de la versión cabezal (headVersion) con datos específicos.
+     * Añade un ciclo de envío a validación al change_set de la versión cabezal.
+     *
+     * @param  array<int, array<string, mixed>>  $blocksSnapshot
      */
-    public function updateHeadVersionSnapshot(string $templateId, array $snapshotData): void
+    public function appendHeadVersionSubmissionCycle(string $templateId, string $actorId, array $blocksSnapshot): void
     {
         $template = $this->findOrFail($templateId);
         $template->loadMissing('headVersion');
 
-        if ($template->headVersion !== null) {
-            $ev = $template->headVersion;
-            $existing = is_array($ev->snapshot_data) ? $ev->snapshot_data : (array) ($ev->snapshot_data ?? []);
-            $merged = array_merge($existing, $snapshotData);
-            $ev->snapshot_data = $merged;
+        $ev = $template->headVersion;
+        if ($ev !== null) {
+            $ev->change_set = VersionSubmissionCycles::append($ev->change_set, $actorId, $blocksSnapshot);
             $ev->save();
         }
+    }
+
+    /**
+     * Registra los bloques del envío actual en el snapshot de la versión cabezal,
+     * rotando el envío anterior al histórico (blocks_submission_history).
+     *
+     * @param  array<int, array<string, mixed>>  $blocksSnapshot
+     */
+    public function recordHeadVersionBlocksAtSubmission(string $templateId, array $blocksSnapshot): void
+    {
+        $template = $this->findOrFail($templateId);
+        $template->loadMissing('headVersion');
+
+        $ev = $template->headVersion;
+        if ($ev === null) {
+            return;
+        }
+
+        $existing = is_array($ev->snapshot_data) ? $ev->snapshot_data : (array) ($ev->snapshot_data ?? []);
+        if (isset($existing['blocks_at_submission']) && is_array($existing['blocks_at_submission'])) {
+            $history = isset($existing['blocks_submission_history']) && is_array($existing['blocks_submission_history'])
+                ? $existing['blocks_submission_history']
+                : [];
+            $history[] = $existing['blocks_at_submission'];
+            $existing['blocks_submission_history'] = $history;
+            $existing['blocks_at_previous_submission'] = $existing['blocks_at_submission'];
+        }
+        $existing['blocks_at_submission'] = $blocksSnapshot;
+        $ev->snapshot_data = $existing;
+        $ev->save();
     }
 
     /**
