@@ -1,21 +1,26 @@
 /**
- * Cliente HTTP autenticado — delegado al factory de @ceedcv-maya/shared-auth-react.
- * El Bearer lo añade la instancia Keycloak de {@link ../auth/oidcAdapter}.
+ * Cliente HTTP autenticado — delegado al factory compartido
+ * `createServiceApiClient` de @ceedcv-maya/shared-auth-react (0.16): resuelve
+ * la baseUrl vía `peerOrigin('dms-api')/api/v1` o el override `VITE_API_URL`,
+ * y delega en `createApiClient`. El Bearer lo añade la instancia Keycloak de
+ * {@link ../auth/oidcAdapter}.
  *
  * En tests, `@ceedcv-maya/shared-auth-react` resuelve al shim local que ofrece la
- * misma superficie (`createApiClient`, `ApiHttpError`, `ApiFetchOptions`) pero
- * sin tocar la red.
+ * misma superficie (`createServiceApiClient`, `ApiHttpError`, `ApiFetchOptions`)
+ * pero sin tocar la red.
  */
-import { createApiClient, ApiHttpError, type ApiFetchOptions } from '@ceedcv-maya/shared-auth-react'
+import {
+  ApiHttpError,
+  createServiceApiClient,
+  type ApiFetchOptions,
+} from '@ceedcv-maya/shared-auth-react'
 import { oidcAuthService } from '../auth/oidcAdapter'
-import { peerOrigin } from '../lib/peerService'
 
-// Si `VITE_API_URL` no está definida, derivamos el origen del hostname actual
-// (convención Maya: `<slot>-<service>.<domain>` ↔ `<slot>-<service>-api.<domain>`).
-const baseUrl = ((import.meta.env.VITE_API_URL as string | undefined)?.trim())
-  || `${peerOrigin('dms-api')}/api/v1`
-
-const client = createApiClient(oidcAuthService.keycloak, baseUrl)
+const client = createServiceApiClient(
+  'dms-api',
+  oidcAuthService.keycloak,
+  (import.meta.env.VITE_API_URL as string | undefined)?.trim(),
+)
 
 export { ApiHttpError, type ApiFetchOptions }
 export const { apiFetchJson, apiGetJson, buildApiUrl, getBearerToken } = client
@@ -26,7 +31,8 @@ export const { apiFetchJson, apiGetJson, buildApiUrl, getBearerToken } = client
  * `message` del body JSON y cae a `statusText` si no existe o no es JSON.
  *
  * Sustituye a las ~5 copias inline del mismo parseo (uploads multipart y
- * descargas blob de templates/themes/documents/media).
+ * descargas blob de templates/themes/documents/media). No existe equivalente
+ * en el paquete compartido (0.16) — se mantiene local.
  */
 export async function apiErrorFromResponse(response: Response): Promise<ApiHttpError> {
   let message = response.statusText

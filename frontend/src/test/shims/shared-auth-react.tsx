@@ -85,6 +85,85 @@ export function createApiClient(_keycloak: unknown, _baseUrl: string): ApiClient
   };
 }
 
+// ── Utilidades canónicas 0.16 ───────────────────────────────────────────────
+// Misma superficie que el paquete real: factories de cliente/OIDC, peer
+// origins, query strings y mapeo de errores a keys i18n.
+
+export function createServiceApiClient(
+  _serviceSlug: string,
+  keycloak: unknown,
+  _envOverride?: string,
+): ApiClient {
+  void _serviceSlug;
+  void _envOverride;
+  return createApiClient(keycloak, 'http://vitest.local/api/v1');
+}
+
+export function createOidcAdapter(_config: unknown) {
+  void _config;
+  const oidcAuthService = new AuthService({});
+  return {
+    oidcAuthService,
+    appendBearerAuthorization: async (_headers: Record<string, string>) => {
+      void _headers;
+    },
+    triggerSignIn: () => undefined,
+  };
+}
+
+export function peerOrigin(targetService: string): string {
+  return `https://${targetService}.vitest.local`;
+}
+
+export function resolveServiceUrl(envValue: string | undefined, targetService: string): string {
+  const trimmed = envValue?.trim();
+  if (trimmed) return trimmed.replace(/\/$/, '');
+  return peerOrigin(targetService);
+}
+
+/** Copia fiel del buildQueryString real (omite null/undefined/''/false/0; true→'1'; arrays→join ','). */
+export function buildQueryString(params: Record<string, unknown>): string {
+  const q = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === null || value === undefined || value === '' || value === false || value === 0) {
+      continue;
+    }
+    if (Array.isArray(value)) {
+      if (value.length === 0) continue;
+      q.set(key, value.join(','));
+      continue;
+    }
+    if (value === true) {
+      q.set(key, '1');
+      continue;
+    }
+    q.set(key, String(value));
+  }
+  const s = q.toString();
+  return s ? `?${s}` : '';
+}
+
+/** Copia fiel del mapApiErrorToI18nKey real (ApiHttpError → key por status). */
+export function mapApiErrorToI18nKey(
+  err: unknown,
+  prefix: string,
+  fallbackKey = 'errorLoad',
+): string {
+  if (err instanceof ApiHttpError) {
+    if (err.status === 401) return `${prefix}.errorUnauthorized`;
+    if (err.status === 403) return `${prefix}.errorForbidden`;
+    if (err.status === 404) return `${prefix}.errorNotFound`;
+    if (err.status === 422) return `${prefix}.errorValidation`;
+    if (err.status >= 500) return `${prefix}.errorServer`;
+  }
+  if (err instanceof TypeError) return `${prefix}.errorNetwork`;
+  return `${prefix}.${fallbackKey}`;
+}
+
+export function mapApiError(err: unknown, prefix: string, fallbackSuffix = 'errorLoad'): Error {
+  return new Error(mapApiErrorToI18nKey(err, prefix, fallbackSuffix));
+}
+
 // ── Caché del perfil en localStorage ───────────────────────────────────────
 
 export const USER_PROFILE_STORAGE_KEY = 'maya_user_profile';

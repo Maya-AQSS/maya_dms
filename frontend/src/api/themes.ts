@@ -10,7 +10,10 @@ import type {
 } from '../types/themes';
 import { apiFetchJson, apiGetJson, apiErrorFromResponse, buildApiUrl, getBearerToken } from './http';
 import { normalizePaginatedResponse } from './paginatedList';
-import { buildQueryString } from './queryString';
+// buildQueryString canónico compartido (0.16): misma semántica que el builder
+// local eliminado (omite null/undefined/''/false/0, true→'1'); añade soporte de
+// arrays (join ','), que estos call sites no usan.
+import { buildQueryString } from '@ceedcv-maya/shared-auth-react';
 
 export type { Theme, ThemeListFilters, ThemesListResponse } from '../types/themes';
 

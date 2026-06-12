@@ -10,7 +10,10 @@ import { apiFetchJson, apiGetJson, apiErrorFromResponse, buildApiUrl, getBearerT
 import { downloadAuthenticatedBlob } from './blobDownload';
 import { postNewVersion } from './newVersion';
 import { fetchAllPaginatedPages, normalizePaginatedResponse } from './paginatedList';
-import { buildQueryString } from './queryString';
+// buildQueryString canónico compartido (0.16): misma semántica que el builder
+// local eliminado (omite null/undefined/''/false/0, true→'1'); añade soporte de
+// arrays (join ','), que estos call sites no usan.
+import { buildQueryString } from '@ceedcv-maya/shared-auth-react';
 
 /**
  * POST /api/v1/templates/{id}/cover-images — multipart upload de imagen para un
