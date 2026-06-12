@@ -57,5 +57,14 @@
     "alignment": "Alineació",
     "imageEmpty": "Sense imatge"
   },
-  "emptyMessage": "Encara no hi ha temes. Crea'n un des de \"Nou tema\"."
+  "emptyMessage": "Encara no hi ha temes. Crea'n un des de \"Nou tema\".",
+  "errors": {
+    "errorForbidden": "No tens permís per a esta acció sobre el tema.",
+    "errorUnauthorized": "Sessió no vàlida o token absent.",
+    "errorValidation": "Dades no vàlides; revisa els colors i els camps obligatoris.",
+    "errorNotFound": "Tema no trobat.",
+    "errorServer": "Error del servidor.",
+    "errorNetwork": "Error de connexió.",
+    "errorUnknown": "Error desconegut."
+  }
 }

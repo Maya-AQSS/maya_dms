@@ -126,5 +126,14 @@
     "discardNewVersionTitle": "Discard new version?",
     "rejectValidationTitle": "Reject validation?",
     "clone": "Clone"
+  },
+  "errors": {
+    "errorForbidden": "You do not have permission for this action (e.g. shared visibility is for coordination only).",
+    "errorUnauthorized": "Invalid session or missing token.",
+    "errorValidation": "Invalid data; check visibility and required fields.",
+    "errorNotFound": "Template not found.",
+    "errorServer": "Server error.",
+    "errorNetwork": "Connection error.",
+    "errorUnknown": "Unknown error."
   }
 }

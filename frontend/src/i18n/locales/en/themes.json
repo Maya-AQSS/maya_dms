@@ -57,5 +57,14 @@
     "alignment": "Alignment",
     "imageEmpty": "No image"
   },
-  "emptyMessage": "No themes yet. Create one from \"New theme\"."
+  "emptyMessage": "No themes yet. Create one from \"New theme\".",
+  "errors": {
+    "errorForbidden": "You do not have permission for this action on the theme.",
+    "errorUnauthorized": "Invalid session or missing token.",
+    "errorValidation": "Invalid data; check colors and required fields.",
+    "errorNotFound": "Theme not found.",
+    "errorServer": "Server error.",
+    "errorNetwork": "Connection error.",
+    "errorUnknown": "Unknown error."
+  }
 }

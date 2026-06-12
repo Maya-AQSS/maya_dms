@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { mapApiErrorToI18nKey } from '@ceedcv-maya/shared-auth-react';
 import { useServerTable } from '@ceedcv-maya/shared-hooks-react';
-import { ApiHttpError } from '../../../api/http';
+import { useTranslation } from 'react-i18next';
 import {
   cloneTemplate as cloneTemplateRequest,
   deleteTemplate as deleteTemplateRequest,
@@ -31,18 +32,6 @@ const TEMPLATE_FILTER_DEFAULTS = {
 
 type TemplateFilterKeys = keyof typeof TEMPLATE_FILTER_DEFAULTS;
 
-function formatListError(err: unknown): string {
-  if (err instanceof ApiHttpError) {
-    if (err.status === 403) {
-      return err.message?.trim() || 'No tienes permiso para esta acción.';
-    }
-    if (err.status === 401) return 'Sesión no válida o token ausente.';
-    if (err.status === 422) return err.message || 'Datos no válidos.';
-    return err.message || `Error HTTP ${err.status}`;
-  }
-  return err instanceof Error ? err.message : 'Error desconocido';
-}
-
 /**
  * Listado server-side de plantillas: filtros + paginación + ordenación los resuelve
  * el backend (estándar unificado, ver useServerTable). El estado de tabla vive en la
@@ -55,9 +44,23 @@ export function useServerTemplatesTable(
   processId?: string,
   storageKey = 'maya:dms:templates-table',
 ) {
+  const { t } = useTranslation('templates');
   const { hasPermission } = useUserProfile();
   const canIndex = hasPermission(DMS_PERMISSIONS.templateIndex);
   const { templateIds: favoriteTemplateIds } = useFavoritesIds();
+
+  // Mapeo de errores delegado al helper compartido (mapApiErrorToI18nKey) +
+  // keys locales `errors.*` del namespace templates (es/va/en). CAMBIO FUNCIONAL
+  // (ver changes.md): antes se preferia el `message` del backend en 403/422.
+  const formatListError = useCallback(
+    (err: unknown): string => {
+      const key = mapApiErrorToI18nKey(err, 'errors', 'errorUnknown');
+      // mapApiErrorToI18nKey devuelve `string`; las keys existen en templates.json
+      // pero el tipado estricto de i18next exige un literal conocido.
+      return t(key as 'errors.errorUnknown');
+    },
+    [t],
+  );
 
   dropInvalidStoredPageSize(storageKey);
   const table = useServerTable<Record<TemplateFilterKeys, string>>({
@@ -145,7 +148,7 @@ export function useServerTemplatesTable(
         throw e;
       }
     },
-    [refetch],
+    [refetch, formatListError],
   );
 
   const cloneTemplate = useCallback(
@@ -161,7 +164,7 @@ export function useServerTemplatesTable(
         throw e;
       }
     },
-    [refetch],
+    [refetch, formatListError],
   );
 
   return {

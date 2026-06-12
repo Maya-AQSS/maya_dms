@@ -126,5 +126,14 @@
     "discardNewVersionTitle": "¿Descartar nueva versión?",
     "rejectValidationTitle": "¿Rechazar validación?",
     "clone": "Clonar"
+  },
+  "errors": {
+    "errorForbidden": "No tienes permiso para esta acción (p. ej. visibilidad compartida solo para coordinación).",
+    "errorUnauthorized": "Sesión no válida o token ausente.",
+    "errorValidation": "Datos no válidos; revisa visibilidad y campos obligatorios.",
+    "errorNotFound": "Plantilla no encontrada.",
+    "errorServer": "Error del servidor.",
+    "errorNetwork": "Error de conexión.",
+    "errorUnknown": "Error desconocido."
   }
 }

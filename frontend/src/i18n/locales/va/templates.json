@@ -126,5 +126,14 @@
     "discardNewVersionTitle": "Descartar nova versió?",
     "rejectValidationTitle": "Rebutjar validació?",
     "clone": "Clonar"
+  },
+  "errors": {
+    "errorForbidden": "No tens permís per a esta acció (p. ex. visibilitat compartida només per a coordinació).",
+    "errorUnauthorized": "Sessió no vàlida o token absent.",
+    "errorValidation": "Dades no vàlides; revisa la visibilitat i els camps obligatoris.",
+    "errorNotFound": "Plantilla no trobada.",
+    "errorServer": "Error del servidor.",
+    "errorNetwork": "Error de connexió.",
+    "errorUnknown": "Error desconegut."
   }
 }

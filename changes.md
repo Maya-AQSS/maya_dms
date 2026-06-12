@@ -237,3 +237,21 @@ PRESERVADAS (con veredicto definitivo):
   generación de URLs absolutas, no a payloads de negocio).
 - **Impacto en cliente**: ninguno directo.
 - **Decidido por**: spec de adopción 0.16.
+
+## [ADOPCIÓN 0.16] Errores de acción de templates/themes via i18n (mapApiErrorToI18nKey)
+
+- **Fecha**: 2026-06-12
+- **Severidad**: MEDIUM (UX de mensajes de error)
+- **Qué cambió**: los `formatActionError`/`formatListError` locales de
+  useThemes/useTemplates/useServerTemplatesTable preferían el `message` que
+  enviaba el backend en 403/422 (y `err.message` en el resto de statuses) con
+  fallbacks hardcodeados en castellano. Ahora delegan en el helper compartido
+  `mapApiErrorToI18nKey` (shared-auth-react 0.16) + keys `errors.*` nuevas en
+  los namespaces themes/templates (es/va/en, equivalentes a los strings
+  anteriores). Consecuencias observables: (1) el detalle específico del backend
+  ya NO se muestra — siempre el mensaje genérico por status; (2) los mensajes
+  ahora se traducen al idioma del usuario (antes siempre castellano); (3) 404 y
+  errores de red ganan mensaje propio (errorNotFound/errorNetwork).
+- **Por qué**: unificación del mapeo de errores en las 5 apps + i18n pendiente.
+- **Impacto en cliente**: solo presentación; sin cambios de wire format.
+- **Decidido por**: spec de adopción 0.16 (cambio funcional registrado).

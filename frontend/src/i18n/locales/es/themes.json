@@ -57,5 +57,14 @@
     "alignment": "Alineación",
     "imageEmpty": "Sin imagen"
   },
-  "emptyMessage": "Aún no hay temas. Crea uno desde \"Nuevo tema\"."
+  "emptyMessage": "Aún no hay temas. Crea uno desde \"Nuevo tema\".",
+  "errors": {
+    "errorForbidden": "No tienes permiso para esta acción sobre el theme.",
+    "errorUnauthorized": "Sesión no válida o token ausente.",
+    "errorValidation": "Datos no válidos; revisa colores y campos obligatorios.",
+    "errorNotFound": "Theme no encontrado.",
+    "errorServer": "Error del servidor.",
+    "errorNetwork": "Error de conexión.",
+    "errorUnknown": "Error desconocido."
+  }
 }

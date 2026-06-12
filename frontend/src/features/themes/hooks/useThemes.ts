@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ApiHttpError } from '../../../api/http';
+import { mapApiErrorToI18nKey } from '@ceedcv-maya/shared-auth-react';
+import { useTranslation } from 'react-i18next';
 import {
   archiveTheme as archiveThemeRequest,
   cloneTheme as cloneThemeRequest,
@@ -16,27 +17,25 @@ import type {
 } from '../../../api/themes';
 import type { Theme, ThemeListFilters } from '../../../types/themes';
 
-function formatActionError(err: unknown): string {
-  if (err instanceof ApiHttpError) {
-    if (err.status === 403) {
-      return err.message?.trim() || 'No tienes permiso para esta acción sobre el theme.';
-    }
-    if (err.status === 401) {
-      return 'Sesión no válida o token ausente.';
-    }
-    if (err.status === 422) {
-      return err.message || 'Datos no válidos; revisa colores y campos obligatorios.';
-    }
-    return err.message || `Error HTTP ${err.status}`;
-  }
-  return err instanceof Error ? err.message : 'Error desconocido';
-}
-
 /**
  * Listado y mutaciones de themes. Mismo patrón que useTemplates — paginación
  * en cliente sobre la respuesta paginada del backend (15 ítems / página).
  */
 export function useThemes(initialFilters: ThemeListFilters = {}) {
+  const { t } = useTranslation('themes');
+
+  // Mapeo de errores delegado al helper compartido (mapApiErrorToI18nKey) +
+  // keys locales `errors.*` del namespace themes (es/va/en). CAMBIO FUNCIONAL
+  // (ver changes.md): antes se preferia el `message` del backend en 403/422.
+  const formatActionError = useCallback(
+    (err: unknown): string => {
+      const key = mapApiErrorToI18nKey(err, 'errors', 'errorUnknown');
+      // mapApiErrorToI18nKey devuelve `string`; las keys existen en themes.json
+      // pero el tipado estricto de i18next exige un literal conocido.
+      return t(key as 'errors.errorUnknown');
+    },
+    [t],
+  );
   const [items, setItems] = useState<Theme[]>([]);
   const [meta, setMeta] = useState<{ current_page: number; per_page: number; total: number; last_page: number } | null>(
     null,
@@ -60,7 +59,7 @@ export function useThemes(initialFilters: ThemeListFilters = {}) {
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [filters, formatActionError]);
 
   useEffect(() => {
     void load();
@@ -94,7 +93,7 @@ export function useThemes(initialFilters: ThemeListFilters = {}) {
         throw e;
       }
     },
-    [load],
+    [load, formatActionError],
   );
 
   const updateTheme = useCallback(
@@ -111,7 +110,7 @@ export function useThemes(initialFilters: ThemeListFilters = {}) {
         throw e;
       }
     },
-    [load],
+    [load, formatActionError],
   );
 
   const publishTheme = useCallback(
@@ -128,7 +127,7 @@ export function useThemes(initialFilters: ThemeListFilters = {}) {
         throw e;
       }
     },
-    [load],
+    [load, formatActionError],
   );
 
   const archiveTheme = useCallback(
@@ -145,7 +144,7 @@ export function useThemes(initialFilters: ThemeListFilters = {}) {
         throw e;
       }
     },
-    [load],
+    [load, formatActionError],
   );
 
   const deleteTheme = useCallback(
@@ -161,7 +160,7 @@ export function useThemes(initialFilters: ThemeListFilters = {}) {
         throw e;
       }
     },
-    [load],
+    [load, formatActionError],
   );
 
   const cloneTheme = useCallback(
@@ -178,7 +177,7 @@ export function useThemes(initialFilters: ThemeListFilters = {}) {
         throw e;
       }
     },
-    [load],
+    [load, formatActionError],
   );
 
   return {

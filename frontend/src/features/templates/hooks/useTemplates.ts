@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ApiHttpError } from '../../../api/http';
+import { mapApiErrorToI18nKey } from '@ceedcv-maya/shared-auth-react';
+import { useTranslation } from 'react-i18next';
 import {
   cloneTemplate as cloneTemplateRequest,
   createTemplate as createTemplateRequest,
@@ -12,26 +13,6 @@ import { useUserProfile } from '../../../features/user-profile';
 import { DMS_PERMISSIONS } from '../../../permissions';
 import type { Template, TemplateListFilters } from '../../../types/templates';
 import { buildTemplatesListMeta, sliceTemplatesPage } from '../clientTemplatePagination';
-
-function formatActionError(err: unknown): string {
-  if (err instanceof ApiHttpError) {
-    if (err.status === 403) {
-      const fromApi = err.message?.trim();
-      if (fromApi) {
-        return fromApi;
-      }
-      return 'No tienes permiso para esta acción (p. ej. visibilidad compartida solo para coordinación).';
-    }
-    if (err.status === 401) {
-      return 'Sesión no válida o token ausente.';
-    }
-    if (err.status === 422) {
-      return err.message || 'Datos no válidos; revisa visibilidad y campos obligatorios.';
-    }
-    return err.message || `Error HTTP ${err.status}`;
-  }
-  return err instanceof Error ? err.message : 'Error desconocido';
-}
 
 const DEFAULT_PER_PAGE = 10;
 
@@ -49,6 +30,20 @@ export type TemplatesTableSort = { columnId: string; direction: 'asc' | 'desc' }
  * @param sortBy Orden local solo para columnas en {@see SORTABLE_TEMPLATE_COLUMN_IDS}.
  */
 export function useTemplates(processId?: string, sortBy?: TemplatesTableSort) {
+  const { t } = useTranslation('templates');
+
+  // Mapeo de errores delegado al helper compartido (mapApiErrorToI18nKey) +
+  // keys locales `errors.*` del namespace templates (es/va/en). CAMBIO FUNCIONAL
+  // (ver changes.md): antes se preferia el `message` del backend en 403/422.
+  const formatActionError = useCallback(
+    (err: unknown): string => {
+      const key = mapApiErrorToI18nKey(err, 'errors', 'errorUnknown');
+      // mapApiErrorToI18nKey devuelve `string`; las keys existen en templates.json
+      // pero el tipado estricto de i18next exige un literal conocido.
+      return t(key as 'errors.errorUnknown');
+    },
+    [t],
+  );
   const { hasPermission } = useUserProfile();
   const canIndex = hasPermission(DMS_PERMISSIONS.templateIndex);
   const [fullList, setFullList] = useState<Template[]>([]);
@@ -141,7 +136,7 @@ export function useTemplates(processId?: string, sortBy?: TemplatesTableSort) {
     } finally {
       setLoading(false);
     }
-  }, [canIndex, filtersForApi]);
+  }, [canIndex, filtersForApi, formatActionError]);
 
   useEffect(() => {
     void load();
@@ -176,7 +171,7 @@ export function useTemplates(processId?: string, sortBy?: TemplatesTableSort) {
         throw e;
       }
     },
-    [load],
+    [load, formatActionError],
   );
 
   const updateTemplate = useCallback(
@@ -192,7 +187,7 @@ export function useTemplates(processId?: string, sortBy?: TemplatesTableSort) {
         throw e;
       }
     },
-    [load],
+    [load, formatActionError],
   );
 
   const deleteTemplate = useCallback(
@@ -214,7 +209,7 @@ export function useTemplates(processId?: string, sortBy?: TemplatesTableSort) {
         throw e;
       }
     },
-    [load],
+    [load, formatActionError],
   );
 
   const cloneTemplate = useCallback(
@@ -230,7 +225,7 @@ export function useTemplates(processId?: string, sortBy?: TemplatesTableSort) {
         throw e;
       }
     },
-    [load],
+    [load, formatActionError],
   );
 
   return {
