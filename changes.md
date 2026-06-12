@@ -255,3 +255,50 @@ PRESERVADAS (con veredicto definitivo):
 - **Por qué**: unificación del mapeo de errores en las 5 apps + i18n pendiente.
 - **Impacto en cliente**: solo presentación; sin cambios de wire format.
 - **Decidido por**: spec de adopción 0.16 (cambio funcional registrado).
+
+## [F4-B1] ProcessController::index emite el envelope plano estándar de paginación
+
+- **Fecha**: 2026-06-12
+- **Severidad**: MEDIUM
+- **Qué cambió**: `GET /api/v1/processes` anidaba la paginación bajo `meta`
+  (`{ data: [...], meta: { current_page, per_page, total, last_page } }`,
+  formato divergente conocido — ver memoria processes-pagination-triple-bug).
+  Ahora emite el envelope plano de Laravel vía `RespondsWithEnvelope::paginated()`
+  (`{ current_page, data, first_page_url, from, last_page, last_page_url, links,
+  next_page_url, path, per_page, prev_page_url, to, total }`), idéntico al de
+  documents/templates.
+- **Por qué**: estandarización ADR-C del envelope de paginación cross-app;
+  elimina el único listado del backend con formato propio.
+- **Endpoint(s) afectado(s)**: `GET /api/v1/processes`
+- **Impacto en cliente**: NINGUNO efectivo — `frontend/src/api/paginatedList.ts`
+  (`normalizePaginatedResponse`) ya normaliza ambos formatos (el fallback de
+  `meta` anidado se mantiene por compatibilidad); verificado que
+  `fetchProcessesPage`/`fetchProcesses` consumen el resultado normalizado.
+  Otros consumidores API directos verían las claves de paginación al nivel raíz.
+- **Decidido por**: tarea F4-B1 (auditoría de capas), aprobada por el usuario.
+
+## [F4-B1] Excepción aceptada: findModelOrFail*/resolvers de Model en Services
+
+- **Fecha**: 2026-06-12
+- **Severidad**: MEDIUM (decisión de arquitectura, sin cambio de wire format)
+- **Qué cambió**: con DMS-B03 todos los métodos de mutación/listado de
+  DocumentService, TemplateService, TemplateReviewService, DocumentReviewService,
+  TemplatePublishingService y EntityVersionLifecycleService devuelven DTOs
+  (`DocumentDto`/`TemplateDto`/`DocumentReviewDto`/`EntityVersionDto`); la
+  presentación derivada (`can_clone`, `review_mode`, team embebido) se inyecta
+  con el callback opcional `$beforeMap` que recibe el Model antes del mapeo.
+  Se MANTIENEN como excepción documentada los métodos que devuelven Model:
+  `findModelOrFail`, `findModelOrFailWithoutUserAccess`,
+  `resolveDocumentWithPublishedFallback`, `findOrFailWithoutCatalogScope`,
+  `findManyByIds`, `submitToReview`*, `destroyVersion`(Document)*,
+  y los resolvers de FormRequest (`resolveDocument`/`resolveTemplate`).
+- **Por qué**: las Policies de Laravel (`authorize($ability, $model)`) exigen el
+  Model Eloquent, y los flujos de `show` componen meta derivada (overlay de
+  snapshot publicado, `attach*Meta`) sobre el modelo resuelto por el FormRequest
+  antes de la única conversión final a DTO en el controller. Convertirlos forzaría
+  una doble carga del agregado sin beneficio de capas.
+  (*) `submitToReview` y `destroyVersion` de Document quedan fuera del lote F4-B1
+  por no estar en la lista de la auditoría; su conversión es mecánica si se decide.
+- **Endpoint(s) afectado(s)**: ninguno (JSON byte-idéntico; verificado con la
+  suite Feature completa en baseline).
+- **Decidido por**: tarea F4-B1 (auditoría de capas), aprobada por el usuario.

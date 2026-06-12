@@ -14,15 +14,23 @@ use App\Http\Resources\ProcessDeletionPreviewResource;
 use App\Http\Resources\ProcessResource;
 use App\Services\Contracts\ProcessServiceInterface;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
+use Maya\Http\Concerns\RespondsWithEnvelope;
 
 class ProcessController extends Controller
 {
+    use RespondsWithEnvelope;
+
     public function __construct(
         private readonly ProcessServiceInterface $processService,
     ) {}
 
+    /**
+     * Listado paginado de procesos con el envelope plano estándar (ADR-C),
+     * igual que DocumentController/TemplateController. Cambio observable
+     * documentado en changes.md (F4-B1): antes anidaba la paginación bajo
+     * `meta`; el frontend normaliza ambos formatos.
+     */
     public function index(IndexProcessRequest $request): JsonResponse
     {
         $filters = [
@@ -37,18 +45,9 @@ class ProcessController extends Controller
             $filters['sort_dir'] = $sortDir;
         }
 
-        $paginated = $this->processService->paginate($filters, $request->getPerPage());
-        $page = $request->getPage();
+        $page = $this->processService->paginate($filters, $request->getPerPage());
 
-        return response()->json([
-            'data' => ProcessResource::collection($paginated->items())->resolve(),
-            'meta' => [
-                'current_page' => $paginated->currentPage(),
-                'per_page' => $paginated->perPage(),
-                'total' => $paginated->total(),
-                'last_page' => $paginated->lastPage(),
-            ],
-        ]);
+        return $this->paginated($page, ProcessResource::class, $request);
     }
 
     public function show(ShowProcessRequest $request, string $process): ProcessResource

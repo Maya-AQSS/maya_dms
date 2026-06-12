@@ -8,7 +8,7 @@ use App\DTOs\Processes\CreateProcessDto;
 use App\DTOs\Processes\ProcessDeletionPreviewDto;
 use App\DTOs\Processes\ProcessDto;
 use App\DTOs\Processes\UpdateProcessDto;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Maya\Http\Pagination\PaginatedDto;
 
 interface ProcessServiceInterface
 {
@@ -31,8 +31,10 @@ interface ProcessServiceInterface
     public function deletionPreview(string $id): ProcessDeletionPreviewDto;
 
     /**
-     * @param  array{search?: string, parent_id?: string}  $filters
-     * @return LengthAwarePaginator<int, ProcessDto>
+     * Listado paginado con el envelope plano estándar (ADR-C).
+     *
+     * @param  array{search?: string, parent_id?: string, sort_by?: string, sort_dir?: string}  $filters
+     * @return PaginatedDto<ProcessDto>
      */
-    public function paginate(array $filters, int $perPage = 20): LengthAwarePaginator;
+    public function paginate(array $filters, int $perPage = 20): PaginatedDto;
 }

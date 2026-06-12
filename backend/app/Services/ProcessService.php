@@ -11,8 +11,8 @@ use App\DTOs\Processes\UpdateProcessDto;
 use App\Models\Process;
 use App\Repositories\Contracts\ProcessRepositoryInterface;
 use App\Services\Contracts\ProcessServiceInterface;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Maya\Http\Pagination\PaginatedDto;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 class ProcessService implements ProcessServiceInterface
@@ -51,12 +51,18 @@ class ProcessService implements ProcessServiceInterface
     }
 
     /**
-     * @param  array{search?: string, parent_id?: string}  $filters
-     * @return LengthAwarePaginator<int, ProcessDto>
+     * Listado paginado con el envelope plano estándar (ADR-C).
+     *
+     * @param  array{search?: string, parent_id?: string, sort_by?: string, sort_dir?: string}  $filters
+     * @return PaginatedDto<ProcessDto>
      */
-    public function paginate(array $filters, int $perPage = 20): LengthAwarePaginator
+    public function paginate(array $filters, int $perPage = 20): PaginatedDto
     {
-        return $this->repository->paginate($filters, $perPage);
+        // El repositorio ya emite ProcessDto por item; el mapper es identidad.
+        return PaginatedDto::fromPaginator(
+            $this->repository->paginate($filters, $perPage),
+            static fn (ProcessDto $dto) => $dto,
+        );
     }
 
     public function delete(string $id): void
