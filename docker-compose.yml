@@ -210,7 +210,9 @@ services:
       VITE_REVERB_PORT: 443
       VITE_REVERB_SCHEME: https
       # Vite alias (see vite.config.ts) resolves @ceedcv-maya/shared-* to this path.
-      MAYA_DEV_OVERRIDE_DIR: /maya_platform/packages/js
+      # Valor lo fija up-common.sh según MAYA_PKG_MODE: set (override en disco) o
+      # vacío (cae a node_modules, versión publicada).
+      MAYA_DEV_OVERRIDE_DIR: ${MAYA_DEV_OVERRIDE_DIR:-}
     volumes:
       - ./frontend:/app
       - ../maya_infra/configs:/maya_infra/configs:ro
