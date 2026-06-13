@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "d1dd9b955330b4cee0e6b9f8e13d4854",
+    "content-hash": "666030612071ef85b0fd73fcc2de88b5",
     "packages": [
         {
             "name": "brick/math",
@@ -137,7 +137,7 @@
         },
         {
             "name": "ceedcv-maya/shared-auth-laravel",
-            "version": "v0.17.0",
+            "version": "v0.18.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Maya-AQSS/shared-auth-laravel.git",
@@ -209,7 +209,7 @@
         },
         {
             "name": "ceedcv-maya/shared-editor-laravel",
-            "version": "v0.17.0",
+            "version": "v0.18.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Maya-AQSS/shared-editor-laravel.git",
@@ -290,7 +290,7 @@
         },
         {
             "name": "ceedcv-maya/shared-http-laravel",
-            "version": "v0.17.0",
+            "version": "v0.18.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Maya-AQSS/shared-http-laravel.git",
@@ -355,16 +355,16 @@
         },
         {
             "name": "ceedcv-maya/shared-messaging-laravel",
-            "version": "v0.17.0",
+            "version": "v0.18.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Maya-AQSS/shared-messaging-laravel.git",
-                "reference": "188e54fdbbed766b464c732f3c344ca65c9c1a88"
+                "reference": "4d8aeafe18942bf89f281722a675d6717841071e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Maya-AQSS/shared-messaging-laravel/zipball/188e54fdbbed766b464c732f3c344ca65c9c1a88",
-                "reference": "188e54fdbbed766b464c732f3c344ca65c9c1a88",
+                "url": "https://api.github.com/repos/Maya-AQSS/shared-messaging-laravel/zipball/4d8aeafe18942bf89f281722a675d6717841071e",
+                "reference": "4d8aeafe18942bf89f281722a675d6717841071e",
                 "shasum": ""
             },
             "require": {
@@ -424,11 +424,11 @@
                 "issues": "https://github.com/Maya-AQSS/maya_platform/issues",
                 "source": "https://github.com/Maya-AQSS/shared-messaging-laravel"
             },
-            "time": "2026-06-12T19:55:35+00:00"
+            "time": "2026-06-13T09:55:18+00:00"
         },
         {
             "name": "ceedcv-maya/shared-platform-laravel",
-            "version": "v0.17.0",
+            "version": "v0.18.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Maya-AQSS/shared-platform-laravel.git",
@@ -501,7 +501,7 @@
         },
         {
             "name": "ceedcv-maya/shared-profile-laravel",
-            "version": "v0.17.0",
+            "version": "v0.18.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Maya-AQSS/shared-profile-laravel.git",
