@@ -64,6 +64,8 @@ services:
       - ./backend:/var/www/html
       # Laravel resuelve .env en basePath (/var/www/html); el symlink ../.env no siempre existe o se rompe en bind mount.
       - ./.env:/var/www/html/.env
+      # Dev-override PHP: fuente local de maya_platform para composer.local.json (symlink:false → copia a vendor).
+      - ../maya_platform/packages/php:/var/maya_platform/packages/php
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/api/v1/health/live || exit 1"]
       interval: 15s
