@@ -7,6 +7,7 @@ namespace App\Events;
 use App\Models\TemplateReviewer;
 use Illuminate\Foundation\Events\Dispatchable;
 use Maya\Messaging\Contracts\AuditableEvent;
+use Maya\Messaging\Support\MessagingConfig;
 
 /**
  * Hecho de negocio: un revisor asignado aprueba su etapa de la plantilla.
@@ -25,7 +26,7 @@ class TemplateReviewApproved implements AuditableEvent
     public function toAuditPayload(): array
     {
         return [
-            'applicationSlug' => 'maya-dms',
+            'applicationSlug' => MessagingConfig::appSlug(),
             'entityType' => 'template',
             'entityId' => $this->templateId,
             'action' => 'review_approved',

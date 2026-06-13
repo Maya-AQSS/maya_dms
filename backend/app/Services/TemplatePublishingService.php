@@ -16,16 +16,17 @@ use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateReviewerRepositoryInterface;
 use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Repositories\Contracts\UserFavoriteRepositoryInterface;
+use App\Services\Concerns\NotifiesOwner;
 use App\Services\Contracts\EntityVersionLifecycleServiceInterface;
 use App\Support\TemplateHeadSnapshot;
 use App\Support\VersionSubmissionChangelog;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
-use Maya\Messaging\Events\BroadcastNotificationCreated;
 use Maya\Messaging\Publishers\NotificationPublisher;
 
 class TemplatePublishingService
 {
+    use NotifiesOwner;
+
     public function __construct(
         private readonly TemplateRepositoryInterface $templateRepository,
         private readonly TemplateReviewerRepositoryInterface $templateReviewerRepository,
@@ -229,95 +230,33 @@ class TemplatePublishingService
 
             $createdBy = is_string($updated->created_by) && $updated->created_by !== '' ? $updated->created_by : null;
             if ($createdBy !== null) {
-                $createdByTitle = 'Plantilla publicada';
-                $createdByBody = 'La plantilla "'.$updated->name.'" ha sido publicada correctamente';
-                $createdByMetadata = ['template_id' => (string) $updated->id];
-
-                try {
-                    $this->notificationPublisher->send(
-                        type: 'template.published',
-                        recipientId: $createdBy,
-                        title: $createdByTitle,
-                        body: $createdByBody,
-                        titleKey: 'notifications.template.published.title',
-                        bodyKey: 'notifications.template.published.body',
-                        params: ['template_id' => (string) $updated->id, 'template_name' => $updated->name],
-                        severity: 'info',
-                        channels: ['app'],
-                        metadata: $createdByMetadata,
-                    );
-                } catch (\Throwable $e) {
-                    Log::warning('notification.publish_failed', [
-                        'error' => $e->getMessage(),
-                        'type' => 'template.published',
-                        'template_id' => (string) $updated->id,
-                    ]);
-                }
-
-                try {
-                    BroadcastNotificationCreated::dispatch(
-                        recipientId: $createdBy,
-                        app: 'maya-dms',
-                        type: 'template.published',
-                        title: $createdByTitle,
-                        body: $createdByBody,
-                        metadata: $createdByMetadata,
-                    );
-                } catch (\Throwable $e) {
-                    Log::warning('broadcast.dispatch_failed', [
-                        'error' => $e->getMessage(),
-                        'type' => 'template.published',
-                        'template_id' => (string) $updated->id,
-                    ]);
-                }
+                $this->notifyOwner(
+                    recipientId: $createdBy,
+                    type: 'template.published',
+                    title: 'Plantilla publicada',
+                    body: 'La plantilla "'.$updated->name.'" ha sido publicada correctamente',
+                    titleKey: 'notifications.template.published.title',
+                    bodyKey: 'notifications.template.published.body',
+                    params: ['template_id' => (string) $updated->id, 'template_name' => $updated->name],
+                    severity: 'info',
+                    metadata: ['template_id' => (string) $updated->id],
+                );
             }
 
             // Notificar a owners de documentos activos que usan esta plantilla
             $affectedOwnerIds = $this->documentRepository->ownerIdsByTemplate((string) $updated->id);
             foreach ($affectedOwnerIds as $ownerId) {
-                $ownerTitle = 'Plantilla actualizada';
-                $ownerBody = 'Una plantilla que afecta a tus documentos "'.$updated->name.'" ha sido actualizada';
-                $ownerMetadata = ['template_id' => (string) $updated->id, 'version' => $next];
-
-                try {
-                    $this->notificationPublisher->send(
-                        type: 'template.version.affects_my_document',
-                        recipientId: $ownerId,
-                        title: $ownerTitle,
-                        body: $ownerBody,
-                        titleKey: 'notifications.template.version.affects_my_document.title',
-                        bodyKey: 'notifications.template.version.affects_my_document.body',
-                        params: ['template_id' => (string) $updated->id, 'template_name' => $updated->name, 'version' => $next, 'document_id' => $ownerId],
-                        severity: 'medium',
-                        channels: ['app'],
-                        metadata: $ownerMetadata,
-                    );
-                } catch (\Throwable $e) {
-                    Log::warning('notification.publish_failed', [
-                        'error' => $e->getMessage(),
-                        'type' => 'template.version.affects_my_document',
-                        'template_id' => (string) $updated->id,
-                        'owner_id' => $ownerId,
-                    ]);
-                }
-
-                try {
-                    BroadcastNotificationCreated::dispatch(
-                        recipientId: $ownerId,
-                        app: 'maya-dms',
-                        type: 'template.version.affects_my_document',
-                        title: $ownerTitle,
-                        body: $ownerBody,
-                        metadata: $ownerMetadata,
-                    );
-                } catch (\Throwable $e) {
-                    Log::warning('broadcast.dispatch_failed', [
-                        'error' => $e->getMessage(),
-                        'type' => 'template.version.affects_my_document',
-                        'template_id' => (string) $updated->id,
-                        'owner_id' => $ownerId,
-                    ]);
-                }
+                $this->notifyOwner(
+                    recipientId: $ownerId,
+                    type: 'template.version.affects_my_document',
+                    title: 'Plantilla actualizada',
+                    body: 'Una plantilla que afecta a tus documentos "'.$updated->name.'" ha sido actualizada',
+                    titleKey: 'notifications.template.version.affects_my_document.title',
+                    bodyKey: 'notifications.template.version.affects_my_document.body',
+                    params: ['template_id' => (string) $updated->id, 'template_name' => $updated->name, 'version' => $next, 'document_id' => $ownerId],
+                    severity: 'medium',
+                    metadata: ['template_id' => (string) $updated->id, 'version' => $next],
+                );
             }
 
             return $updated;

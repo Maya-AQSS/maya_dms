@@ -8,6 +8,7 @@ use App\Listeners\RecordSegregationOfDutiesDenial;
 use Illuminate\Auth\Access\Events\GateEvaluated;
 use Illuminate\Foundation\Events\Dispatchable;
 use Maya\Messaging\Contracts\AuditableEvent;
+use Maya\Messaging\Support\MessagingConfig;
 
 /**
  * Hecho de negocio: una política de SoD (Segregation of Duties) ha denegado
@@ -32,7 +33,7 @@ class SodViolationDetected implements AuditableEvent
     public function toAuditPayload(): array
     {
         return [
-            'applicationSlug' => 'maya-dms',
+            'applicationSlug' => MessagingConfig::appSlug(),
             'entityType' => $this->entityType,
             'entityId' => $this->entityId,
             'action' => 'sod_violation',

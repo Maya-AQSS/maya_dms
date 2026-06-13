@@ -6,6 +6,7 @@ namespace App\Events;
 
 use Illuminate\Foundation\Events\Dispatchable;
 use Maya\Messaging\Contracts\AuditableEvent;
+use Maya\Messaging\Support\MessagingConfig;
 
 /**
  * Hecho de negocio: el autor envía una plantilla a validación, indicando los
@@ -36,7 +37,7 @@ class TemplateSubmittedForReview implements AuditableEvent
     public function toAuditPayload(): array
     {
         return [
-            'applicationSlug' => 'maya-dms',
+            'applicationSlug' => MessagingConfig::appSlug(),
             'entityType' => 'template',
             'entityId' => $this->templateId,
             'action' => 'submitted_for_review',

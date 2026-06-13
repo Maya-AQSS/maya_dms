@@ -15,16 +15,17 @@ use App\Models\TemplateReviewer;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateReviewerRepositoryInterface;
 use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
+use App\Services\Concerns\NotifiesOwner;
 use App\Support\ReviewValidationNotificationRecipients;
 use App\Support\ReviewValidationNotifier;
 use App\Support\VersionSubmissionChangelog;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
-use Maya\Messaging\Events\BroadcastNotificationCreated;
 use Maya\Messaging\Publishers\NotificationPublisher;
 
 class TemplateReviewService
 {
+    use NotifiesOwner;
+
     public function __construct(
         private readonly TemplateRepositoryInterface $templateRepository,
         private readonly TemplateReviewerRepositoryInterface $templateReviewerRepository,
@@ -223,43 +224,17 @@ class TemplateReviewService
 
             $createdBy = is_string($rejected->created_by) && $rejected->created_by !== '' ? $rejected->created_by : null;
             if ($createdBy !== null) {
-                try {
-                    $this->notificationPublisher->send(
-                        type: 'template.rejected',
-                        recipientId: $createdBy,
-                        title: 'Revisión de plantilla rechazada',
-                        body: 'La revisión de la plantilla "'.$rejected->name.'" ha sido rechazada',
-                        titleKey: 'notifications.template.rejected.title',
-                        bodyKey: 'notifications.template.rejected.body',
-                        params: ['template_id' => (string) $rejected->id, 'template_name' => $rejected->name],
-                        severity: 'high',
-                        channels: ['app'],
-                        metadata: ['template_id' => (string) $rejected->id],
-                    );
-                } catch (\Throwable $e) {
-                    Log::warning('notification.publish_failed', [
-                        'error' => $e->getMessage(),
-                        'type' => 'template.rejected',
-                        'template_id' => (string) $rejected->id,
-                    ]);
-                }
-
-                try {
-                    BroadcastNotificationCreated::dispatch(
-                        recipientId: $createdBy,
-                        app: 'maya-dms',
-                        type: 'template.rejected',
-                        title: 'Revisión de plantilla rechazada',
-                        body: 'La revisión de la plantilla "'.$rejected->name.'" ha sido rechazada',
-                        metadata: ['template_id' => (string) $rejected->id],
-                    );
-                } catch (\Throwable $e) {
-                    Log::warning('broadcast.dispatch_failed', [
-                        'error' => $e->getMessage(),
-                        'type' => 'template.rejected',
-                        'template_id' => (string) $rejected->id,
-                    ]);
-                }
+                $this->notifyOwner(
+                    recipientId: $createdBy,
+                    type: 'template.rejected',
+                    title: 'Revisión de plantilla rechazada',
+                    body: 'La revisión de la plantilla "'.$rejected->name.'" ha sido rechazada',
+                    titleKey: 'notifications.template.rejected.title',
+                    bodyKey: 'notifications.template.rejected.body',
+                    params: ['template_id' => (string) $rejected->id, 'template_name' => $rejected->name],
+                    severity: 'high',
+                    metadata: ['template_id' => (string) $rejected->id],
+                );
             }
 
             if ($beforeMap !== null) {

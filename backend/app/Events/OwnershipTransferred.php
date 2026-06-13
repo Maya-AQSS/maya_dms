@@ -6,6 +6,7 @@ namespace App\Events;
 
 use Illuminate\Foundation\Events\Dispatchable;
 use Maya\Messaging\Contracts\AuditableEvent;
+use Maya\Messaging\Support\MessagingConfig;
 
 /**
  * Hecho de negocio: se ha cedido la propiedad de una plantilla (`created_by`)
@@ -31,7 +32,7 @@ class OwnershipTransferred implements AuditableEvent
     public function toAuditPayload(): array
     {
         return [
-            'applicationSlug' => 'maya-dms',
+            'applicationSlug' => MessagingConfig::appSlug(),
             'entityType' => $this->entityType,
             'entityId' => $this->entityId,
             'action' => 'ownership_transferred',

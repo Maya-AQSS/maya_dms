@@ -7,6 +7,7 @@ namespace App\Events;
 use App\Models\DocumentReview;
 use Illuminate\Foundation\Events\Dispatchable;
 use Maya\Messaging\Contracts\AuditableEvent;
+use Maya\Messaging\Support\MessagingConfig;
 
 /**
  * Hecho de negocio: un revisor asignado aprueba su etapa.
@@ -25,7 +26,7 @@ class DocumentReviewApproved implements AuditableEvent
     public function toAuditPayload(): array
     {
         return [
-            'applicationSlug' => 'maya-dms',
+            'applicationSlug' => MessagingConfig::appSlug(),
             'entityType' => 'document',
             'entityId' => $this->documentId,
             'action' => 'review_approved',

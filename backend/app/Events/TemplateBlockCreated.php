@@ -7,6 +7,7 @@ namespace App\Events;
 use App\Models\TemplateBlock;
 use Illuminate\Foundation\Events\Dispatchable;
 use Maya\Messaging\Contracts\AuditableEvent;
+use Maya\Messaging\Support\MessagingConfig;
 
 /**
  * Hecho de negocio: un bloque ha sido creado dentro de una plantilla.
@@ -24,7 +25,7 @@ class TemplateBlockCreated implements AuditableEvent
     public function toAuditPayload(): array
     {
         return [
-            'applicationSlug' => 'maya-dms',
+            'applicationSlug' => MessagingConfig::appSlug(),
             'entityType' => 'template',
             'entityId' => $this->templateId,
             'action' => 'block_created',

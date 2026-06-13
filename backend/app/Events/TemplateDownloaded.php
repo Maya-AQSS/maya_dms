@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\TemplateVersionController;
 use Illuminate\Foundation\Events\Dispatchable;
 use Maya\Messaging\Contracts\AuditableEvent;
 use Maya\Messaging\Listeners\RecordAuditableEvent;
+use Maya\Messaging\Support\MessagingConfig;
 
 /**
  * Hecho de negocio: un usuario ha descargado el PDF del snapshot de una
@@ -33,7 +34,7 @@ class TemplateDownloaded implements AuditableEvent
     public function toAuditPayload(): array
     {
         return [
-            'applicationSlug' => 'maya-dms',
+            'applicationSlug' => MessagingConfig::appSlug(),
             'entityType' => 'template',
             'entityId' => $this->templateId,
             'action' => 'downloaded',

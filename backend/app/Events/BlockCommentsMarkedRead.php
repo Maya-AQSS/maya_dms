@@ -7,6 +7,7 @@ namespace App\Events;
 use App\Support\CommentAuditPayload;
 use Illuminate\Foundation\Events\Dispatchable;
 use Maya\Messaging\Contracts\AuditableEvent;
+use Maya\Messaging\Support\MessagingConfig;
 
 /**
  * Hecho de negocio: un usuario marca como leídos varios comentarios de un bloque.
@@ -28,7 +29,7 @@ class BlockCommentsMarkedRead implements AuditableEvent
     public function toAuditPayload(): array
     {
         return [
-            'applicationSlug' => 'maya-dms',
+            'applicationSlug' => MessagingConfig::appSlug(),
             'entityType' => CommentAuditPayload::entityTypeForClass($this->commentableType),
             'entityId' => $this->commentableId,
             'action' => 'comments_marked_read',

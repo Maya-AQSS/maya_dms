@@ -6,6 +6,7 @@ namespace App\Events;
 
 use Illuminate\Foundation\Events\Dispatchable;
 use Maya\Messaging\Contracts\AuditableEvent;
+use Maya\Messaging\Support\MessagingConfig;
 
 /**
  * Hecho de negocio: cambia el `block_state` de un bloque de plantilla
@@ -26,7 +27,7 @@ class TemplateBlockStateChanged implements AuditableEvent
     public function toAuditPayload(): array
     {
         return [
-            'applicationSlug' => 'maya-dms',
+            'applicationSlug' => MessagingConfig::appSlug(),
             'entityType' => 'template',
             'entityId' => $this->templateId,
             'action' => 'block_state_changed',

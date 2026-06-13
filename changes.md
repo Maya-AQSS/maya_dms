@@ -47,6 +47,41 @@ PRESERVADAS (con veredicto definitivo):
 
 <!-- Entradas de cambios a partir de aquí, en orden cronológico -->
 
+## [V2.dms] Dedup intra-app: appSlug centralizado, trait notifyOwner, helpers de identidad de versión
+- **Fecha**: 2026-06-13
+- **Severidad**: LOW (refactors que preservan comportamiento)
+- **Qué cambió**:
+  - **appSlug centralizado**: el literal `'maya-dms'` hardcoded en los 19 eventos
+    `app/Events/*` (`'applicationSlug'` de `toAuditPayload()`) y en las 5 emisiones
+    de notificación de los Services (DocumentReviewService, TemplateReviewService,
+    TemplatePublishingService) pasa a `\Maya\Messaging\Support\MessagingConfig::appSlug()`.
+    En este servicio `appSlug()` resuelve a `'maya-dms'` (config `messaging.app` ←
+    `MAYA_MESSAGING_APP=maya-dms`), verificado en runtime: byte-idéntico al literal.
+  - **trait `NotifiesOwner`**: el patrón duplicado ≥5 veces de
+    `try notificationPublisher->send(...) catch Log::warning('notification.publish_failed')`
+    + `try BroadcastNotificationCreated::dispatch(..., app: 'maya-dms', ...) catch
+    Log::warning('broadcast.dispatch_failed')` se extrae a
+    `app/Services/Concerns/NotifiesOwner::notifyOwner(...)` (usa `appSlug()` internamente).
+    Migradas las 5 ocurrencias (document published/rejected, template published/rejected/
+    affects_my_document). El contexto del `Log::warning` cambia de claves
+    `document_id`/`template_id`/`owner_id` a una clave uniforme `recipient_id`
+    (solo afecta a logs de error; ningún test asierta sobre ese contexto).
+  - **helpers de identidad de versión**: `DocumentVersionService` extrae
+    `resolveAuthorId(...)`/`resolvePublishedBy(...)` (sobre `firstNonEmptyString(...)`)
+    para los 4 bloques duplicados de "primer string no vacío" de autor/publicador.
+- **Por qué**: deduplicación intra-app sobre clases compartidas del vendor
+  (`MessagingConfig` reemplaza los `messagingAppSlug()` privados); reduce el riesgo
+  de divergencia del slug y del manejo de fallos de notificación.
+- **Endpoint(s) afectado(s)**: ninguno (wire format byte-idéntico; payloads de
+  auditoría y notificaciones sin cambios; Unit 435 / Feature 294 = baseline).
+- **Impacto en cliente**: ninguno observable. Matiz menor en
+  `DocumentVersionService`: dos fallbacks (`created_by` en los listados de versión)
+  pasaban un string vacío `''` verbatim a la resolución de nombre; ahora el helper
+  normaliza `''`→`null`. La salida del DTO es idéntica (nombre resuelto = null en
+  ambos casos), pero se anota por transparencia.
+- **Decidido por**: tarea V2.dms (dedup intra-app), guardrails de capas intactos
+  (Controller→Service→Repository; el trait solo orquesta publishers de notificación).
+
 ## [FASE 4.1] Formato unificado del mensaje de error de WeasyPrint (solo logs)
 
 - **Fecha**: 2026-06-11

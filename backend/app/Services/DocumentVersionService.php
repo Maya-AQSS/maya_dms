@@ -62,13 +62,11 @@ class DocumentVersionService
             $documentMeta = isset($snapshotData['document']) && is_array($snapshotData['document'])
                 ? $snapshotData['document']
                 : [];
-            $authorId = isset($documentMeta['created_by']) && is_string($documentMeta['created_by']) && $documentMeta['created_by'] !== ''
-                ? $documentMeta['created_by']
-                : null;
+            $authorId = $this->resolveAuthorId($documentMeta['created_by'] ?? null);
             $ownerId = isset($documentMeta['owner_id']) && is_string($documentMeta['owner_id']) && $documentMeta['owner_id'] !== ''
                 ? $documentMeta['owner_id']
                 : null;
-            $publishedBy = is_string($version->triggered_by) && $version->triggered_by !== '' ? $version->triggered_by : null;
+            $publishedBy = $this->resolvePublishedBy($version->triggered_by);
 
             return new DocumentVersionDetailDto(
                 id: (string) $version->id,
@@ -95,15 +93,11 @@ class DocumentVersionService
             $documentMeta = isset($snapshotData['document']) && is_array($snapshotData['document'])
                 ? $snapshotData['document']
                 : [];
-            $authorId = isset($documentMeta['created_by']) && is_string($documentMeta['created_by']) && $documentMeta['created_by'] !== ''
-                ? $documentMeta['created_by']
-                : (is_string($entityVersion->created_by) && $entityVersion->created_by !== '' ? $entityVersion->created_by : null);
+            $authorId = $this->resolveAuthorId($documentMeta['created_by'] ?? null, $entityVersion->created_by);
             $ownerId = isset($documentMeta['owner_id']) && is_string($documentMeta['owner_id']) && $documentMeta['owner_id'] !== ''
                 ? $documentMeta['owner_id']
                 : null;
-            $publishedBy = is_string($entityVersion->published_by) && $entityVersion->published_by !== ''
-                ? $entityVersion->published_by
-                : (is_string($entityVersion->created_by) && $entityVersion->created_by !== '' ? $entityVersion->created_by : null);
+            $publishedBy = $this->resolvePublishedBy($entityVersion->published_by, $entityVersion->created_by);
 
             return new DocumentVersionDetailDto(
                 id: (string) $entityVersion->id,
@@ -137,9 +131,8 @@ class DocumentVersionService
             $documentId,
         )->map(function ($v): DocumentVersionSummaryDto {
             $snapshot = is_array($v->snapshot_data) ? $v->snapshot_data : [];
-            $authorId = data_get($snapshot, 'document.created_by');
-            $authorId = is_string($authorId) && $authorId !== '' ? $authorId : (is_string($v->created_by) ? $v->created_by : null);
-            $publishedBy = is_string($v->published_by) && $v->published_by !== '' ? $v->published_by : (is_string($v->created_by) ? $v->created_by : null);
+            $authorId = $this->resolveAuthorId(data_get($snapshot, 'document.created_by'), $v->created_by);
+            $publishedBy = $this->resolvePublishedBy($v->published_by, $v->created_by);
             $reviewerNames = $this->extractReviewerNamesFromSnapshot($snapshot);
 
             return new DocumentVersionSummaryDto(
@@ -165,9 +158,8 @@ class DocumentVersionService
                     $snapshot = is_array($decoded) ? $decoded : [];
                 }
                 $snapshot = is_array($snapshot) ? $snapshot : [];
-                $authorId = data_get($snapshot, 'document.created_by');
-                $authorId = is_string($authorId) && $authorId !== '' ? $authorId : null;
-                $publishedBy = is_string($v->triggered_by) && $v->triggered_by !== '' ? $v->triggered_by : null;
+                $authorId = $this->resolveAuthorId(data_get($snapshot, 'document.created_by'));
+                $publishedBy = $this->resolvePublishedBy($v->triggered_by);
 
                 $reviewerNamesLegacy = $this->extractReviewerNamesFromSnapshot($snapshot);
 
@@ -248,6 +240,40 @@ class DocumentVersionService
         }
 
         return $names;
+    }
+
+    /**
+     * Identidad del autor de una versión: primer candidato que sea un string no
+     * vacío (normalmente `snapshot.document.created_by`, con un fallback opcional
+     * al `created_by` de la fila de versión).
+     */
+    private function resolveAuthorId(mixed $primary, mixed $fallback = null): ?string
+    {
+        return $this->firstNonEmptyString($primary, $fallback);
+    }
+
+    /**
+     * Identidad de quien publicó la versión: primer candidato que sea un string
+     * no vacío (p. ej. `published_by`/`triggered_by`, con fallback opcional a
+     * `created_by`).
+     */
+    private function resolvePublishedBy(mixed $primary, mixed $fallback = null): ?string
+    {
+        return $this->firstNonEmptyString($primary, $fallback);
+    }
+
+    /**
+     * Devuelve el primer argumento que sea un string no vacío, o null.
+     */
+    private function firstNonEmptyString(mixed ...$candidates): ?string
+    {
+        foreach ($candidates as $candidate) {
+            if (is_string($candidate) && $candidate !== '') {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 
     private function resolveUserNameById(string $userId): ?string

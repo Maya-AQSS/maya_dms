@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace App\Events;
 
+use App\Http\Controllers\Api\DocumentExportController;
 use Illuminate\Foundation\Events\Dispatchable;
 use Maya\Messaging\Contracts\AuditableEvent;
+use Maya\Messaging\Listeners\RecordAuditableEvent;
+use Maya\Messaging\Support\MessagingConfig;
 
 /**
  * Hecho de negocio: un usuario ha descargado el PDF de un documento (el HEAD
  * publicado o el snapshot de una versión histórica). Disparado desde
- * {@see \App\Http\Controllers\Api\DocumentExportController}; el wildcard del
- * package shared-messaging ({@see \Maya\Messaging\Listeners\RecordAuditableEvent})
+ * {@see DocumentExportController}; el wildcard del
+ * package shared-messaging ({@see RecordAuditableEvent})
  * publica al exchange `maya.audit` tras commit.
  */
 class DocumentDownloaded implements AuditableEvent
@@ -31,7 +34,7 @@ class DocumentDownloaded implements AuditableEvent
     public function toAuditPayload(): array
     {
         return [
-            'applicationSlug' => 'maya-dms',
+            'applicationSlug' => MessagingConfig::appSlug(),
             'entityType' => 'document',
             'entityId' => $this->documentId,
             'action' => 'downloaded',

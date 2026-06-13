@@ -7,6 +7,7 @@ namespace App\Events;
 use App\Models\Document;
 use Illuminate\Foundation\Events\Dispatchable;
 use Maya\Messaging\Contracts\AuditableEvent;
+use Maya\Messaging\Support\MessagingConfig;
 
 class DocumentStateChanged implements AuditableEvent
 {
@@ -25,7 +26,7 @@ class DocumentStateChanged implements AuditableEvent
     public function toAuditPayload(): array
     {
         return [
-            'applicationSlug' => 'maya-dms',
+            'applicationSlug' => MessagingConfig::appSlug(),
             'entityType' => 'document',
             'entityId' => (string) $this->document->id,
             'action' => 'state_changed',

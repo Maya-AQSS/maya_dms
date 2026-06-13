@@ -8,6 +8,7 @@ use App\Models\Comment;
 use App\Support\CommentAuditPayload;
 use Illuminate\Foundation\Events\Dispatchable;
 use Maya\Messaging\Contracts\AuditableEvent;
+use Maya\Messaging\Support\MessagingConfig;
 
 class BlockCommentUpdated implements AuditableEvent
 {
@@ -25,7 +26,7 @@ class BlockCommentUpdated implements AuditableEvent
         $previous['body_excerpt'] = CommentAuditPayload::bodyExcerpt($this->previousBody);
 
         return [
-            'applicationSlug' => 'maya-dms',
+            'applicationSlug' => MessagingConfig::appSlug(),
             'entityType' => CommentAuditPayload::entityTypeFor($this->comment),
             'entityId' => (string) $this->comment->commentable_id,
             'action' => 'comment_updated',

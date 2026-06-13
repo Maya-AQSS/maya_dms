@@ -7,6 +7,7 @@ namespace App\Events;
 use App\Models\Template;
 use Illuminate\Foundation\Events\Dispatchable;
 use Maya\Messaging\Contracts\AuditableEvent;
+use Maya\Messaging\Support\MessagingConfig;
 
 class TemplateStateChanged implements AuditableEvent
 {
@@ -24,7 +25,7 @@ class TemplateStateChanged implements AuditableEvent
     public function toAuditPayload(): array
     {
         return [
-            'applicationSlug' => 'maya-dms',
+            'applicationSlug' => MessagingConfig::appSlug(),
             'entityType' => 'template',
             'entityId' => (string) $this->template->id,
             'action' => 'state_changed',

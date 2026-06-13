@@ -8,6 +8,7 @@ use App\Models\Comment;
 use App\Support\CommentAuditPayload;
 use Illuminate\Foundation\Events\Dispatchable;
 use Maya\Messaging\Contracts\AuditableEvent;
+use Maya\Messaging\Support\MessagingConfig;
 
 class BlockCommentDeleted implements AuditableEvent
 {
@@ -21,7 +22,7 @@ class BlockCommentDeleted implements AuditableEvent
     public function toAuditPayload(): array
     {
         return [
-            'applicationSlug' => 'maya-dms',
+            'applicationSlug' => MessagingConfig::appSlug(),
             'entityType' => CommentAuditPayload::entityTypeFor($this->comment),
             'entityId' => (string) $this->comment->commentable_id,
             'action' => 'comment_deleted',
