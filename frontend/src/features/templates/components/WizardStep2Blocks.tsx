@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, Suspense, lazy } from 'react';
-import { useTranslation, withTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import { useDarkMode } from '@ceedcv-maya/shared-layout-react';
 import {
   DndContext,
@@ -18,7 +18,8 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-import { Button, ConfirmDialog, ErrorBoundary, FieldLabel, Select, Spinner, TextInput } from '@ceedcv-maya/shared-ui-react';
+import { Button, ConfirmDialog, FieldLabel, Select, Spinner, TextInput } from '@ceedcv-maya/shared-ui-react';
+import { ErrorBoundaryWrapper } from '../../../components/ErrorBoundaryWrapper';
 import { BlockListItem } from '../../blocks-ui/BlockListItem';
 import type { TemplateBlock, BlockType } from '../../../types/blocks';
 import { BLOCK_TYPE_LABELS } from '../../../types/blocks';
@@ -60,9 +61,6 @@ const BlockNoteEditorPanel = lazy(() =>
     default: m.BlockNoteEditorPanel
   }))
 );
-
-// Wrapper to provide i18n props to ErrorBoundary
-const ErrorBoundaryWrapper = withTranslation('common')(ErrorBoundary) as React.FC<{ children: React.ReactNode }>;
 
 type PanelMode = 'empty' | 'create' | 'edit' | 'multi';
 type TabId = 'properties' | 'content' | 'description' | 'comments';
