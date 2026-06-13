@@ -82,6 +82,30 @@ PRESERVADAS (con veredicto definitivo):
 - **Decidido por**: tarea V2.dms (dedup intra-app), guardrails de capas intactos
   (Controller→Service→Repository; el trait solo orquesta publishers de notificación).
 
+## [V2.dms] DEFERIDO: migración de los 5 hooks useServer*Table a createDomainTableHook
+- **Fecha**: 2026-06-13
+- **Severidad**: N/A (no se aplicó ningún cambio)
+- **Qué cambió**: nada. Se evaluó migrar los 5 hooks
+  `useServerDocumentsTable`/`useServerProcessesTable`/`useServerThemesTable`/
+  `useServerNuevaProgramacionTable`/`useServerTemplatesTable` al factory compartido
+  `createDomainTableHook` y se DEFIRIÓ.
+- **Por qué**: bloqueador de versión. dms-frontend consume
+  `@ceedcv-maya/shared-hooks-react@^0.16.0`; `createDomainTableHook` solo existe en
+  el source de maya_platform (sin publicar). El paquete 0.16.0 instalado NO lo
+  exporta, por lo que tsc falla con `TS2305: Module
+  '"@ceedcv-maya/shared-hooks-react"' has no exported member
+  'createDomainTableHook'` (verificado empíricamente con una sonda + tsc por-archivo).
+  El alias de dev-override de vite resolvería el factory desde el source en
+  vitest/runtime, pero el gate de tsc no — sería romper el gate. La adopción exige
+  publicar shared-hooks-react ≥0.18 con el factory y bumpear el specifier de dms,
+  fuera del scope de esta dedup intra-app.
+- **Impacto en cliente**: ninguno.
+- **Decidido por**: tarea V2.dms #5 (regla de deferral: no forzar si rompe gate sin
+  arreglo en scope). El factory en maya_platform ya soporta `enabled`/gate y
+  `mapParams`; la extensión del return (deleteTemplate/cloneTemplate de Templates) se
+  resolvería envolviendo el hook factory. Nada bloquea la migración una vez el
+  paquete se publique e instale en dms.
+
 ## [FASE 4.1] Formato unificado del mensaje de error de WeasyPrint (solo logs)
 
 - **Fecha**: 2026-06-11
