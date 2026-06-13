@@ -137,17 +137,11 @@
         },
         {
             "name": "ceedcv-maya/shared-auth-laravel",
-            "version": "v0.18.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/Maya-AQSS/shared-auth-laravel.git",
-                "reference": "da5317310c75b38c0fe0118bbbef613a20f26a42"
-            },
+            "version": "dev-main",
             "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/Maya-AQSS/shared-auth-laravel/zipball/da5317310c75b38c0fe0118bbbef613a20f26a42",
-                "reference": "da5317310c75b38c0fe0118bbbef613a20f26a42",
-                "shasum": ""
+                "type": "path",
+                "url": "../../maya_platform/packages/php/shared-auth-laravel",
+                "reference": "11040527e633ae23cf7aca23481d17788633dd66"
             },
             "require": {
                 "illuminate/cache": "^11.0 || ^12.0 || ^13.0",
@@ -169,6 +163,9 @@
                     "providers": [
                         "Maya\\Auth\\Providers\\SharedAuthServiceProvider"
                     ]
+                },
+                "branch-alias": {
+                    "dev-main": "0.18.x-dev"
                 }
             },
             "autoload": {
@@ -176,7 +173,19 @@
                     "Maya\\Auth\\": "src/"
                 }
             },
-            "notification-url": "https://packagist.org/downloads/",
+            "autoload-dev": {
+                "psr-4": {
+                    "Tests\\": "tests/"
+                }
+            },
+            "scripts": {
+                "test": [
+                    "pest --colors=always"
+                ],
+                "test-coverage": [
+                    "pest --coverage --min=80"
+                ]
+            },
             "license": [
                 "MIT"
             ],
@@ -190,14 +199,14 @@
             "description": "Keycloak/OIDC JWT authentication middleware for Laravel: JWKS caching, RequirePermissionMiddleware, AppToAppAuthenticator, configurable user resolver.",
             "homepage": "https://github.com/Maya-AQSS/shared-auth-laravel",
             "keywords": [
-                "Authentication",
-                "JWKS",
-                "Maya",
+                "authentication",
                 "authorization",
                 "ceedcv",
+                "jwks",
                 "jwt",
                 "keycloak",
                 "laravel",
+                "maya",
                 "middleware",
                 "oidc"
             ],
@@ -205,7 +214,10 @@
                 "issues": "https://github.com/Maya-AQSS/maya_platform/issues",
                 "source": "https://github.com/Maya-AQSS/shared-auth-laravel"
             },
-            "time": "2026-06-13T09:14:39+00:00"
+            "transport-options": {
+                "symlink": false,
+                "relative": true
+            }
         },
         {
             "name": "ceedcv-maya/shared-editor-laravel",
@@ -290,17 +302,11 @@
         },
         {
             "name": "ceedcv-maya/shared-http-laravel",
-            "version": "v0.18.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/Maya-AQSS/shared-http-laravel.git",
-                "reference": "3f98951a16c00cf3d808291bc1b03308b4cefa6a"
-            },
+            "version": "dev-main",
             "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/Maya-AQSS/shared-http-laravel/zipball/3f98951a16c00cf3d808291bc1b03308b4cefa6a",
-                "reference": "3f98951a16c00cf3d808291bc1b03308b4cefa6a",
-                "shasum": ""
+                "type": "path",
+                "url": "../../maya_platform/packages/php/shared-http-laravel",
+                "reference": "5517facabd068d5fbccc6bf92e195236b6db39e9"
             },
             "require": {
                 "illuminate/contracts": "^11.0 || ^12.0 || ^13.0",
@@ -317,13 +323,30 @@
                 "pestphp/pest-plugin-laravel": "^3.0"
             },
             "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-main": "0.18.x-dev"
+                }
+            },
             "autoload": {
                 "psr-4": {
                     "Maya\\Http\\": "src/",
                     "Maya\\Search\\": "src/Search/"
                 }
             },
-            "notification-url": "https://packagist.org/downloads/",
+            "autoload-dev": {
+                "psr-4": {
+                    "Tests\\": "tests/"
+                }
+            },
+            "scripts": {
+                "test": [
+                    "pest --colors=always"
+                ],
+                "test-coverage": [
+                    "pest --coverage --min=80"
+                ]
+            },
             "license": [
                 "MIT"
             ],
@@ -337,13 +360,13 @@
             "description": "Reusable HTTP utilities for Laravel APIs: standardized JSON response envelope, health endpoint, app metadata controller, exception handler, accent-fold search support.",
             "homepage": "https://github.com/Maya-AQSS/shared-http-laravel",
             "keywords": [
-                "Maya",
                 "accent-fold",
                 "api",
                 "ceedcv",
                 "health",
                 "http",
                 "laravel",
+                "maya",
                 "response",
                 "search"
             ],
@@ -351,21 +374,18 @@
                 "issues": "https://github.com/Maya-AQSS/maya_platform/issues",
                 "source": "https://github.com/Maya-AQSS/shared-http-laravel"
             },
-            "time": "2026-06-13T09:14:37+00:00"
+            "transport-options": {
+                "symlink": false,
+                "relative": true
+            }
         },
         {
             "name": "ceedcv-maya/shared-messaging-laravel",
-            "version": "v0.18.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/Maya-AQSS/shared-messaging-laravel.git",
-                "reference": "4d8aeafe18942bf89f281722a675d6717841071e"
-            },
+            "version": "dev-main",
             "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/Maya-AQSS/shared-messaging-laravel/zipball/4d8aeafe18942bf89f281722a675d6717841071e",
-                "reference": "4d8aeafe18942bf89f281722a675d6717841071e",
-                "shasum": ""
+                "type": "path",
+                "url": "../../maya_platform/packages/php/shared-messaging-laravel",
+                "reference": "33bf5703e7bfe5091eada8dd59527ca7015c7739"
             },
             "require": {
                 "illuminate/broadcasting": "^11.0 || ^12.0 || ^13.0",
@@ -390,6 +410,9 @@
                     "providers": [
                         "Maya\\Messaging\\Providers\\MessagingServiceProvider"
                     ]
+                },
+                "branch-alias": {
+                    "dev-main": "0.18.x-dev"
                 }
             },
             "autoload": {
@@ -397,7 +420,19 @@
                     "Maya\\Messaging\\": "src/"
                 }
             },
-            "notification-url": "https://packagist.org/downloads/",
+            "autoload-dev": {
+                "psr-4": {
+                    "Tests\\": "tests/"
+                }
+            },
+            "scripts": {
+                "test": [
+                    "pest --colors=always"
+                ],
+                "test-coverage": [
+                    "pest --coverage --min=80"
+                ]
+            },
             "license": [
                 "MIT"
             ],
@@ -411,11 +446,11 @@
             "description": "RabbitMQ messaging layer for Laravel: typed event publishers (audit, logs, notifications, alerts), reusable consumer base, retry/DLX handling.",
             "homepage": "https://github.com/Maya-AQSS/shared-messaging-laravel",
             "keywords": [
-                "AMQP",
-                "Maya",
+                "amqp",
                 "ceedcv",
                 "events",
                 "laravel",
+                "maya",
                 "messaging",
                 "queue",
                 "rabbitmq"
@@ -424,21 +459,18 @@
                 "issues": "https://github.com/Maya-AQSS/maya_platform/issues",
                 "source": "https://github.com/Maya-AQSS/shared-messaging-laravel"
             },
-            "time": "2026-06-13T09:55:18+00:00"
+            "transport-options": {
+                "symlink": false,
+                "relative": true
+            }
         },
         {
             "name": "ceedcv-maya/shared-platform-laravel",
-            "version": "v0.18.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/Maya-AQSS/shared-platform-laravel.git",
-                "reference": "e813845d13cc2633e92c494ca1ffb138b8758209"
-            },
+            "version": "dev-main",
             "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/Maya-AQSS/shared-platform-laravel/zipball/e813845d13cc2633e92c494ca1ffb138b8758209",
-                "reference": "e813845d13cc2633e92c494ca1ffb138b8758209",
-                "shasum": ""
+                "type": "path",
+                "url": "../../maya_platform/packages/php/shared-platform-laravel",
+                "reference": "0cacaf0e134857d4346ab6c5dde7072bd3f3f84e"
             },
             "require": {
                 "illuminate/auth": "^11.0 || ^12.0 || ^13.0",
@@ -464,6 +496,9 @@
                     "providers": [
                         "Maya\\Platform\\Providers\\SharedPlatformServiceProvider"
                     ]
+                },
+                "branch-alias": {
+                    "dev-main": "0.18.x-dev"
                 }
             },
             "autoload": {
@@ -471,7 +506,19 @@
                     "Maya\\Platform\\": "src/"
                 }
             },
-            "notification-url": "https://packagist.org/downloads/",
+            "autoload-dev": {
+                "psr-4": {
+                    "Tests\\": "tests/"
+                }
+            },
+            "scripts": {
+                "test": [
+                    "pest --colors=always"
+                ],
+                "test-coverage": [
+                    "pest --coverage --min=80"
+                ]
+            },
             "license": [
                 "MIT"
             ],
@@ -485,10 +532,10 @@
             "description": "Cross-cutting platform utilities for Laravel microservices: PostgreSQL FDW migrations helpers, locale providers, shared contracts.",
             "homepage": "https://github.com/Maya-AQSS/shared-platform-laravel",
             "keywords": [
-                "Maya",
                 "ceedcv",
                 "fdw",
                 "laravel",
+                "maya",
                 "microservices",
                 "platform",
                 "postgres"
@@ -497,21 +544,18 @@
                 "issues": "https://github.com/Maya-AQSS/maya_platform/issues",
                 "source": "https://github.com/Maya-AQSS/shared-platform-laravel"
             },
-            "time": "2026-06-12T19:55:27+00:00"
+            "transport-options": {
+                "symlink": false,
+                "relative": true
+            }
         },
         {
             "name": "ceedcv-maya/shared-profile-laravel",
-            "version": "v0.18.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/Maya-AQSS/shared-profile-laravel.git",
-                "reference": "8634ff763bf9e8c4c73887fe6e2d5068e13c7552"
-            },
+            "version": "dev-main",
             "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/Maya-AQSS/shared-profile-laravel/zipball/8634ff763bf9e8c4c73887fe6e2d5068e13c7552",
-                "reference": "8634ff763bf9e8c4c73887fe6e2d5068e13c7552",
-                "shasum": ""
+                "type": "path",
+                "url": "../../maya_platform/packages/php/shared-profile-laravel",
+                "reference": "2fcb033b5edde6d553596450573f8c12649367f0"
             },
             "require": {
                 "illuminate/contracts": "^11.0 || ^12.0 || ^13.0",
@@ -534,6 +578,9 @@
                     "providers": [
                         "Maya\\Profile\\Providers\\SharedProfileServiceProvider"
                     ]
+                },
+                "branch-alias": {
+                    "dev-main": "0.18.x-dev"
                 }
             },
             "autoload": {
@@ -541,7 +588,19 @@
                     "Maya\\Profile\\": "src/"
                 }
             },
-            "notification-url": "https://packagist.org/downloads/",
+            "autoload-dev": {
+                "psr-4": {
+                    "Tests\\": "tests/"
+                }
+            },
+            "scripts": {
+                "test": [
+                    "pest --colors=always"
+                ],
+                "test-coverage": [
+                    "pest --coverage --min=80"
+                ]
+            },
             "license": [
                 "MIT"
             ],
@@ -555,11 +614,11 @@
             "description": "User profile endpoints for Laravel + Keycloak: GET /me, PUT /me/locale, configurable resolvers, FormRequest validation.",
             "homepage": "https://github.com/Maya-AQSS/shared-profile-laravel",
             "keywords": [
-                "Maya",
                 "ceedcv",
                 "keycloak",
                 "laravel",
                 "locale",
+                "maya",
                 "me",
                 "profile"
             ],
@@ -567,7 +626,10 @@
                 "issues": "https://github.com/Maya-AQSS/maya_platform/issues",
                 "source": "https://github.com/Maya-AQSS/shared-profile-laravel"
             },
-            "time": "2026-06-12T19:55:28+00:00"
+            "transport-options": {
+                "symlink": false,
+                "relative": true
+            }
         },
         {
             "name": "clue/redis-protocol",
@@ -1254,16 +1316,16 @@
         },
         {
             "name": "guzzlehttp/guzzle",
-            "version": "7.11.0",
+            "version": "7.11.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/guzzle/guzzle.git",
-                "reference": "c987f8ce84b8434fa430795eca0f3430663da72b"
+                "reference": "5af96f374e0ab4ebd747b8310888c99d3adb0a8c"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/guzzle/guzzle/zipball/c987f8ce84b8434fa430795eca0f3430663da72b",
-                "reference": "c987f8ce84b8434fa430795eca0f3430663da72b",
+                "url": "https://api.github.com/repos/guzzle/guzzle/zipball/5af96f374e0ab4ebd747b8310888c99d3adb0a8c",
+                "reference": "5af96f374e0ab4ebd747b8310888c99d3adb0a8c",
                 "shasum": ""
             },
             "require": {
@@ -1282,7 +1344,7 @@
                 "bamarni/composer-bin-plugin": "^1.8.2",
                 "ext-curl": "*",
                 "guzzle/client-integration-tests": "3.0.2",
-                "guzzlehttp/test-server": "^0.4",
+                "guzzlehttp/test-server": "^0.5",
                 "php-http/message-factory": "^1.1",
                 "phpunit/phpunit": "^8.5.52 || ^9.6.34",
                 "psr/log": "^1.1 || ^2.0 || ^3.0"
@@ -1362,7 +1424,7 @@
             ],
             "support": {
                 "issues": "https://github.com/guzzle/guzzle/issues",
-                "source": "https://github.com/guzzle/guzzle/tree/7.11.0"
+                "source": "https://github.com/guzzle/guzzle/tree/7.11.1"
             },
             "funding": [
                 {
@@ -1378,7 +1440,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-06-02T12:40:51+00:00"
+            "time": "2026-06-07T22:54:06+00:00"
         },
         {
             "name": "guzzlehttp/promises",
@@ -1585,16 +1647,16 @@
         },
         {
             "name": "guzzlehttp/uri-template",
-            "version": "v1.0.6",
+            "version": "v1.0.7",
             "source": {
                 "type": "git",
                 "url": "https://github.com/guzzle/uri-template.git",
-                "reference": "eef7f87bab6f204eba3c39224d8075c70c637946"
+                "reference": "7fe811c23a9e3cd712b4389eaeb50b5456d8c529"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/guzzle/uri-template/zipball/eef7f87bab6f204eba3c39224d8075c70c637946",
-                "reference": "eef7f87bab6f204eba3c39224d8075c70c637946",
+                "url": "https://api.github.com/repos/guzzle/uri-template/zipball/7fe811c23a9e3cd712b4389eaeb50b5456d8c529",
+                "reference": "7fe811c23a9e3cd712b4389eaeb50b5456d8c529",
                 "shasum": ""
             },
             "require": {
@@ -1651,7 +1713,7 @@
             ],
             "support": {
                 "issues": "https://github.com/guzzle/uri-template/issues",
-                "source": "https://github.com/guzzle/uri-template/tree/v1.0.6"
+                "source": "https://github.com/guzzle/uri-template/tree/v1.0.7"
             },
             "funding": [
                 {
@@ -1667,7 +1729,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-05-23T22:00:21+00:00"
+            "time": "2026-06-12T21:33:43+00:00"
         },
         {
             "name": "illuminate/foundation",
@@ -1737,16 +1799,16 @@
         },
         {
             "name": "laravel/framework",
-            "version": "v13.13.0",
+            "version": "v13.15.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/laravel/framework.git",
-                "reference": "1daa6d3b4defe46976ccfa4fb0a7ab62717712a2"
+                "reference": "7e23b2aa4e1133a43835c93a810b4bedc40e425b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/laravel/framework/zipball/1daa6d3b4defe46976ccfa4fb0a7ab62717712a2",
-                "reference": "1daa6d3b4defe46976ccfa4fb0a7ab62717712a2",
+                "url": "https://api.github.com/repos/laravel/framework/zipball/7e23b2aa4e1133a43835c93a810b4bedc40e425b",
+                "reference": "7e23b2aa4e1133a43835c93a810b4bedc40e425b",
                 "shasum": ""
             },
             "require": {
@@ -1957,7 +2019,7 @@
                 "issues": "https://github.com/laravel/framework/issues",
                 "source": "https://github.com/laravel/framework"
             },
-            "time": "2026-06-02T14:28:17+00:00"
+            "time": "2026-06-09T13:45:51+00:00"
         },
         {
             "name": "laravel/prompts",
@@ -3851,16 +3913,16 @@
         },
         {
             "name": "phpseclib/phpseclib",
-            "version": "3.0.52",
+            "version": "3.0.53",
             "source": {
                 "type": "git",
                 "url": "https://github.com/phpseclib/phpseclib.git",
-                "reference": "2adaefc83df2ec548558307690f376dd7d4f4fce"
+                "reference": "511ddc8e352d5d1f1e33bea468b6f4ef48438cf9"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/phpseclib/phpseclib/zipball/2adaefc83df2ec548558307690f376dd7d4f4fce",
-                "reference": "2adaefc83df2ec548558307690f376dd7d4f4fce",
+                "url": "https://api.github.com/repos/phpseclib/phpseclib/zipball/511ddc8e352d5d1f1e33bea468b6f4ef48438cf9",
+                "reference": "511ddc8e352d5d1f1e33bea468b6f4ef48438cf9",
                 "shasum": ""
             },
             "require": {
@@ -3941,7 +4003,7 @@
             ],
             "support": {
                 "issues": "https://github.com/phpseclib/phpseclib/issues",
-                "source": "https://github.com/phpseclib/phpseclib/tree/3.0.52"
+                "source": "https://github.com/phpseclib/phpseclib/tree/3.0.53"
             },
             "funding": [
                 {
@@ -3957,7 +4019,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-04-27T07:02:15+00:00"
+            "time": "2026-06-09T18:08:26+00:00"
         },
         {
             "name": "psr/clock",
@@ -6625,16 +6687,16 @@
         },
         {
             "name": "symfony/polyfill-mbstring",
-            "version": "v1.38.1",
+            "version": "v1.38.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/polyfill-mbstring.git",
-                "reference": "14c5439eec4ccff081ac14eca2dc57feb2a66d92"
+                "reference": "d3d318bad5e7a1bfbd026009c8bfb8d8f99ae6b6"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/polyfill-mbstring/zipball/14c5439eec4ccff081ac14eca2dc57feb2a66d92",
-                "reference": "14c5439eec4ccff081ac14eca2dc57feb2a66d92",
+                "url": "https://api.github.com/repos/symfony/polyfill-mbstring/zipball/d3d318bad5e7a1bfbd026009c8bfb8d8f99ae6b6",
+                "reference": "d3d318bad5e7a1bfbd026009c8bfb8d8f99ae6b6",
                 "shasum": ""
             },
             "require": {
@@ -6686,7 +6748,7 @@
                 "shim"
             ],
             "support": {
-                "source": "https://github.com/symfony/polyfill-mbstring/tree/v1.38.1"
+                "source": "https://github.com/symfony/polyfill-mbstring/tree/v1.38.2"
             },
             "funding": [
                 {
@@ -6706,7 +6768,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-05-26T12:51:13+00:00"
+            "time": "2026-05-27T06:59:30+00:00"
         },
         {
             "name": "symfony/polyfill-php80",

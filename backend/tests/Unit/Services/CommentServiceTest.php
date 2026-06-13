@@ -431,7 +431,10 @@ final class CommentServiceTest extends TestCase
         $after = $this->makeComment(['body' => 'Después']);
 
         $repo = Mockery::mock(CommentRepositoryInterface::class);
-        $repo->shouldReceive('findOrFail')->once()->with('comment-uuid', null)->andReturn($before);
+        // El service lee primero el estado anterior con un solo argumento
+        // (findOrFail($commentId)) para capturar previousBody del evento, y al
+        // final resuelve el DTO vía su wrapper findOrFail($id, $readerUserId).
+        $repo->shouldReceive('findOrFail')->once()->with('comment-uuid')->andReturn($before);
         $repo->shouldReceive('update')->once()->with('comment-uuid', 'Después', 'editor-uuid')->andReturn($after);
         $repo->shouldReceive('findOrFail')->once()->with('comment-uuid', null)->andReturn($after);
 

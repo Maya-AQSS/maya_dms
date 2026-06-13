@@ -345,7 +345,11 @@ it('marks all unread block comments as read in one request for template reviewer
 });
 
 it('denies mark-block-read without view permission on template', function () {
-    $ctx = seedTemplateInReview(test()->otherUserId, test()->userId);
+    // El usuario que actúa (test()->userId) NO debe ser creador ni revisor:
+    // TemplatePolicy::view concede vista siempre a un revisor asignado (por
+    // diseño, para que pueda revisar). Por eso aquí el revisor es otherUserId
+    // y el actor solo tiene `dms.login` → sin acceso de vista → 403.
+    $ctx = seedTemplateInReview(test()->otherUserId, test()->otherUserId);
 
     $this->postJson("/api/v1/templates/{$ctx['templateId']}/comments/mark-block-read", [
         'blockable_id' => $ctx['blockId'],

@@ -14,8 +14,12 @@ use App\Models\Document;
 use App\Models\DocumentBlock;
 use App\Models\Template;
 use App\Models\TemplateBlock;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
+// Antes extendía PHPUnit\Framework\TestCase (test puro), pero `new Comment`
+// dispara `Comment::booted()` → `Schema::hasTable('template_shares')`, que
+// requiere el contenedor de Laravel ("A facade root has not been set." si no).
+// Tests\TestCase arranca la app (sin RefreshDatabase) y resuelve el facade.
 final class BlockCommentAuditTest extends TestCase
 {
     public function test_created_payload_is_anchored_to_template_and_block(): void
