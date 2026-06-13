@@ -39,6 +39,19 @@ class User extends Model implements \Illuminate\Contracts\Auth\Access\Authorizab
         'is_active',
     ];
 
+    /**
+     * Campos PII que no deben salir en serialización accidental
+     * (toArray()/toJson()). Los Resources que necesiten un campo lo acceden
+     * explícitamente; esto solo evita fugas no intencionadas de PII.
+     *
+     * @var list<string>
+     */
+    protected $hidden = [
+        'dni',
+        'employee_id',
+        'employee_type',
+    ];
+
     protected $casts = [
         'is_active' => 'boolean',
     ];
