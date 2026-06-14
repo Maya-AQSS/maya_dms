@@ -28,14 +28,6 @@ class CommentService implements CommentServiceInterface
         private readonly CommentReadRepositoryInterface $commentReadRepository,
     ) {}
 
-    /**
-     * @internal Used by controllers for policy gates only — do not use in service-to-service calls.
-     */
-    public function findModelOrFail(string $id, ?string $readerUserId = null): Comment
-    {
-        return $this->commentRepository->findOrFail($id, $readerUserId);
-    }
-
     public function findOrFail(string $id, ?string $readerUserId = null): CommentDto
     {
         return CommentDto::fromModel($this->commentRepository->findOrFail($id, $readerUserId));

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Contracts;
 
 use App\DTOs\Comments\CommentDto;
-use App\Models\Comment;
 use Maya\Http\Pagination\PaginatedDto;
 
 interface CommentServiceInterface
@@ -14,13 +13,6 @@ interface CommentServiceInterface
      * Devuelve el DTO de un comentario. Lanza ModelNotFoundException si no existe.
      */
     public function findOrFail(string $id, ?string $readerUserId = null): CommentDto;
-
-    /**
-     * Variante de uso interno: devuelve el Model. Necesaria para policies
-     * (`authorize('update', $model)`) y para inyectar `commentable` antes
-     * de autorizar. Resto de consumidores deben usar `findOrFail()`.
-     */
-    public function findModelOrFail(string $id, ?string $readerUserId = null): Comment;
 
     /**
      * Lista los comentarios paginados para un recurso.
@@ -56,7 +48,8 @@ interface CommentServiceInterface
 
     /**
      * Elimina un comentario por id. La autorización se resuelve en el Controller
-     * (`findModelOrFail()` + policy) antes de delegar; el Service trabaja solo con el id.
+     * (`findOrFail()` + policy sobre el DTO) antes de delegar; el Service trabaja
+     * solo con el id.
      */
     public function delete(string $commentId, string $deletedBy, string $deletedByName): void;
 

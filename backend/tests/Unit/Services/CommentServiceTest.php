@@ -8,7 +8,6 @@ use App\DTOs\Comments\CommentDto;
 use App\Events\BlockCommentCreated;
 use App\Events\BlockCommentDeleted;
 use App\Events\BlockCommentMarkedRead;
-use App\Events\BlockCommentsMarkedRead;
 use App\Events\BlockCommentUpdated;
 use App\Models\Comment;
 use App\Models\Document;
@@ -74,7 +73,7 @@ final class CommentServiceTest extends TestCase
         return new CommentService($repo, $readRepo);
     }
 
-    // ─── findOrFail / findModelOrFail ────────────────────────────────────────
+    // ─── findOrFail ──────────────────────────────────────────────────────────
 
     public function test_find_or_fail_returns_dto(): void
     {
@@ -87,18 +86,6 @@ final class CommentServiceTest extends TestCase
 
         $this->assertInstanceOf(CommentDto::class, $result);
         $this->assertSame('comment-uuid', $result->id);
-    }
-
-    public function test_find_model_or_fail_returns_model(): void
-    {
-        $comment = $this->makeComment();
-        $repo = Mockery::mock(CommentRepositoryInterface::class);
-        $repo->shouldReceive('findOrFail')->once()->with('comment-uuid', null)->andReturn($comment);
-
-        $service = $this->makeService($repo);
-        $result = $service->findModelOrFail('comment-uuid');
-
-        $this->assertInstanceOf(Comment::class, $result);
     }
 
     // ─── createForResource: partial blockable pair ───────────────────────────
