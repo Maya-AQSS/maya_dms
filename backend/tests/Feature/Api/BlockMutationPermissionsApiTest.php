@@ -159,3 +159,36 @@ it('allows template block delete for owner with block.delete and template.update
     $this->deleteJson("/api/v1/blocks/{$ctx['blockId']}")
         ->assertNoContent();
 });
+
+it('denies bulk block update without block.update (authz in FormRequest)', function () {
+    grantBlockMutationPermissions('template.show', 'template.update');
+
+    $ctx = seedPersonalTemplateWithBlock(test()->userId);
+
+    $this->putJson('/api/v1/blocks/bulk', [
+        'ids' => [$ctx['blockId']],
+        'block_state' => 'locked',
+    ])->assertForbidden();
+});
+
+it('allows bulk block update for owner with block.update', function () {
+    grantBlockMutationPermissions('block.update', 'template.update');
+
+    $ctx = seedPersonalTemplateWithBlock(test()->userId);
+
+    $this->putJson('/api/v1/blocks/bulk', [
+        'ids' => [$ctx['blockId']],
+        'block_state' => 'locked',
+    ])->assertOk()
+        ->assertJsonCount(1, 'data');
+});
+
+it('rejects bulk block update with empty ids via validation (no 403 for malformed input)', function () {
+    grantBlockMutationPermissions('block.update', 'template.update');
+
+    $this->putJson('/api/v1/blocks/bulk', [
+        'ids' => [],
+        'block_state' => 'locked',
+    ])->assertStatus(422)
+        ->assertJsonValidationErrorFor('ids');
+});

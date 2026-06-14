@@ -229,6 +229,28 @@ class TemplatePolicy
     }
 
     /**
+     * Transferencia de propiedad de una plantilla (cambio de `created_by`).
+     *
+     * - Transferencia pura (sin otros campos): el creador actual o un admin con
+     *   `template.transfer-ownership`.
+     * - Transferencia mezclada con otra actualización: solo el creador actual
+     *   (que además debe poder actualizar la plantilla por las reglas de {@see self::update}).
+     *
+     * @param  bool  $pure  true si el único campo que cambia es `created_by`.
+     */
+    public function transferOwnership(JwtUser $user, Template $template, bool $pure = true): bool
+    {
+        $isCreator = (string) $user->getAuthIdentifier() === (string) $template->created_by;
+
+        if ($pure) {
+            return $isCreator || $user->hasPermission('template.transfer-ownership');
+        }
+
+        // Transferencia mezclada con otra edición: solo el creador actual.
+        return $isCreator;
+    }
+
+    /**
      * Eliminar o archivar plantilla.
      *
      * El creador puede borrar su propia plantilla.

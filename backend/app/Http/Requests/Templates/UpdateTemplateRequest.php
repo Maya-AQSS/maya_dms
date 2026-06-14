@@ -23,17 +23,15 @@ class UpdateTemplateRequest extends FormRequest
         $template = $this->resolveTemplate();
 
         if ($this->has('created_by')) {
-            $isCreator = (string) $this->user()->getAuthIdentifier() === (string) $template->created_by;
-            $otherKeys = array_filter($this->keys(), fn ($k) => $k !== 'created_by');
+            $pure = array_filter($this->keys(), fn ($k) => $k !== 'created_by') === [];
 
-            if (empty($otherKeys)) {
-                // Pure ownership transfer — allow current creator or admin with template.transfer-ownership.
-                return $isCreator || $this->user()->hasPermission('template.transfer-ownership');
+            if (! $this->user()->can('transferOwnership', [$template, $pure])) {
+                return false;
             }
 
-            // Mixed update + owner change — only the current creator may do both at once.
-            if (! $isCreator) {
-                return false;
+            // Transferencia pura: ya autorizada por la Policy, no aplica regla de edición.
+            if ($pure) {
+                return true;
             }
         }
 

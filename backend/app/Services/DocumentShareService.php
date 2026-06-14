@@ -5,10 +5,20 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Document;
+use App\Policies\DocumentPolicy;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
+/**
+ * Gestión de compartidos de documento.
+ *
+ * El control de acceso (solo el titular gestiona compartidos) vive en
+ * {@see DocumentPolicy::share} y se aplica en el controlador con
+ * `$this->authorize('share', $document)`. Este Service asume que el documento
+ * ya viene autorizado y solo aplica las reglas de negocio (no auto-compartir,
+ * el titular ya tiene acceso).
+ */
 class DocumentShareService
 {
     public function __construct(
@@ -25,10 +35,6 @@ class DocumentShareService
         string $actorId,
     ): array {
         $document = $this->documentRepository->findOrFail($documentId);
-
-        if ($document->owner_id !== $actorId) {
-            abort(403, __('auth.share.owner_only'));
-        }
 
         if ($targetUserId === $actorId) {
             throw ValidationException::withMessages([
@@ -58,12 +64,7 @@ class DocumentShareService
 
     public function removeDocumentShare(string $documentId, string $targetUserId, string $actorId): void
     {
-        $document = $this->documentRepository->findOrFail($documentId);
-
-        if ($document->owner_id !== $actorId) {
-            abort(403, __('auth.share.owner_only'));
-        }
-
+        // Acceso ya autorizado por DocumentPolicy::share en el controlador.
         $this->documentRepository->deleteDocumentShare($documentId, $targetUserId);
     }
 

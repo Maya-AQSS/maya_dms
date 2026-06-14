@@ -55,32 +55,24 @@ class TemplateBlockBulkController extends Controller
      */
     public function bulkUpdate(BulkUpdateTemplateBlockRequest $request): AnonymousResourceCollection
     {
+        // Autorización (updateTemplateBlock por cada plantilla afectada) resuelta
+        // en BulkUpdateTemplateBlockRequest::authorize().
         $validated = $request->validated();
-        $blocks = $this->blockService->findBlocksByIdsOrFail($validated['ids']);
-        $templateIds = array_values(array_unique(array_map(
-            static fn ($dto): string => $dto->templateId,
-            $blocks,
-        )));
-
-        $templates = $this->templateService->findManyByIds($templateIds);
-
-        /** @var array<int, Template> $resolvedTemplates */
-        $resolvedTemplates = [];
-        foreach ($templateIds as $templateId) {
-            $templateModel = $templates->get($templateId);
-
-            if ($templateModel === null) {
-                abort(403, __('template_blocks.bulk_forbidden'));
-            }
-
-            $this->authorize('updateTemplateBlock', $templateModel);
-            $resolvedTemplates[] = $templateModel;
-        }
 
         $givenProcessId = $request->query('process_id');
         if ($givenProcessId !== null && $givenProcessId !== '') {
-            foreach ($resolvedTemplates as $templateModel) {
-                $this->assertOptionalProcessContextMatches((string) $templateModel->process_id);
+            $blocks = $this->blockService->findBlocksByIdsOrFail($validated['ids']);
+            $templateIds = array_values(array_unique(array_map(
+                static fn ($dto): string => $dto->templateId,
+                $blocks,
+            )));
+            $templates = $this->templateService->findManyByIds($templateIds);
+
+            foreach ($templateIds as $templateId) {
+                $templateModel = $templates->get($templateId);
+                if ($templateModel !== null) {
+                    $this->assertOptionalProcessContextMatches((string) $templateModel->process_id);
+                }
             }
         }
 
