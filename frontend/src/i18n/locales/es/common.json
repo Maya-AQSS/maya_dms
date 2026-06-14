@@ -92,7 +92,10 @@
     "status": "Estado",
     "noDescription": "Sin descripción",
     "author": "Autor",
-    "owner": "Propietario"
+    "owner": "Propietario",
+    "untitled": "(Sin título)",
+    "noName": "Sin nombre",
+    "unknownAuthor": "Autor desconocido"
   },
   "align": {
     "left": "Izquierda",
@@ -108,7 +111,8 @@
   },
   "confirm": {
     "deleteBlock": "¿Eliminar este bloque?",
-    "deleteIrreversible": "Estás a punto de eliminar este elemento. Esta acción es irreversible y no se puede deshacer."
+    "deleteIrreversible": "Estás a punto de eliminar este elemento. Esta acción es irreversible y no se puede deshacer.",
+    "actionIrreversible": "Esta acción no se puede deshacer."
   },
   "search": {
     "minChars": "Escribe al menos 2 caracteres para buscar.",

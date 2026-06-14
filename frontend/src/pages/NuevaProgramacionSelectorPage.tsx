@@ -202,7 +202,7 @@ export function NuevaProgramacionSelectorPage() {
         onSortChange={onSortChange}
         pageSize={pageSize}
         onPageSizeChange={onPageSizeChange}
-        emptyMessage="No hay plantillas utilizables para crear documentos con los filtros actuales."
+        emptyMessage={t('documents:selector.empty')}
         filtersActiveCount={filtersActiveCount}
         onClearFilters={resetFilters}
         filtersStorageKey="maya:dms:nueva-programacion-selector"
@@ -222,7 +222,7 @@ export function NuevaProgramacionSelectorPage() {
         }}
         filtersPanel={
           <>
-            <FilterField label="Nombre">
+            <FilterField label={t('common:fields.name')}>
               <TextInput
                 fieldSize="sm"
                 placeholder={t('documents:wizard.searchByName')}
@@ -232,7 +232,7 @@ export function NuevaProgramacionSelectorPage() {
                 }
               />
             </FilterField>
-            <FilterField label="Visibilidad">
+            <FilterField label={t('templates:fields.visibility')}>
               <TextInput
                 fieldSize="sm"
                 type="search"
@@ -241,7 +241,7 @@ export function NuevaProgramacionSelectorPage() {
                 onChange={() => {}}
               />
             </FilterField>
-            <FilterField label="Autor">
+            <FilterField label={t('common:fields.author')}>
               <TextInput
                 fieldSize="sm"
                 placeholder={t('documents:wizard.authorPlaceholder')}
@@ -251,7 +251,7 @@ export function NuevaProgramacionSelectorPage() {
                 }
               />
             </FilterField>
-            <FilterField label="Publicadas desde">
+            <FilterField label={t('documents:selector.publishedSince')}>
               <DatePicker
                 value={filters.published_on || null}
                 onChange={(d) => setFilter('published_on', d ?? undefined)}

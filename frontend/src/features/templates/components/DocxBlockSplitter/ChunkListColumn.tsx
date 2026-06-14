@@ -1,5 +1,6 @@
 import type { BlockChunk } from '@ceedcv-maya/shared-editor-react';
 import { Button } from '@ceedcv-maya/shared-ui-react';
+import { useTranslation } from 'react-i18next';
 import { ChunkListItem } from './ChunkListItem';
 import type { TargetBlock } from './types';
 
@@ -28,28 +29,29 @@ export function ChunkListColumn({
   onAssignSelection,
   onUnassignSelection,
 }: ChunkListColumnProps) {
+  const { t } = useTranslation('templates');
   return (
     <div className="flex w-3/5 flex-col border-r border-ui-border dark:border-ui-dark-border">
       <div className="flex flex-wrap items-center gap-2 border-b border-ui-border px-4 py-2 dark:border-ui-dark-border">
         <span className="text-xs text-text-muted dark:text-text-dark-muted">
-          {chunks.length} elementos · {selected.size} seleccionados
+          {t('docx.chunksSummary', { count: chunks.length, selected: selected.size })}
         </span>
         <Button variant="outline" disabled={chunks.length === 0} onClick={onSelectAll}>
-          Todos
+          {t('docx.selectAll')}
         </Button>
         {hasHeadings && (
           <>
-            <Button variant="outline" onClick={() => onAutoSplitByHeading(1)} title="Un bloque por cada H1">
-              Auto H1
+            <Button variant="outline" onClick={() => onAutoSplitByHeading(1)} title={t('docx.splitH1')}>
+              {t('docx.autoH1')}
             </Button>
-            <Button variant="outline" onClick={() => onAutoSplitByHeading(2)} title="Un bloque por cada H1/H2">
-              Auto H2
+            <Button variant="outline" onClick={() => onAutoSplitByHeading(2)} title={t('docx.splitH1H2')}>
+              {t('docx.autoH2')}
             </Button>
           </>
         )}
         <div className="ml-auto flex gap-2">
           <Button variant="outline" disabled={selected.size === 0} onClick={() => onAssignSelection('new')}>
-            + Nuevo bloque
+            {t('docx.newBlock')}
           </Button>
           {targets.length > 0 && (
             <select
@@ -61,7 +63,7 @@ export function ChunkListColumn({
                 e.target.value = '';
               }}
             >
-              <option value="">Asignar a…</option>
+              <option value="">{t('docx.assignTo')}</option>
               {targets.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.name}
@@ -70,7 +72,7 @@ export function ChunkListColumn({
             </select>
           )}
           <Button variant="outline" disabled={selected.size === 0} onClick={onUnassignSelection}>
-            Desasignar
+            {t('docx.unassign')}
           </Button>
         </div>
       </div>

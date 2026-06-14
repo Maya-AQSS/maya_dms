@@ -158,7 +158,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   useEffect(() => {
     if (!documentId) {
       setLoading(false);
-      setError('Identificador de documento no válido.');
+      setError(t('errors.invalidId'));
       return;
     }
 
@@ -206,7 +206,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
 
     void load();
     return () => { cancelled = true; };
-  }, [documentId, documentVersionId]);
+  }, [documentId, documentVersionId, t]);
 
   const previewState = location.state as {
     returnToStep?: string;
@@ -851,7 +851,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
             }}
             className="text-xs font-black uppercase tracking-wider hover:text-warning"
           >
-            Rechazar validación
+            {t('rejectValidation')}
           </Button>
           <Button
             type="button"
@@ -863,7 +863,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
               setValidateConfirm('approve');
             }}
           >
-            Aprobar
+            {t('common:actions.approve')}
           </Button>
         </>
       )}
@@ -883,9 +883,9 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
 
   const headerMetaInfo = detail ? (
     <p className="text-xs text-text-muted dark:text-text-dark-muted text-center">
-      {(versionSnapshot?.ownerName ?? versionSnapshot?.authorName ?? detail.owner_name) ?? 'Autor desconocido'}
+      {(versionSnapshot?.ownerName ?? versionSnapshot?.authorName ?? detail.owner_name) ?? t('common:fields.unknownAuthor')}
       {' · '}
-      {detail.visibility_level ? visibilityLabel(detail.visibility_level) : (detail.is_shared_with_me ? 'Compartida' : 'Personal')}
+      {detail.visibility_level ? visibilityLabel(detail.visibility_level, t) : (detail.is_shared_with_me ? t('templates:visibility.shared') : t('templates:visibility.personal'))}
       {' · '}
       Fecha límite: {formatCalendarDateForBrowser(detail.delivery_deadline)}
       {' · '}
@@ -1042,7 +1042,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                           {validateSelectedBlock.description ? (
                             <BlockContentHtml content={normalizeBlockContentForEditor(validateSelectedBlock.description)} />
                           ) : (
-                            <p className="text-sm text-text-muted italic">Este bloque no tiene descripción.</p>
+                            <p className="text-sm text-text-muted italic">{t('common:noBlockDescription')}</p>
                           )}
                         </div>
                       </div>
@@ -1092,7 +1092,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           )}
 
           {loading && (
-            <p className="text-sm text-text-muted dark:text-text-dark-muted">Cargando documento…</p>
+            <p className="text-sm text-text-muted dark:text-text-dark-muted">{t('common:loadingDocument')}</p>
           )}
           {!loading && !error && detail && (
             <>
@@ -1106,7 +1106,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
               ) : null}
               {validateBlocks.length === 0 ? (
                 <div className="py-20 text-center border-2 border-dashed border-ui-border dark:border-ui-dark-border rounded-xl">
-                  <p className="text-sm text-text-muted italic">Este documento no tiene bloques.</p>
+                  <p className="text-sm text-text-muted italic">{t('noBlocks')}</p>
                 </div>
               ) : (
                 <div className="space-y-12">
@@ -1158,7 +1158,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                                 </svg>
-                                <span>Ver cambios</span>
+                                <span>{t('common:viewChanges')}</span>
                               </button>
                             )}
                             {/* Info button */}
@@ -1176,7 +1176,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
-                                <span>Info</span>
+                                <span>{t('common:info')}</span>
                               </button>
                             )}
                             {/* Messages button */}
@@ -1194,7 +1194,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                               </svg>
-                              <span>Mensajes</span>
+                              <span>{t('common:messages')}</span>
                               {countUnreadCommentsForBlock(block.document_block_id, validateComments) > 0 && (
                                 <span className="ml-1 bg-odoo-purple text-text-inverse px-1.5 py-0.5 rounded-full text-2xs leading-none font-bold">
                                   {countUnreadCommentsForBlock(block.document_block_id, validateComments)}
@@ -1207,7 +1207,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                         <div>
                           {isStructuralBlock(block)
                             ? <StructuralBlockPreview block={block} allBlocks={validateBlocks} />
-                            : nodes.length > 0 ? <BlockContentHtml content={nodes} /> : <p className="text-xs text-text-muted italic">Sin contenido.</p>}
+                            : nodes.length > 0 ? <BlockContentHtml content={nodes} /> : <p className="text-xs text-text-muted italic">{t('common:noContent')}</p>}
                         </div>
                       </section>
                     );
@@ -1221,8 +1221,8 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
         <ConfirmDialog
           open={validateConfirm === 'approve'}
           title={t('approveTitle')}
-          description="Se registrará tu aprobación. Si eres el último validador pendiente, el documento pasará a publicado."
-          confirmLabel="Aprobar"
+          description={t('approve.description')}
+          confirmLabel={t('common:actions.approve')}
           error={validationModalError}
           loading={validationActionLoading}
           onCancel={() => { setValidateConfirm(null); setValidationModalError(null); }}
@@ -1230,21 +1230,19 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
         />
         <ConfirmDialog
           open={validateConfirm === 'reject'}
-          title={validatorHasCommented ? 'Confirmar rechazo' : 'Comentario requerido'}
+          title={validatorHasCommented ? t('rejectDialog.confirmTitle') : t('rejectDialog.commentRequiredTitle')}
           description={
             validatorHasCommented ? (
               <p className="text-sm text-text-secondary dark:text-text-dark-secondary">
-                El documento volverá a borrador para que el titular pueda corregirlo.
-                Tus comentarios en los bloques quedarán registrados como motivo del rechazo.
+                {t('rejectDialog.confirmDescription')}
               </p>
             ) : (
               <p className="text-sm text-text-secondary dark:text-text-dark-secondary">
-                Para rechazar la validación debes dejar al menos un comentario en un bloque del documento explicando
-                el motivo del rechazo. El comentario queda registrado para el titular.
+                {t('rejectDialog.commentRequiredDescription')}
               </p>
             )
           }
-          confirmLabel={validatorHasCommented ? 'Rechazar' : 'Entendido'}
+          confirmLabel={validatorHasCommented ? t('reject') : t('common:actions.understood')}
           variant={validatorHasCommented ? 'danger' : 'primary'}
           error={validationModalError}
           loading={validationActionLoading}
@@ -1330,7 +1328,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                 {block.description ? (
                   <BlockContentHtml content={normalizeBlockContentForEditor(block.description)} />
                 ) : (
-                  <p className="text-sm text-text-muted italic">Este bloque no tiene descripción.</p>
+                  <p className="text-sm text-text-muted italic">{t('common:noBlockDescription')}</p>
                 )}
               </div>
             </div>
@@ -1339,7 +1337,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
         }
       >
         {loading && (
-          <p className="text-sm text-text-muted dark:text-text-dark-muted">Cargando documento…</p>
+          <p className="text-sm text-text-muted dark:text-text-dark-muted">{t('common:loadingDocument')}</p>
         )}
         {error && !loading && (
           <p className="text-sm text-warning-dark dark:text-warning-light">{error}</p>
@@ -1419,7 +1417,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                               </svg>
-                              <span>Ver cambios</span>
+                              <span>{t('common:viewChanges')}</span>
                             </button>
                           )}
                           {hasDescription && (
@@ -1435,7 +1433,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                               </svg>
-                              <span>Info</span>
+                              <span>{t('common:info')}</span>
                             </button>
                           )}
                           {!isPublished && <button
@@ -1450,7 +1448,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                             </svg>
-                            <span>Mensajes</span>
+                            <span>{t('common:messages')}</span>
                             {countUnreadCommentsForBlock(block.document_block_id, reviewComments) > 0 && (
                               <span className="ml-1 bg-odoo-purple text-text-inverse px-1.5 py-0.5 rounded-full text-2xs leading-none font-bold">
                                 {countUnreadCommentsForBlock(block.document_block_id, reviewComments)}
@@ -1462,7 +1460,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                       <div>
                         {isStructuralBlock(block)
                           ? <StructuralBlockPreview block={block} allBlocks={detail.blocks} />
-                          : nodes.length > 0 ? <BlockContentHtml content={nodes} /> : <p className="text-xs text-text-muted italic">Sin contenido.</p>}
+                          : nodes.length > 0 ? <BlockContentHtml content={nodes} /> : <p className="text-xs text-text-muted italic">{t('common:noContent')}</p>}
                       </div>
                     </section>
                   );
@@ -1473,7 +1471,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
             <PaperBlocksArticle
               title={previewTitle}
               blocks={articleBlocks}
-              emptyMessage="Este documento no tiene bloques."
+              emptyMessage={t('noBlocks')}
               renderBlockBody={renderStructuralBody}
             />
           )
@@ -1496,10 +1494,10 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       <ConfirmDialog
         open={showDeleteModal}
         variant="danger"
-        title="¿Eliminar este documento?"
-        description="Estás a punto de eliminar este elemento. Esta acción es irreversible y no se puede deshacer."
-        confirmLabel="Eliminar"
-        cancelLabel="Cancelar"
+        title={t('confirm.deleteTitle')}
+        description={t('common:confirm.deleteIrreversible')}
+        confirmLabel={t('common:actions.delete')}
+        cancelLabel={t('common:actions.cancel')}
         loading={deleteLoading}
         error={deleteError}
         onConfirm={() => void handleDelete()}
@@ -1509,9 +1507,9 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       <ConfirmDialog
         open={newVersionFlow.showConfirm}
         title={t('preview.createNewVersionTitle')}
-        description="Se creará un nuevo borrador editable a partir del documento publicado actual. Podrás modificarlo y volver a enviarlo a validar."
-        confirmLabel="Crear nueva versión"
-        cancelLabel="Cancelar"
+        description={t('newVersion.description')}
+        confirmLabel={t('newVersion.confirm')}
+        cancelLabel={t('common:actions.cancel')}
         loading={newVersionFlow.confirmLoading}
         error={newVersionFlow.confirmError}
         onConfirm={() => void newVersionFlow.handleConfirmNewVersion()}
@@ -1524,7 +1522,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
         title={t('preview.draftAlreadyExistsTitle')}
         icon="🔒"
         description={newVersionFlow.draftBlockedBy ?? ''}
-        confirmLabel="Entendido"
+        confirmLabel={t('common:actions.understood')}
         onConfirm={newVersionFlow.dismissBlockedModal}
         onCancel={newVersionFlow.dismissBlockedModal}
       />
@@ -1536,17 +1534,17 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
         description={
           <div className="space-y-2 text-left">
             <p className="text-sm text-text-secondary dark:text-text-dark-secondary">
-              Se descartarán los cambios en borrador/en revisión y se restaurará la última versión publicada del documento.
+              {t('discardVersion.description')}
             </p>
             {detail?.status === 'in_review' && (
               <p className="text-sm font-bold text-warning-dark dark:text-warning-light">
-                ⚠ Esta versión está en revisión. Los validadores asignados perderán su trabajo si la descartas.
+                {t('discardVersion.inReviewWarning')}
               </p>
             )}
           </div>
         }
-        confirmLabel="Descartar versión"
-        cancelLabel="Cancelar"
+        confirmLabel={t('discardVersion.confirm')}
+        cancelLabel={t('common:actions.cancel')}
         loading={discardVersionLoading}
         error={discardVersionError}
         onConfirm={() => void handleDiscardWorkingVersion()}

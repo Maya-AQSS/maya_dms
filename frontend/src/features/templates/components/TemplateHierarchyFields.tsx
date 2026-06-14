@@ -80,14 +80,14 @@ export function TemplateHierarchyFields({
     <div className={gridClassName}>
       {showStudyType && (
         <div>
-          <FieldLabel>Tipo de Estudio</FieldLabel>
+          <FieldLabel>{t('fields.studyType')}</FieldLabel>
           <Select
             fieldSize="sm"
             value={values.study_type_id}
             disabled={hierarchyLoading}
             onChange={(e) => handleStudyTypeChange(e.target.value)}
           >
-            <option value="">Todos</option>
+            <option value="">{t('common:filters.all')}</option>
             {hierarchy.map((t) => (
               <option key={t.id} value={t.id}>{t.name}</option>
             ))}
@@ -97,14 +97,14 @@ export function TemplateHierarchyFields({
 
       {showEstudio && (
         <div>
-          <FieldLabel>Estudio</FieldLabel>
+          <FieldLabel>{t('fields.study')}</FieldLabel>
           <Select
             fieldSize="sm"
             value={values.study_id}
             disabled={hierarchyLoading || (!filterMode && !values.study_type_id)}
             onChange={(e) => handleStudyChange(e.target.value)}
           >
-            <option value="">Todos</option>
+            <option value="">{t('common:filters.all')}</option>
             {filteredStudies.map((s) => (
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
@@ -121,7 +121,7 @@ export function TemplateHierarchyFields({
             disabled={hierarchyLoading || (!filterMode && !values.study_id)}
             onChange={(e) => handleModuleChange(e.target.value)}
           >
-            <option value="">Todos</option>
+            <option value="">{t('common:filters.all')}</option>
             {filteredModules.map((m) => (
               <option key={m.id} value={m.id}>{m.name}</option>
             ))}
@@ -131,14 +131,14 @@ export function TemplateHierarchyFields({
 
       {showTeam && (
         <div>
-          <FieldLabel>Equipo</FieldLabel>
+          <FieldLabel>{t('fields.team')}</FieldLabel>
           <Select
             fieldSize="sm"
             value={values.team_id}
             disabled={!teams.length}
             onChange={(e) => onFieldChange('team_id', e.target.value)}
           >
-            <option value="">Todos</option>
+            <option value="">{t('common:filters.all')}</option>
             {teams.map((team) => (
               <option key={team.id} value={team.id}>{team.name}</option>
             ))}

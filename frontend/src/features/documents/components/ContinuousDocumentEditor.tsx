@@ -1,4 +1,6 @@
 import { lazy, Suspense, useCallback, useMemo, type MutableRefObject, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { Spinner } from '@ceedcv-maya/shared-ui-react';
 import type { DocumentDisplayBlock } from '../../../types/documents';
 import { PaperBlocksArticle, type PaperArticleBlock } from './PaperBlocksArticle';
@@ -64,23 +66,23 @@ function isInlineEditable(block: DocumentDisplayBlock): boolean {
   return !NON_INLINE_BLOCK_TYPES.has(block.block_type ?? 'content');
 }
 
-function nonInlineLabel(blockType: string | undefined): string {
-  if (blockType === 'cover') return 'Esta portada se rellena en la vista por bloques.';
-  if (blockType === 'index') return 'El índice se genera automáticamente; configúralo en la vista por bloques.';
-  return 'Este bloque no tiene contenido editable.';
+function nonInlineLabel(blockType: string | undefined, t: TFunction): string {
+  if (blockType === 'cover') return t('editor.coverInPerBlock');
+  if (blockType === 'index') return t('editor.indexAuto');
+  return t('editor.notEditableInline');
 }
 
-function SaveStatusBadge({ status }: { status: SaveStatus }) {
+function SaveStatusBadge({ status, t }: { status: SaveStatus; t: TFunction }) {
   if (status === 'saving') {
     return (
-      <span className="text-xs text-text-muted italic animate-pulse">Guardando…</span>
+      <span className="text-xs text-text-muted italic animate-pulse">{t('common:saving')}</span>
     );
   }
   if (status === 'saved') {
-    return <span className="text-xs text-success-dark font-bold">✓ Guardado</span>;
+    return <span className="text-xs text-success-dark font-bold">✓ {t('common:status.saved')}</span>;
   }
   if (status === 'error') {
-    return <span className="text-xs text-danger-dark font-bold">Error al guardar</span>;
+    return <span className="text-xs text-danger-dark font-bold">{t('common:errors.saveFailed')}</span>;
   }
   return null;
 }
@@ -105,6 +107,7 @@ export function ContinuousDocumentEditor({
   openDescriptionBlockKey,
   getCommentCount,
 }: Props) {
+  const { t } = useTranslation(['documents', 'common']);
   const articleBlocks: PaperArticleBlock[] = useMemo(
     () =>
       blocks.map((b) => ({
@@ -246,12 +249,12 @@ export function ContinuousDocumentEditor({
                     onOpenDescription(original);
                   }}
                   className={[btnBase, descriptionOpen ? btnActive : btnIdle].join(' ')}
-                  title="Ver descripción / instrucciones del bloque"
+                  title={t('editor.viewBlockDescription')}
                 >
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <span>Descripción</span>
+                  <span>{t('common:fields.description')}</span>
                 </button>
               )}
               <button
@@ -261,15 +264,15 @@ export function ContinuousDocumentEditor({
                   onToggleCompleted(block.id);
                 }}
                 className={[btnBase, completed ? btnSuccess : btnIdle].join(' ')}
-                title={completed ? 'Marcar como pendiente' : 'Marcar bloque como finalizado'}
+                title={completed ? t('editor.markPending') : t('editor.markCompleted')}
                 aria-pressed={completed}
               >
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
-                <span>{completed ? 'Finalizado' : 'Finalizar'}</span>
+                <span>{completed ? t('editor.completed') : t('editor.complete')}</span>
               </button>
-              {isActive && <SaveStatusBadge status={saveStatus} />}
+              {isActive && <SaveStatusBadge status={saveStatus} t={t} />}
             </div>
           </div>
 
@@ -282,7 +285,7 @@ export function ContinuousDocumentEditor({
                     ? <StructuralBlockPreview block={original} allBlocks={blocks} />
                     : (
                         <p className="text-sm text-text-muted dark:text-text-dark-muted italic">
-                          {nonInlineLabel(original.block_type)}
+                          {nonInlineLabel(original.block_type, t)}
                         </p>
                       )
                 )
@@ -312,6 +315,7 @@ export function ContinuousDocumentEditor({
       openDescriptionBlockKey,
       saveStatus,
       switching,
+      t,
     ],
   );
 

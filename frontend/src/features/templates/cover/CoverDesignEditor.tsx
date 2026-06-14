@@ -30,7 +30,7 @@ interface CoverDesignEditorProps {
  * persistencia (autosave) la gestiona el wizard que lo embebe.
  */
 export function CoverDesignEditor({ value, pageSize, templateId, onChange }: CoverDesignEditorProps) {
-  const { t } = useTranslation('templates');
+  const { t } = useTranslation(['templates', 'common']);
   const page = useMemo(() => pageDimsMm(pageSize), [pageSize]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -116,6 +116,12 @@ export function CoverDesignEditor({ value, pageSize, templateId, onChange }: Cov
           onZDown={handleZDown}
           onRemove={handleRemove}
           renderRegion={(r) => <CoverRegionPreview region={r as CoverRegion} />}
+          labels={{
+            layerUp: t('cover.layerUp'),
+            layerDown: t('cover.layerDown'),
+            remove: t('common:actions.delete'),
+            resize: t('common:actions.resize'),
+          }}
         />
 
         <aside className="w-72 shrink-0 overflow-y-auto border-l border-ui-border bg-white p-4 dark:border-ui-dark-border dark:bg-ui-dark-card">

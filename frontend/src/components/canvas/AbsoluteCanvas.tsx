@@ -8,12 +8,14 @@ export interface AbsoluteCanvasLabels {
   layerUp: string;
   layerDown: string;
   remove: string;
+  resize: string;
 }
 
 const DEFAULT_LABELS: AbsoluteCanvasLabels = {
   layerUp: 'Capa arriba',
   layerDown: 'Capa abajo',
   remove: 'Eliminar',
+  resize: 'Redimensionar',
 };
 
 interface AbsoluteCanvasProps {
@@ -128,7 +130,7 @@ export function AbsoluteCanvas({
                       {/* Tirador de redimensionado (esquina inferior derecha) */}
                       <div
                         className="canvas-resize"
-                        title="Redimensionar"
+                        title={lbl.resize}
                         onPointerDown={(e) => beginInteraction(e, r, 'resize')}
                       />
                     </>

@@ -92,7 +92,10 @@
     "status": "Estat",
     "noDescription": "Sense descripció",
     "author": "Autor",
-    "owner": "Propietari"
+    "owner": "Propietari",
+    "untitled": "(Sense títol)",
+    "noName": "Sense nom",
+    "unknownAuthor": "Autor desconegut"
   },
   "align": {
     "left": "Esquerra",
@@ -108,7 +111,8 @@
   },
   "confirm": {
     "deleteBlock": "Eliminar aquest bloc?",
-    "deleteIrreversible": "Estàs a punt d'eliminar aquest element. Aquesta acció és irreversible i no es pot desfer."
+    "deleteIrreversible": "Estàs a punt d'eliminar aquest element. Aquesta acció és irreversible i no es pot desfer.",
+    "actionIrreversible": "Esta acció no es pot desfer."
   },
   "search": {
     "minChars": "Escriu almenys 2 caràcters per a cercar.",

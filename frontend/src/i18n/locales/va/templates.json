@@ -21,7 +21,9 @@
     "blockType": "Tipus de bloc",
     "blockTheme": "Tema del bloc",
     "defaultTheme": "Tema per defecte de la plantilla",
-    "noBlocksYet": "Encara no s'han afegit blocs."
+    "noBlocksYet": "Encara no s'han afegit blocs.",
+    "deleteBlocksConfirm_one": "Segur que vols eliminar {{count}} bloc?",
+    "deleteBlocksConfirm_other": "Segur que vols eliminar {{count}} blocs?"
   },
   "table": {
     "columns": {
@@ -88,7 +90,12 @@
     "blockCommentsTitle": "Comentaris del Bloc",
     "closePanelAria": "Tancar panell",
     "noBlocks": "Aquesta plantilla no té blocs configurats.",
-    "requiredComments": "Comentaris obligatoris"
+    "requiredComments": "Comentaris obligatoris",
+    "loading": "Carregant plantilla per a revisió…",
+    "notFound": "No s’ha pogut trobar la plantilla",
+    "rejectDescription": "La plantilla tornarà a l’estat d’esborrany i el creador rebrà els teus comentaris per a corregir-la.",
+    "rejectConfirm": "Rebutjar definitivament",
+    "noCommentsDescription": "Per a rebutjar una validació has d’indicar almenys una raó o comentari en algun bloc perquè el creador sàpia què corregir."
   },
   "history": {
     "panelHeader": "⎇ Bloc {{n}} · Historial de canvis",
@@ -125,7 +132,8 @@
     "studyType": "Tipus d'Estudi",
     "study": "Estudi",
     "module": "Mòdul",
-    "team": "Equip"
+    "team": "Equip",
+    "shared": "Compartida"
   },
   "status": {
     "all": "Tots",
@@ -181,7 +189,9 @@
     "fit": "Ajust",
     "uploadError": "Error en pujar la imatge",
     "fieldLabel": "Camp {{n}}",
-    "fieldFallback": "Camp"
+    "fieldFallback": "Camp",
+    "layerUp": "Capa amunt",
+    "layerDown": "Capa avall"
   },
   "newVersion": {
     "description": "Es crearà un nou esborrany editable a partir de la plantilla publicada.",
@@ -197,12 +207,20 @@
   "validators": {
     "empty": "Sense validadors assignats.",
     "removeConfirm": "Estàs a punt d'eliminar aquest validador de la plantilla.",
-    "noUsersFound": "No s'han trobat usuaris amb permís de revisió."
+    "noUsersFound": "No s'han trobat usuaris amb permís de revisió.",
+    "removeTitle": "Eliminar {{name}}?",
+    "removeFallbackName": "este validador",
+    "removeConfirmLabel": "Eliminar definitivament"
   },
   "index": {
-    "autoTitle": "Índex automàtic"
+    "autoTitle": "Índex automàtic",
+    "help": "Estos són els títols interns de tots els blocs. Desmarca els que no vulgues en l’índex. Es prenen en viu: si canvies el nom d’un títol, l’índex canvia. El número de pàgina es calcula en exportar.",
+    "none": "Cap",
+    "all": "Tots",
+    "noHeadings": "Els blocs encara no tenen títols interns (encapçalaments) en el seu contingut."
   },
   "docx": {
+    "importTitle": "Importar blocs des de Word",
     "splitH1": "Un bloc per cada H1",
     "splitH1H2": "Un bloc per cada H1/H2",
     "assignTo": "Assignar a…",
@@ -212,13 +230,26 @@
     "createError": "Ha fallat la creació de blocs. Revisa els que s'hagen creat i reintenta.",
     "kind": {
       "heading": "Encapçalament",
+      "paragraph": "Paràgraf",
       "list": "Llista",
       "table": "Taula",
       "figure": "Figura",
       "blockquote": "Cita",
+      "codeBlock": "Codi",
       "horizontalRule": "Separador",
       "other": "Element"
-    }
+    },
+    "targetsSummary": "{{targets}} blocs destí · {{assigned}}/{{total}} elements assignats",
+    "selectAndCreateHint": "Selecciona elements a l'esquerra i prem + Nou bloc.",
+    "elementsAbbr": "{{count}} el.",
+    "newBlock": "+ Nou bloc",
+    "chunksSummary": "{{count}} elements · {{selected}} seleccionats",
+    "selectAll": "Tots",
+    "autoH1": "Auto H1",
+    "autoH2": "Auto H2",
+    "unassign": "Desassignar",
+    "conversionWarnings": "Word ha generat {{count}} avís(os) de conversió. Algun format (control de canvis, estils no estàndard) pot no haver-se importat.",
+    "partialCreate": "{{created}} bloc(s) creats. {{failed}} han fallat — revisa i prem \"Crear\" per reintentar."
   },
   "selectPlaceholder": "— Seleccionar —",
   "notEditableInState": "No editable en l'estat actual.",
@@ -260,10 +291,25 @@
     "noCreateBlockPermission": "No tens permís per a crear blocs (block.create).",
     "noUpdateBlockPermission": "No tens permís per a actualitzar blocs (block.update).",
     "noDeleteBlockPermission": "No tens permís per a eliminar blocs (block.delete).",
-    "noReorderBlockPermission": "No tens permís per a reordenar blocs (block.update)."
+    "noReorderBlockPermission": "No tens permís per a reordenar blocs (block.update).",
+    "loadFailed": "Error en carregar la plantilla"
   },
   "blockCount_one": "{{count}} bloc",
   "blockCount_other": "{{count}} blocs",
   "unknownAuthor": "Autor desconegut",
-  "deadlineLabel": "Data límit:"
+  "deadlineLabel": "Data límit:",
+  "summary": {
+    "intro": "Revisa totes les dades abans de publicar. Usa el stepper per a tornar a qualsevol pas.",
+    "deliveryDeadline": "Termini d’entrega",
+    "templateValidators": "Validadors de la plantilla",
+    "documentValidators": "Validadors del document",
+    "preview": "Previsualitzar",
+    "blocksCount_one": "Plantilla — {{count}} bloc",
+    "blocksCount_other": "Plantilla — {{count}} blocs",
+    "tabContent": "Contingut",
+    "tabDescription": "Descripció",
+    "noDescription": "Sense descripció.",
+    "noBlockContent": "Este bloc no té contingut.",
+    "blocksList": "Blocs ({{count}})"
+  }
 }

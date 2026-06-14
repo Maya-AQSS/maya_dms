@@ -22,36 +22,36 @@ export function TemplateReviewPage() {
 
     async function loadTemplate() {
       try {
-        const t = await fetchTemplate(id!);
+        const tpl = await fetchTemplate(id!);
 
-        const isReviewer = t.reviewers?.some((r) => r.user_id === profile?.id);
-        const isCreator = t.created_by === profile?.id;
+        const isReviewer = tpl.reviewers?.some((r) => r.user_id === profile?.id);
+        const isCreator = tpl.created_by === profile?.id;
         const canReview = hasPermission(DMS_PERMISSIONS.templateReview);
 
         if (!isReviewer && !isCreator) {
-          setError('No tienes permisos de validación sobre esta plantilla.');
+          setError(t('templates:errors.noValidationPermission'));
           return;
         }
         if (isReviewer && !canReview && !isCreator) {
-          setError('No tienes permiso para revisar plantillas.');
+          setError(t('templates:errors.noReviewPermission'));
           return;
         }
 
-        setTemplate(t);
+        setTemplate(tpl);
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Error al cargar la plantilla');
+        setError(e instanceof Error ? e.message : t('templates:errors.loadFailed'));
       } finally {
         setLoading(false);
       }
     }
 
     void loadTemplate();
-  }, [id, profile, hasPermission]);
+  }, [id, profile, hasPermission, t]);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full text-sm text-text-muted">
-        Cargando plantilla para revisión…
+        {t('templates:review.loading')}
       </div>
     );
   }
@@ -59,7 +59,7 @@ export function TemplateReviewPage() {
   if (error || !template) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-6 text-center space-y-4">
-        <p role="alert" aria-live="assertive" className="text-sm text-danger-dark font-bold">⚠️ {error || 'No se pudo encontrar la plantilla'}</p>
+        <p role="alert" aria-live="assertive" className="text-sm text-danger-dark font-bold">⚠️ {error || t('templates:review.notFound')}</p>
         <BackButton variant="ghost" onClick={() => goBack()} label={t('navigation.backToProcesses')} />
       </div>
     );

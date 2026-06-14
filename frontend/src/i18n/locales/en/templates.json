@@ -21,7 +21,9 @@
     "blockType": "Block type",
     "blockTheme": "Block theme",
     "defaultTheme": "Template default theme",
-    "noBlocksYet": "No blocks have been added yet."
+    "noBlocksYet": "No blocks have been added yet.",
+    "deleteBlocksConfirm_one": "Are you sure you want to delete {{count}} block?",
+    "deleteBlocksConfirm_other": "Are you sure you want to delete {{count}} blocks?"
   },
   "table": {
     "columns": {
@@ -88,7 +90,12 @@
     "blockCommentsTitle": "Block comments",
     "closePanelAria": "Close panel",
     "noBlocks": "This template has no configured blocks.",
-    "requiredComments": "Required comments"
+    "requiredComments": "Required comments",
+    "loading": "Loading template for review…",
+    "notFound": "Template not found",
+    "rejectDescription": "The template will return to draft status and the creator will receive your comments to correct it.",
+    "rejectConfirm": "Reject definitively",
+    "noCommentsDescription": "To reject a validation you must indicate at least one reason or comment in a block so the creator knows what to fix."
   },
   "history": {
     "panelHeader": "⎇ Block {{n}} · Change history",
@@ -125,7 +132,8 @@
     "studyType": "Study Type",
     "study": "Study",
     "module": "Module",
-    "team": "Team"
+    "team": "Team",
+    "shared": "Shared"
   },
   "status": {
     "all": "All",
@@ -181,7 +189,9 @@
     "fit": "Fit",
     "uploadError": "Error uploading the image",
     "fieldLabel": "Field {{n}}",
-    "fieldFallback": "Field"
+    "fieldFallback": "Field",
+    "layerUp": "Layer up",
+    "layerDown": "Layer down"
   },
   "newVersion": {
     "description": "A new editable draft will be created from the published template.",
@@ -197,12 +207,20 @@
   "validators": {
     "empty": "No validators assigned.",
     "removeConfirm": "You are about to remove this validator from the template.",
-    "noUsersFound": "No users with review permission were found."
+    "noUsersFound": "No users with review permission were found.",
+    "removeTitle": "Remove {{name}}?",
+    "removeFallbackName": "this validator",
+    "removeConfirmLabel": "Remove definitively"
   },
   "index": {
-    "autoTitle": "Automatic index"
+    "autoTitle": "Automatic index",
+    "help": "These are the internal headings of all blocks. Uncheck the ones you do not want in the index. They are taken live: if you rename a heading, the index changes. The page number is computed on export.",
+    "none": "None",
+    "all": "All",
+    "noHeadings": "The blocks do not yet have internal headings in their content."
   },
   "docx": {
+    "importTitle": "Import blocks from Word",
     "splitH1": "One block per H1",
     "splitH1H2": "One block per H1/H2",
     "assignTo": "Assign to…",
@@ -212,13 +230,26 @@
     "createError": "Block creation failed. Review the ones created and retry.",
     "kind": {
       "heading": "Heading",
+      "paragraph": "Paragraph",
       "list": "List",
       "table": "Table",
       "figure": "Figure",
       "blockquote": "Quote",
+      "codeBlock": "Code",
       "horizontalRule": "Separator",
       "other": "Element"
-    }
+    },
+    "targetsSummary": "{{targets}} target blocks · {{assigned}}/{{total}} elements assigned",
+    "selectAndCreateHint": "Select elements on the left and click + New block.",
+    "elementsAbbr": "{{count}} el.",
+    "newBlock": "+ New block",
+    "chunksSummary": "{{count}} elements · {{selected}} selected",
+    "selectAll": "All",
+    "autoH1": "Auto H1",
+    "autoH2": "Auto H2",
+    "unassign": "Unassign",
+    "conversionWarnings": "Word produced {{count}} conversion warning(s). Some formatting (tracked changes, non-standard styles) may not have been imported.",
+    "partialCreate": "{{created}} block(s) created. {{failed}} failed — review and click \"Create\" to retry."
   },
   "selectPlaceholder": "— Select —",
   "notEditableInState": "Not editable in current state.",
@@ -260,10 +291,25 @@
     "noCreateBlockPermission": "You do not have permission to create blocks (block.create).",
     "noUpdateBlockPermission": "You do not have permission to update blocks (block.update).",
     "noDeleteBlockPermission": "You do not have permission to delete blocks (block.delete).",
-    "noReorderBlockPermission": "You do not have permission to reorder blocks (block.update)."
+    "noReorderBlockPermission": "You do not have permission to reorder blocks (block.update).",
+    "loadFailed": "Failed to load the template"
   },
   "blockCount_one": "{{count}} block",
   "blockCount_other": "{{count}} blocks",
   "unknownAuthor": "Unknown author",
-  "deadlineLabel": "Deadline:"
+  "deadlineLabel": "Deadline:",
+  "summary": {
+    "intro": "Review all data before publishing. Use the stepper to go back to any step.",
+    "deliveryDeadline": "Delivery deadline",
+    "templateValidators": "Template validators",
+    "documentValidators": "Document validators",
+    "preview": "Preview",
+    "blocksCount_one": "Template — {{count}} block",
+    "blocksCount_other": "Template — {{count}} blocks",
+    "tabContent": "Content",
+    "tabDescription": "Description",
+    "noDescription": "No description.",
+    "noBlockContent": "This block has no content.",
+    "blocksList": "Blocks ({{count}})"
+  }
 }

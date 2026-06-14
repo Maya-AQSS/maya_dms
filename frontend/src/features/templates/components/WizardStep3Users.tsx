@@ -126,6 +126,7 @@ function ValidatorSection({
   onValidationTypeChange?: (t: 'libre' | 'ordenada') => void;
   readOnly?: boolean;
 }) {
+  const { t } = useTranslation(['templates', 'common']);
   const sensors = useSensors(useSensor(PointerSensor));
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
@@ -187,7 +188,7 @@ function ValidatorSection({
 
       <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2">
         {validators.length === 0 ? (
-          <p className="text-xs text-text-muted italic">Sin validadores asignados.</p>
+          <p className="text-xs text-text-muted italic">{t('templates:validators.empty')}</p>
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={validators.map((v) => v.userId)} strategy={verticalListSortingStrategy}>
@@ -214,17 +215,17 @@ function ValidatorSection({
 
       <ConfirmDialog
         open={confirmDelete !== null && !readOnly}
-        title={`¿Eliminar a ${pendingValidator?.name ?? 'este validador'}?`}
+        title={t('templates:validators.removeTitle', { name: pendingValidator?.name ?? t('templates:validators.removeFallbackName') })}
         description={
           <>
-            <p>Estás a punto de eliminar este validador de la plantilla.</p>
+            <p>{t('templates:validators.removeConfirm')}</p>
             <p className="mt-3 font-bold text-danger-dark">
-              Esta acción es irreversible y no se puede deshacer.
+              {t('common:confirm.deleteIrreversible')}
             </p>
           </>
         }
-        confirmLabel="Eliminar definitivamente"
-        cancelLabel="Cancelar"
+        confirmLabel={t('templates:validators.removeConfirmLabel')}
+        cancelLabel={t('common:actions.cancel')}
         variant="danger"
         onConfirm={handleConfirmRemove}
         onCancel={() => setConfirmDelete(null)}
@@ -286,20 +287,20 @@ function UserAddPanel({
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1.5">
-        {searching && <p className="text-xs text-text-muted italic p-2">Cargando usuarios…</p>}
+        {searching && <p className="text-xs text-text-muted italic p-2">{t('common:loadingUsers')}</p>}
         {searchError && <p className="text-xs text-danger-dark p-2">{searchError}</p>}
         {!searching &&
           !searchError &&
           searchEnabled &&
           searchQuery.trim().length > 0 &&
           searchQuery.trim().length < 2 && (
-            <p className="text-xs text-text-muted italic p-2">Escribe al menos 2 caracteres para buscar.</p>
+            <p className="text-xs text-text-muted italic p-2">{t('common:search.minChars')}</p>
           )}
         {!searching &&
           !searchError &&
           searchQuery.trim().length >= 2 &&
           filteredUsers.length === 0 && (
-            <p className="text-xs text-text-muted italic p-2">No se encontraron usuarios con permiso de revisión.</p>
+            <p className="text-xs text-text-muted italic p-2">{t('templates:validators.noUsersFound')}</p>
           )}
         {!searching && !searchError && filteredUsers.map((u) => {
           const initials = u.name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');

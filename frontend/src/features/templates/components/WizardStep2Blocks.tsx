@@ -744,9 +744,9 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   }, [activeSingleId, queryClient, template.id]);
 
   const renderSaveStatus = () => {
-    if (saveStatus === 'saving') return <span className="text-xs text-text-muted italic">Guardando…</span>;
-    if (saveStatus === 'saved') return <span className="text-xs text-success-dark flex items-center gap-1">✓ Guardado</span>;
-    if (saveStatus === 'error') return <span className="text-xs text-danger-dark">Error al guardar</span>;
+    if (saveStatus === 'saving') return <span className="text-xs text-text-muted italic">{t('common:saving')}</span>;
+    if (saveStatus === 'saved') return <span className="text-xs text-success-dark flex items-center gap-1">✓ {t('common:status.saved')}</span>;
+    if (saveStatus === 'error') return <span className="text-xs text-danger-dark">{t('common:errors.saveFailed')}</span>;
     return null;
   };
 
@@ -839,7 +839,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
       <div className="flex-1 min-w-0 min-h-0 flex flex-col bg-ui-body/30 dark:bg-ui-dark-bg overflow-visible">
         {panelMode === 'empty' && (
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center opacity-40">
-            <p className="text-sm font-bold uppercase tracking-widest">Selecciona un bloque para editar</p>
+            <p className="text-sm font-bold uppercase tracking-widest">{t('templates:wizard.selectBlock')}</p>
           </div>
         )}
 
@@ -882,9 +882,9 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                         size="xs"
                         onClick={() => setShowCommentPanel(true)}
                         className="relative text-odoo-purple border-odoo-purple/40 hover:bg-odoo-purple/5"
-                        title="Comentarios de revisión"
+                        title={t('templates:reviewComments')}
                       >
-                        <span className="hidden sm:inline">Comentarios</span>
+                        <span className="hidden sm:inline">{t('common:comments.label')}</span>
                         <span className="sm:hidden" aria-hidden>💬</span>
                         {blockCommentsCount > 0 && (
                           <span
@@ -983,7 +983,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                   <div className="w-full bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
                     <div className="p-6 space-y-4">
                       <div>
-                        <FieldLabel required>Nombre del bloque</FieldLabel>
+                        <FieldLabel required>{t('templates:wizard.blockName')}</FieldLabel>
                         <TextInput
                           value={formName}
                           placeholder={t('documents:blocks.newBlockPlaceholder')}
@@ -998,7 +998,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                         {nameError && <p className="mt-1 text-xs text-danger">{nameError}</p>}
                       </div>
                       <div>
-                        <FieldLabel>Estado</FieldLabel>
+                        <FieldLabel>{t('common:fields.status')}</FieldLabel>
                         <BlockUiStateToggle
                           value={formUiState}
                           disabled={formBlockType === 'blank' || formBlockType === 'index'}
@@ -1016,7 +1016,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                         )}
                       </div>
                       <div>
-                        <FieldLabel>Tipo de bloque</FieldLabel>
+                        <FieldLabel>{t('templates:wizard.blockType')}</FieldLabel>
                         <Select
                           value={formBlockType}
                           onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -1068,7 +1068,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                         </p>
                       </div>
                       <div>
-                        <FieldLabel>Tema del bloque</FieldLabel>
+                        <FieldLabel>{t('templates:wizard.blockTheme')}</FieldLabel>
                         <Select
                           value={formThemeId ?? ''}
                           disabled={!formApplyTheme}
@@ -1077,7 +1077,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                             setTabIsDirty(true);
                           }}
                         >
-                          <option value="">Tema por defecto de la plantilla</option>
+                          <option value="">{t('templates:wizard.defaultTheme')}</option>
                           {publishedThemes.map((th) => (
                             <option key={th.id} value={th.id}>{th.name}</option>
                           ))}
@@ -1180,7 +1180,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                             <div className="p-4 flex items-center justify-center min-h-[100px]">
                               <div className="flex items-center gap-2">
                                 <Spinner size="md" />
-                                <span>Guardando cambios...</span>
+                                <span>{t('common:savingChanges')}</span>
                               </div>
                             </div>
                           )}
@@ -1270,9 +1270,9 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
 
       <ConfirmDialog
         open={deleteModal}
-        title="¿Eliminar bloque?"
-        description={panelMode === 'multi' ? `¿Seguro que quieres eliminar ${selectedBlockIds.length} bloques?` : 'Esta acción no se puede deshacer.'}
-        confirmLabel="Eliminar"
+        title={t('common:confirm.deleteBlock')}
+        description={panelMode === 'multi' ? t('templates:wizard.deleteBlocksConfirm', { count: selectedBlockIds.length }) : t('common:confirm.actionIrreversible')}
+        confirmLabel={t('common:actions.delete')}
         variant="danger"
         onConfirm={handleDelete}
         onCancel={() => setDeleteModal(false)}

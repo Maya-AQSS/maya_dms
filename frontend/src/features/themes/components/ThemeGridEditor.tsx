@@ -185,6 +185,7 @@ export function ThemeGridEditor({ theme, onSave, embedded, onClose }: ThemeGridE
             layerUp: t('themes:layerUp'),
             layerDown: t('themes:layerDown'),
             remove: t('common:actions.delete'),
+            resize: t('common:actions.resize'),
           }}
         />
 

@@ -23,7 +23,7 @@
     "searchOwner": "Search for a new owner…",
     "view": "View:",
     "closeDescription": "Close description",
-    "fillBlocksFirst": "You must fill in all editable blocks before continuing.",
+    "fillBlocksFirst": "You must fill in all editable blocks before continuing. Pending blocks:",
     "confirmSave": "Confirm save",
     "noValidators": "No validators configured",
     "viewMode": {
@@ -36,7 +36,18 @@
       "exitFullscreenTitle": "Exit fullscreen (Esc)",
       "showComments": "Comments",
       "hideComments": "Hide comments"
-    }
+    },
+    "deleteBlockConfirm": "This optional block will be removed from the document. This action cannot be undone.",
+    "noValidatorsDescription": "The template has no document validators. The document will be published directly without review. To add validators, edit the template.",
+    "continueAnyway": "Continue anyway",
+    "saveExitDescription": "Do you want to save and exit without submitting? The document will remain in draft status.",
+    "saveExitConfirm": "Yes, save and exit",
+    "changelogSubmitTitle": "Confirm submission for validation",
+    "changelogPublishTitle": "Confirm publication",
+    "sending": "Submitting…",
+    "publishing": "Publishing…",
+    "submitConfirm": "Yes, submit for validation",
+    "publishConfirm": "Yes, publish"
   },
   "table": {
     "columns": {
@@ -79,7 +90,8 @@
     "clearFiltersLabel": "Clear",
     "pageSizeLabel": "Per page",
     "deadlineAria": "Unpublished documents whose validation deadline is this date or earlier (published rows do not apply)",
-    "paginationInfo": "{{from}}–{{to}} of {{total}}"
+    "paginationInfo": "{{from}}–{{to}} of {{total}}",
+    "emptyFilteredSchedules": "No teaching schedules with the current filters."
   },
   "diff": {
     "previousBlock": "Previous block",
@@ -215,10 +227,18 @@
     "templateNoProcess": "The selected template has no associated process.",
     "stillLoading": "The document is still loading. Please wait a moment…",
     "invalidId": "Invalid document identifier.",
-    "invalidIdOrTemplate": "Invalid document or template identifier."
+    "invalidIdOrTemplate": "Invalid document or template identifier.",
+    "noReviewPermission": "You do not have permission to validate documents (document.review)."
   },
   "editor": {
-    "viewBlockDescription": "View block description / instructions"
+    "viewBlockDescription": "View block description / instructions",
+    "coverInPerBlock": "This cover is filled in the per-block view.",
+    "indexAuto": "The index is generated automatically; configure it in the per-block view.",
+    "notEditableInline": "This block has no editable content.",
+    "markPending": "Mark as pending",
+    "markCompleted": "Mark block as completed",
+    "completed": "Completed",
+    "complete": "Complete"
   },
   "approve": {
     "description": "Your approval will be recorded. If you are the last validator, the document will be published."
@@ -231,10 +251,24 @@
     "confirm": "Create new version"
   },
   "discardVersion": {
-    "confirm": "Discard version"
+    "confirm": "Discard version",
+    "description": "Draft/in-review changes will be discarded and the last published version of the document will be restored.",
+    "inReviewWarning": "⚠ This version is in review. The assigned validators will lose their work if you discard it."
   },
   "selector": {
     "empty": "There are no usable templates to create documents with the current filters.",
     "publishedSince": "Published since"
+  },
+  "viewDocument": "View document",
+  "reject": "Reject",
+  "rejectValidation": "Reject validation",
+  "rejectDialog": {
+    "confirmTitle": "Confirm rejection",
+    "commentRequiredTitle": "Comment required",
+    "confirmDescription": "The document will return to draft so the owner can correct it. Your block comments will be recorded as the reason for rejection.",
+    "commentRequiredDescription": "To reject the validation you must leave at least one comment in a document block explaining the reason for rejection. The comment is recorded for the owner."
+  },
+  "summary": {
+    "deliveryDeadline": "Delivery deadline"
   }
 }

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export type BlockListItemVariant =
   | 'default'
@@ -61,6 +62,7 @@ export function BlockListItem({
   isCompleted = false,
   onClick,
 }: Props) {
+  const { t } = useTranslation('common');
   const titleColor =
     variant === 'selected'
       ? 'text-odoo-purple'
@@ -93,18 +95,18 @@ export function BlockListItem({
             </span>
           )}
           <span className={`flex-1 truncate text-xs font-bold ${titleColor}`}>
-            {title || '(Sin título)'}
+            {title || t('fields.untitled')}
           </span>
           {hasUnreadComments && (
             <span
               className="w-2 h-2 rounded-full bg-warning shadow-[0_0_8px_rgba(255,193,7,0.5)]"
-              title="Mensajes sin leer"
+              title={t('unreadMessages')}
             />
           )}
           {isEmpty && (
             <span
               className="w-2 h-2 rounded-full bg-danger shadow-[0_0_6px_rgba(220,38,38,0.5)]"
-              title="Obligatorio — este bloque debe rellenarse"
+              title={t('requiredBlock')}
             />
           )}
           {isCompleted && (

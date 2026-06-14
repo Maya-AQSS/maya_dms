@@ -21,7 +21,7 @@ export function DocumentEditorPage() {
   if (!documentId && !templateId) {
     return (
       <div className="p-6">
-        <p className="text-sm text-warning-dark dark:text-warning-light mb-4">Identificador de documento o plantilla no válido.</p>
+        <p className="text-sm text-warning-dark dark:text-warning-light mb-4">{t('documents:errors.invalidIdOrTemplate')}</p>
         <BackButton
           variant="outline"
           label={t('navigation.backToProcesses')}

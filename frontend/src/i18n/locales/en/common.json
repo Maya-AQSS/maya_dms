@@ -92,7 +92,10 @@
     "status": "Status",
     "noDescription": "No description",
     "author": "Author",
-    "owner": "Owner"
+    "owner": "Owner",
+    "untitled": "(Untitled)",
+    "noName": "No name",
+    "unknownAuthor": "Unknown author"
   },
   "align": {
     "left": "Left",
@@ -108,7 +111,8 @@
   },
   "confirm": {
     "deleteBlock": "Delete this block?",
-    "deleteIrreversible": "You are about to delete this item. This action is irreversible and cannot be undone."
+    "deleteIrreversible": "You are about to delete this item. This action is irreversible and cannot be undone.",
+    "actionIrreversible": "This action cannot be undone."
   },
   "search": {
     "minChars": "Type at least 2 characters to search.",

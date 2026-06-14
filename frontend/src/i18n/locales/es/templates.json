@@ -21,7 +21,9 @@
     "blockType": "Tipo de bloque",
     "blockTheme": "Tema del bloque",
     "defaultTheme": "Tema por defecto de la plantilla",
-    "noBlocksYet": "Aún no se han añadido bloques."
+    "noBlocksYet": "Aún no se han añadido bloques.",
+    "deleteBlocksConfirm_one": "¿Seguro que quieres eliminar {{count}} bloque?",
+    "deleteBlocksConfirm_other": "¿Seguro que quieres eliminar {{count}} bloques?"
   },
   "table": {
     "columns": {
@@ -88,7 +90,12 @@
     "blockCommentsTitle": "Comentarios del Bloque",
     "closePanelAria": "Cerrar panel",
     "noBlocks": "Esta plantilla no tiene bloques configurados.",
-    "requiredComments": "Comentarios obligatorios"
+    "requiredComments": "Comentarios obligatorios",
+    "loading": "Cargando plantilla para revisión…",
+    "notFound": "No se pudo encontrar la plantilla",
+    "rejectDescription": "La plantilla volverá al estado de borrador y el creador recibirá tus comentarios para corregirla.",
+    "rejectConfirm": "Rechazar definitivamente",
+    "noCommentsDescription": "Para rechazar una validación debes indicar al menos una razón o comentario en algún bloque para que el creador sepa qué corregir."
   },
   "history": {
     "panelHeader": "⎇ Bloque {{n}} · Historial de cambios",
@@ -125,7 +132,8 @@
     "studyType": "Tipo de Estudio",
     "study": "Estudio",
     "module": "Módulo",
-    "team": "Equipo"
+    "team": "Equipo",
+    "shared": "Compartida"
   },
   "status": {
     "all": "Todos",
@@ -181,7 +189,9 @@
     "fit": "Ajuste",
     "uploadError": "Error subiendo la imagen",
     "fieldLabel": "Campo {{n}}",
-    "fieldFallback": "Campo"
+    "fieldFallback": "Campo",
+    "layerUp": "Capa arriba",
+    "layerDown": "Capa abajo"
   },
   "newVersion": {
     "description": "Se creará un nuevo borrador editable a partir de la plantilla publicada.",
@@ -197,12 +207,20 @@
   "validators": {
     "empty": "Sin validadores asignados.",
     "removeConfirm": "Estás a punto de eliminar este validador de la plantilla.",
-    "noUsersFound": "No se encontraron usuarios con permiso de revisión."
+    "noUsersFound": "No se encontraron usuarios con permiso de revisión.",
+    "removeTitle": "¿Eliminar a {{name}}?",
+    "removeFallbackName": "este validador",
+    "removeConfirmLabel": "Eliminar definitivamente"
   },
   "index": {
-    "autoTitle": "Índice automático"
+    "autoTitle": "Índice automático",
+    "help": "Estos son los títulos internos de todos los bloques. Desmarca los que no quieras en el índice. Se toman en vivo: si renombras un título, el índice cambia. El número de página se calcula al exportar.",
+    "none": "Ninguno",
+    "all": "Todos",
+    "noHeadings": "Los bloques aún no tienen títulos internos (encabezados) en su contenido."
   },
   "docx": {
+    "importTitle": "Importar bloques desde Word",
     "splitH1": "Un bloque por cada H1",
     "splitH1H2": "Un bloque por cada H1/H2",
     "assignTo": "Asignar a…",
@@ -212,13 +230,26 @@
     "createError": "Falló la creación de bloques. Revisa los que se hayan creado y reintenta.",
     "kind": {
       "heading": "Encabezado",
+      "paragraph": "Párrafo",
       "list": "Lista",
       "table": "Tabla",
       "figure": "Figura",
       "blockquote": "Cita",
+      "codeBlock": "Código",
       "horizontalRule": "Separador",
       "other": "Elemento"
-    }
+    },
+    "targetsSummary": "{{targets}} bloques destino · {{assigned}}/{{total}} elementos asignados",
+    "selectAndCreateHint": "Selecciona elementos a la izquierda y pulsa + Nuevo bloque.",
+    "elementsAbbr": "{{count}} el.",
+    "newBlock": "+ Nuevo bloque",
+    "chunksSummary": "{{count}} elementos · {{selected}} seleccionados",
+    "selectAll": "Todos",
+    "autoH1": "Auto H1",
+    "autoH2": "Auto H2",
+    "unassign": "Desasignar",
+    "conversionWarnings": "Word generó {{count}} aviso(s) de conversión. Algún formato (control de cambios, estilos no estándar) puede no haberse importado.",
+    "partialCreate": "{{created}} bloque(s) creados. {{failed}} fallaron — revisa y pulsa \"Crear\" para reintentar."
   },
   "selectPlaceholder": "— Seleccionar —",
   "notEditableInState": "No editable en estado actual.",
@@ -260,10 +291,25 @@
     "noCreateBlockPermission": "No tienes permiso para crear bloques (block.create).",
     "noUpdateBlockPermission": "No tienes permiso para actualizar bloques (block.update).",
     "noDeleteBlockPermission": "No tienes permiso para eliminar bloques (block.delete).",
-    "noReorderBlockPermission": "No tienes permiso para reordenar bloques (block.update)."
+    "noReorderBlockPermission": "No tienes permiso para reordenar bloques (block.update).",
+    "loadFailed": "Error al cargar la plantilla"
   },
   "blockCount_one": "{{count}} bloque",
   "blockCount_other": "{{count}} bloques",
   "unknownAuthor": "Autor desconocido",
-  "deadlineLabel": "Fecha límite:"
+  "deadlineLabel": "Fecha límite:",
+  "summary": {
+    "intro": "Revisa todos los datos antes de publicar. Usa el stepper para volver a cualquier paso.",
+    "deliveryDeadline": "Plazo de entrega",
+    "templateValidators": "Validadores de la plantilla",
+    "documentValidators": "Validadores del documento",
+    "preview": "Previsualizar",
+    "blocksCount_one": "Plantilla — {{count}} bloque",
+    "blocksCount_other": "Plantilla — {{count}} bloques",
+    "tabContent": "Contenido",
+    "tabDescription": "Descripción",
+    "noDescription": "Sin descripción.",
+    "noBlockContent": "Este bloque no tiene contenido.",
+    "blocksList": "Bloques ({{count}})"
+  }
 }

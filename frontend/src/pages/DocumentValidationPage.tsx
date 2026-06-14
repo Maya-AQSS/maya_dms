@@ -18,7 +18,7 @@ export function DocumentValidationPage() {
   if (!documentId) {
     return (
       <div className="p-6">
-        <p className="text-sm text-warning-dark dark:text-warning-light mb-4">Identificador de documento no válido.</p>
+        <p className="text-sm text-warning-dark dark:text-warning-light mb-4">{t('documents:errors.invalidId')}</p>
         <BackButton
           variant="outline"
           label={t('navigation.backToProcesses')}
@@ -31,7 +31,7 @@ export function DocumentValidationPage() {
   if (profileLoading) {
     return (
       <div className="p-6">
-        <p className="text-sm text-text-secondary dark:text-text-dark-secondary">Cargando permisos…</p>
+        <p className="text-sm text-text-secondary dark:text-text-dark-secondary">{t('loadingPermissions')}</p>
       </div>
     );
   }
@@ -40,10 +40,10 @@ export function DocumentValidationPage() {
     return (
       <div className="p-6">
         <p className="text-sm text-warning-dark dark:text-warning-light mb-4">
-          No tienes permiso para validar documentos (document.review).
+          {t('documents:errors.noReviewPermission')}
         </p>
         <Link to={`/documents/${documentId}`}>
-          <Button variant="secondary">Ver documento</Button>
+          <Button variant="secondary">{t('documents:viewDocument')}</Button>
         </Link>
       </div>
     );

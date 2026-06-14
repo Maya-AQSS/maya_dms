@@ -10,6 +10,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import {
   docxToHtmlResult,
   splitHtmlIntoBlocks,
@@ -36,6 +37,7 @@ export interface DocxBlockSplitterProps {
 }
 
 export function DocxBlockSplitter({ open, onCancel, onConfirm, isDark = false }: DocxBlockSplitterProps) {
+  const { t } = useTranslation('templates');
   const [filename, setFilename] = useState<string | null>(null);
   const [chunks, setChunks] = useState<BlockChunk[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -82,19 +84,17 @@ export function DocxBlockSplitter({ open, onCancel, onConfirm, isDark = false }:
       setTargets([]);
       blockCounter.current = 0;
       setStatus('ready');
-      if (parsed.length === 0) setError('El documento no contiene contenido importable.');
+      if (parsed.length === 0) setError(t('docx.noImportable'));
       const warns = messages.filter((m: { type: string }) => m.type === 'warning' || m.type === 'error');
       if (warns.length > 0) {
-        setWarning(
-          `Word generó ${warns.length} aviso(s) de conversión. Algún formato (control de cambios, estilos no estándar) puede no haberse importado.`,
-        );
+        setWarning(t('docx.conversionWarnings', { count: warns.length }));
       }
     } catch (e) {
       console.error('[DocxBlockSplitter] parse failed', e);
       setStatus('error');
-      setError('No se pudo leer el archivo. ¿Es un .docx válido?');
+      setError(t('docx.readError'));
     }
-  }, []);
+  }, [t]);
 
   const handleToggleSelection = useCallback(
     (index: number, mode: 'single' | 'toggle' | 'range') => {
@@ -214,15 +214,15 @@ export function DocxBlockSplitter({ open, onCancel, onConfirm, isDark = false }:
       setStatus('ready');
       setProgress(null);
       setError(
-        `${createdCount} bloque(s) creados. ${payload.length - createdCount} fallaron — revisa y pulsa "Crear" para reintentar.`,
+        t('docx.partialCreate', { created: createdCount, failed: payload.length - createdCount }),
       );
     } catch (e) {
       console.error('[DocxBlockSplitter] create failed', e);
       setStatus('ready');
       setProgress(null);
-      setError('Falló la creación de bloques. Revisa los que se hayan creado y reintenta.');
+      setError(t('docx.createError'));
     }
-  }, [targets, chunksByTarget, onConfirm, reset, onCancel]);
+  }, [targets, chunksByTarget, onConfirm, reset, onCancel, t]);
 
   // Atajos de teclado: Esc cierra, Ctrl/Cmd+A selecciona todo, Enter crea.
   useEffect(() => {

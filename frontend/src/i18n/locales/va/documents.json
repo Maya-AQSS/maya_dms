@@ -23,7 +23,7 @@
     "searchOwner": "Cercar nou propietari…",
     "view": "Vista:",
     "closeDescription": "Tancar descripció",
-    "fillBlocksFirst": "Has d'omplir tots els blocs editables abans de continuar.",
+    "fillBlocksFirst": "Has d'omplir tots els blocs editables abans de continuar. Blocs pendents:",
     "confirmSave": "Confirmar guardat",
     "noValidators": "Sense validadors configurats",
     "viewMode": {
@@ -36,7 +36,18 @@
       "exitFullscreenTitle": "Eixir de pantalla completa (Esc)",
       "showComments": "Comentaris",
       "hideComments": "Amagar comentaris"
-    }
+    },
+    "deleteBlockConfirm": "Este bloc opcional s’eliminarà del document. Esta acció no es pot desfer.",
+    "noValidatorsDescription": "La plantilla no té validadors de document. El document es publicarà directament sense revisió. Per a afegir validadors, edita la plantilla.",
+    "continueAnyway": "Continuar igualment",
+    "saveExitDescription": "Vols guardar i eixir sense enviar? El document romandrà en estat esborrany.",
+    "saveExitConfirm": "Sí, guardar i eixir",
+    "changelogSubmitTitle": "Confirmar enviament a validar",
+    "changelogPublishTitle": "Confirmar publicació",
+    "sending": "Enviant…",
+    "publishing": "Publicant…",
+    "submitConfirm": "Sí, enviar a validar",
+    "publishConfirm": "Sí, publicar"
   },
   "table": {
     "columns": {
@@ -79,7 +90,8 @@
     "clearFiltersLabel": "Netejar",
     "pageSizeLabel": "Per pàgina",
     "deadlineAria": "Documents no publicats amb data límit de validació en esta data o anterior (les files publicades no apliquen)",
-    "paginationInfo": "{{from}}–{{to}} de {{total}}"
+    "paginationInfo": "{{from}}–{{to}} de {{total}}",
+    "emptyFilteredSchedules": "No hi ha programacions didàctiques amb els filtres actuals."
   },
   "diff": {
     "previousBlock": "Bloc anterior",
@@ -215,10 +227,18 @@
     "templateNoProcess": "La plantilla seleccionada no té procés associat.",
     "stillLoading": "El document encara s'està carregant. Espera un moment…",
     "invalidId": "Identificador de document no vàlid.",
-    "invalidIdOrTemplate": "Identificador de document o plantilla no vàlid."
+    "invalidIdOrTemplate": "Identificador de document o plantilla no vàlid.",
+    "noReviewPermission": "No tens permís per a validar documents (document.review)."
   },
   "editor": {
-    "viewBlockDescription": "Veure descripció / instruccions del bloc"
+    "viewBlockDescription": "Veure descripció / instruccions del bloc",
+    "coverInPerBlock": "Esta portada s’ompli en la vista per blocs.",
+    "indexAuto": "L’índex es genera automàticament; configura’l en la vista per blocs.",
+    "notEditableInline": "Este bloc no té contingut editable.",
+    "markPending": "Marcar com a pendent",
+    "markCompleted": "Marcar bloc com a finalitzat",
+    "completed": "Finalitzat",
+    "complete": "Finalitzar"
   },
   "approve": {
     "description": "Es registrarà la teua aprovació. Si ets l'últim validador, el document quedarà publicat."
@@ -231,10 +251,24 @@
     "confirm": "Crear nova versió"
   },
   "discardVersion": {
-    "confirm": "Descartar versió"
+    "confirm": "Descartar versió",
+    "description": "Es descartaran els canvis en esborrany/en revisió i es restaurarà l’última versió publicada del document.",
+    "inReviewWarning": "⚠ Esta versió està en revisió. Els validadors assignats perdran el seu treball si la descartes."
   },
   "selector": {
     "empty": "No hi ha plantilles utilitzables per a crear documents amb els filtres actuals.",
     "publishedSince": "Publicades des de"
+  },
+  "viewDocument": "Veure document",
+  "reject": "Rebutjar",
+  "rejectValidation": "Rebutjar validació",
+  "rejectDialog": {
+    "confirmTitle": "Confirmar rebuig",
+    "commentRequiredTitle": "Comentari requerit",
+    "confirmDescription": "El document tornarà a esborrany perquè el titular puga corregir-lo. Els teus comentaris en els blocs quedaran registrats com a motiu del rebuig.",
+    "commentRequiredDescription": "Per a rebutjar la validació has de deixar almenys un comentari en un bloc del document explicant el motiu del rebuig. El comentari queda registrat per al titular."
+  },
+  "summary": {
+    "deliveryDeadline": "Termini d’entrega"
   }
 }

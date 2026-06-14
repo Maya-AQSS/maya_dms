@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { TemplateBlock } from '../../../types/blocks';
 import type { Template } from '../../../types/templates';
 import { visibilityLabel } from '../constants';
@@ -52,6 +53,7 @@ export function WizardStep4Summary({
   onBlocksLoadingChange,
   onBlocksChange,
 }: Props) {
+  const { t } = useTranslation(['templates', 'common', 'documents']);
   const { blocks, loading } = useTemplateBlocks(template.id, {
     created_by: template.created_by,
     status: template.status,
@@ -79,17 +81,17 @@ export function WizardStep4Summary({
   }, [blocks, selectedBlock]);
 
   const hierarchyFields = [
-    { label: 'Tipo de Estudio', value: template.study_type_id },
-    { label: 'Estudio', value: template.study_id },
-    { label: 'Módulo', value: template.module_id },
-    { label: 'Equipo', value: template.team_id },
+    { label: t('templates:fields.studyType'), value: template.study_type_id },
+    { label: t('templates:fields.study'), value: template.study_id },
+    { label: t('documents:fields.module'), value: template.module_id },
+    { label: t('templates:fields.team'), value: template.team_id },
   ].filter((f) => f.value);
 
   return (
     <div className="flex-1 min-h-0 flex flex-col px-6 py-5 space-y-4 overflow-hidden">
 
       <p className="text-xs text-text-muted text-center shrink-0">
-        Revisa todos los datos antes de publicar. Usa el stepper para volver a cualquier paso.
+        {t('templates:summary.intro')}
       </p>
 
       {/* ── Fila superior: Propiedades + Usuarios ──────────────────────────── */}
@@ -98,20 +100,20 @@ export function WizardStep4Summary({
         {/* Columna izquierda — Propiedades */}
         <div className="px-5 py-4 border-b md:border-b-0 md:border-r border-ui-border dark:border-ui-dark-border min-w-0">
           <p className="text-xs font-bold uppercase tracking-widest text-text-secondary mb-3">
-            Propiedades
+            {t('common:properties')}
           </p>
           <dl className="grid grid-cols-2 gap-x-4 gap-y-0">
-            <SummaryRow label="Nombre" value={template.name} />
-            <SummaryRow label="Visibilidad" value={visibilityLabel(template.visibility_level)} />
+            <SummaryRow label={t('common:fields.name')} value={template.name} />
+            <SummaryRow label={t('templates:fields.visibility')} value={visibilityLabel(template.visibility_level, t)} />
             {hierarchyFields.map((f) => (
               <SummaryRow key={f.label} label={f.label} value={f.value} />
             ))}
             <SummaryRow
-              label="Plazo de entrega"
+              label={t('templates:summary.deliveryDeadline')}
               value={template.delivery_deadline ? new Date(template.delivery_deadline).toLocaleDateString() : null}
             />
             <div className="col-span-2">
-              <SummaryRow label="Descripción" value={template.description} />
+              <SummaryRow label={t('common:fields.description')} value={template.description} />
             </div>
           </dl>
         </div>
@@ -122,12 +124,12 @@ export function WizardStep4Summary({
           <div>
             <div className="flex items-center gap-2 mb-2">
               <p className="text-xs font-bold uppercase tracking-widest text-text-secondary">
-                Validadores de la plantilla
+                {t('templates:summary.templateValidators')}
               </p>
               <span className="text-xs font-bold text-odoo-purple capitalize">({validationType})</span>
             </div>
             {validators.length === 0 ? (
-              <p className="text-xs text-text-muted italic">Sin validadores asignados.</p>
+              <p className="text-xs text-text-muted italic">{t('templates:validators.empty')}</p>
             ) : (
               <div className="space-y-2 overflow-y-auto max-h-36">
                 {validators.map((v, i) => {
@@ -153,12 +155,12 @@ export function WizardStep4Summary({
           <div className="pt-3 border-t border-ui-border dark:border-ui-dark-border">
             <div className="flex items-center gap-2 mb-2">
               <p className="text-xs font-bold uppercase tracking-widest text-text-secondary">
-                Validadores del documento
+                {t('templates:summary.documentValidators')}
               </p>
               <span className="text-xs font-bold text-odoo-teal capitalize">({documentValidationType})</span>
             </div>
             {documentValidators.length === 0 ? (
-              <p className="text-xs text-text-muted italic">Sin validadores asignados.</p>
+              <p className="text-xs text-text-muted italic">{t('templates:validators.empty')}</p>
             ) : (
               <div className="space-y-2 overflow-y-auto max-h-36">
                 {documentValidators.map((v, i) => {
@@ -188,20 +190,20 @@ export function WizardStep4Summary({
         {/* Cabecera */}
         <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between">
           <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">
-            Plantilla — {blocks.length} bloque{blocks.length !== 1 ? 's' : ''}
+            {t('templates:summary.blocksCount', { count: blocks.length })}
           </span>
           <button
             type="button"
             onClick={() => setShowPreview(true)}
             className="px-3 py-1 text-xs font-bold uppercase tracking-wider rounded border border-ui-border dark:border-ui-dark-border text-text-secondary hover:border-odoo-purple/50 hover:text-odoo-purple transition-colors"
           >
-            Previsualizar
+            {t('templates:summary.preview')}
           </button>
         </div>
 
         {blocks.length === 0 ? (
           <div className="p-5">
-            <p className="text-xs text-warning-dark italic">Aún no se han añadido bloques.</p>
+            <p className="text-xs text-warning-dark italic">{t('templates:wizard.noBlocksYet')}</p>
           </div>
         ) : (
           <div className="flex-1 min-h-0 grid grid-cols-1 sm:grid-cols-[minmax(160px,200px)_1fr]">
@@ -209,7 +211,7 @@ export function WizardStep4Summary({
             {/* Lista de bloques */}
             <div className="border-b sm:border-b-0 sm:border-r border-ui-border dark:border-ui-dark-border p-3 overflow-y-auto min-h-0">
               <p className="text-xs font-bold uppercase tracking-widest text-text-muted mb-2">
-                Bloques ({blocks.length})
+                {t('templates:summary.blocksList', { count: blocks.length })}
               </p>
               <div className="space-y-1">
                 {blocks.map((block, i) => {
@@ -229,7 +231,7 @@ export function WizardStep4Summary({
                     >
                       <span className="shrink-0 text-xs font-bold text-text-muted w-4 text-right">{i + 1}</span>
                       <span className="flex-1 min-w-0 text-xs font-medium text-text-primary dark:text-text-dark-primary truncate">
-                        {block.title || 'Sin nombre'}
+                        {block.title || t('common:fields.noName')}
                       </span>
                       <span className={`shrink-0 px-1.5 py-0.5 rounded text-xs font-bold uppercase ${cfg.badgeCls}`}>
                         {cfg.label}
@@ -256,7 +258,7 @@ export function WizardStep4Summary({
                         : 'border-transparent text-text-muted hover:text-text-primary cursor-pointer',
                     ].join(' ')}
                   >
-                    {tab}
+                    {tab === 'Contenido' ? t('templates:summary.tabContent') : t('templates:summary.tabDescription')}
                   </button>
                 ))}
               </div>
@@ -270,7 +272,7 @@ export function WizardStep4Summary({
                   }
 
                   const raw = activeTab === 'Descripción' ? selectedBlock?.description : selectedBlock?.default_content;
-                  if (!raw) return <span className="text-xs text-text-muted italic">{activeTab === 'Descripción' ? 'Sin descripción.' : 'Este bloque no tiene contenido.'}</span>;
+                  if (!raw) return <span className="text-xs text-text-muted italic">{activeTab === 'Descripción' ? t('templates:summary.noDescription') : t('templates:summary.noBlockContent')}</span>;
 
                   // Acepta las 3 formas: array de nodos, doc Tiptap {type:'doc'} y JSON serializado.
                   let value: unknown = raw;
@@ -283,7 +285,7 @@ export function WizardStep4Summary({
                     return <p className="text-xs text-text-secondary dark:text-text-dark-secondary leading-relaxed">{raw}</p>;
                   }
 
-                  return <span className="text-xs text-text-muted italic">{activeTab === 'Descripción' ? 'Sin descripción.' : 'Este bloque no tiene contenido.'}</span>;
+                  return <span className="text-xs text-text-muted italic">{activeTab === 'Descripción' ? t('templates:summary.noDescription') : t('templates:summary.noBlockContent')}</span>;
                 })()}
               </div>
             </div>

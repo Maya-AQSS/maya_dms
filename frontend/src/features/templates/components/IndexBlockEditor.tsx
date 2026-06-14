@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { BlockType } from '../../../types/blocks';
 import { extractHeadings } from '../../../utils/tiptapHeadings';
 
@@ -70,6 +71,7 @@ interface IndexBlockEditorProps {
  * página lo resuelve el render.
  */
 export function IndexBlockEditor({ blocks, currentBlockId, value, onChange }: IndexBlockEditorProps) {
+  const { t } = useTranslation('templates');
   const entries = buildEntries(blocks, currentBlockId);
   const excluded = new Set(value.excludedHeadings);
   const minLevel = entries.length ? Math.min(...entries.map((e) => e.level)) : 1;
@@ -91,10 +93,9 @@ export function IndexBlockEditor({ blocks, currentBlockId, value, onChange }: In
       <div className="mx-auto w-full max-w-2xl space-y-4 rounded-xl border border-ui-border bg-white p-6 shadow-sm dark:border-ui-dark-border dark:bg-ui-dark-card">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="text-sm font-bold uppercase tracking-widest text-text-secondary">Índice automático</h3>
+            <h3 className="text-sm font-bold uppercase tracking-widest text-text-secondary">{t('index.autoTitle')}</h3>
             <p className="mt-1 text-xs text-text-muted">
-              Estos son los títulos internos de todos los bloques. Desmarca los que no quieras en el índice.
-              Se toman en vivo: si renombras un título, el índice cambia. El número de página se calcula al exportar.
+              {t('index.help')}
             </p>
           </div>
           {entries.length > 0 && (
@@ -103,14 +104,14 @@ export function IndexBlockEditor({ blocks, currentBlockId, value, onChange }: In
               onClick={toggleAll}
               className="shrink-0 text-xs font-bold text-odoo-purple hover:underline"
             >
-              {allIncluded ? 'Ninguno' : 'Todos'}
+              {allIncluded ? t('index.none') : t('index.all')}
             </button>
           )}
         </div>
 
         {entries.length === 0 ? (
           <p className="text-sm text-text-muted italic">
-            Los bloques aún no tienen títulos internos (encabezados) en su contenido.
+            {t('index.noHeadings')}
           </p>
         ) : (
           <ul className="divide-y divide-ui-border rounded border border-ui-border dark:divide-ui-dark-border dark:border-ui-dark-border">

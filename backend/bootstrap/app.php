@@ -38,6 +38,9 @@ return Application::configure(basePath: dirname(__DIR__))
                 'description.*',
                 'content.*',
             ],
+            'apiPrepend' => [
+                \App\Http\Middleware\SetLocaleFromAcceptLanguage::class,
+            ],
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

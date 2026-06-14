@@ -133,7 +133,7 @@ export function CascadeFilters({ onFilterChange, value }: CascadeFiltersProps) {
           value={selectedType}
           onChange={handleTypeChange}
         >
-          <option value="">Todos los tipos</option>
+          <option value="">{tCommon('filters.allTypes')}</option>
           {hierarchy.map((t) => (
             <option key={t.id} value={t.id}>
               {t.name}
@@ -157,7 +157,7 @@ export function CascadeFilters({ onFilterChange, value }: CascadeFiltersProps) {
             value={selectedStudy}
             onChange={handleStudyChange}
           >
-            <option value="">Todos los estudios</option>
+            <option value="">{tCommon('filters.allStudies')}</option>
             {studies.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}

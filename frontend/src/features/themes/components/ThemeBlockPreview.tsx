@@ -13,7 +13,7 @@ export function ThemeBlockPreview({ region }: { region: ThemeLayoutRegion }) {
     case 'content_slot':
       return (
         <div className="theme-grid-slot theme-grid-slot--content">
-          <span>{(p.label as string) ?? 'Contenido del documento'}</span>
+          <span>{(p.label as string) ?? t('blocks.documentContent')}</span>
           <small>{t('editor.blocksPlaceholder')}</small>
         </div>
       );

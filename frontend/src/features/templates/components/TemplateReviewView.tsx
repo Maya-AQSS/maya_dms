@@ -399,7 +399,7 @@ export function TemplateReviewView({ template }: Props) {
       backLabel={t('common:navigation.backToTemplates')}
       metaInfo={
         <div className="flex flex-wrap gap-4 text-xs font-bold uppercase tracking-widest text-text-muted justify-center">
-          <span>{visibilityLabel(template.visibility_level)}</span>
+          <span>{visibilityLabel(template.visibility_level, t)}</span>
           {template.study_id && <span>• {String(template.study_id)}</span>}
           {template.module_id && <span>• {String(template.module_id)}</span>}
         </div>
@@ -515,7 +515,7 @@ export function TemplateReviewView({ template }: Props) {
       <div className="space-y-12">
         {blocks.length === 0 ? (
           <div className="py-20 text-center border-2 border-dashed border-ui-border dark:border-ui-dark-border rounded-xl">
-            <p className="text-sm text-text-muted italic">Esta plantilla no tiene bloques configurados.</p>
+            <p className="text-sm text-text-muted italic">{t('review.noBlocks')}</p>
           </div>
         ) : (
           blocks.map((block) => {
@@ -560,7 +560,7 @@ export function TemplateReviewView({ template }: Props) {
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <span>Info</span>
+                        <span>{t('common:info')}</span>
                       </button>
                     )}
                     <button
@@ -583,7 +583,7 @@ export function TemplateReviewView({ template }: Props) {
                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                       </svg>
-                      <span>Mensajes</span>
+                      <span>{t('common:messages')}</span>
                       {countUnreadCommentsForBlock(block.id, comments) > 0 && (
                         <span className="ml-1 bg-odoo-purple text-text-inverse px-1.5 py-0.5 rounded-full text-2xs leading-none font-bold">
                           {countUnreadCommentsForBlock(block.id, comments)}
@@ -609,7 +609,7 @@ export function TemplateReviewView({ template }: Props) {
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                         </svg>
-                        <span>Ver cambios</span>
+                        <span>{t('common:viewChanges')}</span>
                       </button>
                     )}
                   </div>
@@ -619,7 +619,7 @@ export function TemplateReviewView({ template }: Props) {
                 ) : nodes.length > 0 ? (
                   <BlockContentHtml content={nodes} />
                 ) : (
-                  <p className="text-sm text-text-muted italic">Bloque sin contenido.</p>
+                  <p className="text-sm text-text-muted italic">{t('common:noBlockContent')}</p>
                 )}
               </section>
             );
@@ -630,8 +630,8 @@ export function TemplateReviewView({ template }: Props) {
       <ConfirmDialog
         open={showRejectModal}
         title={t('preview.rejectValidationTitle')}
-        description="La plantilla volverá al estado de borrador y el creador recibirá tus comentarios para corregirla."
-        confirmLabel="Rechazar definitivamente"
+        description={t('review.rejectDescription')}
+        confirmLabel={t('review.rejectConfirm')}
         variant="danger"
         loading={actionLoading}
         onCancel={() => setShowRejectModal(false)}
@@ -639,9 +639,9 @@ export function TemplateReviewView({ template }: Props) {
       />
       <ConfirmDialog
         open={showNoCommentsWarning}
-        title="Comentarios obligatorios"
-        description="Para rechazar una validación debes indicar al menos una razón o comentario en algún bloque para que el creador sepa qué corregir."
-        confirmLabel="Entendido"
+        title={t('review.requiredComments')}
+        description={t('review.noCommentsDescription')}
+        confirmLabel={t('common:actions.understood')}
         variant="danger"
         onCancel={() => setShowNoCommentsWarning(false)}
         onConfirm={() => setShowNoCommentsWarning(false)}

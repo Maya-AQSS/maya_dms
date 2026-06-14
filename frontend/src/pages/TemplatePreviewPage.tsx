@@ -833,10 +833,10 @@ export function TemplatePreviewPage() {
       <ConfirmDialog
         open={showDeleteModal}
         variant="danger"
-        title="¿Eliminar esta plantilla?"
-        description="Estás a punto de eliminar este elemento. Esta acción es irreversible y no se puede deshacer."
-        confirmLabel="Eliminar"
-        cancelLabel="Cancelar"
+        title={t('confirm.deleteTitle')}
+        description={t('common:confirm.deleteIrreversible')}
+        confirmLabel={t('common:actions.delete')}
+        cancelLabel={t('common:actions.cancel')}
         loading={deleteLoading}
         error={deleteError}
         onConfirm={() => void handleDelete()}
@@ -846,9 +846,9 @@ export function TemplatePreviewPage() {
         open={showDiscardVersionModal}
         variant="danger"
         title={t('preview.discardNewVersionTitle')}
-        description="Se descartarán los cambios en borrador/en revisión y se restaurará la última versión publicada de la plantilla."
-        confirmLabel="Descartar versión"
-        cancelLabel="Cancelar"
+        description={t('discardVersion.description')}
+        confirmLabel={t('discardVersion.confirm')}
+        cancelLabel={t('common:actions.cancel')}
         loading={discardVersionLoading}
         error={discardVersionError}
         onConfirm={() => void handleDiscardWorkingVersion()}

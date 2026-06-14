@@ -23,7 +23,7 @@
     "searchOwner": "Buscar nuevo propietario…",
     "view": "Vista:",
     "closeDescription": "Cerrar descripción",
-    "fillBlocksFirst": "Debes rellenar todos los bloques editables antes de continuar.",
+    "fillBlocksFirst": "Debes rellenar todos los bloques editables antes de continuar. Bloques pendientes:",
     "confirmSave": "Confirmar guardado",
     "noValidators": "Sin validadores configurados",
     "viewMode": {
@@ -36,7 +36,18 @@
       "exitFullscreenTitle": "Salir de pantalla completa (Esc)",
       "showComments": "Comentarios",
       "hideComments": "Ocultar comentarios"
-    }
+    },
+    "deleteBlockConfirm": "Este bloque opcional se eliminará del documento. Esta acción no se puede deshacer.",
+    "noValidatorsDescription": "La plantilla no tiene validadores de documento. El documento se publicará directamente sin revisión. Para añadir validadores, edita la plantilla.",
+    "continueAnyway": "Continuar de todas formas",
+    "saveExitDescription": "¿Quieres guardar y salir sin enviar? El documento permanecerá en estado borrador.",
+    "saveExitConfirm": "Sí, guardar y salir",
+    "changelogSubmitTitle": "Confirmar envío a validar",
+    "changelogPublishTitle": "Confirmar publicación",
+    "sending": "Enviando…",
+    "publishing": "Publicando…",
+    "submitConfirm": "Sí, enviar a validar",
+    "publishConfirm": "Sí, publicar"
   },
   "table": {
     "columns": {
@@ -79,7 +90,8 @@
     "clearFiltersLabel": "Limpiar",
     "pageSizeLabel": "Por página",
     "deadlineAria": "Documentos no publicados cuya fecha límite de validación sea esta fecha o anterior (las filas publicadas no aplican)",
-    "paginationInfo": "{{from}}–{{to}} de {{total}}"
+    "paginationInfo": "{{from}}–{{to}} de {{total}}",
+    "emptyFilteredSchedules": "No hay programaciones didácticas con los filtros actuales."
   },
   "diff": {
     "previousBlock": "Bloque anterior",
@@ -215,10 +227,18 @@
     "templateNoProcess": "La plantilla seleccionada no tiene proceso asociado.",
     "stillLoading": "El documento aún se está cargando. Espera un momento…",
     "invalidId": "Identificador de documento no válido.",
-    "invalidIdOrTemplate": "Identificador de documento o plantilla no válido."
+    "invalidIdOrTemplate": "Identificador de documento o plantilla no válido.",
+    "noReviewPermission": "No tienes permiso para validar documentos (document.review)."
   },
   "editor": {
-    "viewBlockDescription": "Ver descripción / instrucciones del bloque"
+    "viewBlockDescription": "Ver descripción / instrucciones del bloque",
+    "coverInPerBlock": "Esta portada se rellena en la vista por bloques.",
+    "indexAuto": "El índice se genera automáticamente; configúralo en la vista por bloques.",
+    "notEditableInline": "Este bloque no tiene contenido editable.",
+    "markPending": "Marcar como pendiente",
+    "markCompleted": "Marcar bloque como finalizado",
+    "completed": "Finalizado",
+    "complete": "Finalizar"
   },
   "approve": {
     "description": "Se registrará tu aprobación. Si eres el último validador, el documento quedará publicado."
@@ -231,10 +251,24 @@
     "confirm": "Crear nueva versión"
   },
   "discardVersion": {
-    "confirm": "Descartar versión"
+    "confirm": "Descartar versión",
+    "description": "Se descartarán los cambios en borrador/en revisión y se restaurará la última versión publicada del documento.",
+    "inReviewWarning": "⚠ Esta versión está en revisión. Los validadores asignados perderán su trabajo si la descartas."
   },
   "selector": {
     "empty": "No hay plantillas utilizables para crear documentos con los filtros actuales.",
     "publishedSince": "Publicadas desde"
+  },
+  "viewDocument": "Ver documento",
+  "reject": "Rechazar",
+  "rejectValidation": "Rechazar validación",
+  "rejectDialog": {
+    "confirmTitle": "Confirmar rechazo",
+    "commentRequiredTitle": "Comentario requerido",
+    "confirmDescription": "El documento volverá a borrador para que el titular pueda corregirlo. Tus comentarios en los bloques quedarán registrados como motivo del rechazo.",
+    "commentRequiredDescription": "Para rechazar la validación debes dejar al menos un comentario en un bloque del documento explicando el motivo del rechazo. El comentario queda registrado para el titular."
+  },
+  "summary": {
+    "deliveryDeadline": "Plazo de entrega"
   }
 }

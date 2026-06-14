@@ -446,7 +446,7 @@ export function DocumentsContent() {
   return (
     <div className="p-6">
       <PageTitle
-        title="Documentos"
+        title={t('pages.documentsTitle')}
         actions={
           <Button
             type="button"
@@ -556,7 +556,7 @@ export function DocumentsContent() {
                     </p>
                   ) : null}
                   {previewLoading && (
-                    <p className="text-sm text-text-muted dark:text-text-dark-muted">Cargando vista previa…</p>
+                    <p className="text-sm text-text-muted dark:text-text-dark-muted">{t('common:loadingPreview')}</p>
                   )}
                   {previewError && !previewLoading && (
                     <p className="text-sm text-warning-dark dark:text-warning-light">{previewError}</p>
@@ -662,7 +662,7 @@ export function DocumentsContent() {
                     }
                     navigate(`/documents/${d.id}`);
                   }}
-                  emptyMessage="No hay programaciones didácticas con los filtros actuales."
+                  emptyMessage={t('table.emptyFilteredSchedules')}
                   className="rounded-none border-0 shadow-none"
                   filtersStorageKey="maya:dms:documents-table"
                   filtersPanel={

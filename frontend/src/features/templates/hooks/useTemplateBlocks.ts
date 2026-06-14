@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   createBlock as createBlockRequest,
   deleteBlock as deleteBlockRequest,
@@ -34,6 +35,7 @@ export function useTemplateBlocks(
   templateId: string,
   templateContext?: TemplateBlockPermissionContext,
 ) {
+  const { t } = useTranslation('templates');
   const { hasPermission, profile } = useUserProfile();
   const mayListBlocks = canListTemplateBlocks(hasPermission, profile?.id, templateContext);
   const mayCreateBlock = canCreateTemplateBlock(hasPermission, profile?.id, templateContext);
@@ -51,7 +53,7 @@ export function useTemplateBlocks(
     setError(null);
     if (!mayListBlocks) {
       setBlocks([]);
-      setError('No tienes permiso para listar bloques (block.index).');
+      setError(t('errors.noListBlocksPermission'));
       setLoading(false);
       return;
     }
@@ -64,7 +66,7 @@ export function useTemplateBlocks(
     } finally {
       setLoading(false);
     }
-  }, [templateId, mayListBlocks]);
+  }, [templateId, mayListBlocks, t]);
 
   useEffect(() => {
     void load();
@@ -73,30 +75,30 @@ export function useTemplateBlocks(
   const createBlock = useCallback(
     async (payload: CreateBlockPayload) => {
       if (!mayCreateBlock) {
-        throw new Error('No tienes permiso para crear bloques (block.create).');
+        throw new Error(t('errors.noCreateBlockPermission'));
       }
       const res = await createBlockRequest(templateId, payload);
       setBlocks((prev: TemplateBlock[]) => [...prev, res.data]);
       return res.data;
     },
-    [templateId, mayCreateBlock],
+    [templateId, mayCreateBlock, t],
   );
 
   const updateBlock = useCallback(
     async (blockId: string, payload: UpdateBlockPayload) => {
       if (!mayUpdateBlock) {
-        throw new Error('No tienes permiso para actualizar bloques (block.update).');
+        throw new Error(t('errors.noUpdateBlockPermission'));
       }
       const res = await updateBlockRequest(blockId, payload);
       setBlocks((prev: TemplateBlock[]) => prev.map((b: TemplateBlock) => (b.id === blockId ? res.data : b)));
       return res.data;
     },
-    [mayUpdateBlock],
+    [mayUpdateBlock, t],
   );
 
   const deleteBlock = useCallback(async (blockId: string) => {
     if (!mayDeleteBlock) {
-      throw new Error('No tienes permiso para eliminar bloques (block.delete).');
+      throw new Error(t('errors.noDeleteBlockPermission'));
     }
     await deleteBlockRequest(blockId);
     setBlocks((prev: TemplateBlock[]) => prev.filter((b: TemplateBlock) => b.id !== blockId));
@@ -105,7 +107,7 @@ export function useTemplateBlocks(
       next.delete(blockId);
       return next;
     });
-  }, [mayDeleteBlock]);
+  }, [mayDeleteBlock, t]);
 
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds((prev: Set<string>) => {
@@ -140,7 +142,7 @@ export function useTemplateBlocks(
     mayDeleteBlock,
     reorderBlocks: async (draggedId: string, targetIndex: number) => {
       if (!mayUpdateBlock) {
-        setError('No tienes permiso para reordenar bloques (block.update).');
+        setError(t('errors.noReorderBlockPermission'));
         return;
       }
       const snapshot = blocks;

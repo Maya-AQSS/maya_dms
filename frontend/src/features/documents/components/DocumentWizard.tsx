@@ -1194,9 +1194,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
       try {
         if (!documentId) {
           // Creation Mode: Create everything in one call
-          if (!templateId) throw new Error('No se puede crear un documento sin plantilla.');
+          if (!templateId) throw new Error(t('errors.noTemplate'));
           if (!template?.process_id) {
-            throw new Error('La plantilla seleccionada no tiene proceso asociado.');
+            throw new Error(t('errors.templateNoProcess'));
           }
 
           const created = await createDocument({
@@ -1267,7 +1267,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
         } else {
           // Clone: crea un documento nuevo en la versión destino con el contenido migrado.
           if (!templateId || !template?.process_id) {
-            throw new Error('La plantilla seleccionada no tiene proceso asociado.');
+            throw new Error(t('errors.templateNoProcess'));
           }
           const targetVersionId = migrationPayload?.target_template_version_id ?? selectedTemplateVersionUuid;
           const created = await createDocument({
@@ -1311,7 +1311,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
         setIsSaving(false)
       }
       if (!detail) {
-        setFormError('El documento aún se está cargando. Espera un momento e inténtalo de nuevo.');
+        setFormError(t('errors.stillLoading'));
         return;
       }
       const unresolvedEditable = listUnresolvedEditableBlockTitles(detail.blocks);
@@ -1406,7 +1406,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
           )}
         </>
       ) : null}
-      <p>Después no se podrá seguir editando como borrador.</p>
+      <p>{t('wizard.submitWarning')}</p>
     </div>
   );
 
@@ -1691,7 +1691,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
-                <FieldLabel required htmlFor="doc-title-input">Nombre</FieldLabel>
+                <FieldLabel required htmlFor="doc-title-input">{t('common:fields.name')}</FieldLabel>
                 <TextInput
                   id="doc-title-input"
                   type="text"
@@ -1744,7 +1744,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2 text-xs text-text-secondary dark:text-text-dark-secondary">
                   <span className="rounded border border-ui-border dark:border-ui-dark-border px-2 py-0.5">
-                    Visibilidad: {visibilityLabel(template.visibility_level)}
+                    {t('templates:fields.visibility')}: {visibilityLabel(template.visibility_level, t)}
                   </span>
                   {templateScopeLabel && template.visibility_level !== 'team' && (
                     <span className="rounded border border-ui-border dark:border-ui-dark-border px-2 py-0.5">
@@ -1767,7 +1767,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
               <div className="space-y-4">
                 {teamEditable && (
                   <div className="space-y-1">
-                    <FieldLabel>Equipo (opcional, exclusivo con contexto académico)</FieldLabel>
+                    <FieldLabel>{t('wizard.teamOptional')}</FieldLabel>
                     <Select
                       fieldSize="comfortable"
                       value={teamId}
@@ -1791,7 +1791,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                 )}
 
                 <div className="space-y-1">
-                  <FieldLabel required={requireStudyType}>Tipo de Estudio</FieldLabel>
+                  <FieldLabel required={requireStudyType}>{t('fields.studyType')}</FieldLabel>
                   <Select
                     fieldSize="comfortable"
                     value={studyTypeId}
@@ -1806,7 +1806,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                     error={!!errors.studyTypeId}
                   >
                     {hierarchy.length === 0 && !hierarchyLoading ? (
-                      <option value="" disabled>No tienes tipos de estudio asignados, contacta con un administrador</option>
+                      <option value="" disabled>{t('wizard.noStudyTypes')}</option>
                     ) : (
                       <option value="">
                         {hierarchyLoading ? 'Cargando…' : '— Seleccionar —'}
@@ -1822,7 +1822,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                 </div>
 
                 <div className="space-y-1">
-                  <FieldLabel required={requireStudy}>Estudio</FieldLabel>
+                  <FieldLabel required={requireStudy}>{t('fields.study')}</FieldLabel>
                   <Select
                     fieldSize="comfortable"
                     value={studyId}
@@ -1876,7 +1876,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                   Propietario
                 </p>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-text-secondary dark:text-text-dark-secondary">Actual:</span>
+                  <span className="text-xs text-text-secondary dark:text-text-dark-secondary">{t('wizard.current')}</span>
                   <span className="text-xs font-semibold text-text-primary dark:text-text-dark-primary">
                     {newOwnerForDoc ? newOwnerForDoc.name : (detail?.owner_name ?? profile?.name ?? '—')}
                   </span>
@@ -1894,15 +1894,15 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                   <TextInput
                     type="search"
                     fieldSize="comfortable"
-                    placeholder="Buscar nuevo propietario…"
+                    placeholder={t('wizard.searchOwner')}
                     value={ownerQuery}
                     onChange={(e: ChangeEvent<HTMLInputElement>) => setOwnerQuery(e.target.value)}
                   />
                 </div>
                 {ownerQuery.trim().length > 0 && ownerQuery.trim().length < 2 && (
-                  <p className="text-xs text-text-muted italic">Escribe al menos 2 caracteres para buscar.</p>
+                  <p className="text-xs text-text-muted italic">{t('common:search.minChars')}</p>
                 )}
-                {ownerSearching && <p className="text-xs text-text-muted italic">Buscando…</p>}
+                {ownerSearching && <p className="text-xs text-text-muted italic">{t('common:searching')}</p>}
                 {!ownerSearching && ownerResults.length > 0 && (
                   <ul className="border border-ui-border dark:border-ui-dark-border rounded-lg overflow-hidden divide-y divide-ui-border dark:divide-ui-dark-border">
                     {ownerResults.map((u) => (
@@ -1950,9 +1950,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
           {isEditorFullscreen && activeBlock && (
             <div className="shrink-0 h-11 px-4 flex items-center gap-3 border-b border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card">
               <h3 className="flex-1 text-sm font-bold truncate uppercase tracking-widest">{activeBlock.title || 'Bloque'}</h3>
-              {saveStatus === 'saving' && <span className="text-xs text-text-muted italic animate-pulse">Guardando…</span>}
+              {saveStatus === 'saving' && <span className="text-xs text-text-muted italic animate-pulse">{t('common:saving')}</span>}
               {saveStatus === 'saved' && <span className="text-xs text-success-dark font-bold">✓ Guardado</span>}
-              {saveStatus === 'error' && <span className="text-xs text-danger-dark font-bold">Error al guardar</span>}
+              {saveStatus === 'error' && <span className="text-xs text-danger-dark font-bold">{t('common:errors.saveFailed')}</span>}
               <Button type="button" variant="primary" size="xs" onClick={() => {setIsEditorFullscreen(false); void handleContinue()}} className="shrink-0">
                 Continuar →
               </Button>
@@ -1962,7 +1962,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
               y solo en desktop (md:); en mobile la vista continua no es óptima. */}
           {!isEditorFullscreen && (
             <div className="hidden md:flex shrink-0 px-5 py-2 border-b border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card items-center justify-end gap-2 ">
-              <span className="text-xs font-medium text-text-muted">Vista:</span>
+              <span className="text-xs font-medium text-text-muted">{t('wizard.view')}</span>
               <div className="group flex items-center gap-1 rounded-full border border-ui-border bg-ui-body/60 dark:bg-transparent dark:border-ui-dark-border p-0.5 text-xs hover:border-odoo-purple/80 hover:bg-black/10">
                 <button
                   type="button"
@@ -2167,8 +2167,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                                 type="button"
                                 onClick={() => setDescriptionBlockKey(null)}
                                 className="shrink-0 p-1 rounded text-text-muted hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors"
-                                aria-label="Cerrar descripción"
-                                title="Cerrar descripción"
+                                aria-label={t('wizard.closeDescription')}
+                                title={t('wizard.closeDescription')}
                               >
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                                   <line x1="18" y1="6" x2="6" y2="18" />
@@ -2232,7 +2232,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                 </div>
                 <div className="flex-1 overflow-y-auto p-4 space-y-2">
                   {sortedBlocks.length === 0 ? (
-                    <p className="text-xs text-text-muted">No hay bloques.</p>
+                    <p className="text-xs text-text-muted">{t('common:noBlocks')}</p>
                   ) : (
                     sortedBlocks.map((b) => {
                       const key = b.document_block_id ?? b.template_block_id;
@@ -2281,9 +2281,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                     <h3 className="text-sm font-bold truncate uppercase tracking-widest">
                       {activeBlock.title || 'Bloque'}
                     </h3>
-                    {saveStatus === 'saving' && <span className="text-xs text-text-muted italic animate-pulse">Guardando…</span>}
+                    {saveStatus === 'saving' && <span className="text-xs text-text-muted italic animate-pulse">{t('common:saving')}</span>}
                     {saveStatus === 'saved' && <span className="text-xs text-success-dark font-bold">✓ Guardado</span>}
-                    {saveStatus === 'error' && <span className="text-xs text-danger-dark font-bold">Error al guardar</span>}
+                    {saveStatus === 'error' && <span className="text-xs text-danger-dark font-bold">{t('common:errors.saveFailed')}</span>}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {(() => {
@@ -2319,9 +2319,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                           variant="outline"
                           className="relative text-odoo-purple border-odoo-purple/40 hover:bg-odoo-purple/5"
                           onClick={() => setShowDocumentCommentPanel(true)}
-                          title="Comentarios de revisión"
+                          title={t('templates:reviewComments')}
                         >
-                          <span className="hidden sm:inline">Comentarios</span>
+                          <span className="hidden sm:inline">{t('common:comments.label')}</span>
                           <span className="sm:hidden" aria-hidden>💬</span>
                           {blockCommentsCount > 0 && (
                             <span
@@ -2427,7 +2427,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                               <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 dark:bg-ui-dark-card/70">
                                 <div className="flex items-center gap-2">
                                   <Spinner size="md" />
-                                  <span>Guardando cambios...</span>
+                                  <span>{t('common:savingChanges')}</span>
                                 </div>
                               </div>
                             )}
@@ -2461,7 +2461,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                             return hasNodes ? (
                               <BlockContentHtml content={nodes} />
                             ) : (
-                              <p className="text-sm text-text-muted italic">Sin contenido en este bloque.</p>
+                              <p className="text-sm text-text-muted italic">{t('common:noBlockContent')}</p>
                             );
                           })()}
                         </div>
@@ -2531,19 +2531,19 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
           <div className="shrink-0 bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden grid grid-cols-2 animate-in fade-in slide-in-from-top-1 w-full">
             {/* Columna izquierda — Propiedades */}
             <div className="px-5 py-4 border-r border-ui-border dark:border-ui-dark-border">
-              <p className="text-xs font-bold uppercase tracking-widest text-text-secondary mb-3">Propiedades</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-text-secondary mb-3">{t('common:properties')}</p>
               <dl className="grid grid-cols-2 gap-x-4 gap-y-0">
-                <DocSummaryRow label="Título" value={detail?.title} />
+                <DocSummaryRow label={t('list.titleColumn')} value={detail?.title} />
                 <DocSummaryRow
-                  label="Estado"
+                  label={t('table.columns.status')}
                   value={detail ? documentStatusLabel(detail.status, t) : ''}
                 />
-                <DocSummaryRow label="Versión" value={detail ? `v${detail.current_version}` : ''} />
-                <DocSummaryRow label="Tipo de estudio" value={detail?.study_type_id} />
-                <DocSummaryRow label="Estudio" value={detail?.study_id} />
-                <DocSummaryRow label="Módulo" value={detail?.module_id} />
+                <DocSummaryRow label={t('list.versionColumn')} value={detail ? `v${detail.current_version}` : ''} />
+                <DocSummaryRow label={t('fields.studyType')} value={detail?.study_type_id} />
+                <DocSummaryRow label={t('fields.study')} value={detail?.study_id} />
+                <DocSummaryRow label={t('fields.module')} value={detail?.module_id} />
                 <DocSummaryRow
-                  label="Plazo de entrega"
+                  label={t('summary.deliveryDeadline')}
                   value={detail?.delivery_deadline ? new Date(detail.delivery_deadline).toLocaleDateString() : null}
                 />
               </dl>
@@ -2610,7 +2610,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
             </div>
             {sortedBlocks.length === 0 ? (
               <div className="p-5">
-                <p className="text-xs text-warning-dark italic">Este documento no tiene bloques.</p>
+                <p className="text-xs text-warning-dark italic">{t('noBlocks')}</p>
               </div>
             ) : (
               <div className="flex-1 min-h-0 grid" style={{ gridTemplateColumns: '200px 1fr' }}>
@@ -2651,9 +2651,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                     })}
                   </div>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                    {saveStatus === 'saving' && <span className="text-xs text-text-muted italic animate-pulse">Guardando…</span>}
+                    {saveStatus === 'saving' && <span className="text-xs text-text-muted italic animate-pulse">{t('common:saving')}</span>}
                     {saveStatus === 'saved' && <span className="text-xs text-success-dark font-bold">✓ Guardado</span>}
-                    {saveStatus === 'error' && <span className="text-xs text-danger-dark font-bold">Error al guardar</span>}
+                    {saveStatus === 'error' && <span className="text-xs text-danger-dark font-bold">{t('common:errors.saveFailed')}</span>}
                   </div>
                 </div>
                 <div className="flex flex-col min-w-0 min-h-0 preview-content">
@@ -2692,7 +2692,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                           return hasNodes ? (
                             <BlockContentHtml content={nodes} />
                           ) : (
-                            <span className="text-xs text-text-muted italic">Este bloque no tiene contenido.</span>
+                            <span className="text-xs text-text-muted italic">{t('common:noBlockContent')}</span>
                           );
                         })()
                       ) : selectedSummaryBlock.description != null && selectedSummaryBlock.description !== '' ? (
@@ -2718,7 +2718,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
         title={t('documents:wizard.unfilledBlocksTitle')}
         description={
           <div className="space-y-2">
-            <p>Debes rellenar todos los bloques editables antes de continuar. Bloques pendientes:</p>
+            <p>{t('wizard.fillBlocksFirst')}</p>
             <ul className="space-y-1">
               {(emptyEditableBlocksModal ?? []).map((name, i) => (
                 <li key={i} className="font-medium">• {name}</li>
@@ -2726,7 +2726,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
             </ul>
           </div>
         }
-        confirmLabel="Entendido"
+        confirmLabel={t('common:actions.understood')}
         onConfirm={() => setEmptyEditableBlocksModal(null)}
         onCancel={() => setEmptyEditableBlocksModal(null)}
       />
@@ -2743,17 +2743,17 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
             </ul>
           </div>
         }
-        confirmLabel="Entendido"
+        confirmLabel={t('common:actions.understood')}
         onConfirm={() => setPendingMigrationBlocks(null)}
         onCancel={() => setPendingMigrationBlocks(null)}
       />
     <ConfirmDialog
         open={showDeleteBlockConfirm}
         variant="danger"
-        title="¿Eliminar este bloque?"
-        description="Este bloque opcional se eliminará del documento. Esta acción no se puede deshacer."
-        confirmLabel="Eliminar"
-        cancelLabel="Cancelar"
+        title={t('common:confirm.deleteBlock')}
+        description={t('wizard.deleteBlockConfirm')}
+        confirmLabel={t('common:actions.delete')}
+        cancelLabel={t('common:actions.cancel')}
         onCancel={() => setShowDeleteBlockConfirm(false)}
         onConfirm={async () => {
           setShowDeleteBlockConfirm(false);
@@ -2770,8 +2770,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
       <ConfirmDialog
         open={validateConfirm === 'approve'}
         title={t('documents:approveTitle')}
-        description="Se registrará tu aprobación. Si eres el último validador pendiente, el documento pasará a publicado."
-        confirmLabel="Aprobar"
+        description={t('approve.description')}
+        confirmLabel={t('common:actions.approve')}
         error={validationModalError}
         loading={validationActionLoading}
         onCancel={() => {
@@ -2810,27 +2810,27 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
       />
       <ConfirmDialog
         open={summaryConfirmAction === 'save'}
-        title="Confirmar guardado"
-        description="¿Quieres guardar y salir sin enviar? El documento permanecerá en estado borrador."
-        confirmLabel="Sí, guardar y salir"
-        cancelLabel="Cancelar"
+        title={t('wizard.confirmSave')}
+        description={t('wizard.saveExitDescription')}
+        confirmLabel={t('wizard.saveExitConfirm')}
+        cancelLabel={t('common:actions.cancel')}
         variant="teal"
         onCancel={() => setSummaryConfirmAction(null)}
         onConfirm={() => void handleConfirmSummaryAction()}
       />
       <VersionChangelogModal
         open={showChangelogModal}
-        title={willSubmitDocumentToReview ? 'Confirmar envío a validar' : 'Confirmar publicación'}
+        title={willSubmitDocumentToReview ? t('wizard.changelogSubmitTitle') : t('wizard.changelogPublishTitle')}
         intro={documentChangelogIntro}
         initialValue={detail?.submission_changelog}
         confirmLabel={
           submittingForReview
             ? willSubmitDocumentToReview
-              ? 'Enviando…'
-              : 'Publicando…'
+              ? t('wizard.sending')
+              : t('wizard.publishing')
             : willSubmitDocumentToReview
-              ? 'Sí, enviar a validar'
-              : 'Sí, publicar'
+              ? t('wizard.submitConfirm')
+              : t('wizard.publishConfirm')
         }
         loading={submittingForReview}
         error={changelogModalError}
@@ -2842,14 +2842,14 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
       />
       <ConfirmDialog
         open={showNoValidatorsDocModal}
-        title="Sin validadores configurados"
-        description="La plantilla no tiene validadores de documento. El documento se publicará directamente sin revisión. Para añadir validadores, edita la plantilla."
-        confirmLabel="Continuar de todas formas"
-        cancelLabel="Cancelar"
+        title={t('wizard.noValidators')}
+        description={t('wizard.noValidatorsDescription')}
+        confirmLabel={t('wizard.continueAnyway')}
+        cancelLabel={t('common:actions.cancel')}
         onConfirm={() => {
           setShowNoValidatorsDocModal(false);
           if (!detail) {
-            setFormError('El documento aún se está cargando. Espera un momento e inténtalo de nuevo.');
+            setFormError(t('errors.stillLoading'));
             return;
           }
           const unresolvedEditable = listUnresolvedEditableBlockTitles(detail.blocks);
