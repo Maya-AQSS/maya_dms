@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DTOs\Users\JwtProfileDto;
+use App\DTOs\Users\UserProfileDto;
 use App\Models\JwtUser;
 use App\Repositories\Contracts\ResolvedPermissionReaderInterface;
 use App\Repositories\Contracts\UserProfileRepositoryInterface;
@@ -37,13 +38,14 @@ class UserProfileService implements UserProfileServiceInterface
      * @param  string  $userId  ID del usuario (claim `sub` del JWT).
      * @param  JwtProfileDto  $jwtProfile  Datos mínimos extraídos del JWT para fallback.
      */
-    public function getProfile(string $userId, JwtProfileDto $jwtProfile): array
+    public function getProfile(string $userId, JwtProfileDto $jwtProfile): UserProfileDto
     {
         $cacheKey = self::CACHE_PREFIX.$userId;
 
         $cached = Cache::get($cacheKey);
         if ($cached !== null) {
-            return $cached;
+            // El caché guarda el array serializable; se rehidrata al DTO.
+            return UserProfileDto::fromArray($cached);
         }
 
         try {
@@ -76,7 +78,7 @@ class UserProfileService implements UserProfileServiceInterface
 
             Cache::put($cacheKey, $profile, self::CACHE_TTL_SECONDS);
 
-            return $profile;
+            return UserProfileDto::fromArray($profile);
         } catch (\Throwable $e) {
             Log::warning('FDW query failed, using JWT fallback', [
                 'user_id' => $userId,
@@ -99,11 +101,11 @@ class UserProfileService implements UserProfileServiceInterface
     /**
      * Construye perfil parcial desde los datos del JWT cuando FDW no está disponible.
      */
-    private function buildFallbackProfile(string $userId, JwtProfileDto $jwtProfile): array
+    private function buildFallbackProfile(string $userId, JwtProfileDto $jwtProfile): UserProfileDto
     {
         $scopes = $this->scopeListsFromJwtProfile($jwtProfile);
 
-        return [
+        return UserProfileDto::fromArray([
             'id' => $jwtProfile->id ?? $userId,
             'email' => $jwtProfile->email ?? null,
             'name' => $jwtProfile->name ?? null,
@@ -115,7 +117,7 @@ class UserProfileService implements UserProfileServiceInterface
             'team_ids' => [],
             'permissions' => $this->resolvedPermissions->findPermissionSlugsByUserId($userId),
             'source' => 'jwt_fallback',
-        ];
+        ]);
     }
 
     /**

@@ -52,7 +52,7 @@ final class FdwUserProfileResolver implements UserProfileResolverInterface
 
     public function resolve(string $userId, array $jwtProfile): UserProfileDto
     {
-        $profile = $this->localProfile->getProfile($userId, JwtProfileDto::fromArray($jwtProfile));
+        $profile = $this->localProfile->getProfile($userId, JwtProfileDto::fromArray($jwtProfile))->toArray();
 
         $localeValue = is_string($profile['locale'] ?? null) ? $profile['locale'] : null;
         $locale = ($localeValue !== null && Locale::tryFrom($localeValue) !== null)

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\DTOs\Users\JwtProfileDto;
+use App\DTOs\Users\UserProfileDto;
 use App\Services\Contracts\UserProfileServiceInterface;
 use Illuminate\Support\Facades\Cache;
 use Maya\Auth\Contracts\JwksServiceInterface;
@@ -92,7 +93,7 @@ class MeProfileApiTest extends TestCase
                 return $userId === self::SUB
                     && $jwtProfile->id === self::SUB;
             })
-            ->andReturn($serviceProfile);
+            ->andReturn(UserProfileDto::fromArray($serviceProfile));
 
         $response = $this->withHeaders($this->authHeaders())
             ->getJson('/api/v1/me');

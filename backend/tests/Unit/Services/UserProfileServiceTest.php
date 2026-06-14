@@ -80,7 +80,7 @@ it('queries FDW filtered by user id from JWT', function () {
             return $key === 'user_profile:user-uuid-123' && $ttl === 900;
         });
 
-    $profile = $this->service->getProfile('user-uuid-123', JwtProfileDto::fromArray(array_merge($this->jwtProfile, ['department' => 'Ingeniería'])));
+    $profile = $this->service->getProfile('user-uuid-123', JwtProfileDto::fromArray(array_merge($this->jwtProfile, ['department' => 'Ingeniería'])))->toArray();
 
     expect($profile['id'])->toBe('user-uuid-123')
         ->and($profile['source'])->toBe('fdw')
@@ -97,11 +97,13 @@ it('queries FDW filtered by user id from JWT', function () {
 // ── Escenario 2: Caché del perfil ──────────────────────────────────────
 
 it('returns cached profile without querying FDW', function () {
+    // Forma canónica que produce UserProfileDto::toArray() (incluye locale, mismo orden de claves).
     $cachedProfile = [
         'id' => 'user-uuid-123',
         'email' => 'test@example.com',
         'name' => 'Test User',
         'department' => 'Ingeniería',
+        'locale' => 'es',
         'study_type_ids' => [],
         'study_ids' => [],
         'module_ids' => [],
@@ -119,7 +121,7 @@ it('returns cached profile without querying FDW', function () {
     $this->repository->shouldNotReceive('findById');
     $this->repository->shouldNotReceive('findTeamsByUserId');
 
-    $profile = $this->service->getProfile('user-uuid-123', JwtProfileDto::fromArray($this->jwtProfile));
+    $profile = $this->service->getProfile('user-uuid-123', JwtProfileDto::fromArray($this->jwtProfile))->toArray();
 
     expect($profile)->toBe($cachedProfile)
         ->and($profile['source'])->toBe('fdw');
@@ -186,7 +188,7 @@ it('falls back to JWT data when FDW throws exception', function () {
         ->with('user-uuid-123')
         ->andReturn([]);
 
-    $profile = $this->service->getProfile('user-uuid-123', JwtProfileDto::fromArray($this->jwtProfile));
+    $profile = $this->service->getProfile('user-uuid-123', JwtProfileDto::fromArray($this->jwtProfile))->toArray();
 
     expect($profile['source'])->toBe('jwt_fallback')
         ->and($profile['id'])->toBe('user-uuid-123')
@@ -214,7 +216,7 @@ it('falls back copies department from jwt departamento claim', function () {
 
     $jwt = array_merge($this->jwtProfile, ['departamento' => 'Desde claim ES']);
 
-    $profile = $this->service->getProfile('user-uuid-123', JwtProfileDto::fromArray($jwt));
+    $profile = $this->service->getProfile('user-uuid-123', JwtProfileDto::fromArray($jwt))->toArray();
 
     expect($profile['department'])->toBe('Desde claim ES');
 });
@@ -232,7 +234,7 @@ it('falls back copies department from jwt department claim', function () {
 
     $jwt = array_merge($this->jwtProfile, ['department' => 'Desde claim EN']);
 
-    $profile = $this->service->getProfile('user-uuid-123', JwtProfileDto::fromArray($jwt));
+    $profile = $this->service->getProfile('user-uuid-123', JwtProfileDto::fromArray($jwt))->toArray();
 
     expect($profile['department'])->toBe('Desde claim EN');
 });
@@ -253,7 +255,7 @@ it('falls back to JWT data when FDW user not found', function () {
         ->with('user-uuid-123')
         ->andReturn([]);
 
-    $profile = $this->service->getProfile('user-uuid-123', JwtProfileDto::fromArray($this->jwtProfile));
+    $profile = $this->service->getProfile('user-uuid-123', JwtProfileDto::fromArray($this->jwtProfile))->toArray();
 
     expect($profile['source'])->toBe('jwt_fallback')
         ->and($profile['id'])->toBe('user-uuid-123');
@@ -290,7 +292,7 @@ it('returns empty scope lists when user has no hierarchy assigned in DB', functi
 
     $jwt = array_merge($this->jwtProfile, ['study_id' => 'ST-1', 'module_ids' => json_encode(['M-1', 'M-2'])]);
 
-    $profile = $this->service->getProfile('user-uuid-123', JwtProfileDto::fromArray($jwt));
+    $profile = $this->service->getProfile('user-uuid-123', JwtProfileDto::fromArray($jwt))->toArray();
 
     // Si el usuario no tiene asignaciones, los arrays quedan vacíos.
     expect($profile['study_type_ids'])->toBe([])
@@ -317,7 +319,7 @@ it('merges FDW data, JWT claims, and teams into complete profile', function () {
 
     Cache::shouldReceive('put')->once();
 
-    $profile = $this->service->getProfile('user-uuid-123', JwtProfileDto::fromArray(array_merge($this->jwtProfile, ['department' => 'Ingeniería'])));
+    $profile = $this->service->getProfile('user-uuid-123', JwtProfileDto::fromArray(array_merge($this->jwtProfile, ['department' => 'Ingeniería'])))->toArray();
 
     expect($profile)
         ->toHaveKeys([

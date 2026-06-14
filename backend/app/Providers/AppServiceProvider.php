@@ -212,7 +212,7 @@ class AppServiceProvider extends ServiceProvider
                 $userId = (string) $jwtProfile['id'];
 
                 /** @var array<string, mixed> $fromDb Perfil unificado (FDW o fallback JWT vía {@see UserProfileService}). */
-                $fromDb = app(UserProfileServiceInterface::class)->getProfile($userId, JwtProfileDto::fromArray($jwtProfile));
+                $fromDb = app(UserProfileServiceInterface::class)->getProfile($userId, JwtProfileDto::fromArray($jwtProfile))->toArray();
 
                 $profile = array_merge($jwtProfile, [
                     'study_type_ids' => $fromDb['study_type_ids'] ?? [],
