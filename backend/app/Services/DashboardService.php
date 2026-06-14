@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DTOs\Dashboard\DashboardDto;
+use App\DTOs\Dashboard\DashboardStatsDto;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Services\Contracts\DashboardServiceInterface;
@@ -18,22 +20,22 @@ class DashboardService implements DashboardServiceInterface
     /**
      * Construye el dashboard para un usuario.
      */
-    public function buildForUser(string $userId): array
+    public function buildForUser(string $userId): DashboardDto
     {
         $templateReviewInbox = $this->templateRepository->listPendingReviewInboxForUser($userId);
         $documentReviewInbox = $this->documentRepository->listPendingDocumentReviewInboxForUser($userId);
 
-        return [
-            'stats' => [
-                'documents_critical' => $this->countCritical($documentReviewInbox->all()),
-                'documents_high' => $this->countHigh($documentReviewInbox->all()),
-                'templates_critical' => $this->countCritical($templateReviewInbox->all()),
-                'templates_high' => $this->countHigh($templateReviewInbox->all()),
-            ],
-            'recent_documents' => [],
-            'template_review_inbox' => $templateReviewInbox->all(),
-            'document_review_inbox' => $documentReviewInbox->all(),
-        ];
+        return new DashboardDto(
+            stats: new DashboardStatsDto(
+                documentsCritical: $this->countCritical($documentReviewInbox->all()),
+                documentsHigh: $this->countHigh($documentReviewInbox->all()),
+                templatesCritical: $this->countCritical($templateReviewInbox->all()),
+                templatesHigh: $this->countHigh($templateReviewInbox->all()),
+            ),
+            recentDocuments: [],
+            templateReviewInbox: $templateReviewInbox->all(),
+            documentReviewInbox: $documentReviewInbox->all(),
+        );
     }
 
     /**
