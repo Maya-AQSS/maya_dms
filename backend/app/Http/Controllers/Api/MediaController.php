@@ -48,18 +48,16 @@ class MediaController extends Controller
         $contextId = (string) $request->query('ci', '') ?: null;
         $token = (string) $request->query('token', '');
 
-        try {
-            $content = $this->mediaService->retrieve($uuid, $contextType, $contextId, $token);
-            $mimeType = $this->mediaService->detectMimeType($content);
+        // El Service lanza excepciones HTTP tipadas (AccessDeniedHttpException 403 /
+        // NotFoundHttpException 404) que el handler de Laravel traduce al status
+        // correcto, sin acoplar el controlador al texto de los mensajes.
+        $content = $this->mediaService->retrieve($uuid, $contextType, $contextId, $token);
+        $mimeType = $this->mediaService->detectMimeType($content);
 
-            return response($content, 200, [
-                'Content-Type' => $mimeType,
-                'X-Content-Type-Options' => 'nosniff',
-                'Cache-Control' => 'private, max-age=31536000, immutable',
-            ]);
-        } catch (\Exception $e) {
-            $statusCode = str_contains($e->getMessage(), 'no encontrada') ? 404 : 403;
-            abort($statusCode, $e->getMessage());
-        }
+        return response($content, 200, [
+            'Content-Type' => $mimeType,
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, max-age=31536000, immutable',
+        ]);
     }
 }

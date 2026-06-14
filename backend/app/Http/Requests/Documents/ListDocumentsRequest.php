@@ -36,6 +36,7 @@ class ListDocumentsRequest extends PaginatedFilterRequest
     protected function filterRules(): array
     {
         return [
+            'search' => ['nullable', 'string', 'max:255'],
             'process_id' => ['nullable', 'uuid', 'exists:processes,id'],
             'status' => ['nullable', 'string', 'in:draft,in_review,published,archived'],
             'template_id' => ['nullable', 'uuid', 'exists:templates,id'],
@@ -54,22 +55,24 @@ class ListDocumentsRequest extends PaginatedFilterRequest
      */
     public function toFilterDto(): DocumentFilterDto
     {
+        $validated = $this->safe();
+
         return new DocumentFilterDto(
-            processId: $this->input('process_id'),
-            status: $this->input('status'),
-            templateId: $this->input('template_id'),
-            createdBy: $this->input('created_by'),
-            from: $this->input('from'),
-            to: $this->input('to'),
+            processId: $validated['process_id'] ?? null,
+            status: $validated['status'] ?? null,
+            templateId: $validated['template_id'] ?? null,
+            createdBy: $validated['created_by'] ?? null,
+            from: $validated['from'] ?? null,
+            to: $validated['to'] ?? null,
             favoriteIds: $this->parseFavoriteIds(),
-            studyTypeId: $this->input('study_type_id'),
-            studyId: $this->input('study_id'),
-            moduleId: $this->input('module_id'),
+            studyTypeId: $validated['study_type_id'] ?? null,
+            studyId: $validated['study_id'] ?? null,
+            moduleId: $validated['module_id'] ?? null,
             page: $this->getPage(),
             perPage: $this->getPerPage(),
             sortBy: $this->getSortBy() ?? 'updated_at',
             sortDir: $this->getSortDir(),
-            search: $this->input('search'),
+            search: $validated['search'] ?? null,
         );
     }
 }

@@ -8,6 +8,8 @@ use App\DTOs\Media\MediaDto;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class MediaService
 {
@@ -39,7 +41,8 @@ class MediaService
      *
      * @return string File content
      *
-     * @throws \Exception If token is invalid or file not found
+     * @throws AccessDeniedHttpException If the HMAC token or context is invalid (HTTP 403)
+     * @throws NotFoundHttpException If the file does not exist (HTTP 404)
      */
     public function retrieve(string $uuid, ?string $contextType = null, ?string $contextId = null, ?string $token = null): string
     {
@@ -51,13 +54,13 @@ class MediaService
         // JWT para que <img src> funcione). Por eso es obligatorio: un token
         // ausente o vacío se rechaza siempre — no hay "modo sin token".
         if ($token === null || $token === '' || ! hash_equals($this->makeToken($path), $token)) {
-            throw new \Exception(__('media.invalid_token'));
+            throw new AccessDeniedHttpException(__('media.invalid_token'));
         }
 
         $disk = Storage::disk(self::DISK);
 
         if (! $disk->exists($path)) {
-            throw new \Exception(__('media.image_not_found'));
+            throw new NotFoundHttpException(__('media.image_not_found'));
         }
 
         return $disk->get($path);
@@ -108,13 +111,13 @@ class MediaService
     /**
      * Validate context type and ID parameters.
      *
-     * @throws \Exception If parameters are invalid
+     * @throws AccessDeniedHttpException If parameters are invalid (HTTP 403)
      */
     private function validateContextParams(?string $contextType, ?string $contextId): void
     {
         if ($contextType !== '' && $contextType !== null) {
             if (! in_array($contextType, self::ALLOWED_CONTEXT_TYPES, true) || ! Str::isUuid($contextId)) {
-                throw new \Exception(__('media.invalid_token'));
+                throw new AccessDeniedHttpException(__('media.invalid_token'));
             }
         }
     }
