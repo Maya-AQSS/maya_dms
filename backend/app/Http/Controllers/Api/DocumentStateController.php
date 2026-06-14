@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\DTOs\Documents\DocumentDto;
 use App\Http\Concerns\AttachesDocumentCanCloneMeta;
+use App\Http\Concerns\ResolvesApiEmbeddedTeam;
 use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Documents\ApplyTemplateMigrationRequest;
@@ -31,6 +32,7 @@ use Illuminate\Http\Request;
 class DocumentStateController extends Controller
 {
     use AttachesDocumentCanCloneMeta;
+    use ResolvesApiEmbeddedTeam;
     use ValidatesOptionalProcessContext;
 
     public function __construct(
@@ -108,7 +110,7 @@ class DocumentStateController extends Controller
             $userId,
             function (Document $doc) use ($request, $userId): void {
                 $this->attachCanCloneMeta($doc, $request);
-                $this->apiTeamEmbedService->embedOnDocument($doc, $userId);
+                $this->applyEmbeddedTeamToDocument($doc, $userId);
             },
         );
         $blocks = $this->documentService->blocksForDisplay($updated->id);
@@ -132,7 +134,7 @@ class DocumentStateController extends Controller
             $request->toDto(),
             function (Document $doc) use ($request, $userId): void {
                 $this->attachCanCloneMeta($doc, $request);
-                $this->apiTeamEmbedService->embedOnDocument($doc, $userId);
+                $this->applyEmbeddedTeamToDocument($doc, $userId);
             },
         );
         $blocks = $this->documentService->blocksForDisplay($updated->id);

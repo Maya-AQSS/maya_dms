@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\Concerns\AttachesCanCloneMeta;
+use App\Http\Concerns\ResolvesApiEmbeddedTeam;
 use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Templates\PublishTemplateRequest;
@@ -28,6 +29,7 @@ use Illuminate\Support\Facades\Auth;
 class TemplateStateController extends Controller
 {
     use AttachesCanCloneMeta;
+    use ResolvesApiEmbeddedTeam;
     use ValidatesOptionalProcessContext;
 
     public function __construct(
@@ -142,7 +144,7 @@ class TemplateStateController extends Controller
             $viewerId,
             function (Template $template) use ($request, $viewerId): void {
                 $this->attachCanCloneMeta($template, $request);
-                $this->apiTeamEmbedService->embedOnTemplate($template, $viewerId);
+                $this->applyEmbeddedTeamToTemplate($template, $viewerId);
             },
         );
 
@@ -165,7 +167,7 @@ class TemplateStateController extends Controller
             $viewerId,
             function (Template $template) use ($request, $viewerId): void {
                 $this->attachCanCloneMeta($template, $request);
-                $this->apiTeamEmbedService->embedOnTemplate($template, $viewerId);
+                $this->applyEmbeddedTeamToTemplate($template, $viewerId);
             },
         );
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DTOs\Teams\VisibleTeamDto;
 use App\Repositories\Contracts\TeamReadRepositoryInterface;
 
 /**
@@ -41,20 +42,23 @@ final class TeamAuthorizationService
     /**
      * Get visible teams for user (owner OR member).
      *
-     * @return list<array{id: string, name: string, is_department: bool}>
+     * @return list<VisibleTeamDto>
      */
     public function getVisibleTeams(string $userId): array
     {
-        return $this->repository->findVisibleTeamsForUser($userId);
+        return array_map(
+            static fn (array $row): VisibleTeamDto => VisibleTeamDto::fromRow($row),
+            $this->repository->findVisibleTeamsForUser($userId),
+        );
     }
 
     /**
      * Get a team if user has access, otherwise null.
-     *
-     * @return array{id: string, name: string, is_department: bool}|null
      */
-    public function getVisibleTeam(string $userId, string $teamId): ?array
+    public function getVisibleTeam(string $userId, string $teamId): ?VisibleTeamDto
     {
-        return $this->repository->findVisibleTeamByIdForUser($userId, $teamId);
+        $row = $this->repository->findVisibleTeamByIdForUser($userId, $teamId);
+
+        return $row !== null ? VisibleTeamDto::fromRow($row) : null;
     }
 }

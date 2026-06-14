@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\DTOs\Documents\DocumentDto;
 use App\Http\Concerns\AttachesDocumentCanCloneMeta;
+use App\Http\Concerns\ResolvesApiEmbeddedTeam;
 use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Documents\CloneDocumentRequest;
@@ -32,6 +33,7 @@ use Maya\Http\Concerns\RespondsWithEnvelope;
 class DocumentController extends Controller
 {
     use AttachesDocumentCanCloneMeta;
+    use ResolvesApiEmbeddedTeam;
     use RespondsWithEnvelope;
     use ValidatesOptionalProcessContext;
 
@@ -52,7 +54,7 @@ class DocumentController extends Controller
             $viewerId,
             function ($documents) use ($request, $viewerId): void {
                 $this->attachCanCloneMeta($documents, $request);
-                $this->apiTeamEmbedService->embedOnDocuments($documents, $viewerId);
+                $this->applyEmbeddedTeamToDocuments($documents, $viewerId);
             },
         );
 
@@ -69,7 +71,7 @@ class DocumentController extends Controller
             $request->toDto($userId, $userId),
             function (Document $model) use ($request, $userId): void {
                 $this->attachCanCloneMeta($model, $request);
-                $this->apiTeamEmbedService->embedOnDocument($model, $userId);
+                $this->applyEmbeddedTeamToDocument($model, $userId);
             },
         );
         $blocks = $this->documentService->blocksForDisplay($document->id);
@@ -93,7 +95,7 @@ class DocumentController extends Controller
             $userId,
             function (Document $model) use ($request, $userId): void {
                 $this->attachCanCloneMeta($model, $request);
-                $this->apiTeamEmbedService->embedOnDocument($model, $userId);
+                $this->applyEmbeddedTeamToDocument($model, $userId);
             },
         );
         $blocks = $this->documentService->blocksForDisplay($copy->id);
@@ -128,7 +130,7 @@ class DocumentController extends Controller
             $this->attachCanCloneMeta($resolved, $request);
             $this->documentService->attachLatestPublishedVersionMeta(collect([$resolved]));
             $this->documentService->attachShareMetadataForViewer(collect([$resolved]), $viewerId);
-            $this->apiTeamEmbedService->embedOnDocument($resolved, $viewerId);
+            $this->applyEmbeddedTeamToDocument($resolved, $viewerId);
             $blocks = $this->documentService->blocksForDisplay((string) $resolved->id);
 
             return response()->json([
@@ -140,7 +142,7 @@ class DocumentController extends Controller
         $this->attachCanCloneMeta($resolved, $request);
         $this->documentService->attachLatestPublishedVersionMeta(collect([$resolved]));
         $this->documentService->attachShareMetadataForViewer(collect([$resolved]), $viewerId);
-        $this->apiTeamEmbedService->embedOnDocument($resolved, $viewerId);
+        $this->applyEmbeddedTeamToDocument($resolved, $viewerId);
         $blocks = $this->documentService->blocksForDisplay((string) $resolved->id);
 
         return response()->json([
@@ -176,7 +178,7 @@ class DocumentController extends Controller
             $request->toDto()->toArray(),
             function (Document $doc) use ($request, $userId): void {
                 $this->attachCanCloneMeta($doc, $request);
-                $this->apiTeamEmbedService->embedOnDocument($doc, $userId);
+                $this->applyEmbeddedTeamToDocument($doc, $userId);
             },
         );
 

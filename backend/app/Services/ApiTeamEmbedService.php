@@ -4,26 +4,27 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Repositories\Contracts\DocumentRepositoryInterface;
+use App\DTOs\Teams\VisibleTeamDto;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\TeamReadServiceInterface;
-use App\Support\ApiEmbeddedTeamResponse;
 
+/**
+ * Resuelve el equipo visible aplicable a una plantilla o documento, sin tocar
+ * el modelo Eloquent: devuelve un VisibleTeamDto (o null) que la capa HTTP
+ * adjunta a la respuesta. La mutación transitoria del modelo (atributo de
+ * presentación previo al Resource) la realiza el controlador vía el concern
+ * App\Http\Concerns\ResolvesApiEmbeddedTeam.
+ */
 class ApiTeamEmbedService implements ApiTeamEmbedServiceInterface
 {
     public function __construct(
         private readonly TeamReadServiceInterface $teamReadService,
-        private readonly DocumentRepositoryInterface $documentRepository,
     ) {}
 
     /**
-     * Resuelve el equipo visible para una plantilla.
-     * Retorna el equipo embedido (array o null) para ser aplicado a la plantilla
-     * mediante setAttribute() en el controlador.
-     *
-     * @return array|null El equipo embedido, listo para ser aplicado a una plantilla
+     * Resuelve el equipo visible para una plantilla (o null si no aplica).
      */
-    public function resolveTemplateTeam(?string $teamCatalogId, string $viewerUserId): ?array
+    public function resolveTemplateTeam(?string $teamCatalogId, string $viewerUserId): ?VisibleTeamDto
     {
         return $this->teamReadService->embeddableTeam(
             $teamCatalogId !== null ? (string) $teamCatalogId : null,
@@ -32,72 +33,13 @@ class ApiTeamEmbedService implements ApiTeamEmbedServiceInterface
     }
 
     /**
-     * Resuelve el equipo visible para un documento.
-     * Retorna el equipo embedido (array o null) para ser aplicado al documento
-     * mediante setAttribute() en el controlador.
-     *
-     * @return array|null El equipo embedido, listo para ser aplicado a un documento
+     * Resuelve el equipo visible para un documento (o null si no aplica).
      */
-    public function resolveDocumentTeam(?string $teamCatalogId, string $viewerUserId): ?array
+    public function resolveDocumentTeam(?string $teamCatalogId, string $viewerUserId): ?VisibleTeamDto
     {
         return $this->teamReadService->embeddableTeam(
             $teamCatalogId !== null ? (string) $teamCatalogId : null,
             $viewerUserId,
         );
-    }
-
-    /**
-     * @deprecated Use resolveTemplateTeam() instead.
-     * Resuelve el equipo visible para la plantilla y lo deja listo para {@see TemplateResource}.
-     *
-     * @internal Provided for backward compatibility during migration; controllers should call resolveTemplateTeam() instead.
-     */
-    public function embedOnTemplate($template, string $viewerUserId): void
-    {
-        // Extract team_id from model without accepting model as type
-        $teamCatalogId = $template->team_id ?? null;
-        $team = $this->resolveTemplateTeam($teamCatalogId, $viewerUserId);
-        $template->setAttribute(ApiEmbeddedTeamResponse::ATTRIBUTE_KEY, $team);
-    }
-
-    /**
-     * @deprecated Use resolveTemplateTeam() in a loop instead.
-     * Resuelve el equipo visible para las plantillas y lo deja listo para {@see TemplateResource}.
-     *
-     * @internal Provided for backward compatibility during migration.
-     */
-    public function embedOnTemplates(iterable $templates, string $viewerUserId): void
-    {
-        foreach ($templates as $template) {
-            $this->embedOnTemplate($template, $viewerUserId);
-        }
-    }
-
-    /**
-     * @deprecated Use resolveDocumentTeam() instead.
-     * Resuelve el equipo visible para el documento y lo deja listo para {@see DocumentResource}.
-     *
-     * @internal Provided for backward compatibility during migration; controllers should eagerly load template, extract team_id, call resolveDocumentTeam().
-     */
-    public function embedOnDocument($document, string $viewerUserId): void
-    {
-        // Extract team_id from document and its template relation without accepting model as type
-        $this->documentRepository->loadTemplate($document);
-        $teamCatalogId = $document->team_id ?? $document->template?->team_id ?? null;
-        $team = $this->resolveDocumentTeam($teamCatalogId, $viewerUserId);
-        $document->setAttribute(ApiEmbeddedTeamResponse::ATTRIBUTE_KEY, $team);
-    }
-
-    /**
-     * @deprecated Use resolveDocumentTeam() in a loop instead.
-     * Resuelve el equipo visible para los documentos y lo deja listo para {@see DocumentResource}.
-     *
-     * @internal Provided for backward compatibility during migration.
-     */
-    public function embedOnDocuments(iterable $documents, string $viewerUserId): void
-    {
-        foreach ($documents as $document) {
-            $this->embedOnDocument($document, $viewerUserId);
-        }
     }
 }

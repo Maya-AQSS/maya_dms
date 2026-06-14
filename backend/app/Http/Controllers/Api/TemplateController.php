@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\DTOs\Templates\TemplateDto;
 use App\Http\Concerns\AttachesCanCloneMeta;
+use App\Http\Concerns\ResolvesApiEmbeddedTeam;
 use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Templates\CloneTemplateRequest;
@@ -36,6 +37,7 @@ use Maya\Http\Concerns\RespondsWithEnvelope;
 class TemplateController extends Controller
 {
     use AttachesCanCloneMeta;
+    use ResolvesApiEmbeddedTeam;
     use RespondsWithEnvelope;
     use ValidatesOptionalProcessContext;
 
@@ -55,7 +57,7 @@ class TemplateController extends Controller
             $viewerId,
             function ($templates) use ($request, $viewerId): void {
                 $this->attachCanCloneMeta($templates, $request);
-                $this->apiTeamEmbedService->embedOnTemplates($templates, $viewerId);
+                $this->applyEmbeddedTeamToTemplates($templates, $viewerId);
             },
         );
 
@@ -72,7 +74,7 @@ class TemplateController extends Controller
             $request->toCreateDto(),
             function (Template $model) use ($request, $viewerId): void {
                 $this->attachCanCloneMeta($model, $request);
-                $this->apiTeamEmbedService->embedOnTemplate($model, $viewerId);
+                $this->applyEmbeddedTeamToTemplate($model, $viewerId);
             },
         );
 
@@ -105,7 +107,7 @@ class TemplateController extends Controller
             $model->loadMissing(['creator']);
             $this->attachCanCloneMeta($model, $request);
             $this->templateService->attachLatestPublishedVersionMeta(collect([$model]));
-            $this->apiTeamEmbedService->embedOnTemplate($model, $viewerId);
+            $this->applyEmbeddedTeamToTemplate($model, $viewerId);
 
             return new TemplateResource(TemplateDto::fromModel($model));
         }
@@ -114,10 +116,7 @@ class TemplateController extends Controller
         $this->attachCanCloneMeta($model, $request);
         $this->templateService->attachLatestPublishedVersionMeta(collect([$model]));
 
-        $this->apiTeamEmbedService->embedOnTemplate(
-            $model,
-            $viewerId,
-        );
+        $this->applyEmbeddedTeamToTemplate($model, $viewerId);
 
         return new TemplateResource(TemplateDto::fromModel($model));
     }
@@ -140,7 +139,7 @@ class TemplateController extends Controller
             $dto,
             function (Template $template) use ($request, $viewerId): void {
                 $this->attachCanCloneMeta($template, $request);
-                $this->apiTeamEmbedService->embedOnTemplate($template, $viewerId);
+                $this->applyEmbeddedTeamToTemplate($template, $viewerId);
             },
         );
 

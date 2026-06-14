@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\Concerns\AttachesDocumentCanCloneMeta;
+use App\Http\Concerns\ResolvesApiEmbeddedTeam;
 use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Documents\DocumentCreateFromModuleRequest;
@@ -28,6 +29,7 @@ use Illuminate\Http\Request;
 class DocumentOptionsController extends Controller
 {
     use AttachesDocumentCanCloneMeta;
+    use ResolvesApiEmbeddedTeam;
     use ValidatesOptionalProcessContext;
 
     public function __construct(
@@ -75,7 +77,7 @@ class DocumentOptionsController extends Controller
             $request->validated('delivery_deadline'),
             function (Document $model) use ($request, $userId): void {
                 $this->attachCanCloneMeta($model, $request);
-                $this->apiTeamEmbedService->embedOnDocument($model, $userId);
+                $this->applyEmbeddedTeamToDocument($model, $userId);
             },
         );
         $blocks = $this->documentService->blocksForDisplay($document->id);
