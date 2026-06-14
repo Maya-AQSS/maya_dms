@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api;
 
+use App\DTOs\Users\UserSummaryDto;
 use App\Services\Contracts\UserDirectoryServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -133,7 +134,7 @@ final class UserDirectorySearchTest extends TestCase
             ->once()
             ->with('alice', 20, null)
             ->andReturn([
-                ['id' => (string) Str::uuid(), 'name' => 'Alice', 'email' => 'a@x.test', 'role' => null],
+                new UserSummaryDto((string) Str::uuid(), 'Alice', 'a@x.test', null),
             ]);
         $this->app->instance(UserDirectoryServiceInterface::class, $mock);
 

@@ -4,20 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\DTOs\Users\UserSummaryDto;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * Representa un usuario del directorio devuelto por UserDirectoryService.
  *
- * El recurso recibe arrays emitidos por UserDirectoryRepository (no modelos Eloquent).
- *
- * @property-read array{
- *     id: string,
- *     name: string|null,
- *     email: string|null,
- *     role: string|null,
- * } $resource
+ * @property-read UserSummaryDto $resource
  */
 class UserDirectoryResource extends JsonResource
 {
@@ -27,10 +21,10 @@ class UserDirectoryResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->resource['id'] ?? null,
-            'name' => $this->resource['name'] ?? null,
-            'email' => $this->resource['email'] ?? null,
-            'role' => $this->resource['role'] ?? null,
+            'id' => $this->resource->id,
+            'name' => $this->resource->name,
+            'email' => $this->resource->email,
+            'role' => $this->resource->role,
         ];
     }
 }
