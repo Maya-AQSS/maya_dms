@@ -78,6 +78,24 @@ jobs:
       - name: Install Composer dependencies
         run: composer install --no-interaction --prefer-dist --optimize-autoloader --no-scripts
 
+      # En el checkout de CI las subcarpetas de `storage/framework` (views,
+      # cache, sessions) NO existen: el `.gitignore` del repo sólo versiona
+      # ficheros sueltos, no los directorios vacíos. El compilador de Blade
+      # (Illuminate\View\Compilers\Compiler) aborta con
+      # "InvalidArgumentException: Please provide a valid cache path" en cuanto
+      # un test renderiza una vista (DocumentsRenderView, Template/Document
+      # render-for-version, preview/sample PDF…). Localmente estas carpetas ya
+      # existen, por eso el fallo sólo aparece en CI. Las creamos aquí.
+      - name: Prepare Laravel storage and cache directories
+        run: |
+          mkdir -p \
+            storage/framework/views \
+            storage/framework/cache/data \
+            storage/framework/sessions \
+            storage/framework/testing \
+            storage/logs \
+            bootstrap/cache
+
       # Migra la BD de test antes de Pest: algunos tests Unit tocan la BD sin el
       # trait RefreshDatabase y, en una BD CI recién creada (sin migrar), fallan
       # con "relation entity_versions does not exist". Localmente la BD de test

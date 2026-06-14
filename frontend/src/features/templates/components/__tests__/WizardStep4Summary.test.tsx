@@ -1,5 +1,10 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
+// Inicializa i18next con las traducciones reales (locale por defecto `es`),
+// igual que el resto de tests del wizard que SÍ pasan. La carga de recursos
+// es asíncrona: hay que esperar a `changeLanguage('es')` antes de renderizar,
+// si no `t()` devuelve la clave en bruto y la aserción de "Visibilidad" falla.
+import i18n from '../../../../i18n';
 import { WizardStep4Summary } from '../WizardStep4Summary';
 import type { Template } from '../../../../types/templates';
 import type { TemplateBlock } from '../../../../types/blocks';
@@ -42,6 +47,10 @@ describe('WizardStep4Summary', () => {
     { userId: 'v1', name: 'Validator One', role: 'Teacher' },
     { userId: 'v2', name: 'Validator Two', role: 'Staff' },
   ];
+
+  beforeAll(async () => {
+    await i18n.changeLanguage('es');
+  });
 
   beforeEach(() => {
     vi.clearAllMocks();

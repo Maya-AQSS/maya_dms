@@ -1,5 +1,11 @@
 import { cleanup, fireEvent, render, screen, waitFor, act } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+// Inicializa i18next con las traducciones reales (locale por defecto `es`),
+// igual que los tests del wizard de plantillas que SÍ pasan. La carga de
+// recursos es asíncrona: hay que esperar a `changeLanguage('es')` antes de
+// renderizar, si no `t()` devuelve la clave en bruto (p. ej.
+// "processes:form.newTitle") y las aserciones por texto en español fallan.
+import i18n from '../../../../i18n';
 import { ProcessFormModal } from '../ProcessFormModal';
 import type { Process } from '../../../../types/processes';
 import type { ProcessPayload } from '../../../../api/processes';
@@ -39,6 +45,10 @@ function renderModal(
 }
 
 describe('ProcessFormModal', () => {
+  beforeAll(async () => {
+    await i18n.changeLanguage('es');
+  });
+
   afterEach(cleanup);
 
   describe('rendering', () => {
