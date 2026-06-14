@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\DTOs\Themes;
 
+use App\Models\Theme;
+
 /**
  * Vista pública de un Theme (la que devuelve el Service al Controller).
  *
@@ -45,4 +47,29 @@ readonly class ThemeDto
         public string $updatedAt,
         public bool $isSystem = false,
     ) {}
+
+    /**
+     * Mapper canónico Model -> DTO (R3), homogéneo con el resto de DTOs de
+     * salida del proyecto. La capa Repository sigue siendo la única que accede
+     * a Eloquent: invoca este mapper sobre el modelo ya cargado.
+     */
+    public static function fromModel(Theme $theme): self
+    {
+        return new self(
+            id: (string) $theme->id,
+            name: (string) $theme->name,
+            description: $theme->description,
+            status: (string) $theme->status,
+            createdBy: (string) $theme->created_by,
+            teamId: $theme->team_id,
+            palette: (array) $theme->palette,
+            typography: (array) $theme->typography,
+            layout: (array) $theme->layout,
+            accessibility: (array) $theme->accessibility,
+            clonedFromId: $theme->cloned_from_id,
+            createdAt: (string) $theme->created_at,
+            updatedAt: (string) $theme->updated_at,
+            isSystem: (bool) $theme->is_system,
+        );
+    }
 }

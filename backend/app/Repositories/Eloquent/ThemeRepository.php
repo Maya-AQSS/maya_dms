@@ -185,22 +185,7 @@ class ThemeRepository implements ThemeRepositoryInterface
 
     private function toDto(Theme $theme): ThemeDto
     {
-        return new ThemeDto(
-            id: (string) $theme->id,
-            name: (string) $theme->name,
-            description: $theme->description,
-            status: (string) $theme->status,
-            createdBy: (string) $theme->created_by,
-            teamId: $theme->team_id,
-            palette: (array) $theme->palette,
-            typography: (array) $theme->typography,
-            layout: (array) $theme->layout,
-            accessibility: (array) $theme->accessibility,
-            clonedFromId: $theme->cloned_from_id,
-            createdAt: (string) $theme->created_at,
-            updatedAt: (string) $theme->updated_at,
-            isSystem: (bool) $theme->is_system,
-        );
+        return ThemeDto::fromModel($theme);
     }
 
     /**

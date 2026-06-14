@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\DTOs\Documents;
 
 use App\Models\Document;
+use App\Services\DocumentService;
 use App\Services\DocumentTemplateVersionNumberResolver;
 use App\Support\ApiEmbeddedTeamResponse;
 use App\Support\IsoTimestamp;
@@ -168,6 +169,16 @@ final readonly class DocumentDto
             ->resolveName((string) $m->template_version_id);
     }
 
+    /**
+     * Número de versión de la plantilla con la que se creó el documento.
+     *
+     * Prioridad: atributo precargado `template_version_number` (que el Service
+     * adjunta en lote vía {@see DocumentService::attachTemplateVersionNumbers})
+     * → relación `templateVersion` ya cargada en todos los caminos de
+     * lectura (sin N+1). El mapper NO accede a la BD: si ninguno está disponible
+     * devuelve null; la resolución contra el {@see DocumentTemplateVersionNumberResolver}
+     * es responsabilidad del Service antes de construir el DTO.
+     */
     private static function resolveTemplateVersionNumber(Document $m): ?int
     {
         $preloaded = $m->getAttribute('template_version_number');
@@ -183,9 +194,6 @@ final readonly class DocumentDto
             return (int) $m->templateVersion->version_number;
         }
 
-        return app(DocumentTemplateVersionNumberResolver::class)->resolve(
-            $m->template_id !== null ? (string) $m->template_id : null,
-            (string) $m->template_version_id,
-        );
+        return null;
     }
 }

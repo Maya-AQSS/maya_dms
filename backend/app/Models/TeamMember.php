@@ -22,6 +22,14 @@ class TeamMember extends Model
 
     protected $keyType = 'string';
 
+    /**
+     * Vista FDW de solo lectura: se protege todo el modelo contra mass-assignment
+     * para dejar constancia de que no admite escritura vía Eloquent.
+     *
+     * @var array<int, string>
+     */
+    protected $guarded = ['*'];
+
     public function team(): BelongsTo
     {
         return $this->belongsTo(Team::class, 'team_id');
