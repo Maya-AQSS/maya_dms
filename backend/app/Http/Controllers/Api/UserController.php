@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
-use App\DTOs\Users\ReviewerCandidateFilterDto;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Users\DocumentReviewerCandidatesRequest;
+use App\Http\Requests\Users\OwnerCandidatesRequest;
+use App\Http\Requests\Users\ReviewerCandidatesRequest;
+use App\Http\Requests\Users\SearchUsersRequest;
 use App\Http\Resources\UserDirectoryResource;
-use App\Models\JwtUser;
 use App\Services\Contracts\UserDirectoryServiceInterface;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class UserController extends Controller
@@ -28,22 +29,19 @@ class UserController extends Controller
      *
      * `exclude_user_id`: opcional; excluye ese id del resultado (p. ej. creador de plantilla en pickers).
      */
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(SearchUsersRequest $request): AnonymousResourceCollection
     {
-        $user = $request->user();
-        if (! $user instanceof JwtUser || (! $user->hasPermission('template.show') && ! $user->hasPermission('document.show'))) {
-            abort(403, __('users.search.forbidden'));
-        }
-
-        $search = trim((string) $request->get('search', ''));
-        $perPage = min((int) $request->get('per_page', 20), 50);
-        $excludeUserId = $this->optionalExcludeUserId($request);
+        $search = $request->searchTerm();
 
         if (mb_strlen($search) < 2) {
             return UserDirectoryResource::collection([]);
         }
 
-        $users = $this->userDirectoryService->searchUsers($search, $perPage, $excludeUserId);
+        $users = $this->userDirectoryService->searchUsers(
+            $search,
+            $request->perPage(),
+            $request->excludeUserId(),
+        );
 
         return UserDirectoryResource::collection($users);
     }
@@ -62,23 +60,13 @@ class UserController extends Controller
      * Contexto académico opcional (según visibilidad de la plantilla):
      * `visibility_level`, `study_type_id`, `study_id`, `module_id`, `team_id`.
      */
-    public function reviewerCandidates(Request $request): AnonymousResourceCollection
+    public function reviewerCandidates(ReviewerCandidatesRequest $request): AnonymousResourceCollection
     {
-        $user = $request->user();
-        if (! $user instanceof JwtUser || ! $user->hasPermission('template.show')) {
-            abort(403, __('users.search.template_reviewers_forbidden'));
-        }
-
-        $search = trim((string) $request->get('search', ''));
-        $perPage = min((int) $request->get('per_page', 20), 50);
-        $excludeUserId = $this->optionalExcludeUserId($request);
-        $academicFilter = ReviewerCandidateFilterDto::fromRequest($request);
-
         $users = $this->userDirectoryService->searchTemplateReviewerCandidates(
-            $search,
-            $perPage,
-            $excludeUserId,
-            $academicFilter,
+            $request->searchTerm(),
+            $request->perPage(),
+            $request->excludeUserId(),
+            $request->academicFilter(),
         );
 
         return UserDirectoryResource::collection($users);
@@ -98,23 +86,13 @@ class UserController extends Controller
      * Contexto académico opcional (según visibilidad de la plantilla):
      * `visibility_level`, `study_type_id`, `study_id`, `module_id`, `team_id`.
      */
-    public function documentReviewerCandidates(Request $request): AnonymousResourceCollection
+    public function documentReviewerCandidates(DocumentReviewerCandidatesRequest $request): AnonymousResourceCollection
     {
-        $user = $request->user();
-        if (! $user instanceof JwtUser || ! $user->hasPermission('document.show')) {
-            abort(403, __('users.search.document_reviewers_forbidden'));
-        }
-
-        $search = trim((string) $request->get('search', ''));
-        $perPage = min((int) $request->get('per_page', 20), 50);
-        $excludeUserId = $this->optionalExcludeUserId($request);
-        $academicFilter = ReviewerCandidateFilterDto::fromRequest($request);
-
         $users = $this->userDirectoryService->searchDocumentReviewerCandidates(
-            $search,
-            $perPage,
-            $excludeUserId,
-            $academicFilter,
+            $request->searchTerm(),
+            $request->perPage(),
+            $request->excludeUserId(),
+            $request->academicFilter(),
         );
 
         return UserDirectoryResource::collection($users);
@@ -127,33 +105,20 @@ class UserController extends Controller
      * Requiere `template.show` (permiso que tiene el creador de la plantilla/documento).
      * Devuelve todos los usuarios del directorio que coincidan con la búsqueda.
      */
-    public function ownerCandidates(Request $request): AnonymousResourceCollection
+    public function ownerCandidates(OwnerCandidatesRequest $request): AnonymousResourceCollection
     {
-        $user = $request->user();
-        if (! $user instanceof JwtUser || (! $user->hasPermission('template.show') && ! $user->hasPermission('document.show'))) {
-            abort(403, __('users.search.owner_candidates_forbidden'));
-        }
-
-        $search = trim((string) $request->get('search', ''));
-        $perPage = min((int) $request->get('per_page', 20), 50);
-        $excludeUserId = $this->optionalExcludeUserId($request);
+        $search = $request->searchTerm();
 
         if (mb_strlen($search) < 2) {
             return UserDirectoryResource::collection([]);
         }
 
-        $users = $this->userDirectoryService->searchUsers($search, $perPage, $excludeUserId);
+        $users = $this->userDirectoryService->searchUsers(
+            $search,
+            $request->perPage(),
+            $request->excludeUserId(),
+        );
 
         return UserDirectoryResource::collection($users);
-    }
-
-    /**
-     * Obtiene el ID de usuario a excluir de la búsqueda, si se ha proporcionado.
-     */
-    private function optionalExcludeUserId(Request $request): ?string
-    {
-        $raw = trim((string) $request->query('exclude_user_id', ''));
-
-        return $raw !== '' ? $raw : null;
     }
 }

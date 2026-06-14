@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\DTOs\Users;
 
-use Illuminate\Http\Request;
-
 /**
  * Contexto académico opcional para acotar candidatos a validador en el directorio.
  */
@@ -19,14 +17,19 @@ final readonly class ReviewerCandidateFilterDto
         public ?string $teamId,
     ) {}
 
-    public static function fromRequest(Request $request): self
+    /**
+     * Construye el filtro a partir de los datos ya validados por el FormRequest.
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    public static function fromValidated(array $validated): self
     {
         return new self(
-            visibilityLevel: self::nullableTrimmed($request->query('visibility_level')),
-            studyTypeId: self::nullableTrimmed($request->query('study_type_id')),
-            studyId: self::nullableTrimmed($request->query('study_id')),
-            moduleId: self::nullableTrimmed($request->query('module_id')),
-            teamId: self::nullableTrimmed($request->query('team_id')),
+            visibilityLevel: self::nullableTrimmed($validated['visibility_level'] ?? null),
+            studyTypeId: self::nullableTrimmed($validated['study_type_id'] ?? null),
+            studyId: self::nullableTrimmed($validated['study_id'] ?? null),
+            moduleId: self::nullableTrimmed($validated['module_id'] ?? null),
+            teamId: self::nullableTrimmed($validated['team_id'] ?? null),
         );
     }
 
