@@ -6,6 +6,8 @@ namespace App\Repositories\Contracts;
 
 use App\DTOs\Documents\DocumentBlockPayloadDto;
 use App\DTOs\Documents\DocumentFilterDto;
+use App\DTOs\Notifications\ApproachingDeadlineDocumentDto;
+use App\DTOs\Notifications\PendingReviewerLoadDto;
 use App\Models\Document;
 use App\Models\DocumentBlock;
 use App\Models\DocumentReview;
@@ -122,6 +124,21 @@ interface DocumentRepositoryInterface
      * Cuenta las revisiones pendientes del documento.
      */
     public function countPendingReviewsForDocument(string $documentId): int;
+
+    /**
+     * Revisores con un número de revisiones pendientes ESTRICTAMENTE mayor que `$threshold`,
+     * junto con su conteo exacto de pendientes.
+     *
+     * @return list<PendingReviewerLoadDto>
+     */
+    public function reviewersWithPendingReviewsAbove(int $threshold): array;
+
+    /**
+     * Documentos no publicados cuya fecha de validación vence dentro de los próximos `$days` días.
+     *
+     * @return Collection<int, ApproachingDeadlineDocumentDto>
+     */
+    public function findApproachingDeadline(int $days): Collection;
 
     /**
      * Menor número de etapa entre revisiones pendientes, o null si no hay ninguna.

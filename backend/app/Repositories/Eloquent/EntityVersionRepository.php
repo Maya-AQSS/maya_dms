@@ -6,6 +6,7 @@ namespace App\Repositories\Eloquent;
 
 use App\DTOs\Versioning\EntityVersionSnapshotDto;
 use App\Models\EntityVersion;
+use App\Models\Template;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -218,6 +219,23 @@ class EntityVersionRepository implements EntityVersionRepositoryInterface
             ->where('versionable_id', $versionableId)
             ->where('status', 'published')
             ->first();
+    }
+
+    public function findTemplateNameInVersionSnapshot(string $entityVersionId): ?string
+    {
+        $version = EntityVersion::query()
+            ->whereKey($entityVersionId)
+            ->where('versionable_type', Template::class)
+            ->first();
+
+        $snapshot = $version?->snapshot_data;
+        if (is_array($snapshot) && isset($snapshot['template']['name']) && is_string($snapshot['template']['name'])) {
+            $name = $snapshot['template']['name'];
+
+            return $name !== '' ? $name : null;
+        }
+
+        return null;
     }
 
     /**

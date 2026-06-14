@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\DTOs\Documents;
 
 use App\Models\Document;
-use App\Models\EntityVersion;
-use App\Models\Template;
 use App\Services\DocumentTemplateVersionNumberResolver;
 use App\Support\ApiEmbeddedTeamResponse;
 use App\Support\IsoTimestamp;
@@ -138,9 +136,11 @@ final readonly class DocumentDto
 
     /**
      * Nombre de la plantilla en la versión con la que se creó el documento.
-     * Se lee del snapshot de la versión anclada ({@see EntityVersion}); la relación
-     * `templateVersion` ya viene cargada en los caminos de detalle y listado, por lo
-     * que no introduce N+1 (solo consulta como último recurso).
+     *
+     * Prioridad: atributo precargado `template_name` → relación `templateVersion`
+     * (ya cargada en los caminos de detalle/listado, sin N+1) → fallback al
+     * {@see DocumentTemplateVersionNumberResolver}, que resuelve a través de la capa
+     * Repository (sin acceso a Eloquent dentro del DTO).
      */
     private static function resolveTemplateName(Document $m): ?string
     {
@@ -153,21 +153,19 @@ final readonly class DocumentDto
             return null;
         }
 
-        $version = $m->relationLoaded('templateVersion') && $m->templateVersion !== null
-            ? $m->templateVersion
-            : EntityVersion::query()
-                ->whereKey($m->template_version_id)
-                ->where('versionable_type', Template::class)
-                ->first();
+        if ($m->relationLoaded('templateVersion') && $m->templateVersion !== null) {
+            $snapshot = $m->templateVersion->snapshot_data;
+            if (is_array($snapshot) && isset($snapshot['template']['name']) && is_string($snapshot['template']['name'])) {
+                $name = $snapshot['template']['name'];
 
-        $snapshot = $version?->snapshot_data;
-        if (is_array($snapshot) && isset($snapshot['template']['name']) && is_string($snapshot['template']['name'])) {
-            $name = $snapshot['template']['name'];
+                return $name !== '' ? $name : null;
+            }
 
-            return $name !== '' ? $name : null;
+            return null;
         }
 
-        return null;
+        return app(DocumentTemplateVersionNumberResolver::class)
+            ->resolveName((string) $m->template_version_id);
     }
 
     private static function resolveTemplateVersionNumber(Document $m): ?int

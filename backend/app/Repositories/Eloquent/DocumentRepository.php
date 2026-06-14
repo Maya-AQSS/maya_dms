@@ -6,6 +6,8 @@ namespace App\Repositories\Eloquent;
 
 use App\DTOs\Documents\DocumentBlockPayloadDto;
 use App\DTOs\Documents\DocumentFilterDto;
+use App\DTOs\Notifications\ApproachingDeadlineDocumentDto;
+use App\DTOs\Notifications\PendingReviewerLoadDto;
 use App\Models\BlockVersion;
 use App\Models\Document;
 use App\Models\DocumentBlock;
@@ -336,6 +338,76 @@ class DocumentRepository extends AbstractVersionableEntityRepository implements 
             ->where('document_id', $documentId)
             ->where('status', 'pending')
             ->count();
+    }
+
+    public function reviewersWithPendingReviewsAbove(int $threshold): array
+    {
+        return DocumentReview::query()
+            ->selectRaw('reviewer_id, COUNT(*) AS pending_count')
+            ->where('status', 'pending')
+            ->groupBy('reviewer_id')
+            ->havingRaw('COUNT(*) > ?', [$threshold])
+            ->get()
+            ->map(static fn ($row): PendingReviewerLoadDto => new PendingReviewerLoadDto(
+                reviewerId: (string) $row->reviewer_id,
+                pendingCount: (int) $row->pending_count,
+            ))
+            ->values()
+            ->all();
+    }
+
+    public function findApproachingDeadline(int $days): Collection
+    {
+        $now = Date::now();
+        $deadlineStart = $now->copy();
+        $deadlineEnd = $now->copy()->addDays($days);
+
+        $deadlineExpression = DocumentHeadSnapshot::jsonDocumentFieldExpression('ev', 'delivery_deadline');
+        $statusExpression = DocumentHeadSnapshot::jsonDocumentFieldExpression('ev', 'status');
+
+        $rows = DB::table('documents')
+            ->join('entity_versions as ev', 'ev.id', '=', 'documents.head_entity_version_id')
+            ->whereNull('documents.deleted_at')
+            ->whereRaw("({$deadlineExpression})::TIMESTAMP BETWEEN ? AND ?", [
+                $deadlineStart->toDateTimeString(),
+                $deadlineEnd->toDateTimeString(),
+            ])
+            ->whereRaw("{$statusExpression} != 'published'")
+            ->get(['ev.snapshot_data']);
+
+        $dtos = [];
+        foreach ($rows as $row) {
+            try {
+                $snapshot = json_decode((string) $row->snapshot_data, true, 512, JSON_THROW_ON_ERROR);
+            } catch (JsonException) {
+                continue;
+            }
+
+            $docData = $snapshot[DocumentHeadSnapshot::JSON_DOCUMENT_KEY] ?? null;
+            if (! is_array($docData)) {
+                continue;
+            }
+
+            $documentId = $docData['id'] ?? null;
+            $ownerId = $docData['owner_id'] ?? null;
+            $deadline = $docData['delivery_deadline'] ?? null;
+
+            if (! is_string($documentId) || ! is_string($ownerId) || ! is_string($deadline)
+                || $documentId === '' || $ownerId === '' || $deadline === '') {
+                continue;
+            }
+
+            $title = $docData['title'] ?? null;
+
+            $dtos[] = new ApproachingDeadlineDocumentDto(
+                documentId: $documentId,
+                title: is_string($title) && $title !== '' ? $title : 'Sin título',
+                ownerId: $ownerId,
+                deadline: $deadline,
+            );
+        }
+
+        return new Collection($dtos);
     }
 
     public function minPendingReviewStageForDocument(string $documentId): ?int

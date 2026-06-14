@@ -42,4 +42,19 @@ final class DocumentTemplateVersionNumberResolver
 
         return null;
     }
+
+    /**
+     * Resuelve el nombre de la plantilla almacenado en el snapshot de la versión anclada.
+     *
+     * @param  string|null  $templateVersionId  ID de la versión de plantilla o null.
+     * @return string|null El nombre, o null si no hay versión o el snapshot no lo contiene.
+     */
+    public function resolveName(?string $templateVersionId): ?string
+    {
+        if ($templateVersionId === null || $templateVersionId === '') {
+            return null;
+        }
+
+        return $this->entityVersionRepository->findTemplateNameInVersionSnapshot($templateVersionId);
+    }
 }

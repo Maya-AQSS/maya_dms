@@ -116,6 +116,12 @@ interface EntityVersionRepositoryInterface
     ): ?EntityVersion;
 
     /**
+     * Nombre de la plantilla almacenado en el snapshot de la versión de plantilla
+     * con el id dado, o null si no existe o el snapshot no contiene el nombre.
+     */
+    public function findTemplateNameInVersionSnapshot(string $entityVersionId): ?string;
+
+    /**
      * Crea una nueva versión.
      *
      * @param  array<string, mixed>  $attributes  Los atributos de la versión.
