@@ -7,7 +7,6 @@ namespace App\Services\Contracts;
 use App\DTOs\TemplateBlocks\BulkUpdateTemplateBlocksDto;
 use App\DTOs\TemplateBlocks\TemplateBlockDto;
 use App\DTOs\TemplateBlocks\UpdateTemplateBlockDto;
-use App\Models\TemplateBlock;
 
 interface TemplateBlockServiceInterface
 {
@@ -22,14 +21,6 @@ interface TemplateBlockServiceInterface
      * Devuelve el DTO de un bloque. Lanza ModelNotFoundException si no existe.
      */
     public function findOrFail(string $id): TemplateBlockDto;
-
-    /**
-     * Devuelve el modelo Eloquent de un bloque. Variante de uso interno
-     * cuando el caller necesita el Model para autorización (`authorize('delete', $model)`)
-     * o para encadenar a `update`/`delete` de este mismo Service. Resto de
-     * consumidores deben usar `findOrFail()`.
-     */
-    public function findModelOrFail(string $id): TemplateBlock;
 
     /**
      * Carga todos los bloques por ID (IDs únicos). Lanza validación si falta alguno.

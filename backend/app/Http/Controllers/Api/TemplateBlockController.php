@@ -98,10 +98,10 @@ class TemplateBlockController extends Controller
      */
     public function destroy(string $block): Response
     {
-        // findModelOrFail: la policy `authorize('delete', $model)` requiere el Model
-        // Eloquent (no DTO). Excepción documentada al patrón canónico.
-        $blockModel = $this->blockService->findModelOrFail($block);
-        $template = $this->findTemplateOrFail($this->templateService, (string) $blockModel->template_id);
+        // El gate `deleteTemplateBlock` autoriza sobre la plantilla padre; el
+        // bloque solo aporta su template_id (DTO, sin cruzar el Model).
+        $blockDto = $this->blockService->findOrFail($block);
+        $template = $this->findTemplateOrFail($this->templateService, $blockDto->templateId);
         $this->authorize('deleteTemplateBlock', $template);
         $this->assertOptionalProcessContextMatches((string) $template->process_id);
 

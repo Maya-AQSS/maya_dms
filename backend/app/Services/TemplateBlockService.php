@@ -46,14 +46,6 @@ class TemplateBlockService implements TemplateBlockServiceInterface
     }
 
     /**
-     * @internal For authorization checks in controllers only. Do not use in other services.
-     */
-    public function findModelOrFail(string $id): TemplateBlock
-    {
-        return $this->blockRepository->findOrFail($id);
-    }
-
-    /**
      * @param  list<string>  $ids
      * @return list<TemplateBlockDto>
      */
