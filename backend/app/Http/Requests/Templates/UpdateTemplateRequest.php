@@ -141,5 +141,4 @@ class UpdateTemplateRequest extends FormRequest
             setCreatedBy: $this->has('created_by'),
         );
     }
-
 }

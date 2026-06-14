@@ -12,6 +12,7 @@ use App\Models\Process;
 use App\Models\Template;
 use App\Repositories\Contracts\ProcessRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Pagination\LengthAwarePaginator as ConcretePaginator;
 use Illuminate\Support\Facades\DB;
@@ -130,7 +131,7 @@ class ProcessRepository implements ProcessRepositoryInterface
      * Plantillas del proceso sin los scopes de visibilidad/join de cabezal
      * (mantiene el scope de soft delete para excluir las ya eliminadas).
      *
-     * @return \Illuminate\Database\Eloquent\Builder<Template>
+     * @return Builder<Template>
      */
     private function templatesQueryForProcess(string $processId)
     {
@@ -142,7 +143,7 @@ class ProcessRepository implements ProcessRepositoryInterface
      * Documentos del proceso sin los scopes de visibilidad/join de cabezal
      * (mantiene el scope de soft delete para excluir los ya eliminados).
      *
-     * @return \Illuminate\Database\Eloquent\Builder<Document>
+     * @return Builder<Document>
      */
     private function documentsQueryForProcess(string $processId)
     {

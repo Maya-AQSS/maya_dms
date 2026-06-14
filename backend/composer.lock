@@ -7838,12 +7838,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/vyuldashev/laravel-queue-rabbitmq.git",
-                "reference": "10907e57b79ee4f187566a61696278b07ab08e2f"
+                "reference": "fd685fa1a890b82011e9cf25d990e14221c395ad"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/vyuldashev/laravel-queue-rabbitmq/zipball/10907e57b79ee4f187566a61696278b07ab08e2f",
-                "reference": "10907e57b79ee4f187566a61696278b07ab08e2f",
+                "url": "https://api.github.com/repos/vyuldashev/laravel-queue-rabbitmq/zipball/fd685fa1a890b82011e9cf25d990e14221c395ad",
+                "reference": "fd685fa1a890b82011e9cf25d990e14221c395ad",
                 "shasum": ""
             },
             "require": {
@@ -7895,7 +7895,7 @@
                 "issues": "https://github.com/vyuldashev/laravel-queue-rabbitmq/issues",
                 "source": "https://github.com/vyuldashev/laravel-queue-rabbitmq/tree/master"
             },
-            "time": "2026-04-25T20:05:16+00:00"
+            "time": "2026-05-22T11:14:51+00:00"
         },
         {
             "name": "vlucas/phpdotenv",

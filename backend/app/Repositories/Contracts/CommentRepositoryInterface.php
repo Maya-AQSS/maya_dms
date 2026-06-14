@@ -6,6 +6,7 @@ namespace App\Repositories\Contracts;
 
 use App\Models\Comment;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 
 interface CommentRepositoryInterface
 {
@@ -28,7 +29,7 @@ interface CommentRepositoryInterface
     /**
      * Comentarios de un bloque concretos (incluye soft-deleted), con estado de lectura del lector.
      *
-     * @return \Illuminate\Support\Collection<int, Comment>
+     * @return Collection<int, Comment>
      */
     public function listForBlock(
         string $commentableType,
@@ -37,7 +38,7 @@ interface CommentRepositoryInterface
         string $blockableType,
         string $blockableId,
         ?string $readerUserId = null,
-    ): \Illuminate\Support\Collection;
+    ): Collection;
 
     /**
      * Crea un comentario.

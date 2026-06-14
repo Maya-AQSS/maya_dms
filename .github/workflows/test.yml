@@ -32,6 +32,20 @@ jobs:
           --health-retries 5
 
     env:
+      # APP_ENV=testing exime el boot-guard de credenciales AMQP de
+      # shared-messaging-laravel (MessagingServiceProvider) durante
+      # `package:discover` del composer install, donde no hay .env con
+      # RABBITMQ_USER/PASSWORD. La suite Pest ya corre en env testing.
+      APP_ENV: testing
+      # Estas variables alimentan la interpolación de .env.example
+      # (APP_URL, JWKS_URL, etc.) durante el boot de Laravel en CI, donde
+      # no existe .env del slot. Sin ellas el parser falla con
+      # "Invalid URI: Host is malformed".
+      APP_URL: http://localhost
+      HOST_PREFIX: ""
+      DOMAIN_SUFFIX: test
+      MAYA_SLOT: maya
+      MAYA_SLOT_DB: ci
       DB_CONNECTION: pgsql
       DB_HOST: 127.0.0.1
       DB_PORT: 5432
@@ -58,7 +72,7 @@ jobs:
           restore-keys: composer-
 
       - name: Install Composer dependencies
-        run: composer install --no-interaction --prefer-dist --optimize-autoloader --dev
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader --no-scripts
 
       - name: Run tests
         run: ./vendor/bin/pest --no-coverage --colors=never
@@ -82,10 +96,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node 22
+      - name: Setup Node 24
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          # Node 24 (igual que los contenedores de dev): Vite 8 / rolldown usan
+          # bindings nativos de oxc que en Node 22 fallan al resolver el tsconfig
+          # de vitest.setup.ts ([TSCONFIG_ERROR] Tsconfig not found). En Node 24
+          # la suite pasa idéntica al entorno local.
+          node-version: "24"
           # cache: "npm" deshabilitado mientras package-lock.json no esté en git.
 
       - name: Install npm dependencies

@@ -204,5 +204,4 @@ final readonly class TemplateDto
 
         return is_array($fields) ? TemplateHeadSnapshot::storedDocumentReviewMode($fields) : null;
     }
-
 }

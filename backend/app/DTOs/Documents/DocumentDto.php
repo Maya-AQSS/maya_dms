@@ -190,5 +190,4 @@ final readonly class DocumentDto
             (string) $m->template_version_id,
         );
     }
-
 }

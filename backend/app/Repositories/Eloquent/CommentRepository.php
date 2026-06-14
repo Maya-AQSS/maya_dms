@@ -15,6 +15,7 @@ use App\Support\DocumentHeadSnapshot;
 use App\Support\TemplateHeadSnapshot;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class CommentRepository implements CommentRepositoryInterface
@@ -58,7 +59,7 @@ class CommentRepository implements CommentRepositoryInterface
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, Comment>
+     * @return Collection<int, Comment>
      */
     public function listForBlock(
         string $commentableType,
@@ -67,7 +68,7 @@ class CommentRepository implements CommentRepositoryInterface
         string $blockableType,
         string $blockableId,
         ?string $readerUserId = null,
-    ): \Illuminate\Support\Collection {
+    ): Collection {
         $query = Comment::withTrashed()
             ->select('comments.*')
             ->where('commentable_type', $commentableType)

@@ -57,6 +57,7 @@ class IndexThemeRequest extends FormRequest
     public function getPage(): int
     {
         $page = (int) ($this->validated()['page'] ?? 1);
+
         return $page > 0 ? $page : 1;
     }
 
@@ -69,12 +70,14 @@ class IndexThemeRequest extends FormRequest
     {
         $sortBy = $this->validated()['sort_by'] ?? 'updated_at';
         $whitelist = ['name', 'created_at', 'updated_at'];
+
         return in_array($sortBy, $whitelist, true) ? $sortBy : 'updated_at';
     }
 
     public function getSortDir(): string
     {
         $dir = $this->validated()['sort_dir'] ?? 'desc';
+
         return in_array($dir, ['asc', 'desc'], true) ? $dir : 'desc';
     }
 }
