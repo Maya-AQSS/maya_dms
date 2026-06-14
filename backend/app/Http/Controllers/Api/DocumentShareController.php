@@ -37,14 +37,14 @@ class DocumentShareController extends Controller
         $this->assertOptionalProcessContextMatches((string) $doc->process_id);
 
         $actorId = (string) $request->user()->getAuthIdentifier();
-        $data = $this->documentService->upsertDocumentShare(
+        $result = $this->documentService->upsertDocumentShare(
             $doc->id,
             $request->validated('user_id'),
             $request->validated('permission'),
             $actorId,
         );
 
-        return response()->json(['data' => (new DocumentShareResource($data))->toArray($request)], 201);
+        return response()->json(['data' => (new DocumentShareResource($result))->toArray($request)], 201);
     }
 
     /**

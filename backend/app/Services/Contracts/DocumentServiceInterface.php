@@ -14,6 +14,7 @@ use App\DTOs\Documents\DocumentDto;
 use App\DTOs\Documents\DocumentFilterDto;
 use App\DTOs\Documents\DocumentMigrationPayloadDto;
 use App\DTOs\Documents\DocumentReviewDto;
+use App\DTOs\Documents\DocumentShareResultDto;
 use App\DTOs\Documents\ReviewerPoolDto;
 use App\DTOs\Documents\TemplateVersionStatusDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
@@ -257,15 +258,13 @@ interface DocumentServiceInterface
 
     /**
      * Crea o actualiza un compartido del documento (solo titular vía policy en controlador).
-     *
-     * @return array{user_id: string, permission: string, granted_by: string}
      */
     public function upsertDocumentShare(
         string $documentId,
         string $targetUserId,
         string $permission,
         string $actorId,
-    ): array;
+    ): DocumentShareResultDto;
 
     /**
      * Elimina un compartido (idempotente si no existía).

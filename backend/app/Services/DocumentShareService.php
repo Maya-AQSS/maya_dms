@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DTOs\Documents\DocumentShareResultDto;
 use App\Models\Document;
 use App\Policies\DocumentPolicy;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
@@ -25,15 +26,12 @@ class DocumentShareService
         private readonly DocumentRepositoryInterface $documentRepository,
     ) {}
 
-    /**
-     * @return array{user_id: string, permission: string, granted_by: string}
-     */
     public function upsertDocumentShare(
         string $documentId,
         string $targetUserId,
         string $permission,
         string $actorId,
-    ): array {
+    ): DocumentShareResultDto {
         $document = $this->documentRepository->findOrFail($documentId);
 
         if ($targetUserId === $actorId) {
@@ -55,11 +53,11 @@ class DocumentShareService
             $actorId,
         );
 
-        return [
-            'user_id' => $targetUserId,
-            'permission' => $permission,
-            'granted_by' => $actorId,
-        ];
+        return new DocumentShareResultDto(
+            userId: $targetUserId,
+            permission: $permission,
+            grantedBy: $actorId,
+        );
     }
 
     public function removeDocumentShare(string $documentId, string $targetUserId, string $actorId): void
