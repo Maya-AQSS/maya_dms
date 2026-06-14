@@ -4,11 +4,15 @@
     "subtitle": "Catàleg de processos del sistema"
   },
   "detail": {
-    "title": "Procés"
+    "title": "Procés",
+    "subtitleSuffix": "Procés",
+    "loading": "Carregant procés…"
   },
   "form": {
     "editTitle": "Editar procés",
     "newTitle": "Nou procés",
+    "remove": "Llevar",
+    "namePlaceholderShort": "Nom complet",
     "code": "Codi",
     "name": "Nom",
     "alias": "Àlies",
@@ -32,6 +36,19 @@
   },
   "table": {
     "searchPlaceholder": "Codi, nom o àlies…",
-    "onlyRoot": "Només arrel (sense pare)"
+    "onlyRoot": "Només arrel (sense pare)",
+    "columnCode": "Codi",
+    "columnName": "Nom",
+    "columnAlias": "Àlies",
+    "columnIcon": "Icona",
+    "columnColor": "Color",
+    "searchLabel": "Cercar",
+    "parentLabel": "Procés pare",
+    "filtersLabel": "Filtres",
+    "columnsLabel": "Columnes",
+    "clearFiltersLabel": "Netejar filtres",
+    "pageSizeLabel": "Per pàgina",
+    "emptyMessage": "No s'han trobat processos.",
+    "noIndexPermission": "No tens permís per a veure el llistat de processos."
   }
 }

@@ -4,11 +4,15 @@
     "subtitle": "Catálogo de procesos del sistema"
   },
   "detail": {
-    "title": "Proceso"
+    "title": "Proceso",
+    "subtitleSuffix": "Proceso",
+    "loading": "Cargando proceso…"
   },
   "form": {
     "editTitle": "Editar proceso",
     "newTitle": "Nuevo proceso",
+    "remove": "Quitar",
+    "namePlaceholderShort": "Nombre completo",
     "code": "Código",
     "name": "Nombre",
     "alias": "Alias",

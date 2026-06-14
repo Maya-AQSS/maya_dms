@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { buildBackState } from '@ceedcv-maya/shared-hooks-react';
 import {
   DataTable,
@@ -17,6 +18,7 @@ import { getProcessIcon } from '../../../components/layout/processIcons';
 import type { Process } from '../../../types/processes';
 
 export function ProcessesTable() {
+  const { t } = useTranslation(['processes', 'common']);
   const navigate = useNavigate();
   const location = useLocation();
   const { hiddenIds, toggleHidden } = useTablePreferences({
@@ -81,21 +83,21 @@ export function ProcessesTable() {
     () => [
       {
         id: 'code',
-        header: 'Código',
+        header: t('processes:table.columnCode'),
         sortable: true,
         alwaysVisible: true,
         cell: (p) => <span className="font-mono text-sm font-medium">{p.code}</span>,
       },
       {
         id: 'name',
-        header: 'Nombre',
+        header: t('processes:table.columnName'),
         sortable: true,
         alwaysVisible: true,
         cell: (p) => <span className="font-medium truncate">{p.name}</span>,
       },
       {
         id: 'alias',
-        header: 'Alias',
+        header: t('processes:table.columnAlias'),
         sortable: true,
         cell: (p) => (
           <span className="text-sm text-text-secondary dark:text-text-dark-secondary">{p.alias}</span>
@@ -103,7 +105,7 @@ export function ProcessesTable() {
       },
       {
         id: 'icon',
-        header: 'Icono',
+        header: t('processes:table.columnIcon'),
         cell: (p) => {
           if (!p.icon) return <span className="text-text-muted dark:text-text-dark-muted">—</span>;
           const bgStyle = p.color ? { backgroundColor: p.color + '33' } : { backgroundColor: 'rgba(0,0,0,0.06)' };
@@ -121,17 +123,17 @@ export function ProcessesTable() {
       },
       {
         id: 'color',
-        header: 'Color',
+        header: t('processes:table.columnColor'),
         cell: (p) => <ColorBadge color={p.color} size="sm" />,
       },
     ],
-    [],
+    [t],
   );
 
   if (!canIndex) {
     return (
       <p className="text-sm text-text-secondary dark:text-text-dark-secondary py-4 text-center">
-        No tienes permiso para ver el listado de procesos.
+        {t('processes:table.noIndexPermission')}
       </p>
     );
   }
@@ -157,27 +159,27 @@ export function ProcessesTable() {
         onSortChange={onSortChange}
         pageSize={pageSize}
         onPageSizeChange={onPageSizeChange}
-        filtersLabel="Filtros"
-        columnsLabel="Columnas"
-        clearFiltersLabel="Limpiar filtros"
-        pageSizeLabel="Por página"
-        emptyMessage="No se encontraron procesos."
+        filtersLabel={t('processes:table.filtersLabel')}
+        columnsLabel={t('processes:table.columnsLabel')}
+        clearFiltersLabel={t('processes:table.clearFiltersLabel')}
+        pageSizeLabel={t('processes:table.pageSizeLabel')}
+        emptyMessage={t('processes:table.emptyMessage')}
         filtersActiveCount={filtersActiveCount}
         onClearFilters={clearFilters}
         filtersStorageKey="maya:dms:processes-table"
         onRowClick={(p) => navigate(`/admin/processes/${p.id}`, { state: buildBackState(location) })}
         filtersPanel={
           <>
-            <FilterField label="Buscar">
+            <FilterField label={t('processes:table.searchLabel')}>
               <TextInput
                 fieldSize="sm"
                 type="search"
-                placeholder="Código, nombre o alias…"
+                placeholder={t('processes:table.searchPlaceholder')}
                 value={searchInput}
                 onChange={handleSearchChange}
               />
             </FilterField>
-            <FilterField label="Proceso padre">
+            <FilterField label={t('processes:table.parentLabel')}>
               <Select
                 fieldSize="sm"
                 value={filters.parent_id ?? ''}
@@ -185,8 +187,8 @@ export function ProcessesTable() {
                   setFilter('parent_id', e.target.value || undefined);
                 }}
               >
-                <option value="">Todos</option>
-                <option value="root">Solo raíz (sin padre)</option>
+                <option value="">{t('common:filters.all')}</option>
+                <option value="root">{t('processes:table.onlyRoot')}</option>
                 {topLevelProcesses.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.code} — {p.name}

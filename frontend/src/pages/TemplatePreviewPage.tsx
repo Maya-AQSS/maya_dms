@@ -160,7 +160,7 @@ export function TemplatePreviewPage() {
   useEffect(() => {
     if (!id) {
       setLoading(false);
-      setError('Identificador de plantilla no válido.');
+      setError(t('templates:errors.invalidId'));
       return;
     }
 
@@ -173,24 +173,24 @@ export function TemplatePreviewPage() {
         setHistoricalVersionDetail(null);
 
         if (templateVersionId) {
-          const [t, vRes] = await Promise.all([fetchTemplate(id), fetchTemplateVersion(templateVersionId)]);
+          const [tpl, vRes] = await Promise.all([fetchTemplate(id), fetchTemplateVersion(templateVersionId)]);
           if (cancelled) return;
           if (vRes.template_id !== id) {
-            setError('La versión seleccionada no pertenece a esta plantilla.');
+            setError(t('templates:errors.versionMismatch'));
             setTemplate(null);
             setBlocks([]);
             return;
           }
-          setTemplate(t);
+          setTemplate(tpl);
           setSnapshotVersionNumber(vRes.version_number);
           setHistoricalVersionDetail(vRes);
           const snap = Array.isArray(vRes.blocks_snapshot) ? vRes.blocks_snapshot : [];
           setBlocks(mapSnapshotToTemplateBlocks(id, snap).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
         } else {
-          const t = await fetchTemplate(id);
+          const tpl = await fetchTemplate(id);
           if (cancelled) return;
-          setTemplate(t);
-          const canListBlocks = canListTemplateBlocks(hasPermission, profile?.id, t);
+          setTemplate(tpl);
+          const canListBlocks = canListTemplateBlocks(hasPermission, profile?.id, tpl);
           if (canListBlocks) {
             const bRes = await fetchBlocks(id);
             if (!cancelled) {
@@ -202,7 +202,7 @@ export function TemplatePreviewPage() {
         }
       } catch (e) {
         if (!cancelled) {
-          setError(e instanceof Error ? e.message : 'No se pudo cargar la plantilla.');
+          setError(e instanceof Error ? e.message : t('templates:errors.errorNotFound'));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -210,7 +210,7 @@ export function TemplatePreviewPage() {
     };
     void load();
     return () => { cancelled = true; };
-  }, [id, templateVersionId, hasPermission, profile?.id]);
+  }, [id, templateVersionId, hasPermission, profile?.id, t]);
 
   const handleSendMessage = async (parentId: string | null, body: string) => {
     if (!activeView?.blockId || !id) return;
@@ -280,11 +280,11 @@ export function TemplatePreviewPage() {
   const authorDisplay = viewingPublishedSnapshot
     ? (snapshotAuthorName && snapshotAuthorName !== ''
       ? snapshotAuthorName
-      : 'Autor desconocido')
+      : t('templates:unknownAuthor'))
     : (
       template?.author_name?.trim() ||
       (isOwner ? profile?.name?.trim() : '') ||
-      'Autor desconocido'
+      t('templates:unknownAuthor')
     );
   const displayVisibilityRaw = viewingPublishedSnapshot
     ? (typeof snapshotTemplate?.visibility_level === 'string'
@@ -544,9 +544,9 @@ export function TemplatePreviewPage() {
             size="sm"
             loading={pdfDownloading}
             onClick={() => void handleDownloadPdf()}
-            title="Genera y descarga el PDF de la plantilla"
+            title={t('templates:preview.pdfTooltip')}
           >
-            {pdfDownloading ? 'Descargando…' : 'Descargar PDF'}
+            {pdfDownloading ? t('templates:preview.downloadingPdf') : t('templates:preview.downloadPdf')}
           </Button>
           {canDelete && (
             <Button
@@ -556,12 +556,12 @@ export function TemplatePreviewPage() {
               className="text-danger border-danger/40 hover:border-danger hover:bg-danger/5"
               onClick={() => setShowDeleteModal(true)}
             >
-              Eliminar
+              {t('common:actions.delete')}
             </Button>
           )}
           {canEdit && (
             <Button type="button" variant="outline" size="sm" onClick={() => navigate(`/templates/${id}/edit`)}>
-              Editar
+              {t('common:actions.edit')}
             </Button>
           )}
           {canClone && (
@@ -571,7 +571,7 @@ export function TemplatePreviewPage() {
               size="sm"
               loading={actionLoading}
               onClick={() => void handleClone()}
-              title="Crea una plantilla nueva e independiente (no una versión de esta). Para una versión nueva, edita y publica esta plantilla."
+              title={t('templates:preview.newTemplateTooltip')}
             >
               {t('preview.clone')}
             </Button>
@@ -610,7 +610,7 @@ export function TemplatePreviewPage() {
     <p className="text-xs text-text-muted dark:text-text-dark-muted text-center">
       {authorDisplay}
       {' · '}
-      {displayVisibility ? visibilityLabel(displayVisibility) : '—'}
+      {displayVisibility ? visibilityLabel(displayVisibility, t) : '—'}
       {displayVisibility === 'study_type' && template.study_type_id ? (
         <> ({(hierarchy.find((t) => String(t.id) === String(template.study_type_id))?.name ?? template.study_type_id)})</>
       ) : null}
@@ -678,7 +678,7 @@ export function TemplatePreviewPage() {
                 {block.description ? (
                   <BlockContentHtml content={normalizeBlockContentForEditor(block.description)} />
                 ) : (
-                  <p className="text-sm text-text-muted italic">Este bloque no tiene descripción.</p>
+                  <p className="text-sm text-text-muted italic">{t('common:noBlockDescription')}</p>
                 )}
               </div>
             </div>
@@ -690,7 +690,7 @@ export function TemplatePreviewPage() {
         )}
 
         {loading && (
-          <p className="text-sm text-text-muted dark:text-text-dark-muted">Cargando plantilla…</p>
+          <p className="text-sm text-text-muted dark:text-text-dark-muted">{t('common:loadingTemplate')}</p>
         )}
         {error && !loading && (
           <p className="text-sm text-warning-dark dark:text-warning-light">{error}</p>
@@ -750,7 +750,7 @@ export function TemplatePreviewPage() {
                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                               </svg>
-                              <span>Info</span>
+                              <span>{t('common:info')}</span>
                             </button>
                           )}
                           {!isPublished && (
@@ -767,7 +767,7 @@ export function TemplatePreviewPage() {
                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                               </svg>
-                              <span>Mensajes</span>
+                              <span>{t('common:messages')}</span>
                               {unreadComments > 0 && (
                                 <span className="ml-1 bg-odoo-purple text-text-inverse px-1.5 py-0.5 rounded-full text-2xs leading-none font-bold">
                                   {unreadComments}
@@ -810,9 +810,9 @@ export function TemplatePreviewPage() {
       <ConfirmDialog
         open={newVersionFlow.showConfirm}
         title={t('preview.createNewVersionTitle')}
-        description="Se creará un nuevo borrador editable a partir de la plantilla publicada actual. Podrás modificarla y volver a enviarla a validar."
-        confirmLabel="Crear nueva versión"
-        cancelLabel="Cancelar"
+        description={t('templates:newVersion.description')}
+        confirmLabel={t('templates:newVersion.confirm')}
+        cancelLabel={t('common:actions.cancel')}
         loading={newVersionFlow.confirmLoading}
         error={newVersionFlow.confirmError}
         onConfirm={() => void newVersionFlow.handleConfirmNewVersion()}
@@ -825,7 +825,7 @@ export function TemplatePreviewPage() {
         title={t('preview.draftAlreadyExistsTitle')}
         icon="🔒"
         description={newVersionFlow.draftBlockedBy ?? ''}
-        confirmLabel="Entendido"
+        confirmLabel={t('common:actions.understood')}
         onConfirm={newVersionFlow.dismissBlockedModal}
         onCancel={newVersionFlow.dismissBlockedModal}
       />

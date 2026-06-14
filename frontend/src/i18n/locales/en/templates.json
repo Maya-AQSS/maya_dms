@@ -156,7 +156,32 @@
     "fillFields": "Cover fields",
     "fillEmpty": "This cover has no fillable fields.",
     "notEditable": "The document is not editable in its current state.",
-    "imagePlaceholder": "Image"
+    "imagePlaceholder": "Image",
+    "addElement": "+ Add element ▾",
+    "pageHint": "Page {{pageSize}} · position in mm. Drag to place, resize from the corner.",
+    "hintDrag": "Drag to move (mm), resize from the corner.",
+    "hintLayer": "to change layer.",
+    "hintFields": "are completed when creating a document.",
+    "fillableFields": "fillable fields",
+    "x": "X",
+    "y": "Y",
+    "width": "Width",
+    "height": "Height",
+    "content": "Content",
+    "keyLabel": "Key (identifier, no spaces)",
+    "labelLabel": "Label (shown when filling in)",
+    "defaultText": "Default text (optional)",
+    "format": "Format",
+    "sizePt": "Size (pt)",
+    "color": "Color",
+    "alignment": "Alignment",
+    "weight": "Weight",
+    "uploadImage": "Upload image (PNG/JPG/WebP)",
+    "altText": "Alt text",
+    "fit": "Fit",
+    "uploadError": "Error uploading the image",
+    "fieldLabel": "Field {{n}}",
+    "fieldFallback": "Field"
   },
   "newVersion": {
     "description": "A new editable draft will be created from the published template.",
@@ -215,7 +240,9 @@
     "rejectValidationTitle": "Reject validation?",
     "clone": "Clone",
     "pdfTooltip": "Generate and download the template PDF",
-    "newTemplateTooltip": "Create a new independent template from this one."
+    "newTemplateTooltip": "Create a new independent template from this one.",
+    "downloadPdf": "Download PDF",
+    "downloadingPdf": "Downloading…"
   },
   "errors": {
     "errorForbidden": "You do not have permission for this action (e.g. shared visibility is for coordination only).",
@@ -234,5 +261,9 @@
     "noUpdateBlockPermission": "You do not have permission to update blocks (block.update).",
     "noDeleteBlockPermission": "You do not have permission to delete blocks (block.delete).",
     "noReorderBlockPermission": "You do not have permission to reorder blocks (block.update)."
-  }
+  },
+  "blockCount_one": "{{count}} block",
+  "blockCount_other": "{{count}} blocks",
+  "unknownAuthor": "Unknown author",
+  "deadlineLabel": "Deadline:"
 }

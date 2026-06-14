@@ -132,7 +132,7 @@ export function ThemeWizardStepIdentity({
                 value={value.typography.heading_font}
                 onChange={(e) => setTypography({ heading_font: e.target.value })}
               >
-                {renderFontOptions(fonts, value.typography.heading_font)}
+                {renderFontOptions(fonts, value.typography.heading_font, t)}
               </Select>
             </div>
             <div>
@@ -142,7 +142,7 @@ export function ThemeWizardStepIdentity({
                 value={value.typography.body_font}
                 onChange={(e) => setTypography({ body_font: e.target.value })}
               >
-                {renderFontOptions(fonts, value.typography.body_font)}
+                {renderFontOptions(fonts, value.typography.body_font, t)}
               </Select>
             </div>
             <div>
@@ -210,7 +210,7 @@ export function ThemeWizardStepIdentity({
   );
 }
 
-function renderFontOptions(catalog: ThemeFontsCatalog, currentValue: string) {
+function renderFontOptions(catalog: ThemeFontsCatalog, currentValue: string, t: (key: string) => string) {
   const allValues = new Set([
     ...catalog.sans.map((f) => f.value),
     ...catalog.serif.map((f) => f.value),
@@ -219,21 +219,21 @@ function renderFontOptions(catalog: ThemeFontsCatalog, currentValue: string) {
 
   return (
     <>
-      <optgroup label="Sans-serif">
+      <optgroup label={t('fonts.sansSerif')}>
         {catalog.sans.map((f) => (
           <option key={f.value} value={f.value} title={f.note}>
             {f.label}
           </option>
         ))}
       </optgroup>
-      <optgroup label="Serif">
+      <optgroup label={t('fonts.serif')}>
         {catalog.serif.map((f) => (
           <option key={f.value} value={f.value} title={f.note}>
             {f.label}
           </option>
         ))}
       </optgroup>
-      <optgroup label="Monoespacio">
+      <optgroup label={t('fonts.monospace')}>
         {catalog.mono.map((f) => (
           <option key={f.value} value={f.value} title={f.note}>
             {f.label}
@@ -241,7 +241,7 @@ function renderFontOptions(catalog: ThemeFontsCatalog, currentValue: string) {
         ))}
       </optgroup>
       {currentValue && !allValues.has(currentValue) && (
-        <optgroup label="Personalizada (legacy)">
+        <optgroup label={t('fonts.customLegacy')}>
           <option value={currentValue}>{currentValue}</option>
         </optgroup>
       )}

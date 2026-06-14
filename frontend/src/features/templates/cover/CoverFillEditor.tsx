@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FieldLabel, TextInput } from '@ceedcv-maya/shared-ui-react';
 import { AbsoluteCanvas } from '../../../components/canvas/AbsoluteCanvas';
 import { pageDimsMm } from '../../themes/pageSizes';
@@ -30,6 +31,7 @@ interface CoverFillEditorProps {
  * portada en vivo con los valores aplicados.
  */
 export function CoverFillEditor({ geometry, value, pageSize = 'A4', editable = true, onPersist }: CoverFillEditorProps) {
+  const { t } = useTranslation(['templates', 'common']);
   const cover = useMemo(() => parseCoverContent(geometry, pageSize), [geometry, pageSize]);
   const page = useMemo(() => pageDimsMm(cover.page.size), [cover.page.size]);
   const [values, setValues] = useState<Record<string, string>>(() => parseCoverFill(value));
@@ -104,20 +106,20 @@ export function CoverFillEditor({ geometry, value, pageSize = 'A4', editable = t
       {/* Panel de campos rellenables */}
       <aside className="w-full shrink-0 overflow-y-auto border-t border-ui-border bg-white p-4 dark:border-ui-dark-border dark:bg-ui-dark-card md:w-80 md:border-l md:border-t-0">
         <div className="mb-3 flex items-center justify-between gap-2">
-          <h3 className="text-sm font-bold uppercase tracking-widest text-text-secondary">Campos de la portada</h3>
+          <h3 className="text-sm font-bold uppercase tracking-widest text-text-secondary">{t('templates:cover.fillFields')}</h3>
           {saveState !== 'idle' && (
             <span className="text-xs text-text-muted">
-              {saveState === 'saving' ? 'Guardando…' : 'Guardado ✓'}
+              {saveState === 'saving' ? t('common:saving') : `${t('common:status.saved')} ✓`}
             </span>
           )}
         </div>
         {placeholders.length === 0 ? (
-          <p className="text-sm text-text-muted">Esta portada no tiene campos rellenables.</p>
+          <p className="text-sm text-text-muted">{t('templates:cover.fillEmpty')}</p>
         ) : (
           <div className="space-y-3">
             {placeholders.map((ph) => {
               const key = typeof ph.props.key === 'string' ? ph.props.key : '';
-              const label = typeof ph.props.label === 'string' ? ph.props.label : 'Campo';
+              const label = typeof ph.props.label === 'string' ? ph.props.label : t('templates:cover.fieldFallback');
               return (
                 <div key={ph.id}>
                   <FieldLabel>{label}</FieldLabel>
@@ -134,7 +136,7 @@ export function CoverFillEditor({ geometry, value, pageSize = 'A4', editable = t
           </div>
         )}
         {!editable && (
-          <p className="mt-4 text-xs text-text-muted">El documento no es editable en su estado actual.</p>
+          <p className="mt-4 text-xs text-text-muted">{t('templates:cover.notEditable')}</p>
         )}
       </aside>
     </div>

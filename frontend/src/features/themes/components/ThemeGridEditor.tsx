@@ -85,13 +85,13 @@ export function ThemeGridEditor({ theme, onSave, embedded, onClose }: ThemeGridE
           await onSave([...legacyRegions, ...next]);
           setDirty(false);
         } catch (e) {
-          setError(e instanceof Error ? e.message : 'Error guardando el layout');
+          setError(e instanceof Error ? e.message : t('themes:layout.saveError'));
         } finally {
           setSaving(false);
         }
       }, 700);
     },
-    [legacyRegions, onSave],
+    [legacyRegions, onSave, t],
   );
 
   const updateRegions = useCallback(
@@ -117,7 +117,7 @@ export function ThemeGridEditor({ theme, onSave, embedded, onClose }: ThemeGridE
 
   const handleAddBlock = (type: ThemeBlockType) => {
     const maxZ = editableRegions.reduce((m, r) => Math.max(m, r.box?.z ?? 0), 0);
-    const r = newRegion(type, maxZ);
+    const r = newRegion(type, maxZ, t);
     updateRegions((prev) => [...prev, r]);
     setSelectedId(r.id);
   };
@@ -153,11 +153,11 @@ export function ThemeGridEditor({ theme, onSave, embedded, onClose }: ThemeGridE
       {!embedded && (
         <div className="flex shrink-0 items-center justify-between border-b border-ui-border bg-ui-body px-4 py-2">
           <div className="text-sm">
-            <strong>Editor de layout</strong> — {theme.name}
+            <strong>{t('themes:layout.editorTitle')}</strong> — {theme.name}
           </div>
           {onClose && (
             <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-              Cerrar
+              {t('common:actions.close')}
             </Button>
           )}
         </div>
@@ -218,12 +218,13 @@ interface ToolbarProps {
 }
 
 function Toolbar({ onAddBlock, saving, dirty, error, pageSize }: ToolbarProps) {
+  const { t } = useTranslation(['themes', 'common']);
   const [open, setOpen] = useState(false);
   return (
     <div className="flex shrink-0 items-center gap-2 border-b border-ui-border bg-white px-4 py-2 dark:border-ui-dark-border dark:bg-ui-dark-card">
       <div className="relative">
         <Button type="button" variant="primary" size="sm" onClick={() => setOpen((o) => !o)}>
-          + Añadir bloque ▾
+          {t('themes:layout.addBlock')}
         </Button>
         {open && (
           <ul
@@ -242,7 +243,7 @@ function Toolbar({ onAddBlock, saving, dirty, error, pageSize }: ToolbarProps) {
                     setOpen(false);
                   }}
                 >
-                  {b.label}
+                  {t(`themes:${b.labelKey}`)}
                 </button>
               </li>
             ))}
@@ -251,16 +252,16 @@ function Toolbar({ onAddBlock, saving, dirty, error, pageSize }: ToolbarProps) {
       </div>
 
       <span className="text-xs text-text-muted">
-        Página {pageSize} · posición en mm. Arrastra para colocar, redimensiona desde la esquina.
+        {t('themes:layout.pageHint', { pageSize })}
       </span>
 
       <div className="ml-auto flex items-center gap-3 text-xs">
         {saving ? (
-          <span className="text-text-muted">Guardando…</span>
+          <span className="text-text-muted">{t('common:saving')}</span>
         ) : dirty ? (
-          <span className="text-warning-dark">Cambios pendientes</span>
+          <span className="text-warning-dark">{t('common:status.pendingChanges')}</span>
         ) : (
-          <span className="text-success-dark">Guardado</span>
+          <span className="text-success-dark">{t('common:status.saved')}</span>
         )}
         {error && <span className="text-danger-dark">⚠ {error}</span>}
       </div>

@@ -66,10 +66,16 @@
     "palette": "Palette"
   },
   "verification": {
-    "title": "Verification"
+    "title": "Verification",
+    "intro": "Check how colors, fonts and images are applied. The PDF view generates a real sample PDF/UA with lorem ipsum.",
+    "generatePdf": "Generate sample PDF",
+    "pdfError": "Could not generate the sample PDF."
   },
   "layout": {
-    "editorTitle": "Layout editor"
+    "editorTitle": "Layout editor",
+    "addBlock": "+ Add block ▾",
+    "pageHint": "Page {{pageSize}} · position in mm. Drag to place, resize from the corner.",
+    "saveError": "Error saving the layout"
   },
   "fonts": {
     "sansSerif": "Sans-serif",
@@ -109,7 +115,20 @@
     "imageFit": "Image fit",
     "fitContain": "Contain (empty space)",
     "fitCover": "Cover (crop)",
-    "fitStretch": "Stretch"
+    "fitStretch": "Stretch",
+    "emptySelect": "Select a block on the canvas to edit its properties, or add a new one from the button",
+    "emptyHintDrag": "Drag any block to move it (mm).",
+    "emptyHintResize": "Resize from the bottom-right corner.",
+    "emptyHintLayer": "to change layer (z-index).",
+    "emptyHintOverlap": "Blocks can overlap.",
+    "layer": "Layer:",
+    "layerHint": "(change with the block ↑/↓ buttons)",
+    "contentSlotHint": "This block marks the area where the document render inserts its content. There should only be one per theme.",
+    "uploadError": "Error uploading image",
+    "urlIngestError": "Error ingesting image from URL",
+    "urlPlaceholder": "https://example.com/image.jpg",
+    "useUrlBtn": "Use",
+    "positionSize": "Position and size (mm)"
   },
   "errors": {
     "errorForbidden": "You do not have permission for this action on the theme.",

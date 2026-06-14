@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { CoverRegion, TextAlign } from './coverModel';
 
 /**
@@ -14,6 +15,7 @@ export function CoverRegionPreview({
   region: CoverRegion;
   fillValue?: string;
 }) {
+  const { t } = useTranslation('templates');
   const p = region.props ?? {};
   const textStyle: CSSProperties = {
     fontSize: `${(p.size as number) ?? 12}pt`,
@@ -90,7 +92,7 @@ export function CoverRegionPreview({
               }}
             />
           ) : (
-            <span style={{ fontSize: 11, color: '#9ca3af' }}>Imagen</span>
+            <span style={{ fontSize: 11, color: '#9ca3af' }}>{t('cover.imagePlaceholder')}</span>
           )}
         </div>
       );

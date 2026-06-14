@@ -25,29 +25,29 @@ export function BlockInspector({ region, themeId, page, onUpdateProps, onUpdateB
   return (
     <div className="space-y-4 text-sm">
       <header>
-        <h3 className="text-base font-semibold">{labelForType(region.type)}</h3>
+        <h3 className="text-base font-semibold">{labelForType(region.type, t)}</h3>
         <p className="text-xs text-text-muted">ID: {region.id}</p>
       </header>
 
       {box && (
         <section className="space-y-2">
           <h4 className="text-xs font-bold uppercase tracking-wider text-text-secondary">
-            Posición y tamaño (mm)
+            {t('inspector.positionSize')}
           </h4>
           <div className="grid grid-cols-2 gap-2">
-            <NumField label="X (mm)" value={box.x} min={0} max={page.width} step={1} onChange={(v) => onUpdateBox({ x: v })} />
-            <NumField label="Y (mm)" value={box.y} min={0} max={page.height} step={1} onChange={(v) => onUpdateBox({ y: v })} />
-            <NumField label="Ancho (mm)" value={box.w} min={1} max={page.width} step={1} onChange={(v) => onUpdateBox({ w: v })} />
-            <NumField label="Alto (mm)" value={box.h} min={1} max={page.height} step={1} onChange={(v) => onUpdateBox({ h: v })} />
+            <NumField label={t('inspector.x')} value={box.x} min={0} max={page.width} step={1} onChange={(v) => onUpdateBox({ x: v })} />
+            <NumField label={t('inspector.y')} value={box.y} min={0} max={page.height} step={1} onChange={(v) => onUpdateBox({ y: v })} />
+            <NumField label={t('inspector.width')} value={box.w} min={1} max={page.width} step={1} onChange={(v) => onUpdateBox({ w: v })} />
+            <NumField label={t('inspector.height')} value={box.h} min={1} max={page.height} step={1} onChange={(v) => onUpdateBox({ h: v })} />
           </div>
           <p className="text-xs text-text-muted">
-            Capa: <strong>{box.z ?? 1}</strong> (cambia desde los botones ↑/↓ del bloque)
+            {t('inspector.layer')} <strong>{box.z ?? 1}</strong> {t('inspector.layerHint')}
           </p>
         </section>
       )}
 
       <section className="space-y-2">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-text-secondary">Propiedades</h4>
+        <h4 className="text-xs font-bold uppercase tracking-wider text-text-secondary">{t('inspector.properties')}</h4>
         {renderTypeFields(region.type, p, onUpdateProps, t, themeId)}
       </section>
     </div>
@@ -58,16 +58,16 @@ export function EmptyInspector() {
   const { t } = useTranslation('themes');
   return (
     <div className="space-y-3 text-sm text-text-muted">
-      <h3 className="text-base font-semibold text-text-primary dark:text-text-dark-primary">Inspector</h3>
+      <h3 className="text-base font-semibold text-text-primary dark:text-text-dark-primary">{t('inspector.title')}</h3>
       <p>
-        Selecciona un bloque del lienzo para editar sus propiedades, o añade uno nuevo desde el botón{' '}
+        {t('inspector.emptySelect')}{' '}
         <strong>{t('editor.addBlock')}</strong>.
       </p>
       <ul className="list-disc space-y-1 pl-4">
-        <li>Arrastra cualquier bloque para moverlo (mm).</li>
-        <li>Redimensiona desde la esquina inferior derecha.</li>
-        <li>Usa <strong>↑ / ↓</strong> en el bloque para cambiar de capa (z-index).</li>
-        <li>Los bloques pueden solaparse.</li>
+        <li>{t('inspector.emptyHintDrag')}</li>
+        <li>{t('inspector.emptyHintResize')}</li>
+        <li><strong>↑ / ↓</strong> {t('inspector.emptyHintLayer')}</li>
+        <li>{t('inspector.emptyHintOverlap')}</li>
       </ul>
     </div>
   );
@@ -85,16 +85,16 @@ function renderTypeFields(
       return (
         <>
           <div>
-            <FieldLabel htmlFor="blk-text">Contenido</FieldLabel>
+            <FieldLabel htmlFor="blk-text">{t('inspector.content')}</FieldLabel>
             <TextInput
               id="blk-text"
               value={(p.text as string) ?? ''}
               onChange={(e) => onChange({ text: e.target.value })}
             />
           </div>
-          <NumField label="Tamaño (pt)" value={(p.size as number) ?? 9} min={6} max={48} onChange={(v) => onChange({ size: v })} />
+          <NumField label={t('inspector.sizePt')} value={(p.size as number) ?? 9} min={6} max={48} onChange={(v) => onChange({ size: v })} />
           <div>
-            <FieldLabel htmlFor="blk-color">Color</FieldLabel>
+            <FieldLabel htmlFor="blk-color">{t('inspector.color')}</FieldLabel>
             <input
               id="blk-color"
               type="color"
@@ -110,13 +110,13 @@ function renderTypeFields(
       return themeId ? (
         <ImageBlockEditor props={p} themeId={themeId} onChange={onChange} />
       ) : (
-        <p className="text-xs text-text-muted">ID de theme no disponible</p>
+        <p className="text-xs text-text-muted">{t('inspector.noThemeId')}</p>
       );
     case 'page_number':
       return (
         <>
           <div>
-            <FieldLabel htmlFor="blk-pn-fmt">Formato</FieldLabel>
+            <FieldLabel htmlFor="blk-pn-fmt">{t('inspector.format')}</FieldLabel>
             <Select id="blk-pn-fmt" value={(p.format as string) ?? 'page-of-pages'} onChange={(e) => onChange({ format: e.target.value })}>
               <option value="page">{t('editor.pageNumber')}</option>
               <option value="page-of-pages">{t('editor.pageNumberOfTotal')}</option>
@@ -129,10 +129,10 @@ function renderTypeFields(
       return (
         <>
           <div>
-            <FieldLabel htmlFor="blk-date-fmt">Formato</FieldLabel>
+            <FieldLabel htmlFor="blk-date-fmt">{t('inspector.format')}</FieldLabel>
             <Select id="blk-date-fmt" value={(p.format as string) ?? 'short'} onChange={(e) => onChange({ format: e.target.value })}>
-              <option value="short">Corto (01/01/2026)</option>
-              <option value="long">Largo (1 de enero de 2026)</option>
+              <option value="short">{t('inspector.dateShort')}</option>
+              <option value="long">{t('inspector.dateLong')}</option>
             </Select>
           </div>
           <AlignField value={(p.align as string) ?? 'left'} onChange={(v) => onChange({ align: v })} />
@@ -142,16 +142,16 @@ function renderTypeFields(
       return (
         <>
           <div>
-            <FieldLabel htmlFor="blk-label">Etiqueta visible en el editor</FieldLabel>
+            <FieldLabel htmlFor="blk-label">{t('inspector.editorLabel')}</FieldLabel>
             <TextInput id="blk-label" value={(p.label as string) ?? ''} onChange={(e) => onChange({ label: e.target.value })} />
           </div>
           <p className="text-xs text-text-muted">
-            Este bloque marca el área donde el render del documento inserta su contenido. Sólo debería existir uno por theme.
+            {t('inspector.contentSlotHint')}
           </p>
         </>
       );
     default:
-      return <p className="text-xs text-text-muted">Sin propiedades editables.</p>;
+      return <p className="text-xs text-text-muted">{t('inspector.noEditableProps')}</p>;
   }
 }
 
@@ -184,14 +184,14 @@ export function NumField({ label, value, min, max, step, onChange }: NumFieldPro
 }
 
 function AlignField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const { t } = useTranslation('themes');
+  const { t } = useTranslation(['themes', 'common']);
   return (
     <div>
-      <FieldLabel htmlFor="blk-align">{t('editor.alignment')}</FieldLabel>
+      <FieldLabel htmlFor="blk-align">{t('themes:editor.alignment')}</FieldLabel>
       <Select id="blk-align" value={value} onChange={(e) => onChange(e.target.value)}>
-        <option value="left">Izquierda</option>
-        <option value="center">Centro</option>
-        <option value="right">Derecha</option>
+        <option value="left">{t('common:align.left')}</option>
+        <option value="center">{t('common:align.center')}</option>
+        <option value="right">{t('common:align.right')}</option>
       </Select>
     </div>
   );
@@ -204,6 +204,7 @@ interface ImageBlockEditorProps {
 }
 
 function ImageBlockEditor({ props, themeId, onChange }: ImageBlockEditorProps) {
+  const { t } = useTranslation(['themes', 'common']);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [urlInput, setUrlInput] = useState('');
@@ -219,7 +220,7 @@ function ImageBlockEditor({ props, themeId, onChange }: ImageBlockEditorProps) {
       onChange({ src: response.src, srcUrl: response.url });
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error subiendo imagen');
+      setError(e instanceof Error ? e.message : t('themes:inspector.uploadError'));
     } finally {
       setUploading(false);
     }
@@ -234,7 +235,7 @@ function ImageBlockEditor({ props, themeId, onChange }: ImageBlockEditorProps) {
       onChange({ src: response.src, srcUrl: response.url });
       setUrlInput('');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error ingiriendo imagen desde URL');
+      setError(e instanceof Error ? e.message : t('themes:inspector.urlIngestError'));
     } finally {
       setUploading(false);
     }
@@ -244,15 +245,15 @@ function ImageBlockEditor({ props, themeId, onChange }: ImageBlockEditorProps) {
     <div className="space-y-3">
       {srcUrl && (
         <div>
-          <FieldLabel>Vista previa</FieldLabel>
+          <FieldLabel>{t('common:preview')}</FieldLabel>
           <div className="h-24 w-full overflow-hidden rounded border border-ui-border bg-ui-body">
-            <img src={srcUrl} alt="Preview" className="h-full w-full object-cover" />
+            <img src={srcUrl} alt={t('common:preview')} className="h-full w-full object-cover" />
           </div>
         </div>
       )}
 
       <div>
-        <FieldLabel htmlFor="blk-img-file">Subir imagen</FieldLabel>
+        <FieldLabel htmlFor="blk-img-file">{t('themes:inspector.uploadImage')}</FieldLabel>
         <input
           ref={fileInputRef}
           id="blk-img-file"
@@ -268,7 +269,7 @@ function ImageBlockEditor({ props, themeId, onChange }: ImageBlockEditorProps) {
       </div>
 
       <div>
-        <FieldLabel htmlFor="blk-img-url">O usar URL</FieldLabel>
+        <FieldLabel htmlFor="blk-img-url">{t('themes:inspector.orUseUrl')}</FieldLabel>
         <div className="flex gap-1">
           <input
             id="blk-img-url"
@@ -276,7 +277,7 @@ function ImageBlockEditor({ props, themeId, onChange }: ImageBlockEditorProps) {
             value={urlInput}
             onChange={(e) => setUrlInput(e.target.value)}
             disabled={uploading}
-            placeholder="https://ejemplo.com/imagen.jpg"
+            placeholder={t('themes:inspector.urlPlaceholder')}
             className="flex-1 rounded border border-ui-border px-2 py-1 text-xs disabled:opacity-50"
           />
           <Button
@@ -288,7 +289,7 @@ function ImageBlockEditor({ props, themeId, onChange }: ImageBlockEditorProps) {
             onClick={handleUrlIngest}
             className="shrink-0"
           >
-            Usar
+            {t('themes:inspector.useUrlBtn')}
           </Button>
         </div>
       </div>
@@ -296,12 +297,12 @@ function ImageBlockEditor({ props, themeId, onChange }: ImageBlockEditorProps) {
       {error && <p className="rounded bg-danger/10 p-2 text-xs text-danger-dark">{error}</p>}
 
       <div>
-        <FieldLabel htmlFor="blk-img-alt">Texto alternativo</FieldLabel>
+        <FieldLabel htmlFor="blk-img-alt">{t('themes:inspector.altText')}</FieldLabel>
         <TextInput id="blk-img-alt" value={(props.alt as string) ?? ''} onChange={(e) => onChange({ alt: e.target.value })} />
       </div>
 
       <NumField
-        label="Opacidad (0–1)"
+        label={t('themes:inspector.opacity')}
         value={(props.opacity as number) ?? 1}
         min={0}
         max={1}
@@ -310,7 +311,7 @@ function ImageBlockEditor({ props, themeId, onChange }: ImageBlockEditorProps) {
       />
 
       <NumField
-        label="Rotación (grados)"
+        label={t('themes:inspector.rotation')}
         value={(props.rotate as number) ?? 0}
         min={-180}
         max={180}
@@ -318,11 +319,11 @@ function ImageBlockEditor({ props, themeId, onChange }: ImageBlockEditorProps) {
       />
 
       <div>
-        <FieldLabel htmlFor="blk-img-fit">Ajuste de imagen</FieldLabel>
+        <FieldLabel htmlFor="blk-img-fit">{t('themes:inspector.imageFit')}</FieldLabel>
         <Select id="blk-img-fit" value={(props.objectFit as string) ?? 'contain'} onChange={(e) => onChange({ objectFit: e.target.value })}>
-          <option value="contain">Contener (espacio vacío)</option>
-          <option value="cover">Cubrir (recorte)</option>
-          <option value="stretch">Estirar</option>
+          <option value="contain">{t('themes:inspector.fitContain')}</option>
+          <option value="cover">{t('themes:inspector.fitCover')}</option>
+          <option value="stretch">{t('themes:inspector.fitStretch')}</option>
         </Select>
       </div>
     </div>

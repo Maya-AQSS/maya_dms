@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button, FieldLabel, Select, TextInput } from '@ceedcv-maya/shared-ui-react';
 import { AbsoluteCanvas } from '../../../components/canvas/AbsoluteCanvas';
 import type { BoxPatch } from '../../../components/canvas/canvasModel';
@@ -29,6 +30,7 @@ interface CoverDesignEditorProps {
  * persistencia (autosave) la gestiona el wizard que lo embebe.
  */
 export function CoverDesignEditor({ value, pageSize, templateId, onChange }: CoverDesignEditorProps) {
+  const { t } = useTranslation('templates');
   const page = useMemo(() => pageDimsMm(pageSize), [pageSize]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -43,7 +45,7 @@ export function CoverDesignEditor({ value, pageSize, templateId, onChange }: Cov
     const r = newCoverRegion(type, maxZ);
     if (type === 'text_placeholder') {
       const n = regions.filter((x) => x.type === 'text_placeholder').length + 1;
-      r.props = { ...r.props, key: `campo_${n}`, label: `Campo ${n}` };
+      r.props = { ...r.props, key: `campo_${n}`, label: t('cover.fieldLabel', { n }) };
     }
     emit([...regions, r]);
     setSelectedId(r.id);
@@ -75,7 +77,7 @@ export function CoverDesignEditor({ value, pageSize, templateId, onChange }: Cov
       <div className="flex shrink-0 items-center gap-2 border-b border-ui-border bg-white px-4 py-2 dark:border-ui-dark-border dark:bg-ui-dark-card">
         <div className="relative">
           <Button type="button" variant="primary" size="sm" onClick={() => setAddOpen((o) => !o)}>
-            + Añadir elemento ▾
+            {t('cover.addElement')}
           </Button>
           {addOpen && (
             <ul
@@ -99,7 +101,7 @@ export function CoverDesignEditor({ value, pageSize, templateId, onChange }: Cov
           )}
         </div>
         <span className="text-xs text-text-muted">
-          Página {pageSize} · posición en mm. Arrastra para colocar, redimensiona desde la esquina.
+          {t('cover.pageHint', { pageSize })}
         </span>
       </div>
 
@@ -127,12 +129,12 @@ export function CoverDesignEditor({ value, pageSize, templateId, onChange }: Cov
             />
           ) : (
             <div className="space-y-3 text-sm text-text-muted">
-              <h3 className="text-base font-semibold text-text-primary dark:text-text-dark-primary">Inspector</h3>
-              <p>Selecciona un elemento del lienzo para editar sus propiedades, o añade uno nuevo.</p>
+              <h3 className="text-base font-semibold text-text-primary dark:text-text-dark-primary">{t('cover.inspector')}</h3>
+              <p>{t('cover.inspectorEmpty')}</p>
               <ul className="list-disc space-y-1 pl-4">
-                <li>Arrastra para mover (mm), redimensiona desde la esquina.</li>
-                <li>Usa <strong>↑ / ↓</strong> para cambiar de capa.</li>
-                <li>Los <strong>campos rellenables</strong> se completan al crear un documento.</li>
+                <li>{t('cover.hintDrag')}</li>
+                <li><strong>↑ / ↓</strong> {t('cover.hintLayer')}</li>
+                <li><strong>{t('cover.fillableFields')}</strong> {t('cover.hintFields')}</li>
               </ul>
             </div>
           )}
@@ -157,6 +159,7 @@ function CoverInspector({
   onUpdateBox: (patch: BoxPatch) => void;
   onUpdateProps: (patch: Record<string, unknown>) => void;
 }) {
+  const { t } = useTranslation('templates');
   const p = region.props ?? {};
   const box = region.box;
 
@@ -167,20 +170,20 @@ function CoverInspector({
       </header>
 
       <section className="space-y-2">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-text-secondary">Posición y tamaño (mm)</h4>
+        <h4 className="text-xs font-bold uppercase tracking-wider text-text-secondary">{t('cover.positionSize')}</h4>
         <div className="grid grid-cols-2 gap-2">
-          <NumField label="X" value={box.x} min={0} max={page.width} onChange={(v) => onUpdateBox({ x: v })} />
-          <NumField label="Y" value={box.y} min={0} max={page.height} onChange={(v) => onUpdateBox({ y: v })} />
-          <NumField label="Ancho" value={box.w} min={1} max={page.width} onChange={(v) => onUpdateBox({ w: v })} />
-          <NumField label="Alto" value={box.h} min={1} max={page.height} onChange={(v) => onUpdateBox({ h: v })} />
+          <NumField label={t('cover.x')} value={box.x} min={0} max={page.width} onChange={(v) => onUpdateBox({ x: v })} />
+          <NumField label={t('cover.y')} value={box.y} min={0} max={page.height} onChange={(v) => onUpdateBox({ y: v })} />
+          <NumField label={t('cover.width')} value={box.w} min={1} max={page.width} onChange={(v) => onUpdateBox({ w: v })} />
+          <NumField label={t('cover.height')} value={box.h} min={1} max={page.height} onChange={(v) => onUpdateBox({ h: v })} />
         </div>
       </section>
 
       <section className="space-y-2">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-text-secondary">Propiedades</h4>
+        <h4 className="text-xs font-bold uppercase tracking-wider text-text-secondary">{t('cover.properties')}</h4>
         {region.type === 'text' && (
           <>
-            <Labeled label="Contenido">
+            <Labeled label={t('cover.content')}>
               <TextInput value={(p.text as string) ?? ''} onChange={(e) => onUpdateProps({ text: e.target.value })} />
             </Labeled>
             <TextProps p={p} onUpdateProps={onUpdateProps} />
@@ -188,16 +191,16 @@ function CoverInspector({
         )}
         {region.type === 'text_placeholder' && (
           <>
-            <Labeled label="Clave (identificador, sin espacios)">
+            <Labeled label={t('cover.keyLabel')}>
               <TextInput
                 value={(p.key as string) ?? ''}
                 onChange={(e) => onUpdateProps({ key: e.target.value.replace(/\s+/g, '_') })}
               />
             </Labeled>
-            <Labeled label="Etiqueta (visible al rellenar)">
+            <Labeled label={t('cover.labelLabel')}>
               <TextInput value={(p.label as string) ?? ''} onChange={(e) => onUpdateProps({ label: e.target.value })} />
             </Labeled>
-            <Labeled label="Texto por defecto (opcional)">
+            <Labeled label={t('cover.defaultText')}>
               <TextInput value={(p.defaultText as string) ?? ''} onChange={(e) => onUpdateProps({ defaultText: e.target.value })} />
             </Labeled>
             <TextProps p={p} onUpdateProps={onUpdateProps} />
@@ -205,10 +208,10 @@ function CoverInspector({
         )}
         {region.type === 'date' && (
           <>
-            <Labeled label="Formato">
+            <Labeled label={t('cover.format')}>
               <Select value={(p.format as string) ?? 'long'} onChange={(e) => onUpdateProps({ format: e.target.value })}>
-                <option value="short">Corto (01/01/2026)</option>
-                <option value="long">Largo (1 de enero de 2026)</option>
+                <option value="short">{t('cover.dateShort')}</option>
+                <option value="long">{t('cover.dateLong')}</option>
               </Select>
             </Labeled>
             <TextProps p={p} onUpdateProps={onUpdateProps} />
@@ -216,10 +219,10 @@ function CoverInspector({
         )}
         {region.type === 'page_number' && (
           <>
-            <Labeled label="Formato">
+            <Labeled label={t('cover.format')}>
               <Select value={(p.format as string) ?? 'page-of-pages'} onChange={(e) => onUpdateProps({ format: e.target.value })}>
-                <option value="page">Página N</option>
-                <option value="page-of-pages">Página N de M</option>
+                <option value="page">{t('cover.pageN')}</option>
+                <option value="page-of-pages">{t('cover.pageNofM')}</option>
               </Select>
             </Labeled>
             <TextProps p={p} onUpdateProps={onUpdateProps} />
@@ -243,6 +246,7 @@ function CoverImageEditor({
   templateId: string;
   onUpdateProps: (patch: Record<string, unknown>) => void;
 }) {
+  const { t } = useTranslation('templates');
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -256,7 +260,7 @@ function CoverImageEditor({
       onUpdateProps({ src: res.src, srcUrl: res.url });
       if (fileRef.current) fileRef.current.value = '';
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error subiendo la imagen');
+      setError(e instanceof Error ? e.message : t('cover.uploadError'));
     } finally {
       setUploading(false);
     }
@@ -266,10 +270,10 @@ function CoverImageEditor({
     <div className="space-y-3">
       {srcUrl && (
         <div className="h-24 w-full overflow-hidden rounded border border-ui-border bg-ui-body">
-          <img src={srcUrl} alt="Preview" className="h-full w-full object-contain" />
+          <img src={srcUrl} alt={t('common:preview')} className="h-full w-full object-contain" />
         </div>
       )}
-      <Labeled label="Subir imagen (PNG/JPG/WebP)">
+      <Labeled label={t('cover.uploadImage')}>
         <input
           ref={fileRef}
           type="file"
@@ -282,16 +286,16 @@ function CoverImageEditor({
           className="block w-full text-xs file:mr-2 file:cursor-pointer file:rounded file:border-0 file:bg-primary file:px-2 file:py-1 file:text-xs file:text-white disabled:opacity-50"
         />
       </Labeled>
-      {uploading && <p className="text-xs text-text-muted">Subiendo…</p>}
+      {uploading && <p className="text-xs text-text-muted">{t('common:uploading')}</p>}
       {error && <p className="rounded bg-danger/10 p-2 text-xs text-danger-dark">{error}</p>}
-      <Labeled label="Texto alternativo">
+      <Labeled label={t('cover.altText')}>
         <TextInput value={(p.alt as string) ?? ''} onChange={(e) => onUpdateProps({ alt: e.target.value })} />
       </Labeled>
-      <Labeled label="Ajuste">
+      <Labeled label={t('cover.fit')}>
         <Select value={(p.objectFit as string) ?? 'contain'} onChange={(e) => onUpdateProps({ objectFit: e.target.value })}>
-          <option value="contain">Contener</option>
-          <option value="cover">Cubrir (recorte)</option>
-          <option value="fill">Estirar</option>
+          <option value="contain">{t('cover.fitContain')}</option>
+          <option value="cover">{t('cover.fitCover')}</option>
+          <option value="fill">{t('cover.fitFill')}</option>
         </Select>
       </Labeled>
     </div>
@@ -306,10 +310,11 @@ function TextProps({
   p: Record<string, unknown>;
   onUpdateProps: (patch: Record<string, unknown>) => void;
 }) {
+  const { t } = useTranslation(['templates', 'common']);
   return (
     <>
-      <NumField label="Tamaño (pt)" value={(p.size as number) ?? 12} min={6} max={72} onChange={(v) => onUpdateProps({ size: v })} />
-      <Labeled label="Color">
+      <NumField label={t('templates:cover.sizePt')} value={(p.size as number) ?? 12} min={6} max={72} onChange={(v) => onUpdateProps({ size: v })} />
+      <Labeled label={t('templates:cover.color')}>
         <input
           type="color"
           value={(p.color as string) ?? '#1a1a1a'}
@@ -317,17 +322,17 @@ function TextProps({
           className="h-8 w-full cursor-pointer rounded border border-ui-border"
         />
       </Labeled>
-      <Labeled label="Alineación">
+      <Labeled label={t('templates:cover.alignment')}>
         <Select value={(p.align as string) ?? 'left'} onChange={(e) => onUpdateProps({ align: e.target.value })}>
-          <option value="left">Izquierda</option>
-          <option value="center">Centro</option>
-          <option value="right">Derecha</option>
+          <option value="left">{t('common:align.left')}</option>
+          <option value="center">{t('common:align.center')}</option>
+          <option value="right">{t('common:align.right')}</option>
         </Select>
       </Labeled>
-      <Labeled label="Peso">
+      <Labeled label={t('templates:cover.weight')}>
         <Select value={(p.weight as string) ?? 'normal'} onChange={(e) => onUpdateProps({ weight: e.target.value })}>
-          <option value="normal">Normal</option>
-          <option value="bold">Negrita</option>
+          <option value="normal">{t('templates:cover.weightNormal')}</option>
+          <option value="bold">{t('templates:cover.weightBold')}</option>
         </Select>
       </Labeled>
     </>

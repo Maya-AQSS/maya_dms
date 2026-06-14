@@ -305,7 +305,7 @@ export function TemplatesContent() {
                 onChange={handleSearchChange}
               />
             </FilterField>
-            <FilterField label="Estado">
+            <FilterField label={t('common:fields.status')}>
               <Select
                 fieldSize="sm"
                 value={filters.status ?? ''}
@@ -313,7 +313,7 @@ export function TemplatesContent() {
               >
                 {STATUS_OPTIONS.map((o) => (
                   <option key={o.value || 'all'} value={o.value}>
-                    {o.label}
+                    {t(`templates:${o.labelKey}`)}
                   </option>
                 ))}
               </Select>

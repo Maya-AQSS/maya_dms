@@ -66,10 +66,16 @@
     "palette": "Paleta"
   },
   "verification": {
-    "title": "Verificació"
+    "title": "Verificació",
+    "intro": "Comprova com s'apliquen colors, fonts i imatges. La vista PDF genera un PDF/UA real de mostra amb lorem ipsum.",
+    "generatePdf": "Generar PDF de mostra",
+    "pdfError": "No s'ha pogut generar el PDF de mostra."
   },
   "layout": {
-    "editorTitle": "Editor de layout"
+    "editorTitle": "Editor de layout",
+    "addBlock": "+ Afegir bloc ▾",
+    "pageHint": "Pàgina {{pageSize}} · posició en mm. Arrossega per a col·locar, redimensiona des de la cantonada.",
+    "saveError": "Error en guardar el layout"
   },
   "fonts": {
     "sansSerif": "Sans-serif",
@@ -109,7 +115,20 @@
     "imageFit": "Ajust d'imatge",
     "fitContain": "Contindre (espai buit)",
     "fitCover": "Cobrir (retall)",
-    "fitStretch": "Estirar"
+    "fitStretch": "Estirar",
+    "emptySelect": "Selecciona un bloc del llenç per a editar les seues propietats, o afig-ne un de nou des del botó",
+    "emptyHintDrag": "Arrossega qualsevol bloc per a moure'l (mm).",
+    "emptyHintResize": "Redimensiona des de la cantonada inferior dreta.",
+    "emptyHintLayer": "per a canviar de capa (z-index).",
+    "emptyHintOverlap": "Els blocs es poden solapar.",
+    "layer": "Capa:",
+    "layerHint": "(canvia des dels botons ↑/↓ del bloc)",
+    "contentSlotHint": "Aquest bloc marca l'àrea on el render del document insereix el seu contingut. Només n'hauria d'existir un per theme.",
+    "uploadError": "Error en pujar la imatge",
+    "urlIngestError": "Error en ingerir la imatge des de l'URL",
+    "urlPlaceholder": "https://exemple.com/imatge.jpg",
+    "useUrlBtn": "Usar",
+    "positionSize": "Posició i mida (mm)"
   },
   "errors": {
     "errorForbidden": "No tens permís per a esta acció sobre el tema.",

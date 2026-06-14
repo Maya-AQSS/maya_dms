@@ -143,17 +143,17 @@ export function ThemesListPage() {
         filtersStorageKey="maya:dms:themes"
         filtersPanel={
           <>
-            <FilterField label="Nombre">
+            <FilterField label={t('common:fields.name')}>
               <TextInput
                 fieldSize="sm"
-                placeholder="Buscar por nombre…"
+                placeholder={t('common:filters.searchByName')}
                 value={filters.search}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                   setFilter('search', e.target.value || undefined)
                 }
               />
             </FilterField>
-            <FilterField label="Estado">
+            <FilterField label={t('common:fields.status')}>
               <Select
                 fieldSize="sm"
                 value={filters.status}
@@ -161,7 +161,7 @@ export function ThemesListPage() {
                   setFilter('status', (e.target.value as ThemeStatus) || undefined)
                 }
               >
-                <option value="">{t('themes:values.all')}</option>
+                <option value="">{t('common:filters.all')}</option>
                 {STATUS_VALUES.map((value) => (
                   <option key={value} value={value}>
                     {t(`themes:identity.statusOptions.${value}`, { defaultValue: value })}

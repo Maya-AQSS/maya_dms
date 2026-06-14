@@ -54,13 +54,13 @@ export function TemplatePreviewModal({ template, blocks, onClose }: Props) {
 
   const headerMetaInfo = (
     <p className="text-xs text-text-muted dark:text-text-dark-muted text-center">
-      {template.author_name ?? 'Autor desconocido'}
+      {template.author_name ?? t('unknownAuthor')}
       {' · '}
-      {visibilityLabel(template.visibility_level)}
+      {visibilityLabel(template.visibility_level, t)}
       {' · '}
-      {blocks.length} {blocks.length === 1 ? 'bloque' : 'bloques'}
+      {t('blockCount', { count: blocks.length })}
       {template.delivery_deadline ? (
-        <>{' · '}Fecha límite: {formatCalendarDateForBrowser(template.delivery_deadline)}</>
+        <>{' · '}{t('deadlineLabel')} {formatCalendarDateForBrowser(template.delivery_deadline)}</>
       ) : null}
     </p>
   );
@@ -102,7 +102,7 @@ export function TemplatePreviewModal({ template, blocks, onClose }: Props) {
               {block.description ? (
                 <BlockContentHtml content={normalizeBlockContentForEditor(block.description)} />
               ) : (
-                <p className="text-sm text-text-muted italic">Este bloque no tiene descripción.</p>
+                <p className="text-sm text-text-muted italic">{t('common:noBlockDescription')}</p>
               )}
             </div>
           </div>
@@ -155,7 +155,7 @@ export function TemplatePreviewModal({ template, blocks, onClose }: Props) {
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <span>Info</span>
+                        <span>{t('common:info')}</span>
                       </button>
                     )}
                   </div>

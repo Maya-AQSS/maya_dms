@@ -4,11 +4,15 @@
     "subtitle": "System process catalog"
   },
   "detail": {
-    "title": "Process"
+    "title": "Process",
+    "subtitleSuffix": "Process",
+    "loading": "Loading process…"
   },
   "form": {
     "editTitle": "Edit process",
     "newTitle": "New process",
+    "remove": "Remove",
+    "namePlaceholderShort": "Full name",
     "code": "Code",
     "name": "Name",
     "alias": "Alias",
@@ -32,6 +36,19 @@
   },
   "table": {
     "searchPlaceholder": "Code, name or alias…",
-    "onlyRoot": "Root only (no parent)"
+    "onlyRoot": "Root only (no parent)",
+    "columnCode": "Code",
+    "columnName": "Name",
+    "columnAlias": "Alias",
+    "columnIcon": "Icon",
+    "columnColor": "Color",
+    "searchLabel": "Search",
+    "parentLabel": "Parent process",
+    "filtersLabel": "Filters",
+    "columnsLabel": "Columns",
+    "clearFiltersLabel": "Clear filters",
+    "pageSizeLabel": "Per page",
+    "emptyMessage": "No processes found.",
+    "noIndexPermission": "You do not have permission to view the process list."
   }
 }

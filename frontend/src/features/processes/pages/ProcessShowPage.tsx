@@ -234,7 +234,7 @@ export function ProcessShowPage() {
   if (!isCreate && isError && !isLoading) {
     return (
       <div className="px-4 py-6 sm:px-6 lg:px-8">
-        <PageTitle title="Proceso" onBack={() => goBack()} backLabel={t('navigation.backToProcesses')} />
+        <PageTitle title={t('processes:detail.title')} onBack={() => goBack()} backLabel={t('navigation.backToProcesses')} />
         <div className="mt-4 rounded-lg border border-dashed border-ui-border bg-ui-card p-6 text-center text-sm text-text-muted dark:border-ui-dark-border dark:bg-ui-dark-card dark:text-text-dark-muted">
           {formatError(error)}
         </div>
@@ -245,7 +245,7 @@ export function ProcessShowPage() {
   // ─── Hero reactive display (live preview while editing) ───────────────────
   const heroIcon  = editing ? watchIcon  : data?.icon;
   const heroColor = editing ? watchColor : data?.color;
-  const heroName  = editing ? (watchName || (isCreate ? 'Nuevo proceso' : data?.name)) : data?.name;
+  const heroName  = editing ? (watchName || (isCreate ? t('processes:form.newTitle') : data?.name)) : data?.name;
   const heroCode  = editing ? (watchCode || data?.code) : data?.code;
 
   const iconBgStyle    = heroColor ? { backgroundColor: heroColor + '33' } : { backgroundColor: 'rgba(0,0,0,0.06)' };
@@ -254,8 +254,8 @@ export function ProcessShowPage() {
   return (
     <div className="px-4 py-6 sm:px-6 lg:px-8">
       <PageTitle
-        title={isCreate ? 'Nuevo proceso' : (data?.name ?? 'Proceso')}
-        subtitle={isCreate ? undefined : (data ? `${data.code} · Proceso` : undefined)}
+        title={isCreate ? t('processes:form.newTitle') : (data?.name ?? t('processes:detail.title'))}
+        subtitle={isCreate ? undefined : (data ? `${data.code} · ${t('processes:detail.subtitleSuffix')}` : undefined)}
         onBack={() => goBack()}
         backLabel={t('navigation.backToProcesses')}
         actions={
@@ -263,17 +263,17 @@ export function ProcessShowPage() {
             {editing ? (
               <>
                 <Button type="button" variant="outline" size="sm" onClick={handleCancelEdit} disabled={isSubmitting}>
-                  Cancelar
+                  {t('actions.cancel')}
                 </Button>
                 <Button type="submit" form="process-form" variant="primary" size="sm" disabled={isSubmitting}>
-                  {isSubmitting ? 'Guardando…' : isCreate ? 'Crear proceso' : 'Guardar cambios'}
+                  {isSubmitting ? t('saving') : isCreate ? t('processes:form.createProcess') : t('processes:form.saveChanges')}
                 </Button>
               </>
             ) : (
               <>
                 {mayUpdate && (
                   <Button type="button" variant="outline" size="sm" onClick={() => setEditing(true)}>
-                    Editar
+                    {t('actions.edit')}
                   </Button>
                 )}
                 {mayDelete && data && (
@@ -283,7 +283,7 @@ export function ProcessShowPage() {
                     size="sm"
                     onClick={openDeleteFlow}
                   >
-                    Eliminar
+                    {t('actions.delete')}
                   </Button>
                 )}
               </>
@@ -301,7 +301,7 @@ export function ProcessShowPage() {
 
       {!isCreate && isLoading && (
         <div className="mt-4 rounded-lg border border-ui-border bg-ui-card p-6 text-center text-sm text-text-muted dark:border-ui-dark-border dark:bg-ui-dark-card dark:text-text-dark-muted">
-          Cargando proceso…
+          {t('processes:detail.loading')}
         </div>
       )}
 
@@ -324,7 +324,7 @@ export function ProcessShowPage() {
                 </p>
               )}
               <h2 className="text-lg font-semibold text-text-primary dark:text-text-dark-primary truncate">
-                {heroName ?? <span className="italic text-text-muted">Nombre del proceso</span>}
+                {heroName ?? <span className="italic text-text-muted">{t('processes:form.namePlaceholder')}</span>}
               </h2>
             </div>
             {heroColor && !editing && (
@@ -342,10 +342,10 @@ export function ProcessShowPage() {
           >
             {/* Código */}
             <div>
-              <label className={labelClass}>Código {editing && <span className="text-danger">*</span>}</label>
+              <label className={labelClass}>{t('processes:form.code')} {editing && <span className="text-danger">*</span>}</label>
               {editing ? (
                 <>
-                  <input {...register('code')} placeholder="Ej. PE01" className={`mt-1 ${inputClass}`} />
+                  <input {...register('code')} placeholder={t('processes:form.codePlaceholder')} className={`mt-1 ${inputClass}`} />
                   {errors.code && <p className="mt-1 text-xs text-danger">{errors.code.message}</p>}
                 </>
               ) : (
@@ -357,10 +357,10 @@ export function ProcessShowPage() {
 
             {/* Nombre */}
             <div>
-              <label className={labelClass}>Nombre {editing && <span className="text-danger">*</span>}</label>
+              <label className={labelClass}>{t('processes:form.name')} {editing && <span className="text-danger">*</span>}</label>
               {editing ? (
                 <>
-                  <input {...register('name')} placeholder="Nombre completo" className={`mt-1 ${inputClass}`} />
+                  <input {...register('name')} placeholder={t('processes:form.namePlaceholderShort')} className={`mt-1 ${inputClass}`} />
                   {errors.name && <p className="mt-1 text-xs text-danger">{errors.name.message}</p>}
                 </>
               ) : (
@@ -370,10 +370,10 @@ export function ProcessShowPage() {
 
             {/* Alias */}
             <div>
-              <label className={labelClass}>Alias {editing && <span className="text-danger">*</span>}</label>
+              <label className={labelClass}>{t('processes:form.alias')} {editing && <span className="text-danger">*</span>}</label>
               {editing ? (
                 <>
-                  <input {...register('alias')} placeholder="Etiqueta corta" className={`mt-1 ${inputClass}`} />
+                  <input {...register('alias')} placeholder={t('processes:form.aliasPlaceholder')} className={`mt-1 ${inputClass}`} />
                   {errors.alias && <p className="mt-1 text-xs text-danger">{errors.alias.message}</p>}
                 </>
               ) : (
@@ -383,10 +383,10 @@ export function ProcessShowPage() {
 
             {/* Proceso padre */}
             <div>
-              <label className={labelClass}>Proceso padre</label>
+              <label className={labelClass}>{t('processes:form.parent')}</label>
               {editing ? (
                 <select {...register('process_parent_id')} className={`mt-1 ${inputClass}`}>
-                  <option value="">Sin padre (proceso raíz)</option>
+                  <option value="">{t('processes:form.noParent')}</option>
                   {parentCandidates.map((p) => (
                     <option key={p.id} value={p.id}>{p.code} — {p.name}</option>
                   ))}
@@ -403,7 +403,7 @@ export function ProcessShowPage() {
                       <span>{parentProcess.name}</span>
                     </a>
                   ) : (
-                    <span className="italic text-text-muted dark:text-text-dark-muted">Proceso raíz — sin padre</span>
+                    <span className="italic text-text-muted dark:text-text-dark-muted">{t('processes:form.rootNoParent')}</span>
                   )}
                 </div>
               )}
@@ -411,7 +411,7 @@ export function ProcessShowPage() {
 
             {/* Color */}
             <div>
-              <label className={labelClass}>Color</label>
+              <label className={labelClass}>{t('processes:form.color')}</label>
               {editing ? (
                 <div className="mt-1 flex items-center gap-3 min-h-[2.375rem]">
                   {watchColor ? (
@@ -428,7 +428,7 @@ export function ProcessShowPage() {
                         onClick={() => setValue('color', null)}
                         className="text-xs text-text-muted underline hover:text-danger transition-colors"
                       >
-                        Quitar
+                        {t('processes:form.remove')}
                       </button>
                     </>
                   ) : (
@@ -437,7 +437,7 @@ export function ProcessShowPage() {
                       onClick={() => setValue('color', '#6366f1')}
                       className="text-xs text-text-muted underline hover:text-text-primary dark:hover:text-text-dark-primary transition-colors"
                     >
-                      + Asignar color
+                      {t('processes:form.assignColor')}
                     </button>
                   )}
                   {errors.color && <p className="text-xs text-danger">{errors.color.message}</p>}
@@ -450,7 +450,7 @@ export function ProcessShowPage() {
                       <span className="font-mono text-xs text-text-muted dark:text-text-dark-muted">{data!.color}</span>
                     </div>
                   ) : (
-                    <span className="italic text-text-muted dark:text-text-dark-muted">Sin color</span>
+                    <span className="italic text-text-muted dark:text-text-dark-muted">{t('processes:form.noColor')}</span>
                   )}
                 </div>
               )}
@@ -459,14 +459,14 @@ export function ProcessShowPage() {
             {/* Icono */}
             <div className={editing ? 'md:col-span-2' : undefined}>
               <div className="flex items-center justify-between mb-1">
-                <label className={labelClass}>Icono</label>
+                <label className={labelClass}>{t('processes:form.icon')}</label>
                 {editing && watchIcon && (
                   <button
                     type="button"
                     onClick={() => setValue('icon', null)}
                     className="text-xs text-text-muted underline hover:text-danger transition-colors"
                   >
-                    Quitar icono
+                    {t('processes:form.removeIcon')}
                   </button>
                 )}
               </div>
@@ -517,7 +517,7 @@ export function ProcessShowPage() {
                       <span className="font-mono text-xs text-text-muted dark:text-text-dark-muted">{data!.icon}</span>
                     </div>
                   ) : (
-                    <span className="italic text-text-muted dark:text-text-dark-muted">Sin icono</span>
+                    <span className="italic text-text-muted dark:text-text-dark-muted">{t('processes:form.noIcon')}</span>
                   )}
                 </div>
               )}
@@ -525,12 +525,12 @@ export function ProcessShowPage() {
 
             {/* Descripción */}
             <div className="md:col-span-2">
-              <label className={labelClass}>Descripción</label>
+              <label className={labelClass}>{t('fields.description')}</label>
               {editing ? (
                 <textarea
                   {...register('description')}
                   rows={4}
-                  placeholder="Descripción opcional"
+                  placeholder={t('processes:form.descriptionPlaceholder')}
                   className={`mt-1 resize-none ${inputClass}`}
                 />
               ) : (
@@ -540,7 +540,7 @@ export function ProcessShowPage() {
                   </div>
                 ) : (
                   <div className="mt-1 rounded-lg border border-ui-border bg-ui-body px-3 py-2.5 text-sm italic text-text-muted shadow-inner dark:border-ui-dark-border dark:bg-ui-dark-bg dark:text-text-dark-muted">
-                    Sin descripción
+                    {t('fields.noDescription')}
                   </div>
                 )
               )}

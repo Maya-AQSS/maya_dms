@@ -39,9 +39,9 @@ export function ThemeShowPage() {
   if (loading && !theme) {
     return (
       <div className="px-4 py-6 sm:px-6 lg:px-8">
-        <PageTitle title="Tema" onBack={() => goBack()} backLabel={t('navigation.backToThemes')} />
+        <PageTitle title={t('themes:title')} onBack={() => goBack()} backLabel={t('navigation.backToThemes')} />
         <div className="mt-4 rounded-lg border border-ui-border bg-ui-card p-6 text-center text-sm text-text-muted dark:border-ui-dark-border dark:bg-ui-dark-card dark:text-text-dark-muted">
-          Cargando tema…
+          {t('common:loading')}
         </div>
       </div>
     );
@@ -50,9 +50,9 @@ export function ThemeShowPage() {
   if (error || !theme || !id) {
     return (
       <div className="px-4 py-6 sm:px-6 lg:px-8">
-        <PageTitle title="Tema" onBack={() => goBack()} backLabel={t('navigation.backToThemes')} />
+        <PageTitle title={t('themes:title')} onBack={() => goBack()} backLabel={t('navigation.backToThemes')} />
         <div className="mt-4 rounded-lg border border-danger bg-danger-light p-3 text-sm text-danger-dark">
-          {error || 'No se ha podido cargar el tema.'}
+          {error || t('themes:errors.errorNotFound')}
         </div>
       </div>
     );
@@ -130,7 +130,7 @@ export function ThemeShowPage() {
     <div className="px-4 py-6 sm:px-6 lg:px-8">
       <PageTitle
         title={theme.name}
-        subtitle="Tema · Identidad visual reutilizable"
+        subtitle={t('themes:detail.subtitle')}
         onBack={() => goBack()}
         backLabel={t('navigation.backToThemes')}
         actions={actions}
@@ -159,19 +159,19 @@ export function ThemeShowPage() {
         {/* Propiedades resumidas */}
         <aside className="space-y-3">
           <div>
-            <span className={labelClass}>Nombre</span>
+            <span className={labelClass}>{t('common:fields.name')}</span>
             <div className={displayClass}>{theme.name}</div>
           </div>
           <div>
-            <span className={labelClass}>Descripción</span>
+            <span className={labelClass}>{t('common:fields.description')}</span>
             <div className={displayClass}>
               {theme.description || (
-                <span className="italic text-text-muted dark:text-text-dark-muted">Sin descripción</span>
+                <span className="italic text-text-muted dark:text-text-dark-muted">{t('common:fields.noDescription')}</span>
               )}
             </div>
           </div>
           <div>
-            <span className={labelClass}>Estado</span>
+            <span className={labelClass}>{t('common:fields.status')}</span>
             <div className={displayClass}>
               <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass(theme.status)}`}>
                 {t(`themes:identity.statusOptions.${theme.status}`, { defaultValue: theme.status })}
@@ -179,11 +179,11 @@ export function ThemeShowPage() {
             </div>
           </div>
           <div>
-            <span className={labelClass}>Bloques</span>
+            <span className={labelClass}>{t('themes:fields.blocks')}</span>
             <div className={displayClass}>{theme.layout?.regions?.length ?? 0}</div>
           </div>
           <div>
-            <span className={labelClass}>Paleta</span>
+            <span className={labelClass}>{t('themes:fields.palette')}</span>
             <div className={`${displayClass} gap-1.5`}>
               {[
                 theme.palette.primary,

@@ -66,10 +66,16 @@
     "palette": "Paleta"
   },
   "verification": {
-    "title": "Verificación"
+    "title": "Verificación",
+    "intro": "Comprueba cómo se aplican colores, fuentes e imágenes. La vista PDF genera un PDF/UA real de muestra con lorem ipsum.",
+    "generatePdf": "Generar PDF de muestra",
+    "pdfError": "No se pudo generar el PDF de muestra."
   },
   "layout": {
-    "editorTitle": "Editor de layout"
+    "editorTitle": "Editor de layout",
+    "addBlock": "+ Añadir bloque ▾",
+    "pageHint": "Página {{pageSize}} · posición en mm. Arrastra para colocar, redimensiona desde la esquina.",
+    "saveError": "Error guardando el layout"
   },
   "fonts": {
     "sansSerif": "Sans-serif",
@@ -109,7 +115,20 @@
     "imageFit": "Ajuste de imagen",
     "fitContain": "Contener (espacio vacío)",
     "fitCover": "Cubrir (recorte)",
-    "fitStretch": "Estirar"
+    "fitStretch": "Estirar",
+    "emptySelect": "Selecciona un bloque del lienzo para editar sus propiedades, o añade uno nuevo desde el botón",
+    "emptyHintDrag": "Arrastra cualquier bloque para moverlo (mm).",
+    "emptyHintResize": "Redimensiona desde la esquina inferior derecha.",
+    "emptyHintLayer": "para cambiar de capa (z-index).",
+    "emptyHintOverlap": "Los bloques pueden solaparse.",
+    "layer": "Capa:",
+    "layerHint": "(cambia desde los botones ↑/↓ del bloque)",
+    "contentSlotHint": "Este bloque marca el área donde el render del documento inserta su contenido. Sólo debería existir uno por theme.",
+    "uploadError": "Error subiendo imagen",
+    "urlIngestError": "Error ingiriendo imagen desde URL",
+    "urlPlaceholder": "https://ejemplo.com/imagen.jpg",
+    "useUrlBtn": "Usar",
+    "positionSize": "Posición y tamaño (mm)"
   },
   "errors": {
     "errorForbidden": "No tienes permiso para esta acción sobre el theme.",

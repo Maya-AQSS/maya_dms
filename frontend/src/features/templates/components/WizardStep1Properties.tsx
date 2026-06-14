@@ -190,7 +190,7 @@ export function WizardStep1Properties({ errors, templateStatus, isCreator, curre
                   onBlur={field.onBlur}
                 >
                   {visibilityOptions.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
+                    <option key={o.value} value={o.value}>{t(o.labelKey)}</option>
                   ))}
                 </Select>
               )}
@@ -352,10 +352,10 @@ export function WizardStep1Properties({ errors, templateStatus, isCreator, curre
         {/* ─── Seleccionar editor ───────────────────── */}
         {(isCreator || !currentAuthorName) && (
           <div className="pt-5 border-t border-ui-border dark:border-ui-dark-border animate-in slide-in-from-top-2 fade-in">
-            <FieldLabel>Propietario</FieldLabel>
+            <FieldLabel>{t('common:fields.owner')}</FieldLabel>
             <div className="mt-1 mb-2 flex items-center gap-2">
               <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
-                Actual:
+                {t('documents:wizard.current')}
               </span>
               <span className="text-xs font-semibold text-text-primary dark:text-text-dark-primary">
                 {createdBy ? (selectedOwnerName ?? '—') : (currentAuthorName ?? profile?.name ?? '—')}
@@ -370,7 +370,7 @@ export function WizardStep1Properties({ errors, templateStatus, isCreator, curre
                   }}
                   className="text-xs text-danger-dark hover:underline"
                 >
-                  Deshacer
+                  {t('common:editor.undo')}
                 </button>
               )}
             </div>
@@ -378,7 +378,7 @@ export function WizardStep1Properties({ errors, templateStatus, isCreator, curre
               <TextInput
                 type="search"
                 fieldSize="comfortable"
-                placeholder="Buscar usuario por nombre…"
+                placeholder={t('common:search.userByName')}
                 value={ownerQuery}
                 onChange={(e) => setOwnerQuery(e.target.value)}
                 className="pl-9"
@@ -388,9 +388,9 @@ export function WizardStep1Properties({ errors, templateStatus, isCreator, curre
               </svg>
             </div>
             {ownerQuery.trim().length > 0 && ownerQuery.trim().length < 2 && (
-              <p className="mt-1 text-xs text-text-muted italic">Escribe al menos 2 caracteres para buscar.</p>
+              <p className="mt-1 text-xs text-text-muted italic">{t('common:search.minChars')}</p>
             )}
-            {ownerSearching && <p className="mt-1 text-xs text-text-muted italic">Buscando…</p>}
+            {ownerSearching && <p className="mt-1 text-xs text-text-muted italic">{t('common:searching')}</p>}
             {!ownerSearching && ownerResults.length > 0 && (
               <ul className="mt-1 border border-ui-border dark:border-ui-dark-border rounded-lg overflow-hidden divide-y divide-ui-border dark:divide-ui-dark-border">
                 {ownerResults.map((u) => (

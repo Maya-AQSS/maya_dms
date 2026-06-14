@@ -156,7 +156,32 @@
     "fillFields": "Camps de la portada",
     "fillEmpty": "Aquesta portada no té camps emplenables.",
     "notEditable": "El document no és editable en el seu estat actual.",
-    "imagePlaceholder": "Imatge"
+    "imagePlaceholder": "Imatge",
+    "addElement": "+ Afegir element ▾",
+    "pageHint": "Pàgina {{pageSize}} · posició en mm. Arrossega per a col·locar, redimensiona des de la cantonada.",
+    "hintDrag": "Arrossega per a moure (mm), redimensiona des de la cantonada.",
+    "hintLayer": "per a canviar de capa.",
+    "hintFields": "es completen en crear un document.",
+    "fillableFields": "camps emplenables",
+    "x": "X",
+    "y": "Y",
+    "width": "Amplària",
+    "height": "Alçària",
+    "content": "Contingut",
+    "keyLabel": "Clau (identificador, sense espais)",
+    "labelLabel": "Etiqueta (visible en omplir)",
+    "defaultText": "Text per defecte (opcional)",
+    "format": "Format",
+    "sizePt": "Mida (pt)",
+    "color": "Color",
+    "alignment": "Alineació",
+    "weight": "Pes",
+    "uploadImage": "Pujar imatge (PNG/JPG/WebP)",
+    "altText": "Text alternatiu",
+    "fit": "Ajust",
+    "uploadError": "Error en pujar la imatge",
+    "fieldLabel": "Camp {{n}}",
+    "fieldFallback": "Camp"
   },
   "newVersion": {
     "description": "Es crearà un nou esborrany editable a partir de la plantilla publicada.",
@@ -215,7 +240,9 @@
     "rejectValidationTitle": "Rebutjar validació?",
     "clone": "Clonar",
     "pdfTooltip": "Genera i descarrega el PDF de la plantilla",
-    "newTemplateTooltip": "Crea una plantilla nova i independent a partir d'aquesta."
+    "newTemplateTooltip": "Crea una plantilla nova i independent a partir d'aquesta.",
+    "downloadPdf": "Descarregar PDF",
+    "downloadingPdf": "Descarregant…"
   },
   "errors": {
     "errorForbidden": "No tens permís per a esta acció (p. ex. visibilitat compartida només per a coordinació).",
@@ -234,5 +261,9 @@
     "noUpdateBlockPermission": "No tens permís per a actualitzar blocs (block.update).",
     "noDeleteBlockPermission": "No tens permís per a eliminar blocs (block.delete).",
     "noReorderBlockPermission": "No tens permís per a reordenar blocs (block.update)."
-  }
+  },
+  "blockCount_one": "{{count}} bloc",
+  "blockCount_other": "{{count}} blocs",
+  "unknownAuthor": "Autor desconegut",
+  "deadlineLabel": "Data límit:"
 }
