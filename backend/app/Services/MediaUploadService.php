@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DTOs\Media\UploadedMediaDto;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -22,10 +23,7 @@ abstract class MediaUploadService
     /** Prefijo del path en el disco media (p. ej. 'covers' | 'themes'). */
     abstract protected function scopePrefix(): string;
 
-    /**
-     * @return array{src: string, uuid: string}
-     */
-    public function upload(string $contextId, UploadedFile $file): array
+    public function upload(string $contextId, UploadedFile $file): UploadedMediaDto
     {
         $content = $file->getContent();
         $this->validateContent($content);
@@ -35,10 +33,7 @@ abstract class MediaUploadService
 
         Storage::disk('media')->put($path, $content);
 
-        return [
-            'src' => $path,
-            'uuid' => $uuid,
-        ];
+        return new UploadedMediaDto(src: $path, uuid: $uuid);
     }
 
     /**

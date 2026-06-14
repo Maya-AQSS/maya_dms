@@ -26,8 +26,8 @@ class CoverImageController
 
         return response()->json([
             'data' => [
-                'src' => $result['src'],
-                'url' => ThemeMediaUrl::build($result['src']),
+                'src' => $result->src,
+                'url' => ThemeMediaUrl::build($result->src),
             ],
         ], 201);
     }

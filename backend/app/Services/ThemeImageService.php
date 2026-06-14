@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DTOs\Media\UploadedMediaDto;
 use App\Services\Contracts\ThemeImageServiceInterface;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -23,11 +24,9 @@ class ThemeImageService extends MediaUploadService implements ThemeImageServiceI
     /**
      * Descarga una imagen de URL remota con validación anti-SSRF.
      *
-     * @return array{src: string, uuid: string}
-     *
      * @throws ValidationException
      */
-    public function ingestFromUrl(string $themeId, string $url): array
+    public function ingestFromUrl(string $themeId, string $url): UploadedMediaDto
     {
         // Parsear y validar URL.
         $parsed = parse_url($url);
@@ -84,10 +83,7 @@ class ThemeImageService extends MediaUploadService implements ThemeImageServiceI
         $path = "themes/{$themeId}/{$uuid}";
         Storage::disk('media')->put($path, $body);
 
-        return [
-            'src' => $path,
-            'uuid' => $uuid,
-        ];
+        return new UploadedMediaDto(src: $path, uuid: $uuid);
     }
 
     /**
