@@ -11,7 +11,6 @@ use App\Http\Requests\Documents\RejectDocumentReviewRequest;
 use App\Http\Resources\DocumentResource;
 use App\Http\Resources\DocumentReviewResource;
 use App\Services\Contracts\DocumentServiceInterface;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
@@ -40,7 +39,7 @@ class ReviewController extends Controller
     /**
      * Aprobar revisión de un documento.
      */
-    public function approve(ApproveDocumentReviewRequest $request, string $documentId, string $reviewId): JsonResponse
+    public function approve(ApproveDocumentReviewRequest $request, string $documentId, string $reviewId): DocumentResource
     {
         $document = $this->documentService->findModelOrFail($documentId);
         $this->authorize('review', $document);
@@ -54,13 +53,13 @@ class ReviewController extends Controller
             $request->validated('changelog'),
         );
 
-        return response()->json(['data' => new DocumentResource($updated)]);
+        return new DocumentResource($updated);
     }
 
     /**
      * Rechazar revisión de un documento.
      */
-    public function reject(RejectDocumentReviewRequest $request, string $documentId, string $reviewId): JsonResponse
+    public function reject(RejectDocumentReviewRequest $request, string $documentId, string $reviewId): DocumentResource
     {
         $document = $this->documentService->findModelOrFail($documentId);
         $this->authorize('review', $document);
@@ -74,6 +73,6 @@ class ReviewController extends Controller
             $request->validated('rejection_reason'),
         );
 
-        return response()->json(['data' => new DocumentResource($updated)]);
+        return new DocumentResource($updated);
     }
 }

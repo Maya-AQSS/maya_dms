@@ -4,55 +4,38 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
-use App\DTOs\Versioning\EntityVersionDto;
-use App\Http\Resources\Concerns\ResolvesUserNames;
-use App\Support\TemplateVersionSnapshotParser;
+use App\DTOs\Versioning\TemplateVersionSummaryDto;
+use App\Services\TemplateService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Historial de versiones publicadas (sin el JSONB de bloques).
+ * Historial de versiones publicadas (sin el JSONB de bloques). Los nombres de
+ * autor/revisores se resuelven en el Service
+ * ({@see TemplateService::listPublishedVersionSummaries});
+ * el Resource solo mapea el DTO ya resuelto.
  *
- * @property EntityVersionDto $resource
+ * @property TemplateVersionSummaryDto $resource
  */
 class TemplateVersionSummaryResource extends JsonResource
 {
-    use ResolvesUserNames;
-
     /**
-     * Convierte la versión de plantilla en un array para la respuesta JSON (sin el JSONB de bloques).
-     *
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
     {
-        /** @var EntityVersionDto $dto */
+        /** @var TemplateVersionSummaryDto $dto */
         $dto = $this->resource;
-
-        $publishedBy = $dto->publishedBy !== null && $dto->publishedBy !== '' ? $dto->publishedBy : null;
-
-        $authorId = TemplateVersionSnapshotParser::authorId($dto->snapshotData);
-        if ($authorId === null && is_string($dto->createdBy) && $dto->createdBy !== '') {
-            $authorId = $dto->createdBy;
-        }
-
-        $reviewerNames = [];
-        foreach (TemplateVersionSnapshotParser::reviewerIds($dto->snapshotData) as $uid) {
-            $name = $this->resolveUserNameById($uid);
-            if ($name !== null) {
-                $reviewerNames[] = $name;
-            }
-        }
 
         return [
             'id' => $dto->id,
-            'template_id' => $dto->versionableId,
+            'template_id' => $dto->templateId,
             'version_number' => $dto->versionNumber,
             'published_at' => $dto->publishedAt,
-            'published_by' => $publishedBy,
-            'published_by_name' => $publishedBy !== null ? $this->resolveUserNameById($publishedBy) : null,
-            'author_name' => $authorId !== null ? $this->resolveUserNameById($authorId) : null,
-            'reviewer_names' => $reviewerNames,
+            'published_by' => $dto->publishedBy,
+            'published_by_name' => $dto->publishedByName,
+            'author_name' => $dto->authorName,
+            'reviewer_names' => $dto->reviewerNames,
             'changelog' => $dto->changelog,
         ];
     }

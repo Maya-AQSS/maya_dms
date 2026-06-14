@@ -11,6 +11,8 @@ use App\DTOs\Templates\TemplateDto;
 use App\DTOs\Templates\TemplateFilterDto;
 use App\DTOs\Templates\UpdateTemplateDto;
 use App\DTOs\Versioning\EntityVersionDto;
+use App\DTOs\Versioning\TemplateVersionDetailDto;
+use App\DTOs\Versioning\TemplateVersionSummaryDto;
 use App\DTOs\Versioning\WorkingRevisionConflictDto;
 use App\Http\Controllers\Api\TemplateController;
 use App\Models\EntityVersion;
@@ -98,11 +100,18 @@ interface TemplateServiceInterface
     public function publishWithSnapshot(string $templateId, ?string $changelog, string $actorId, ?callable $beforeMap = null): TemplateDto;
 
     /**
-     * Lista todas las versiones publicadas de una plantilla ordenadas por número de versión.
-     *
-     * @return Collection<int, EntityVersionDto>
+     * Detalle de una versión publicada de plantilla con el snapshot de bloques
+     * reconstruido y los nombres de autor/revisores ya resueltos.
      */
-    public function listPublishedVersions(string $templateId): Collection;
+    public function findTemplateVersionDetailOrFail(string $versionId): TemplateVersionDetailDto;
+
+    /**
+     * Historial de versiones publicadas (metadatos, sin el JSONB de bloques) con
+     * los nombres de autor/revisores ya resueltos.
+     *
+     * @return list<TemplateVersionSummaryDto>
+     */
+    public function listPublishedVersionSummaries(string $templateId): array;
 
     /**
      * Listado paginado de plantillas con filtros de dominio (ADR-C).

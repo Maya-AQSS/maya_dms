@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\DTOs\Templates\SyncMessageDto;
 use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Templates\SyncTemplateDocumentReviewersRequest;
@@ -35,9 +36,9 @@ class TemplateReviewersController extends Controller
 
         $this->templateService->syncReviewers($model->id, $request->toDto());
 
-        return new TemplateReviewersSyncMessageResource([
-            'message' => __('template_reviewers.synced'),
-        ]);
+        return new TemplateReviewersSyncMessageResource(
+            new SyncMessageDto(__('template_reviewers.synced')),
+        );
     }
 
     /**
@@ -50,8 +51,8 @@ class TemplateReviewersController extends Controller
 
         $this->templateService->syncDocumentReviewers($model->id, $request->toDto());
 
-        return new TemplateReviewersSyncMessageResource([
-            'message' => __('template_reviewers.document_synced'),
-        ]);
+        return new TemplateReviewersSyncMessageResource(
+            new SyncMessageDto(__('template_reviewers.document_synced')),
+        );
     }
 }

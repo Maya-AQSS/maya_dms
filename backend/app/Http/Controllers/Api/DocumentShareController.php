@@ -44,7 +44,7 @@ class DocumentShareController extends Controller
             $actorId,
         );
 
-        return response()->json(['data' => (new DocumentShareResource($result))->toArray($request)], 201);
+        return (new DocumentShareResource($result))->response()->setStatusCode(201);
     }
 
     /**

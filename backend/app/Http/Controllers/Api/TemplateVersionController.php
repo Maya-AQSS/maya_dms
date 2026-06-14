@@ -44,9 +44,7 @@ class TemplateVersionController extends Controller
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         return TemplateVersionSummaryResource::collection(
-            $this->templateService
-                ->listPublishedVersions($model->id)
-                ->values(),
+            $this->templateService->listPublishedVersionSummaries($model->id),
         );
     }
 
@@ -64,7 +62,9 @@ class TemplateVersionController extends Controller
         }
         $this->assertOptionalProcessContextMatches((string) $template->process_id);
 
-        return new TemplateVersionResource($version);
+        return new TemplateVersionResource(
+            $this->templateService->findTemplateVersionDetailOrFail($template_version),
+        );
     }
 
     /**

@@ -143,3 +143,60 @@ it('allows versions list for creator without template.history.view', function ()
     $this->getJson("/api/v1/templates/{$templateId}/versions")
         ->assertOk();
 });
+
+it('exposes the resolved version-summary shape in the history listing', function () {
+    $templateId = seedPublishedGlobalTemplate(test()->userId);
+
+    $this->getJson("/api/v1/templates/{$templateId}/versions")
+        ->assertOk()
+        ->assertJsonStructure([
+            'data' => [
+                '*' => [
+                    'id',
+                    'template_id',
+                    'version_number',
+                    'published_at',
+                    'published_by',
+                    'published_by_name',
+                    'author_name',
+                    'reviewer_names',
+                    'changelog',
+                ],
+            ],
+        ])
+        ->assertJsonPath('data.0.template_id', $templateId)
+        ->assertJsonPath('data.0.version_number', 1)
+        ->assertJsonPath('data.0.changelog', 'v1');
+});
+
+it('exposes the resolved version-detail shape with blocks snapshot', function () {
+    $templateId = seedPublishedGlobalTemplate(test()->userId);
+    $versionId = $this->getJson("/api/v1/templates/{$templateId}/versions")
+        ->assertOk()
+        ->json('data.0.id');
+
+    $this->getJson("/api/v1/template-versions/{$versionId}")
+        ->assertOk()
+        ->assertJsonStructure([
+            'data' => [
+                'id',
+                'template_id',
+                'version_number',
+                'template_snapshot',
+                'blocks_snapshot',
+                'changelog',
+                'published_by',
+                'published_by_name',
+                'author_name',
+                'reviewer_names',
+                'published_at',
+                'created_at',
+                'updated_at',
+            ],
+        ])
+        ->assertJsonPath('data.id', (string) $versionId)
+        ->assertJsonPath('data.template_id', $templateId)
+        ->assertJsonPath('data.version_number', 1)
+        ->assertJsonPath('data.changelog', 'v1')
+        ->assertJsonPath('data.reviewer_names', []);
+});

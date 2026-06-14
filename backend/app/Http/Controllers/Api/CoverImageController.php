@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\Requests\Templates\StoreCoverImageRequest;
+use App\Http\Resources\CoverImageResource;
 use App\Services\CoverImageService;
-use App\Support\ThemeMediaUrl;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -24,11 +24,6 @@ class CoverImageController
     {
         $result = $this->service->upload($template, $request->file('file'));
 
-        return response()->json([
-            'data' => [
-                'src' => $result->src,
-                'url' => ThemeMediaUrl::build($result->src),
-            ],
-        ], 201);
+        return (new CoverImageResource($result))->response()->setStatusCode(201);
     }
 }

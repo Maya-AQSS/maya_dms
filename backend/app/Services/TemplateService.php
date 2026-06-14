@@ -11,6 +11,8 @@ use App\DTOs\Templates\TemplateDto;
 use App\DTOs\Templates\TemplateFilterDto;
 use App\DTOs\Templates\UpdateTemplateDto;
 use App\DTOs\Versioning\EntityVersionDto;
+use App\DTOs\Versioning\TemplateVersionDetailDto;
+use App\DTOs\Versioning\TemplateVersionSummaryDto;
 use App\DTOs\Versioning\WorkingRevisionConflictDto;
 use App\Enums\TemplateVisibilityLevel;
 use App\Events\OwnershipTransferred;
@@ -28,6 +30,7 @@ use App\Services\Contracts\TemplateServiceInterface;
 use App\Support\AcademicScopeContext;
 use App\Support\AcademicScopeNormalizer;
 use App\Support\TemplateHeadSnapshot;
+use App\Support\TemplateVersionSnapshotParser;
 use App\Support\WorkingRevisionConflictResolver;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -51,7 +54,11 @@ class TemplateService implements TemplateServiceInterface
         private readonly AcademicHierarchyRepositoryInterface $academicHierarchyRepository,
         private readonly UserDirectoryRepositoryInterface $userDirectoryRepository,
         private readonly EntityVersionDestroyService $entityVersionDestroyService,
+        private readonly TemplateVersionBlockLayerResolver $templateVersionBlockLayerResolver,
     ) {}
+
+    /** @var array<string, ?string> */
+    private array $userNameCache = [];
 
     /**
      * Canónico: devuelve el DTO de la plantilla.
@@ -186,14 +193,116 @@ class TemplateService implements TemplateServiceInterface
     }
 
     /**
-     * Lista todas las versiones publicadas de una plantilla ordenadas por número de versión.
-     *
-     * @return Collection<int, EntityVersionDto>
+     * Detalle de una versión publicada de plantilla con el snapshot de bloques
+     * reconstruido y los nombres de autor/revisores ya resueltos. El Resource
+     * solo mapea; toda la resolución (BD + capas) vive aquí, en el Service.
      */
-    public function listPublishedVersions(string $templateId): Collection
+    public function findTemplateVersionDetailOrFail(string $versionId): TemplateVersionDetailDto
+    {
+        $version = $this->templateVersionRepository->findOrFail($versionId);
+
+        $blocksSnapshot = $this->templateVersionBlockLayerResolver->resolveBlocksSnapshot((string) $version->id);
+
+        $snapshotData = is_array($version->snapshot_data) ? $version->snapshot_data : [];
+        $templateSnapshot = isset($snapshotData['template']) && is_array($snapshotData['template'])
+            ? $snapshotData['template']
+            : null;
+
+        $authorId = TemplateVersionSnapshotParser::authorId($snapshotData)
+            ?? $this->firstNonEmptyString($version->created_by);
+        $publishedBy = $this->firstNonEmptyString($version->published_by);
+
+        return new TemplateVersionDetailDto(
+            id: (string) $version->id,
+            templateId: (string) $version->versionable_id,
+            versionNumber: (int) $version->version_number,
+            templateSnapshot: $templateSnapshot,
+            blocksSnapshot: $blocksSnapshot,
+            changelog: $version->changelog !== null ? (string) $version->changelog : null,
+            publishedBy: $publishedBy,
+            publishedByName: $publishedBy !== null ? $this->resolveUserNameById($publishedBy) : null,
+            authorName: $authorId !== null ? $this->resolveUserNameById($authorId) : null,
+            reviewerNames: $this->resolveReviewerNames($snapshotData),
+            publishedAt: $version->published_at?->toIso8601String(),
+            createdAt: $version->created_at?->toIso8601String(),
+            updatedAt: $version->updated_at?->toIso8601String(),
+        );
+    }
+
+    /**
+     * Historial de versiones publicadas (metadatos, sin el JSONB de bloques) con
+     * los nombres de autor/revisores ya resueltos. El Resource solo mapea.
+     *
+     * @return list<TemplateVersionSummaryDto>
+     */
+    public function listPublishedVersionSummaries(string $templateId): array
     {
         return $this->entityVersionRepository->listPublishedForEntityOrdered(Template::class, $templateId)
-            ->map(static fn (EntityVersion $v) => EntityVersionDto::fromModel($v));
+            ->map(function (EntityVersion $v): TemplateVersionSummaryDto {
+                $snapshotData = is_array($v->snapshot_data) ? $v->snapshot_data : [];
+                $authorId = TemplateVersionSnapshotParser::authorId($snapshotData)
+                    ?? $this->firstNonEmptyString($v->created_by);
+                $publishedBy = $this->firstNonEmptyString($v->published_by);
+
+                return new TemplateVersionSummaryDto(
+                    id: (string) $v->id,
+                    templateId: (string) $v->versionable_id,
+                    versionNumber: (int) $v->version_number,
+                    publishedAt: $v->published_at?->toIso8601String(),
+                    publishedBy: $publishedBy,
+                    publishedByName: $publishedBy !== null ? $this->resolveUserNameById($publishedBy) : null,
+                    authorName: $authorId !== null ? $this->resolveUserNameById($authorId) : null,
+                    reviewerNames: $this->resolveReviewerNames($snapshotData),
+                    changelog: $v->changelog !== null ? (string) $v->changelog : null,
+                );
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Resuelve los nombres de los revisores de plantilla a partir del snapshot.
+     *
+     * @param  array<string, mixed>  $snapshotData
+     * @return list<string>
+     */
+    private function resolveReviewerNames(array $snapshotData): array
+    {
+        $names = [];
+        foreach (TemplateVersionSnapshotParser::reviewerIds($snapshotData) as $uid) {
+            $name = $this->resolveUserNameById($uid);
+            if ($name !== null) {
+                $names[] = $name;
+            }
+        }
+
+        return $names;
+    }
+
+    /**
+     * Devuelve el primer argumento que sea un string no vacío, o null.
+     */
+    private function firstNonEmptyString(mixed ...$candidates): ?string
+    {
+        foreach ($candidates as $candidate) {
+            if (is_string($candidate) && $candidate !== '') {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Resuelve el nombre de un usuario por su ID con caché por proceso.
+     */
+    private function resolveUserNameById(string $userId): ?string
+    {
+        if (array_key_exists($userId, $this->userNameCache)) {
+            return $this->userNameCache[$userId];
+        }
+
+        return $this->userNameCache[$userId] = $this->userDirectoryRepository->findNameById($userId);
     }
 
     /**
