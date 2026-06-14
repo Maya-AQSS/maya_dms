@@ -31,6 +31,12 @@ use Maya\Http\Pagination\PaginatedDto;
  * Excepción documentada (mantener): `findModelOrFail` / `findOrFailWithoutCatalogScope`
  * existen SOLO para `authorize($ability, $model)` con Policies (exigen Model) y para
  * el flujo de presentación de `show` sobre el modelo resuelto. Ver changes.md (F4-B1).
+ *
+ * Excepción R2 deliberada (decisión de arquitectura, no deuda): {@see TemplatePolicy}
+ * (17 métodos) inspecciona owner_id/status/visibilidad/scopes sobre el Model ya cargado.
+ * Forzar id/DTO obligaría a re-fetch dentro de cada método de Policy (N+1 en lista/bulk) o a
+ * un DTO espejo del modelo. El coste de rendimiento supera al beneficio; estos métodos quedan
+ * acotados a autorización (@internal authorization-only).
  */
 interface TemplateServiceInterface
 {

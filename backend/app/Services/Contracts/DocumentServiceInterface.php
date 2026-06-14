@@ -25,6 +25,7 @@ use App\DTOs\Versioning\WorkingRevisionConflictDto;
 use App\Http\Controllers\Api\DocumentController;
 use App\Models\Document;
 use App\Models\EntityVersion;
+use App\Policies\DocumentPolicy;
 use Illuminate\Support\Collection;
 use Maya\Http\Pagination\PaginatedDto;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -40,6 +41,13 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
  * existen SOLO para `authorize($ability, $model)` con Policies (exigen Model) y
  * para flujos de presentación de `show` que componen meta derivada sobre el
  * modelo resuelto por el FormRequest. Ver changes.md (F4-B1).
+ *
+ * Excepción R2 deliberada (decisión de arquitectura, no deuda): {@see DocumentPolicy}
+ * (18 métodos) inspecciona owner_id/status/process_id/reviewers/scopes sobre el Model ya
+ * cargado con sus relaciones. Forzar id/DTO obligaría a re-fetch dentro de cada método de
+ * Policy (N+1 en endpoints de lista/bulk que autorizan por-item) o a un DTO espejo del modelo
+ * acoplado a las tripas de la Policy. El coste de rendimiento supera al beneficio; estos
+ * métodos quedan acotados a autorización (@internal authorization-only).
  */
 interface DocumentServiceInterface
 {
