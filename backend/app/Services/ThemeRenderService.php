@@ -30,7 +30,7 @@ class ThemeRenderService implements ThemeRenderServiceInterface
             'document' => [
                 'id' => 'theme-'.$themeId,
                 'title' => (string) ($theme['brand_name'] ?? 'Tema'),
-                'subject' => 'Previsualización del tema',
+                'subject' => __('theme.preview_subject'),
                 'lang' => $theme['accessibility']['language'] ?? 'es',
                 'body_html' => $this->loremBody($theme),
             ],
@@ -81,7 +81,7 @@ class ThemeRenderService implements ThemeRenderServiceInterface
     {
         $themeDto = $this->themeRepository->findThemeResolvedById($themeId);
         if ($themeDto === null) {
-            throw new NotFoundHttpException('Theme no encontrado.');
+            throw new NotFoundHttpException(__('theme.not_found'));
         }
 
         return [

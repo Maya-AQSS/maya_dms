@@ -53,13 +53,13 @@ class TemplateReviewService
 
             if (! in_array($template->status, ['draft', 'rejected'], true)) {
                 throw ValidationException::withMessages([
-                    'status' => ['Solo las plantillas en borrador o rechazadas pueden enviarse a revisión.'],
+                    'status' => [__('validation.template_review.submit_state')],
                 ]);
             }
 
             if (! $this->templateReviewerRepository->templateHasBlocks((string) $template->getKey())) {
                 throw ValidationException::withMessages([
-                    'blocks' => ['La plantilla debe tener al menos un bloque antes de enviarse a revisión.'],
+                    'blocks' => [__('validation.template_review.min_blocks')],
                 ]);
             }
 
@@ -79,7 +79,7 @@ class TemplateReviewService
             );
             if (! $hasEditableBlock) {
                 throw ValidationException::withMessages([
-                    'blocks' => ['La plantilla debe tener al menos un bloque editable o modificable.'],
+                    'blocks' => [__('validation.template_review.editable_block')],
                 ]);
             }
 
@@ -95,7 +95,7 @@ class TemplateReviewService
             );
             if ($emptyModifiableBlock !== null) {
                 throw ValidationException::withMessages([
-                    'blocks' => ['Los bloques modificables no pueden estar vacíos: el contenido predeterminado es obligatorio.'],
+                    'blocks' => [__('validation.template_review.modifiable_not_empty')],
                 ]);
             }
 
@@ -104,7 +104,7 @@ class TemplateReviewService
             );
             if ($emptyLockedBlock !== null) {
                 throw ValidationException::withMessages([
-                    'blocks' => ['Los bloques bloqueados no pueden estar vacíos.'],
+                    'blocks' => [__('validation.template_review.locked_not_empty')],
                 ]);
             }
 
@@ -113,7 +113,7 @@ class TemplateReviewService
             if ($this->templateRepository->doesntHaveReviewers($templateId)) {
                 if ($template->visibility_level !== TemplateVisibilityLevel::Personal) {
                     throw ValidationException::withMessages([
-                        'reviewers' => ['Las plantillas no personales requieren al menos un revisor asignado antes de enviarse a revisión.'],
+                        'reviewers' => [__('validation.template_review.reviewers_required')],
                     ]);
                 }
 
@@ -123,7 +123,7 @@ class TemplateReviewService
             if ($template->visibility_level !== TemplateVisibilityLevel::Personal
                 && $this->templateRepository->doesntHaveDocumentReviewers($templateId)) {
                 throw ValidationException::withMessages([
-                    'document_reviewers' => ['Las plantillas no personales requieren al menos un validador de documento asignado antes de enviarse a revisión.'],
+                    'document_reviewers' => [__('validation.template_review.document_reviewers_required')],
                 ]);
             }
 
@@ -185,7 +185,7 @@ class TemplateReviewService
 
             if ($template->status !== 'in_review') {
                 throw ValidationException::withMessages([
-                    'status' => ['Solo se puede rechazar una plantilla en revisión.'],
+                    'status' => [__('validation.template_review.reject_state')],
                 ]);
             }
 
@@ -196,13 +196,13 @@ class TemplateReviewService
 
             if (! $reviewer) {
                 throw ValidationException::withMessages([
-                    'user' => ['No estás asignado como revisor de esta plantilla.'],
+                    'user' => [__('validation.template_review.not_assigned')],
                 ]);
             }
 
             if ($reviewer->status === 'approved') {
                 throw ValidationException::withMessages([
-                    'status' => ['No puedes rechazar una plantilla que ya has aprobado.'],
+                    'status' => [__('validation.template_review.already_approved_reject')],
                 ]);
             }
 
@@ -264,7 +264,7 @@ class TemplateReviewService
 
             if ($template->status !== 'in_review') {
                 throw ValidationException::withMessages([
-                    'status' => ['Solo se puede aprobar una plantilla en revisión.'],
+                    'status' => [__('validation.template_review.approve_state')],
                 ]);
             }
 
@@ -275,13 +275,13 @@ class TemplateReviewService
 
             if (! $reviewer) {
                 throw ValidationException::withMessages([
-                    'user' => ['No estás asignado como revisor de esta plantilla.'],
+                    'user' => [__('validation.template_review.not_assigned')],
                 ]);
             }
 
             if ($reviewer->status === 'approved') {
                 throw ValidationException::withMessages([
-                    'status' => ['Ya has aprobado esta plantilla.'],
+                    'status' => [__('validation.template_review.already_approved')],
                 ]);
             }
 
@@ -345,7 +345,7 @@ class TemplateReviewService
 
         if ((int) $reviewer->stage !== $minStage) {
             throw ValidationException::withMessages([
-                'stage' => ['Debes esperar a que los revisores de etapas anteriores aprueben primero.'],
+                'stage' => [__('validation.template_review.sequential_order')],
             ]);
         }
     }
@@ -375,8 +375,8 @@ class TemplateReviewService
             fn (string $recipientId): array => [
                 'type' => 'template.validation_requested',
                 'recipientId' => $recipientId,
-                'title' => 'Nueva solicitud de revisión de plantilla',
-                'body' => 'La plantilla "'.$templateName.'" requiere tu revisión',
+                'title' => __('notifications.template.validation_requested.title'),
+                'body' => __('notifications.template.validation_requested.body', ['template_name' => $templateName]),
                 'titleKey' => 'notifications.template.validation_requested.title',
                 'bodyKey' => 'notifications.template.validation_requested.body',
                 'params' => ['template_id' => $templateId, 'template_name' => $templateName],

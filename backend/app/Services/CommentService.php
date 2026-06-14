@@ -77,13 +77,13 @@ class CommentService implements CommentServiceInterface
     ): CommentDto {
         if (! in_array($commentableType, Comment::ALLOWED_COMMENTABLE_TYPES, true)) {
             throw ValidationException::withMessages([
-                'commentable_type' => ['Tipo de recurso no permitido para comentarios.'],
+                'commentable_type' => [__('validation.comment.resource_not_allowed')],
             ]);
         }
 
         if (($blockableType === null) !== ($blockableId === null)) {
             throw ValidationException::withMessages([
-                'blockable' => ['El bloque debe incluir tipo e identificador juntos.'],
+                'blockable' => [__('validation.comment.block_type_id')],
             ]);
         }
 
@@ -229,7 +229,7 @@ class CommentService implements CommentServiceInterface
         if ($commentableType === Template::class) {
             if ($blockableType !== TemplateBlock::class) {
                 throw ValidationException::withMessages([
-                    'blockable_type' => ['El bloque debe ser de tipo plantilla.'],
+                    'blockable_type' => [__('validation.comment.block_template')],
                 ]);
             }
 
@@ -237,7 +237,7 @@ class CommentService implements CommentServiceInterface
 
             if (! $exists) {
                 throw ValidationException::withMessages([
-                    'blockable_id' => ['El bloque no pertenece a la plantilla indicada.'],
+                    'blockable_id' => [__('validation.comment.block_not_template')],
                 ]);
             }
 
@@ -247,7 +247,7 @@ class CommentService implements CommentServiceInterface
         if ($commentableType === Document::class) {
             if ($blockableType !== DocumentBlock::class) {
                 throw ValidationException::withMessages([
-                    'blockable_type' => ['El bloque debe ser de tipo documento.'],
+                    'blockable_type' => [__('validation.comment.block_document')],
                 ]);
             }
 
@@ -255,7 +255,7 @@ class CommentService implements CommentServiceInterface
 
             if (! $exists) {
                 throw ValidationException::withMessages([
-                    'blockable_id' => ['El bloque no pertenece al documento indicado.'],
+                    'blockable_id' => [__('validation.comment.block_not_document')],
                 ]);
             }
         }
@@ -276,13 +276,13 @@ class CommentService implements CommentServiceInterface
         $parent = $this->commentRepository->findWithoutScopesById($parentId);
         if (! $parent instanceof Comment) {
             throw ValidationException::withMessages([
-                'parent_id' => ['El comentario padre no existe.'],
+                'parent_id' => [__('validation.comment.parent_not_found')],
             ]);
         }
 
         if ($parent->deleted_at !== null) {
             throw ValidationException::withMessages([
-                'parent_id' => ['El comentario padre no está disponible.'],
+                'parent_id' => [__('validation.comment.parent_unavailable')],
             ]);
         }
 
@@ -292,7 +292,7 @@ class CommentService implements CommentServiceInterface
             || (int) $parent->commentable_version !== $commentableVersion
         ) {
             throw ValidationException::withMessages([
-                'parent_id' => ['El comentario padre debe pertenecer al mismo recurso y versión.'],
+                'parent_id' => [__('validation.comment.parent_same_resource')],
             ]);
         }
 
@@ -301,7 +301,7 @@ class CommentService implements CommentServiceInterface
             || (string) ($parent->blockable_id ?? '') !== (string) ($blockableId ?? '')
         ) {
             throw ValidationException::withMessages([
-                'parent_id' => ['El comentario padre debe pertenecer al mismo bloque.'],
+                'parent_id' => [__('validation.comment.parent_same_block')],
             ]);
         }
     }

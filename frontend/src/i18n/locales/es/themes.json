@@ -58,6 +58,59 @@
     "imageEmpty": "Sin imagen"
   },
   "emptyMessage": "Aún no hay temas. Crea uno desde \"Nuevo tema\".",
+  "detail": {
+    "subtitle": "Tema · Identidad visual reutilizable"
+  },
+  "fields": {
+    "blocks": "Bloques",
+    "palette": "Paleta"
+  },
+  "verification": {
+    "title": "Verificación"
+  },
+  "layout": {
+    "editorTitle": "Editor de layout"
+  },
+  "fonts": {
+    "sansSerif": "Sans-serif",
+    "serif": "Serif",
+    "monospace": "Monoespacio",
+    "customLegacy": "Personalizada (legacy)"
+  },
+  "blocks": {
+    "documentContent": "Contenido del documento",
+    "bodyPlaceholder": "Aquí se carga el cuerpo del documento",
+    "text": "Texto",
+    "image": "Imagen",
+    "pageNumber": "Nº de página",
+    "date": "Fecha"
+  },
+  "inspector": {
+    "title": "Inspector",
+    "properties": "Propiedades",
+    "x": "X (mm)",
+    "y": "Y (mm)",
+    "width": "Ancho (mm)",
+    "height": "Alto (mm)",
+    "content": "Contenido",
+    "sizePt": "Tamaño (pt)",
+    "color": "Color",
+    "noThemeId": "ID de theme no disponible",
+    "format": "Formato",
+    "dateShort": "Corto (01/01/2026)",
+    "dateLong": "Largo (1 de enero de 2026)",
+    "editorLabel": "Etiqueta visible en el editor",
+    "noEditableProps": "Sin propiedades editables.",
+    "uploadImage": "Subir imagen",
+    "orUseUrl": "O usar URL",
+    "altText": "Texto alternativo",
+    "opacity": "Opacidad (0–1)",
+    "rotation": "Rotación (grados)",
+    "imageFit": "Ajuste de imagen",
+    "fitContain": "Contener (espacio vacío)",
+    "fitCover": "Cubrir (recorte)",
+    "fitStretch": "Estirar"
+  },
   "errors": {
     "errorForbidden": "No tienes permiso para esta acción sobre el theme.",
     "errorUnauthorized": "Sesión no válida o token ausente.",

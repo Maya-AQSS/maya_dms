@@ -27,18 +27,18 @@ class DocumentShareService
         $document = $this->documentRepository->findOrFail($documentId);
 
         if ($document->owner_id !== $actorId) {
-            abort(403, 'Solo el titular puede gestionar colaboradores.');
+            abort(403, __('auth.share.owner_only'));
         }
 
         if ($targetUserId === $actorId) {
             throw ValidationException::withMessages([
-                'user_id' => ['No puedes compartir el documento contigo mismo.'],
+                'user_id' => [__('validation.share.self')],
             ]);
         }
 
         if ($targetUserId === $document->owner_id) {
             throw ValidationException::withMessages([
-                'user_id' => ['El titular ya tiene acceso completo al documento.'],
+                'user_id' => [__('validation.share.owner_has_access')],
             ]);
         }
 
@@ -61,7 +61,7 @@ class DocumentShareService
         $document = $this->documentRepository->findOrFail($documentId);
 
         if ($document->owner_id !== $actorId) {
-            abort(403, 'Solo el titular puede gestionar colaboradores.');
+            abort(403, __('auth.share.owner_only'));
         }
 
         $this->documentRepository->deleteDocumentShare($documentId, $targetUserId);

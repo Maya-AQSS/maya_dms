@@ -15,7 +15,13 @@
   "wizard": {
     "purposePlaceholder": "Purpose of the template…",
     "selectDatePlaceholder": "Select date…",
-    "filterUsersPlaceholder": "Filter users…"
+    "filterUsersPlaceholder": "Filter users…",
+    "selectBlock": "Select a block to edit",
+    "blockName": "Block name",
+    "blockType": "Block type",
+    "blockTheme": "Block theme",
+    "defaultTheme": "Template default theme",
+    "noBlocksYet": "No blocks have been added yet."
   },
   "table": {
     "columns": {
@@ -80,7 +86,9 @@
     "viewDescription": "View block description",
     "viewBlockHistory": "View block change history",
     "blockCommentsTitle": "Block comments",
-    "closePanelAria": "Close panel"
+    "closePanelAria": "Close panel",
+    "noBlocks": "This template has no configured blocks.",
+    "requiredComments": "Required comments"
   },
   "history": {
     "panelHeader": "⎇ Block {{n}} · Change history",
@@ -105,7 +113,87 @@
     "deadline": "Delivery deadline",
     "theme": "Applied theme",
     "linking": "Linking",
-    "module": "Module"
+    "module": "Module",
+    "studyType": "Study Type",
+    "study": "Study",
+    "team": "Team"
+  },
+  "reviewComments": "Review comments",
+  "visibility": {
+    "personal": "Personal",
+    "global": "Global",
+    "studyType": "Study Type",
+    "study": "Study",
+    "module": "Module",
+    "team": "Team"
+  },
+  "status": {
+    "all": "All",
+    "draft": "Draft",
+    "in_review": "In review",
+    "rejected": "Rejected",
+    "published": "Published",
+    "archived": "Archived"
+  },
+  "favoritesFilter": {
+    "all": "All",
+    "onlyFavorites": "Only favorites"
+  },
+  "cover": {
+    "inspector": "Inspector",
+    "inspectorEmpty": "Select an element on the canvas to edit its properties, or add a new one.",
+    "positionSize": "Position and size (mm)",
+    "properties": "Properties",
+    "dateShort": "Short (01/01/2026)",
+    "dateLong": "Long (January 1, 2026)",
+    "pageN": "Page N",
+    "pageNofM": "Page N of M",
+    "fitContain": "Contain",
+    "fitCover": "Cover (crop)",
+    "fitFill": "Stretch",
+    "weightNormal": "Normal",
+    "weightBold": "Bold",
+    "fillFields": "Cover fields",
+    "fillEmpty": "This cover has no fillable fields.",
+    "notEditable": "The document is not editable in its current state.",
+    "imagePlaceholder": "Image"
+  },
+  "newVersion": {
+    "description": "A new editable draft will be created from the published template.",
+    "confirm": "Create new version"
+  },
+  "confirm": {
+    "deleteTitle": "Delete this template?"
+  },
+  "discardVersion": {
+    "description": "Draft/in-review changes will be discarded and the published version restored.",
+    "confirm": "Discard version"
+  },
+  "validators": {
+    "empty": "No validators assigned.",
+    "removeConfirm": "You are about to remove this validator from the template.",
+    "noUsersFound": "No users with review permission were found."
+  },
+  "index": {
+    "autoTitle": "Automatic index"
+  },
+  "docx": {
+    "splitH1": "One block per H1",
+    "splitH1H2": "One block per H1/H2",
+    "assignTo": "Assign to…",
+    "noElements": "No elements — assign some.",
+    "noImportable": "The document contains no importable content.",
+    "readError": "Could not read the file. Is it a valid .docx?",
+    "createError": "Block creation failed. Review the ones created and retry.",
+    "kind": {
+      "heading": "Heading",
+      "list": "List",
+      "table": "Table",
+      "figure": "Figure",
+      "blockquote": "Quote",
+      "horizontalRule": "Separator",
+      "other": "Element"
+    }
   },
   "selectPlaceholder": "— Select —",
   "notEditableInState": "Not editable in current state.",
@@ -125,7 +213,9 @@
     "draftAlreadyExistsUnknownAuthor": "another user",
     "discardNewVersionTitle": "Discard new version?",
     "rejectValidationTitle": "Reject validation?",
-    "clone": "Clone"
+    "clone": "Clone",
+    "pdfTooltip": "Generate and download the template PDF",
+    "newTemplateTooltip": "Create a new independent template from this one."
   },
   "errors": {
     "errorForbidden": "You do not have permission for this action (e.g. shared visibility is for coordination only).",
@@ -134,6 +224,15 @@
     "errorNotFound": "Template not found.",
     "errorServer": "Server error.",
     "errorNetwork": "Connection error.",
-    "errorUnknown": "Unknown error."
+    "errorUnknown": "Unknown error.",
+    "invalidId": "Invalid template identifier.",
+    "versionMismatch": "The selected version does not belong to this template.",
+    "noValidationPermission": "You do not have validation permission on this template.",
+    "noReviewPermission": "You do not have permission to review templates.",
+    "noListBlocksPermission": "You do not have permission to list blocks (block.index).",
+    "noCreateBlockPermission": "You do not have permission to create blocks (block.create).",
+    "noUpdateBlockPermission": "You do not have permission to update blocks (block.update).",
+    "noDeleteBlockPermission": "You do not have permission to delete blocks (block.delete).",
+    "noReorderBlockPermission": "You do not have permission to reorder blocks (block.update)."
   }
 }

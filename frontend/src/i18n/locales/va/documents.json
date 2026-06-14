@@ -3,6 +3,7 @@
   "blockDescription": "Descripció del Bloc",
   "approveTitle": "Confirmar aprovació",
   "validateTitle": "Validació de Document",
+  "sendForReviewTitle": "Enviar a validació",
   "wizard": {
     "searchByName": "Cercar per nom...",
     "searchVisibility": "Global, personal, equip, nom d'equip, estudi o mòdul…",
@@ -15,6 +16,16 @@
     "exitFullscreenTitle": "Eixir de pantalla completa (Esc)",
     "unfilledBlocksTitle": "Blocs editables sense omplir",
     "loadingValidation": "Carregant dades de validació…",
+    "submitWarning": "Després no es podrà continuar editant com a esborrany.",
+    "teamOptional": "Equip (opcional, exclusiu amb context acadèmic)",
+    "noStudyTypes": "No tens tipus d'estudi assignats, contacta amb un administrador",
+    "current": "Actual:",
+    "searchOwner": "Cercar nou propietari…",
+    "view": "Vista:",
+    "closeDescription": "Tancar descripció",
+    "fillBlocksFirst": "Has d'omplir tots els blocs editables abans de continuar.",
+    "confirmSave": "Confirmar guardat",
+    "noValidators": "Sense validadors configurats",
     "viewMode": {
       "perBlock": "Per bloc",
       "continuous": "Continu",
@@ -194,6 +205,36 @@
   },
   "fields": {
     "module": "Mòdul",
-    "deadline": "Data límit"
+    "deadline": "Data límit",
+    "studyType": "Tipus d'Estudi",
+    "study": "Estudi"
+  },
+  "noBlocks": "Aquest document no té blocs.",
+  "errors": {
+    "noTemplate": "No es pot crear un document sense plantilla.",
+    "templateNoProcess": "La plantilla seleccionada no té procés associat.",
+    "stillLoading": "El document encara s'està carregant. Espera un moment…",
+    "invalidId": "Identificador de document no vàlid.",
+    "invalidIdOrTemplate": "Identificador de document o plantilla no vàlid."
+  },
+  "editor": {
+    "viewBlockDescription": "Veure descripció / instruccions del bloc"
+  },
+  "approve": {
+    "description": "Es registrarà la teua aprovació. Si ets l'últim validador, el document quedarà publicat."
+  },
+  "confirm": {
+    "deleteTitle": "Eliminar aquest document?"
+  },
+  "newVersion": {
+    "description": "Es crearà un nou esborrany editable a partir de la versió publicada.",
+    "confirm": "Crear nova versió"
+  },
+  "discardVersion": {
+    "confirm": "Descartar versió"
+  },
+  "selector": {
+    "empty": "No hi ha plantilles utilitzables per a crear documents amb els filtres actuals.",
+    "publishedSince": "Publicades des de"
   }
 }

@@ -91,7 +91,7 @@ class TemplatePublishingService
 
             if (! in_array($template->status, ['draft', 'in_review'], true)) {
                 throw ValidationException::withMessages([
-                    'status' => ['Solo se puede publicar una plantilla en borrador o en revisión.'],
+                    'status' => [__('validation.template_publish.state')],
                 ]);
             }
 
@@ -103,7 +103,7 @@ class TemplatePublishingService
 
             if ($template->blocks->isEmpty()) {
                 throw ValidationException::withMessages([
-                    'blocks' => ['La plantilla debe tener al menos un bloque antes de publicarse.'],
+                    'blocks' => [__('validation.template_publish.min_blocks')],
                 ]);
             }
 
@@ -112,7 +112,7 @@ class TemplatePublishingService
             );
             if (! $hasEditableBlock) {
                 throw ValidationException::withMessages([
-                    'blocks' => ['La plantilla debe tener al menos un bloque editable o modificable.'],
+                    'blocks' => [__('validation.template_publish.editable_block')],
                 ]);
             }
 
@@ -132,7 +132,7 @@ class TemplatePublishingService
             );
             if ($emptyLockedBlock !== null) {
                 throw ValidationException::withMessages([
-                    'blocks' => ['Los bloques bloqueados no pueden estar vacíos.'],
+                    'blocks' => [__('validation.template_publish.locked_not_empty')],
                 ]);
             }
 
@@ -285,7 +285,7 @@ class TemplatePublishingService
 
         if ((int) $reviewer->stage !== $minStage) {
             throw ValidationException::withMessages([
-                'stage' => ['Debes esperar a que los revisores de etapas anteriores aprueben primero.'],
+                'stage' => [__('validation.template_review.sequential_order')],
             ]);
         }
     }

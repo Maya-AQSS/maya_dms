@@ -51,13 +51,13 @@ class MediaService
         // JWT para que <img src> funcione). Por eso es obligatorio: un token
         // ausente o vacío se rechaza siempre — no hay "modo sin token".
         if ($token === null || $token === '' || ! hash_equals($this->makeToken($path), $token)) {
-            throw new \Exception('Token de media inválido.');
+            throw new \Exception(__('media.invalid_token'));
         }
 
         $disk = Storage::disk(self::DISK);
 
         if (! $disk->exists($path)) {
-            throw new \Exception('Imagen no encontrada.');
+            throw new \Exception(__('media.image_not_found'));
         }
 
         return $disk->get($path);
@@ -114,7 +114,7 @@ class MediaService
     {
         if ($contextType !== '' && $contextType !== null) {
             if (! in_array($contextType, self::ALLOWED_CONTEXT_TYPES, true) || ! Str::isUuid($contextId)) {
-                throw new \Exception('Token de media inválido.');
+                throw new \Exception(__('media.invalid_token'));
             }
         }
     }

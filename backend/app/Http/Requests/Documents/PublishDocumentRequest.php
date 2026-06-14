@@ -44,8 +44,8 @@ class PublishDocumentRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'changelog.required' => 'El changelog es obligatorio al publicar un documento.',
-            'changelog.min' => 'El changelog es obligatorio al publicar un documento.',
+            'changelog.required' => __('validation.changelog.required_publish_document'),
+            'changelog.min' => __('validation.changelog.required_publish_document'),
         ];
     }
 }

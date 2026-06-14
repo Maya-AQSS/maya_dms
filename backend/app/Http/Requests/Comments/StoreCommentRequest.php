@@ -33,7 +33,7 @@ class StoreCommentRequest extends FormRequest
 
     protected function failedAuthorization(): void
     {
-        throw new AuthorizationException('Se requiere permiso para comentar en este recurso.');
+        throw new AuthorizationException(__('auth.comment.create_required'));
     }
 
     /**

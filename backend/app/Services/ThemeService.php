@@ -36,7 +36,7 @@ class ThemeService implements ThemeServiceInterface
     {
         $theme = $this->repository->findById($id);
         if ($theme === null) {
-            throw new NotFoundHttpException('Theme no encontrado.');
+            throw new NotFoundHttpException(__('theme.not_found'));
         }
 
         return $theme;
@@ -98,7 +98,7 @@ class ThemeService implements ThemeServiceInterface
         // Defensa en profundidad: la policy ya bloquea el borrado de themes de
         // sistema, pero el service también lo rechaza por si se invoca por otra vía.
         if ($this->get($id)->isSystem) {
-            throw new ConflictHttpException('Un theme de sistema no se puede eliminar.');
+            throw new ConflictHttpException(__('theme.system_no_delete'));
         }
 
         $this->repository->delete($id);

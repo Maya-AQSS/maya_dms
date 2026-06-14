@@ -19,7 +19,7 @@ class StartNewDocumentRevisionRequest extends FormRequest
 
     protected function failedAuthorization(): void
     {
-        throw new AuthorizationException('No puedes abrir una nueva versión de este documento.');
+        throw new AuthorizationException(__('auth.document.new_revision_forbidden'));
     }
 
     /**

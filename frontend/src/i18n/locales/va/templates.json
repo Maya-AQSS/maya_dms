@@ -15,7 +15,13 @@
   "wizard": {
     "purposePlaceholder": "Propòsit de la plantilla…",
     "selectDatePlaceholder": "Seleccionar data…",
-    "filterUsersPlaceholder": "Filtrar usuaris…"
+    "filterUsersPlaceholder": "Filtrar usuaris…",
+    "selectBlock": "Selecciona un bloc per a editar",
+    "blockName": "Nom del bloc",
+    "blockType": "Tipus de bloc",
+    "blockTheme": "Tema del bloc",
+    "defaultTheme": "Tema per defecte de la plantilla",
+    "noBlocksYet": "Encara no s'han afegit blocs."
   },
   "table": {
     "columns": {
@@ -80,7 +86,9 @@
     "viewDescription": "Veure descripció",
     "viewBlockHistory": "Veure historial del bloc",
     "blockCommentsTitle": "Comentaris del Bloc",
-    "closePanelAria": "Tancar panell"
+    "closePanelAria": "Tancar panell",
+    "noBlocks": "Aquesta plantilla no té blocs configurats.",
+    "requiredComments": "Comentaris obligatoris"
   },
   "history": {
     "panelHeader": "⎇ Bloc {{n}} · Historial de canvis",
@@ -105,7 +113,87 @@
     "deadline": "Termini d'entrega",
     "theme": "Theme aplicat",
     "linking": "Vinculació",
-    "module": "Mòdul"
+    "module": "Mòdul",
+    "studyType": "Tipus d'Estudi",
+    "study": "Estudi",
+    "team": "Equip"
+  },
+  "reviewComments": "Comentaris de revisió",
+  "visibility": {
+    "personal": "Personal",
+    "global": "Global",
+    "studyType": "Tipus d'Estudi",
+    "study": "Estudi",
+    "module": "Mòdul",
+    "team": "Equip"
+  },
+  "status": {
+    "all": "Tots",
+    "draft": "Esborrany",
+    "in_review": "En revisió",
+    "rejected": "Rebutjada",
+    "published": "Publicada",
+    "archived": "Arxivada"
+  },
+  "favoritesFilter": {
+    "all": "Tots",
+    "onlyFavorites": "Només favorits"
+  },
+  "cover": {
+    "inspector": "Inspector",
+    "inspectorEmpty": "Selecciona un element del llenç per a editar les seues propietats, o afig-ne un de nou.",
+    "positionSize": "Posició i mida (mm)",
+    "properties": "Propietats",
+    "dateShort": "Curt (01/01/2026)",
+    "dateLong": "Llarg (1 de gener de 2026)",
+    "pageN": "Pàgina N",
+    "pageNofM": "Pàgina N de M",
+    "fitContain": "Contindre",
+    "fitCover": "Cobrir (retall)",
+    "fitFill": "Estirar",
+    "weightNormal": "Normal",
+    "weightBold": "Negreta",
+    "fillFields": "Camps de la portada",
+    "fillEmpty": "Aquesta portada no té camps emplenables.",
+    "notEditable": "El document no és editable en el seu estat actual.",
+    "imagePlaceholder": "Imatge"
+  },
+  "newVersion": {
+    "description": "Es crearà un nou esborrany editable a partir de la plantilla publicada.",
+    "confirm": "Crear nova versió"
+  },
+  "confirm": {
+    "deleteTitle": "Eliminar aquesta plantilla?"
+  },
+  "discardVersion": {
+    "description": "Es descartaran els canvis en esborrany/en revisió i es tornarà a la versió publicada.",
+    "confirm": "Descartar versió"
+  },
+  "validators": {
+    "empty": "Sense validadors assignats.",
+    "removeConfirm": "Estàs a punt d'eliminar aquest validador de la plantilla.",
+    "noUsersFound": "No s'han trobat usuaris amb permís de revisió."
+  },
+  "index": {
+    "autoTitle": "Índex automàtic"
+  },
+  "docx": {
+    "splitH1": "Un bloc per cada H1",
+    "splitH1H2": "Un bloc per cada H1/H2",
+    "assignTo": "Assignar a…",
+    "noElements": "Sense elements — assigna-li'n algun.",
+    "noImportable": "El document no conté contingut importable.",
+    "readError": "No s'ha pogut llegir el fitxer. És un .docx vàlid?",
+    "createError": "Ha fallat la creació de blocs. Revisa els que s'hagen creat i reintenta.",
+    "kind": {
+      "heading": "Encapçalament",
+      "list": "Llista",
+      "table": "Taula",
+      "figure": "Figura",
+      "blockquote": "Cita",
+      "horizontalRule": "Separador",
+      "other": "Element"
+    }
   },
   "selectPlaceholder": "— Seleccionar —",
   "notEditableInState": "No editable en l'estat actual.",
@@ -125,7 +213,9 @@
     "draftAlreadyExistsUnknownAuthor": "un altre usuari",
     "discardNewVersionTitle": "Descartar nova versió?",
     "rejectValidationTitle": "Rebutjar validació?",
-    "clone": "Clonar"
+    "clone": "Clonar",
+    "pdfTooltip": "Genera i descarrega el PDF de la plantilla",
+    "newTemplateTooltip": "Crea una plantilla nova i independent a partir d'aquesta."
   },
   "errors": {
     "errorForbidden": "No tens permís per a esta acció (p. ex. visibilitat compartida només per a coordinació).",
@@ -134,6 +224,15 @@
     "errorNotFound": "Plantilla no trobada.",
     "errorServer": "Error del servidor.",
     "errorNetwork": "Error de connexió.",
-    "errorUnknown": "Error desconegut."
+    "errorUnknown": "Error desconegut.",
+    "invalidId": "Identificador de plantilla no vàlid.",
+    "versionMismatch": "La versió seleccionada no pertany a aquesta plantilla.",
+    "noValidationPermission": "No tens permisos de validació sobre aquesta plantilla.",
+    "noReviewPermission": "No tens permís per a revisar plantilles.",
+    "noListBlocksPermission": "No tens permís per a llistar blocs (block.index).",
+    "noCreateBlockPermission": "No tens permís per a crear blocs (block.create).",
+    "noUpdateBlockPermission": "No tens permís per a actualitzar blocs (block.update).",
+    "noDeleteBlockPermission": "No tens permís per a eliminar blocs (block.delete).",
+    "noReorderBlockPermission": "No tens permís per a reordenar blocs (block.update)."
   }
 }

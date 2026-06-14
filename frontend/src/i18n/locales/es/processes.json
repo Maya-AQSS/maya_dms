@@ -1,0 +1,50 @@
+{
+  "manage": {
+    "title": "Gestión de Procesos",
+    "subtitle": "Catálogo de procesos del sistema"
+  },
+  "detail": {
+    "title": "Proceso"
+  },
+  "form": {
+    "editTitle": "Editar proceso",
+    "newTitle": "Nuevo proceso",
+    "code": "Código",
+    "name": "Nombre",
+    "alias": "Alias",
+    "removeColor": "Quitar color",
+    "assignColor": "+ Asignar color",
+    "removeIcon": "Quitar icono",
+    "saveChanges": "Guardar cambios",
+    "createProcess": "Crear proceso",
+    "saveError": "Error al guardar el proceso.",
+    "codePlaceholder": "Ej. PE01",
+    "namePlaceholder": "Nombre completo del proceso",
+    "aliasPlaceholder": "Etiqueta corta",
+    "descriptionPlaceholder": "Descripción opcional",
+    "parent": "Proceso padre",
+    "noParent": "Sin padre (proceso raíz)",
+    "rootNoParent": "Proceso raíz — sin padre",
+    "color": "Color",
+    "noColor": "Sin color",
+    "icon": "Icono",
+    "noIcon": "Sin icono"
+  },
+  "table": {
+    "searchPlaceholder": "Código, nombre o alias…",
+    "onlyRoot": "Solo raíz (sin padre)",
+    "columnCode": "Código",
+    "columnName": "Nombre",
+    "columnAlias": "Alias",
+    "columnIcon": "Icono",
+    "columnColor": "Color",
+    "searchLabel": "Buscar",
+    "parentLabel": "Proceso padre",
+    "filtersLabel": "Filtros",
+    "columnsLabel": "Columnas",
+    "clearFiltersLabel": "Limpiar filtros",
+    "pageSizeLabel": "Por página",
+    "emptyMessage": "No se encontraron procesos.",
+    "noIndexPermission": "No tienes permiso para ver el listado de procesos."
+  }
+}

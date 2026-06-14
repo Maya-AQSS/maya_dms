@@ -57,8 +57,8 @@ class PublishTemplateRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'changelog.required' => 'El changelog es obligatorio al publicar una plantilla.',
-            'changelog.min' => 'El changelog es obligatorio al publicar una plantilla.',
+            'changelog.required' => __('validation.changelog.required_publish_template'),
+            'changelog.min' => __('validation.changelog.required_publish_template'),
         ];
     }
 }

@@ -19,7 +19,7 @@ class ApproveDocumentReviewRequest extends FormRequest
 
     protected function failedAuthorization(): void
     {
-        throw new AuthorizationException('Se requiere permiso para revisar este documento.');
+        throw new AuthorizationException(__('auth.document.review_required'));
     }
 
     /**

@@ -32,7 +32,7 @@ class UserController extends Controller
     {
         $user = $request->user();
         if (! $user instanceof JwtUser || (! $user->hasPermission('template.show') && ! $user->hasPermission('document.show'))) {
-            abort(403, 'No tienes permiso para buscar usuarios.');
+            abort(403, __('users.search.forbidden'));
         }
 
         $search = trim((string) $request->get('search', ''));
@@ -66,7 +66,7 @@ class UserController extends Controller
     {
         $user = $request->user();
         if (! $user instanceof JwtUser || ! $user->hasPermission('template.show')) {
-            abort(403, 'No tienes permiso para buscar validadores de plantilla.');
+            abort(403, __('users.search.template_reviewers_forbidden'));
         }
 
         $search = trim((string) $request->get('search', ''));
@@ -102,7 +102,7 @@ class UserController extends Controller
     {
         $user = $request->user();
         if (! $user instanceof JwtUser || ! $user->hasPermission('document.show')) {
-            abort(403, 'No tienes permiso para buscar validadores de documento.');
+            abort(403, __('users.search.document_reviewers_forbidden'));
         }
 
         $search = trim((string) $request->get('search', ''));
@@ -131,7 +131,7 @@ class UserController extends Controller
     {
         $user = $request->user();
         if (! $user instanceof JwtUser || (! $user->hasPermission('template.show') && ! $user->hasPermission('document.show'))) {
-            abort(403, 'No tienes permiso para buscar candidatos a propietario.');
+            abort(403, __('users.search.owner_candidates_forbidden'));
         }
 
         $search = trim((string) $request->get('search', ''));

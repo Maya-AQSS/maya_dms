@@ -24,7 +24,7 @@ class UpdateTemplateBlockRequest extends FormRequest
 
     protected function failedAuthorization(): void
     {
-        throw new AuthorizationException('Se requiere permiso para actualizar bloques de esta plantilla.');
+        throw new AuthorizationException(__('auth.template_block.update_required'));
     }
 
     public function rules(): array

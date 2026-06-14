@@ -17,7 +17,7 @@ class ShowProcessRequest extends FormRequest
 
     protected function failedAuthorization(): void
     {
-        throw new AuthorizationException('Se requiere permiso process.show.');
+        throw new AuthorizationException(__('auth.process.show_required'));
     }
 
     /**

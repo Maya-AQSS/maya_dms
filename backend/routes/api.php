@@ -154,7 +154,7 @@ Route::prefix('v1')->group(function () {
             ->whereUuid('template');
         Route::get('template-versions/{template_version}', [TemplateVersionController::class, 'show'])
             ->whereUuid('template_version');
-        Route::match(['put', 'patch', 'delete'], 'template-versions/{template_version}', fn () => abort(403, 'Los snapshots de plantilla son de solo inserción (append-only).'))
+        Route::match(['put', 'patch', 'delete'], 'template-versions/{template_version}', fn () => abort(403, __('snapshots.template_append_only')))
             ->whereUuid('template_version');
 
         // Export PDF de una versión histórica de plantilla (síncrono, bajo demanda). Gate viewHistory.
@@ -227,7 +227,7 @@ Route::prefix('v1')->group(function () {
         Route::delete('documents/{document}/versions/{version}', [DocumentStateController::class, 'destroyVersion'])
             ->whereUuid('document')
             ->whereUuid('version');
-        Route::match(['put', 'patch'], 'documents/{document}/versions/{version}', fn () => abort(403, 'Los snapshots de documento son de solo inserción (append-only).'))
+        Route::match(['put', 'patch'], 'documents/{document}/versions/{version}', fn () => abort(403, __('snapshots.document_append_only')))
             ->whereUuid('document')
             ->whereUuid('version');
 

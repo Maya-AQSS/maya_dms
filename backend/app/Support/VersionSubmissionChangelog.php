@@ -30,13 +30,13 @@ final class VersionSubmissionChangelog
 
         if ($resolved === '') {
             throw ValidationException::withMessages([
-                'changelog' => ['El changelog es obligatorio al enviar a validación.'],
+                'changelog' => [__('validation.changelog.required_submit')],
             ]);
         }
 
         if (strlen($resolved) > self::MAX_LENGTH) {
             throw ValidationException::withMessages([
-                'changelog' => ['El changelog no puede superar '.self::MAX_LENGTH.' caracteres.'],
+                'changelog' => [__('validation.changelog.max', ['max' => self::MAX_LENGTH])],
             ]);
         }
 

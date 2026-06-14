@@ -27,7 +27,7 @@ class ListDocumentsRequest extends PaginatedFilterRequest
 
     protected function failedAuthorization(): void
     {
-        throw new AuthorizationException('Se requiere permiso document.index para listar documentos.');
+        throw new AuthorizationException(__('auth.document.index_required'));
     }
 
     /**

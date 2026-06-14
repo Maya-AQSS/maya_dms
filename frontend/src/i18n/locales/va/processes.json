@@ -1,0 +1,37 @@
+{
+  "manage": {
+    "title": "Gestió de Processos",
+    "subtitle": "Catàleg de processos del sistema"
+  },
+  "detail": {
+    "title": "Procés"
+  },
+  "form": {
+    "editTitle": "Editar procés",
+    "newTitle": "Nou procés",
+    "code": "Codi",
+    "name": "Nom",
+    "alias": "Àlies",
+    "removeColor": "Llevar color",
+    "assignColor": "+ Assignar color",
+    "removeIcon": "Llevar icona",
+    "saveChanges": "Guardar canvis",
+    "createProcess": "Crear procés",
+    "saveError": "Error en guardar el procés.",
+    "codePlaceholder": "Ex. PE01",
+    "namePlaceholder": "Nom complet del procés",
+    "aliasPlaceholder": "Etiqueta curta",
+    "descriptionPlaceholder": "Descripció opcional",
+    "parent": "Procés pare",
+    "noParent": "Sense pare (procés arrel)",
+    "rootNoParent": "Procés arrel — sense pare",
+    "color": "Color",
+    "noColor": "Sense color",
+    "icon": "Icona",
+    "noIcon": "Sense icona"
+  },
+  "table": {
+    "searchPlaceholder": "Codi, nom o àlies…",
+    "onlyRoot": "Només arrel (sense pare)"
+  }
+}

@@ -20,7 +20,7 @@ class IndexTemplateRequest extends FormRequest
 
     protected function failedAuthorization(): void
     {
-        throw new AuthorizationException('Se requiere permiso.');
+        throw new AuthorizationException(__('auth.template.index_required'));
     }
 
     /**

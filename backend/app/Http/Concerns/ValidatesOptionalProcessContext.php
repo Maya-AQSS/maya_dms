@@ -17,7 +17,7 @@ trait ValidatesOptionalProcessContext
             return;
         }
         if (! is_string($resourceProcessId) || $given !== $resourceProcessId) {
-            abort(403, 'El contexto de proceso no coincide con el recurso.');
+            abort(403, __('auth.process_context.mismatch'));
         }
     }
 }

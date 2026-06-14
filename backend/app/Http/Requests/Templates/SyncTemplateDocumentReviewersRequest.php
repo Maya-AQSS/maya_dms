@@ -21,7 +21,7 @@ class SyncTemplateDocumentReviewersRequest extends FormRequest
 
     protected function failedAuthorization(): void
     {
-        throw new AuthorizationException('No puedes asignar validadores de documento en esta plantilla.');
+        throw new AuthorizationException(__('auth.template.assign_doc_reviewers_forbidden'));
     }
 
     /**

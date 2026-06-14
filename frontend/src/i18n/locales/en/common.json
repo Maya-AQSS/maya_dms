@@ -74,8 +74,75 @@
     "readOnlyTitle": "Changes submitted by the author"
   },
   "filters": {
-    "allModules": "All modules"
+    "allModules": "All modules",
+    "all": "All",
+    "allTypes": "All types",
+    "allStudies": "All studies",
+    "searchByName": "Search by name…"
   },
+  "actions": {
+    "approve": "Approve",
+    "understood": "Understood",
+    "resize": "Resize",
+    "deleteBlock": "Delete block"
+  },
+  "fields": {
+    "name": "Name",
+    "description": "Description",
+    "status": "Status",
+    "noDescription": "No description",
+    "author": "Author",
+    "owner": "Owner"
+  },
+  "align": {
+    "left": "Left",
+    "center": "Center",
+    "right": "Right"
+  },
+  "status": {
+    "pendingChanges": "Pending changes",
+    "saved": "Saved"
+  },
+  "errors": {
+    "saveFailed": "Save failed"
+  },
+  "confirm": {
+    "deleteBlock": "Delete this block?",
+    "deleteIrreversible": "You are about to delete this item. This action is irreversible and cannot be undone."
+  },
+  "search": {
+    "minChars": "Type at least 2 characters to search.",
+    "userByName": "Search user by name…"
+  },
+  "comments": {
+    "label": "Comments",
+    "deleted": "Comment deleted",
+    "deleteConfirm": "Delete this comment?"
+  },
+  "favorites": {
+    "marked": "In favorites"
+  },
+  "saving": "Saving…",
+  "savingChanges": "Saving changes…",
+  "uploading": "Uploading…",
+  "preview": "Preview",
+  "loading": "Loading…",
+  "searching": "Searching…",
+  "info": "Info",
+  "messages": "Messages",
+  "viewChanges": "View changes",
+  "properties": "Properties",
+  "noContent": "No content.",
+  "noBlocks": "No blocks.",
+  "noBlockContent": "No content in this block.",
+  "noBlockDescription": "This block has no description.",
+  "unreadMessages": "Unread messages",
+  "requiredBlock": "Required — this block must be filled in",
+  "loadingDocument": "Loading document…",
+  "loadingTemplate": "Loading template…",
+  "loadingPreview": "Loading preview…",
+  "loadingPermissions": "Loading permissions…",
+  "loadingUsers": "Loading users…",
   "navigation": {
     "backToProcesses": "Back to Processes",
     "backToThemes": "Back to Themes",

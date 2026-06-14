@@ -42,7 +42,7 @@ class TemplateReviewerAssignmentService
 
             if (count($uniqueUserIds) !== count($dto->userIds)) {
                 throw ValidationException::withMessages([
-                    'user_ids' => ['La lista de revisores contiene IDs de usuario duplicados.'],
+                    'user_ids' => [__('validation.reviewers.duplicate_ids')],
                 ]);
             }
 
@@ -53,7 +53,7 @@ class TemplateReviewerAssignmentService
             ) {
                 throw ValidationException::withMessages([
                     'user_ids' => [
-                        "La plantilla en modo secuencial admite un máximo de {$template->review_stages} revisor(es).",
+                        __('validation.reviewers.sequential_max', ['max' => $template->review_stages]),
                     ],
                 ]);
             }
@@ -85,7 +85,7 @@ class TemplateReviewerAssignmentService
 
             if (count($uniqueUserIds) !== count($dto->userIds)) {
                 throw ValidationException::withMessages([
-                    'user_ids' => ['La lista de validadores de documento contiene IDs de usuario duplicados.'],
+                    'user_ids' => [__('validation.reviewers.duplicate_document_ids')],
                 ]);
             }
 
@@ -124,7 +124,7 @@ class TemplateReviewerAssignmentService
 
         throw ValidationException::withMessages([
             $field => [
-                'Todos los usuarios asignados deben tener el permiso '.$requiredPermission.'.',
+                __('validation.reviewers.missing_permission', ['permission' => $requiredPermission]),
             ],
         ]);
     }
@@ -158,7 +158,7 @@ class TemplateReviewerAssignmentService
 
         throw ValidationException::withMessages([
             $field => [
-                'Los validadores asignados deben pertenecer al contexto académico de la plantilla.',
+                __('validation.reviewers.academic_scope'),
             ],
         ]);
     }

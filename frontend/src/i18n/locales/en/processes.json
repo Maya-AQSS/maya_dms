@@ -1,0 +1,37 @@
+{
+  "manage": {
+    "title": "Process Management",
+    "subtitle": "System process catalog"
+  },
+  "detail": {
+    "title": "Process"
+  },
+  "form": {
+    "editTitle": "Edit process",
+    "newTitle": "New process",
+    "code": "Code",
+    "name": "Name",
+    "alias": "Alias",
+    "removeColor": "Remove color",
+    "assignColor": "+ Assign color",
+    "removeIcon": "Remove icon",
+    "saveChanges": "Save changes",
+    "createProcess": "Create process",
+    "saveError": "Error saving the process.",
+    "codePlaceholder": "E.g. PE01",
+    "namePlaceholder": "Full process name",
+    "aliasPlaceholder": "Short label",
+    "descriptionPlaceholder": "Optional description",
+    "parent": "Parent process",
+    "noParent": "No parent (root process)",
+    "rootNoParent": "Root process — no parent",
+    "color": "Color",
+    "noColor": "No color",
+    "icon": "Icon",
+    "noIcon": "No icon"
+  },
+  "table": {
+    "searchPlaceholder": "Code, name or alias…",
+    "onlyRoot": "Root only (no parent)"
+  }
+}

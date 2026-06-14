@@ -78,7 +78,7 @@ class CommentController extends Controller
         }
 
         if (! $resource->model->isCommentingOpen()) {
-            abort(422, 'Los comentarios están cerrados para este recurso.');
+            abort(422, __('comments.closed'));
         }
 
         $blockableId = $request->blockableId();
@@ -148,7 +148,7 @@ class CommentController extends Controller
         $blockableId = $request->blockableId();
         $blockableType = $resource->blockableClass($blockableId);
         if ($blockableType === null) {
-            abort(422, 'El bloque indicado no es válido para este recurso.');
+            abort(422, __('comments.invalid_block'));
         }
 
         $readerUserId = (string) Auth::id();
@@ -226,7 +226,7 @@ class CommentController extends Controller
             return;
         }
 
-        abort(422, 'Tipo de recurso de comentario no soportado.');
+        abort(422, __('comments.unsupported_resource'));
     }
 
     /**

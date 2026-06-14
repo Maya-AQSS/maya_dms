@@ -16,6 +16,16 @@
     "exitFullscreenTitle": "Salir de pantalla completa (Esc)",
     "unfilledBlocksTitle": "Bloques editables sin rellenar",
     "loadingValidation": "Cargando datos de validación…",
+    "submitWarning": "Después no se podrá seguir editando como borrador.",
+    "teamOptional": "Equipo (opcional, exclusivo con contexto académico)",
+    "noStudyTypes": "No tienes tipos de estudio asignados, contacta con un administrador",
+    "current": "Actual:",
+    "searchOwner": "Buscar nuevo propietario…",
+    "view": "Vista:",
+    "closeDescription": "Cerrar descripción",
+    "fillBlocksFirst": "Debes rellenar todos los bloques editables antes de continuar.",
+    "confirmSave": "Confirmar guardado",
+    "noValidators": "Sin validadores configurados",
     "viewMode": {
       "perBlock": "Por bloque",
       "continuous": "Continuo",
@@ -195,6 +205,36 @@
   },
   "fields": {
     "module": "Módulo",
-    "deadline": "Fecha límite"
+    "deadline": "Fecha límite",
+    "studyType": "Tipo de Estudio",
+    "study": "Estudio"
+  },
+  "noBlocks": "Este documento no tiene bloques.",
+  "errors": {
+    "noTemplate": "No se puede crear un documento sin plantilla.",
+    "templateNoProcess": "La plantilla seleccionada no tiene proceso asociado.",
+    "stillLoading": "El documento aún se está cargando. Espera un momento…",
+    "invalidId": "Identificador de documento no válido.",
+    "invalidIdOrTemplate": "Identificador de documento o plantilla no válido."
+  },
+  "editor": {
+    "viewBlockDescription": "Ver descripción / instrucciones del bloque"
+  },
+  "approve": {
+    "description": "Se registrará tu aprobación. Si eres el último validador, el documento quedará publicado."
+  },
+  "confirm": {
+    "deleteTitle": "¿Eliminar este documento?"
+  },
+  "newVersion": {
+    "description": "Se creará un nuevo borrador editable a partir de la versión publicada.",
+    "confirm": "Crear nueva versión"
+  },
+  "discardVersion": {
+    "confirm": "Descartar versión"
+  },
+  "selector": {
+    "empty": "No hay plantillas utilizables para crear documentos con los filtros actuales.",
+    "publishedSince": "Publicadas desde"
   }
 }

@@ -40,13 +40,13 @@ final class DocumentMigrationPayloadResolver
 
         if ($sourceVersion === null || $latestVersion === null) {
             throw ValidationException::withMessages([
-                'document' => ['El documento origen no está anclado a una versión publicada de plantilla.'],
+                'document' => [__('validation.migrate.source_not_anchored')],
             ]);
         }
 
         if ((int) $latestVersion->version_number <= (int) $sourceVersion->version_number) {
             throw ValidationException::withMessages([
-                'document' => ['No existe una versión de plantilla más reciente que la del documento origen.'],
+                'document' => [__('validation.migrate.no_newer_version')],
             ]);
         }
 

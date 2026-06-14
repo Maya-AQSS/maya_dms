@@ -21,7 +21,7 @@ class SyncTemplateUsersRequest extends FormRequest
 
     protected function failedAuthorization(): void
     {
-        throw new AuthorizationException('Se requiere permiso para asignar revisores de plantilla.');
+        throw new AuthorizationException(__('auth.template.assign_reviewers_required'));
     }
 
     /**

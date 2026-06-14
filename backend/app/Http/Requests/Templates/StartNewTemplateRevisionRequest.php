@@ -19,7 +19,7 @@ class StartNewTemplateRevisionRequest extends FormRequest
 
     protected function failedAuthorization(): void
     {
-        throw new AuthorizationException('No puedes abrir una nueva versión de esta plantilla.');
+        throw new AuthorizationException(__('auth.template.new_revision_forbidden'));
     }
 
     /**

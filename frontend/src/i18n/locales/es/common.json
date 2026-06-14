@@ -74,8 +74,75 @@
     "readOnlyTitle": "Cambios enviados por el autor"
   },
   "filters": {
-    "allModules": "Todos los módulos"
+    "allModules": "Todos los módulos",
+    "all": "Todos",
+    "allTypes": "Todos los tipos",
+    "allStudies": "Todos los estudios",
+    "searchByName": "Buscar por nombre…"
   },
+  "actions": {
+    "approve": "Aprobar",
+    "understood": "Entendido",
+    "resize": "Redimensionar",
+    "deleteBlock": "Eliminar bloque"
+  },
+  "fields": {
+    "name": "Nombre",
+    "description": "Descripción",
+    "status": "Estado",
+    "noDescription": "Sin descripción",
+    "author": "Autor",
+    "owner": "Propietario"
+  },
+  "align": {
+    "left": "Izquierda",
+    "center": "Centro",
+    "right": "Derecha"
+  },
+  "status": {
+    "pendingChanges": "Cambios pendientes",
+    "saved": "Guardado"
+  },
+  "errors": {
+    "saveFailed": "Error al guardar"
+  },
+  "confirm": {
+    "deleteBlock": "¿Eliminar este bloque?",
+    "deleteIrreversible": "Estás a punto de eliminar este elemento. Esta acción es irreversible y no se puede deshacer."
+  },
+  "search": {
+    "minChars": "Escribe al menos 2 caracteres para buscar.",
+    "userByName": "Buscar usuario por nombre…"
+  },
+  "comments": {
+    "label": "Comentarios",
+    "deleted": "Comentario eliminado",
+    "deleteConfirm": "¿Eliminar este comentario?"
+  },
+  "favorites": {
+    "marked": "En favoritos"
+  },
+  "saving": "Guardando…",
+  "savingChanges": "Guardando cambios…",
+  "uploading": "Subiendo…",
+  "preview": "Vista previa",
+  "loading": "Cargando…",
+  "searching": "Buscando…",
+  "info": "Info",
+  "messages": "Mensajes",
+  "viewChanges": "Ver cambios",
+  "properties": "Propiedades",
+  "noContent": "Sin contenido.",
+  "noBlocks": "No hay bloques.",
+  "noBlockContent": "Sin contenido en este bloque.",
+  "noBlockDescription": "Este bloque no tiene descripción.",
+  "unreadMessages": "Mensajes sin leer",
+  "requiredBlock": "Obligatorio — este bloque debe rellenarse",
+  "loadingDocument": "Cargando documento…",
+  "loadingTemplate": "Cargando plantilla…",
+  "loadingPreview": "Cargando vista previa…",
+  "loadingPermissions": "Cargando permisos…",
+  "loadingUsers": "Cargando usuarios…",
   "navigation": {
     "backToProcesses": "Volver a Procesos",
     "backToThemes": "Volver a Temas",

@@ -17,7 +17,7 @@ class IndexProcessRequest extends FormRequest
 
     protected function failedAuthorization(): void
     {
-        throw new AuthorizationException('Se requiere permiso process.index.');
+        throw new AuthorizationException(__('auth.process.index_required'));
     }
 
     /**

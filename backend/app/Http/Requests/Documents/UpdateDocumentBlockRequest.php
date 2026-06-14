@@ -20,7 +20,7 @@ class UpdateDocumentBlockRequest extends FormRequest
 
     protected function failedAuthorization(): void
     {
-        throw new AuthorizationException('Se requiere permiso para actualizar bloques de este documento.');
+        throw new AuthorizationException(__('auth.document.block_update_required'));
     }
 
     /**

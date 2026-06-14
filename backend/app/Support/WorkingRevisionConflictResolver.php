@@ -51,7 +51,7 @@ final class WorkingRevisionConflictResolver
     public static function toConflictResponse(WorkingRevisionConflictDto $conflict): array
     {
         return [
-            'message' => 'Working revision in progress.',
+            'message' => __('working_revision.in_progress'),
             'code' => 'working_revision_in_progress',
             'draft_author' => $conflict->editorName,
             'started_at' => $conflict->startedAt,

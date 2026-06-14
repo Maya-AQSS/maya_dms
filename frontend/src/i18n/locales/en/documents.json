@@ -16,6 +16,16 @@
     "exitFullscreenTitle": "Exit fullscreen (Esc)",
     "unfilledBlocksTitle": "Editable blocks not filled",
     "loadingValidation": "Loading validation data…",
+    "submitWarning": "After this you will not be able to keep editing as a draft.",
+    "teamOptional": "Team (optional, exclusive with academic context)",
+    "noStudyTypes": "You have no assigned study types, contact an administrator",
+    "current": "Current:",
+    "searchOwner": "Search for a new owner…",
+    "view": "View:",
+    "closeDescription": "Close description",
+    "fillBlocksFirst": "You must fill in all editable blocks before continuing.",
+    "confirmSave": "Confirm save",
+    "noValidators": "No validators configured",
     "viewMode": {
       "perBlock": "Per block",
       "continuous": "Continuous",
@@ -195,6 +205,36 @@
   },
   "fields": {
     "module": "Module",
-    "deadline": "Deadline"
+    "deadline": "Deadline",
+    "studyType": "Study Type",
+    "study": "Study"
+  },
+  "noBlocks": "This document has no blocks.",
+  "errors": {
+    "noTemplate": "A document cannot be created without a template.",
+    "templateNoProcess": "The selected template has no associated process.",
+    "stillLoading": "The document is still loading. Please wait a moment…",
+    "invalidId": "Invalid document identifier.",
+    "invalidIdOrTemplate": "Invalid document or template identifier."
+  },
+  "editor": {
+    "viewBlockDescription": "View block description / instructions"
+  },
+  "approve": {
+    "description": "Your approval will be recorded. If you are the last validator, the document will be published."
+  },
+  "confirm": {
+    "deleteTitle": "Delete this document?"
+  },
+  "newVersion": {
+    "description": "A new editable draft will be created from the published version.",
+    "confirm": "Create new version"
+  },
+  "discardVersion": {
+    "confirm": "Discard version"
+  },
+  "selector": {
+    "empty": "There are no usable templates to create documents with the current filters.",
+    "publishedSince": "Published since"
   }
 }

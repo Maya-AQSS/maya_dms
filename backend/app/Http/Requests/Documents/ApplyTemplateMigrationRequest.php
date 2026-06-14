@@ -22,7 +22,7 @@ class ApplyTemplateMigrationRequest extends FormRequest
 
     protected function failedAuthorization(): void
     {
-        throw new AuthorizationException('No puedes migrar la plantilla de este documento.');
+        throw new AuthorizationException(__('auth.document.migrate_forbidden'));
     }
 
     /**

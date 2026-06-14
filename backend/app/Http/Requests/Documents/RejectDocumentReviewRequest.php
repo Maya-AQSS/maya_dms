@@ -21,7 +21,7 @@ class RejectDocumentReviewRequest extends FormRequest
 
     protected function failedAuthorization(): void
     {
-        throw new AuthorizationException('Se requiere permiso para revisar este documento.');
+        throw new AuthorizationException(__('auth.document.review_required'));
     }
 
     /**
@@ -56,9 +56,9 @@ class RejectDocumentReviewRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'rejection_reason.required' => 'Debes indicar un motivo para el rechazo o dejar un comentario en algún bloque del documento.',
-            'rejection_reason.min' => 'El motivo del rechazo debe tener al menos :min caracteres.',
-            'rejection_reason.max' => 'El motivo del rechazo no puede superar :max caracteres.',
+            'rejection_reason.required' => __('validation.rejection_reason.required'),
+            'rejection_reason.min' => __('validation.rejection_reason.min'),
+            'rejection_reason.max' => __('validation.rejection_reason.max'),
         ];
     }
 
@@ -68,7 +68,7 @@ class RejectDocumentReviewRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'rejection_reason' => 'motivo del rechazo',
+            'rejection_reason' => __('validation.attributes.rejection_reason'),
         ];
     }
 

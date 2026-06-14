@@ -48,7 +48,7 @@ class DocumentOptionsController extends Controller
             ? [
                 'can_create' => false,
                 'mode' => 'none',
-                'message' => 'No hay plantillas publicadas disponibles para este módulo.',
+                'message' => __('documents.options.no_templates'),
                 'options' => [],
             ]
             : [

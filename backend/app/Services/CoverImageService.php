@@ -31,7 +31,7 @@ class CoverImageService extends MediaUploadService
         $mime = (new \finfo(FILEINFO_MIME_TYPE))->buffer($content) ?: '';
         if (! in_array($mime, self::ALLOWED_MIME, true)) {
             throw ValidationException::withMessages([
-                'file' => 'El archivo no es una imagen válida (PNG, JPG o WebP).',
+                'file' => __('validation.cover.invalid_image'),
             ]);
         }
     }

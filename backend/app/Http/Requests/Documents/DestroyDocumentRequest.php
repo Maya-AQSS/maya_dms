@@ -18,7 +18,7 @@ class DestroyDocumentRequest extends FormRequest
 
     protected function failedAuthorization(): void
     {
-        throw new AuthorizationException('No puedes eliminar este documento.');
+        throw new AuthorizationException(__('auth.document.delete_forbidden'));
     }
 
     /**

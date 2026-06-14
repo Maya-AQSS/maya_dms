@@ -163,14 +163,14 @@ class DocumentService implements DocumentServiceInterface
             );
             if ($ev === null) {
                 throw ValidationException::withMessages([
-                    'template_version_id' => ['La versión publicada no existe o no pertenece a esta plantilla.'],
+                    'template_version_id' => [__('validation.template_version.invalid')],
                 ]);
             }
         } else {
             $ev = $this->entityVersionRepository->findLatestPublishedForEntity(Template::class, $dto->templateId);
             if ($ev === null) {
                 throw ValidationException::withMessages([
-                    'template_id' => ['La plantilla no tiene versiones publicadas; no se puede crear un documento.'],
+                    'template_id' => [__('validation.template.no_published')],
                 ]);
             }
         }
@@ -178,7 +178,7 @@ class DocumentService implements DocumentServiceInterface
         $snapshot = $this->documentBlockService->templatePublicationDefinitionRowsFromEntityVersion((string) $ev->id);
         if ($snapshot === []) {
             throw ValidationException::withMessages([
-                'template_id' => ['La versión de plantilla no contiene bloques.'],
+                'template_id' => [__('validation.template.no_blocks')],
             ]);
         }
 
@@ -422,7 +422,7 @@ class DocumentService implements DocumentServiceInterface
 
         if (! in_array($document->status, ['draft', 'rejected'], true)) {
             throw ValidationException::withMessages([
-                'status' => ['Solo se pueden editar metadatos de documentos en borrador o rechazados.'],
+                'status' => [__('validation.document.edit_state')],
             ]);
         }
 
@@ -460,7 +460,7 @@ class DocumentService implements DocumentServiceInterface
             }
 
             throw ValidationException::withMessages([
-                'document' => ['No se puede eliminar un documento publicado sin versión de trabajo activa.'],
+                'document' => [__('validation.document.delete_published')],
             ]);
         }
 
@@ -534,7 +534,7 @@ class DocumentService implements DocumentServiceInterface
         $options = $this->creationOptionsForModule($moduleId);
         if ($options === []) {
             throw ValidationException::withMessages([
-                'module_id' => ['El módulo no tiene plantillas publicadas disponibles.'],
+                'module_id' => [__('validation.module.no_templates')],
             ]);
         }
 
@@ -549,27 +549,27 @@ class DocumentService implements DocumentServiceInterface
 
             if ($selected === null) {
                 throw ValidationException::withMessages([
-                    'template_version_id' => ['La versión seleccionada no está disponible para el módulo.'],
+                    'template_version_id' => [__('validation.template_version.unavailable')],
                 ]);
             }
         } elseif (count($options) === 1) {
             $selected = $options[0];
         } else {
             throw ValidationException::withMessages([
-                'template_version_id' => ['Debe seleccionar una plantilla cuando existen varias opciones.'],
+                'template_version_id' => [__('validation.template.select_required')],
             ]);
         }
 
         if ($selected->processId !== $processId) {
             throw ValidationException::withMessages([
-                'process_id' => ['El proceso no corresponde a la plantilla seleccionada para el módulo.'],
+                'process_id' => [__('validation.process.mismatch')],
             ]);
         }
 
         $moduleContext = $this->documentRepository->findModuleContext($moduleId);
         if ($moduleContext === null) {
             throw ValidationException::withMessages([
-                'module_id' => ['El módulo no existe.'],
+                'module_id' => [__('validation.module.not_found')],
             ]);
         }
 
@@ -797,7 +797,7 @@ class DocumentService implements DocumentServiceInterface
 
         if ($document->status !== 'published') {
             throw ValidationException::withMessages([
-                'status' => ['Solo un documento publicado puede pasar a borrador para una nueva versión.'],
+                'status' => [__('validation.document.new_version_state')],
             ]);
         }
 
@@ -819,7 +819,7 @@ class DocumentService implements DocumentServiceInterface
 
             if ($document->status !== 'draft') {
                 throw ValidationException::withMessages([
-                    'status' => ['El documento debe estar en borrador (nueva versión) para migrar de plantilla.'],
+                    'status' => [__('validation.document.migrate_state')],
                 ]);
             }
 
@@ -830,14 +830,14 @@ class DocumentService implements DocumentServiceInterface
             );
             if ($target === null) {
                 throw ValidationException::withMessages([
-                    'target_template_version_id' => ['La versión de plantilla destino no existe o no es publicada.'],
+                    'target_template_version_id' => [__('validation.migrate.target_invalid')],
                 ]);
             }
 
             $current = $this->resolveCurrentPublishedTemplateVersionMeta($document);
             if ($current !== null && (int) $target->version_number <= (int) $current['version_number']) {
                 throw ValidationException::withMessages([
-                    'target_template_version_id' => ['La versión de plantilla destino debe ser más reciente que la actual.'],
+                    'target_template_version_id' => [__('validation.migrate.target_older')],
                 ]);
             }
 
@@ -845,7 +845,7 @@ class DocumentService implements DocumentServiceInterface
                 ->templatePublicationDefinitionRowsFromEntityVersion((string) $target->id);
             if ($targetDefinitions === []) {
                 throw ValidationException::withMessages([
-                    'target_template_version_id' => ['La versión de plantilla destino no contiene bloques.'],
+                    'target_template_version_id' => [__('validation.migrate.target_no_blocks')],
                 ]);
             }
 
@@ -1023,13 +1023,13 @@ class DocumentService implements DocumentServiceInterface
     {
         if (trim($title) === '') {
             throw ValidationException::withMessages([
-                'title' => ['El título del documento es obligatorio.'],
+                'title' => [__('validation.document.title_required')],
             ]);
         }
 
         if ($deliveryDeadline === null || (is_string($deliveryDeadline) && trim($deliveryDeadline) === '')) {
             throw ValidationException::withMessages([
-                'delivery_deadline' => ['La fecha de entrega del documento es obligatoria.'],
+                'delivery_deadline' => [__('validation.document.deadline_required')],
             ]);
         }
     }
@@ -1142,7 +1142,7 @@ class DocumentService implements DocumentServiceInterface
 
         if (! in_array($document->status, ['draft', 'rejected'], true)) {
             throw ValidationException::withMessages([
-                'status' => ['Solo los documentos en borrador o rechazados pueden enviarse a revisión.'],
+                'status' => [__('validation.document.submit_state')],
             ]);
         }
 
@@ -1467,7 +1467,7 @@ class DocumentService implements DocumentServiceInterface
 
         if (! in_array($document->status, ['draft', 'in_review'], true)) {
             throw ValidationException::withMessages([
-                'status' => ['Solo se puede publicar un documento en borrador o en revisión.'],
+                'status' => [__('validation.document.publish_state')],
             ]);
         }
 
@@ -1475,7 +1475,7 @@ class DocumentService implements DocumentServiceInterface
             $candidates = $this->resolveReviewCandidatesFromTemplateVersion($document);
             if ($candidates !== []) {
                 throw ValidationException::withMessages([
-                    'reviews' => ['El documento tiene validadores asignados. Debe completar la revisión para publicarse.'],
+                    'reviews' => [__('validation.document.reviews_pending')],
                 ]);
             }
 
@@ -1552,12 +1552,12 @@ class DocumentService implements DocumentServiceInterface
         $document = $this->documentRepository->findOrFail($documentId);
 
         if ($document->owner_id !== $actorId) {
-            throw new AuthorizationException('Solo el titular puede delegar la titularidad del documento.');
+            throw new AuthorizationException(__('auth.document.delegate_owner_only'));
         }
 
         if ($newOwnerId === $document->owner_id) {
             throw ValidationException::withMessages([
-                'new_owner_id' => ['El nuevo titular debe ser distinto del actual.'],
+                'new_owner_id' => [__('validation.document.new_owner_distinct')],
             ]);
         }
 

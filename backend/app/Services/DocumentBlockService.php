@@ -131,7 +131,7 @@ class DocumentBlockService
         return $this->documentRepository->transaction(function () use ($dto): BlockUpdateDto {
             $document = $this->documentRepository->findOrFail($dto->documentId);
             if (! in_array($document->status, ['draft', 'rejected'], true)) {
-                throw new AuthorizationException('Solo se pueden editar bloques de documentos en borrador o rechazados.');
+                throw new AuthorizationException(__('documents.block.edit_state_forbidden'));
             }
 
             $block = $this->documentRepository->findBlockInDocumentOrFail(
@@ -151,7 +151,7 @@ class DocumentBlockService
             }
 
             if ($state === 'locked') {
-                throw new AuthorizationException('Este bloque está bloqueado y no admite edición.');
+                throw new AuthorizationException(__('documents.block.locked'));
             }
 
             // Portada e índice guardan una CONFIG (objeto `{kind:...}`), no cuerpo
@@ -237,7 +237,7 @@ class DocumentBlockService
 
         if ($missing !== []) {
             throw ValidationException::withMessages([
-                'blocks' => ['Debes completar todos los bloques editables antes de enviar a revisión.'],
+                'blocks' => [__('validation.blocks.complete_editable')],
                 'missing_template_block_ids' => $missing,
             ]);
         }
@@ -281,7 +281,7 @@ class DocumentBlockService
 
         if ($unmodified !== []) {
             throw ValidationException::withMessages([
-                'blocks' => ['Debes editar todos los bloques modificables antes de enviar a revisión.'],
+                'blocks' => [__('validation.blocks.edit_modifiable')],
                 'unmodified_modifiable_block_ids' => array_column($unmodified, 'id'),
                 'unmodified_modifiable_block_titles' => array_column($unmodified, 'title'),
             ]);
@@ -499,7 +499,7 @@ class DocumentBlockService
             $document = $this->documentRepository->findOrFail($dto->documentId);
 
             if (! in_array($document->status, ['draft', 'rejected'], true)) {
-                throw new AuthorizationException('Solo se pueden editar bloques de documentos en borrador o rechazados.');
+                throw new AuthorizationException(__('documents.block.edit_state_forbidden'));
             }
 
             $block = $this->documentRepository->findBlockInDocumentOrFail(
@@ -513,7 +513,7 @@ class DocumentBlockService
             $state = (string) ($definition['block_state'] ?? 'editable');
             // 'mandatory' has no dedicated column — optionality is determined solely by block_state.
             if ($state !== 'optional') {
-                throw new AuthorizationException('Solo se pueden eliminar bloques opcionales.');
+                throw new AuthorizationException(__('documents.block.delete_optional_only'));
             }
 
             $this->documentBlockRepository->deleteBlock($block);

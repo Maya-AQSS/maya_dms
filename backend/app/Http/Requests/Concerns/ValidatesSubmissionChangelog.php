@@ -31,8 +31,8 @@ trait ValidatesSubmissionChangelog
     public function messages(): array
     {
         return [
-            'changelog.required' => 'El changelog es obligatorio al enviar a validación.',
-            'changelog.min' => 'El changelog es obligatorio al enviar a validación.',
+            'changelog.required' => __('validation.changelog.required_submit'),
+            'changelog.min' => __('validation.changelog.required_submit'),
             'changelog.max' => 'El changelog no puede superar '.VersionSubmissionChangelog::MAX_LENGTH.' caracteres.',
         ];
     }

@@ -459,7 +459,7 @@ class TemplateService implements TemplateServiceInterface
             }
 
             throw ValidationException::withMessages([
-                'template' => ['No se puede eliminar una plantilla publicada sin versión de trabajo activa.'],
+                'template' => [__('validation.template.delete_published')],
             ]);
         }
 
@@ -523,7 +523,7 @@ class TemplateService implements TemplateServiceInterface
 
         if ($template->status !== 'published') {
             throw ValidationException::withMessages([
-                'status' => ['Solo una plantilla publicada puede pasar a borrador para una nueva versión.'],
+                'status' => [__('validation.template.new_version_state')],
             ]);
         }
 
@@ -1061,13 +1061,13 @@ class TemplateService implements TemplateServiceInterface
     {
         if (trim($name) === '') {
             throw ValidationException::withMessages([
-                'name' => ['El nombre de la plantilla es obligatorio.'],
+                'name' => [__('validation.template.name_required')],
             ]);
         }
 
         if ($deliveryDeadline === null || (is_string($deliveryDeadline) && trim($deliveryDeadline) === '')) {
             throw ValidationException::withMessages([
-                'delivery_deadline' => ['La fecha de entrega de la plantilla es obligatoria.'],
+                'delivery_deadline' => [__('validation.template.deadline_required')],
             ]);
         }
 
@@ -1076,7 +1076,7 @@ class TemplateService implements TemplateServiceInterface
             : (is_string($visibilityLevel) ? trim($visibilityLevel) : '');
         if ($normalizedVisibility === '') {
             throw ValidationException::withMessages([
-                'visibility_level' => ['La visibilidad de la plantilla es obligatoria.'],
+                'visibility_level' => [__('validation.template.visibility_required')],
             ]);
         }
     }

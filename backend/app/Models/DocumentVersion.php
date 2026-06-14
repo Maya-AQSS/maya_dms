@@ -50,11 +50,11 @@ class DocumentVersion extends Model
     protected static function booted(): void
     {
         static::updating(function () {
-            throw new AuthorizationException('Los snapshots de documento son inmutables.');
+            throw new AuthorizationException(__('snapshots.document_immutable'));
         });
 
         static::deleting(function () {
-            throw new AuthorizationException('No se pueden eliminar snapshots de documento.');
+            throw new AuthorizationException(__('snapshots.document_no_delete'));
         });
     }
 

@@ -70,7 +70,7 @@ class TemplateBlockBulkController extends Controller
             $templateModel = $templates->get($templateId);
 
             if ($templateModel === null) {
-                abort(403, 'No tienes acceso a uno o más bloques solicitados.');
+                abort(403, __('template_blocks.bulk_forbidden'));
             }
 
             $this->authorize('updateTemplateBlock', $templateModel);

@@ -6,6 +6,7 @@ import esNav from './locales/es/nav.json';
 import esThemes from './locales/es/themes.json';
 import esDocuments from './locales/es/documents.json';
 import esTemplates from './locales/es/templates.json';
+import esProcesses from './locales/es/processes.json';
 
 import vaAuth from './locales/va/auth.json';
 import vaCommon from './locales/va/common.json';
@@ -13,6 +14,7 @@ import vaNav from './locales/va/nav.json';
 import vaThemes from './locales/va/themes.json';
 import vaDocuments from './locales/va/documents.json';
 import vaTemplates from './locales/va/templates.json';
+import vaProcesses from './locales/va/processes.json';
 
 import enAuth from './locales/en/auth.json';
 import enCommon from './locales/en/common.json';
@@ -20,13 +22,14 @@ import enNav from './locales/en/nav.json';
 import enThemes from './locales/en/themes.json';
 import enDocuments from './locales/en/documents.json';
 import enTemplates from './locales/en/templates.json';
+import enProcesses from './locales/en/processes.json';
 
 export const SUPPORTED_LOCALES = ['es', 'va', 'en'] as const;
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 
 export const DEFAULT_LOCALE: SupportedLocale = 'es';
 
-export const NAMESPACES = ['auth', 'common', 'nav', 'themes', 'documents', 'templates', 'notifications'] as const;
+export const NAMESPACES = ['auth', 'common', 'nav', 'themes', 'documents', 'templates', 'processes', 'notifications'] as const;
 export type Namespace = (typeof NAMESPACES)[number];
 
 // Cada namespace fusiona el canon shared (actions, status, pagination,
@@ -56,6 +59,7 @@ export const resources = {
     themes: mergeNs(baseEs, esThemes),
     documents: mergeNs(baseEs, esDocuments),
     templates: mergeNs(baseEs, esTemplates),
+    processes: esProcesses,
     notifications: notificationResources.es.notifications,
   },
   va: {
@@ -65,6 +69,7 @@ export const resources = {
     themes: mergeNs(baseVa, vaThemes),
     documents: mergeNs(baseVa, vaDocuments),
     templates: mergeNs(baseVa, vaTemplates),
+    processes: vaProcesses,
     notifications: notificationResources.va.notifications,
   },
   en: {
@@ -74,6 +79,7 @@ export const resources = {
     themes: mergeNs(baseEn, enThemes),
     documents: mergeNs(baseEn, enDocuments),
     templates: mergeNs(baseEn, enTemplates),
+    processes: enProcesses,
     notifications: notificationResources.en.notifications,
   },
 } as const;

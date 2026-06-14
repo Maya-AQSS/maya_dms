@@ -19,7 +19,7 @@ class UpdateDocumentRequest extends FormRequest
 
     protected function failedAuthorization(): void
     {
-        throw new AuthorizationException('No puedes actualizar este documento.');
+        throw new AuthorizationException(__('auth.document.update_forbidden'));
     }
 
     /**

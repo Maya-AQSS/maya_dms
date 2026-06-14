@@ -65,9 +65,84 @@
       "modified": "Modificat"
     }
   },
-  "filters": {
-    "allModules": "Tots els mòduls"
+  "versionChangelog": {
+    "label": "Canvis en aquesta versió",
+    "hint": "Descriu què has modificat. Els validadors veuran aquest text.",
+    "placeholder": "Descripció del canvi…",
+    "required": "El registre de canvis és obligatori.",
+    "maxLength": "El registre de canvis no pot superar {{max}} caràcters.",
+    "readOnlyTitle": "Canvis enviats per l'autor"
   },
+  "filters": {
+    "allModules": "Tots els mòduls",
+    "all": "Tots",
+    "allTypes": "Tots els tipus",
+    "allStudies": "Tots els estudis",
+    "searchByName": "Cercar per nom…"
+  },
+  "actions": {
+    "approve": "Aprovar",
+    "understood": "Entès",
+    "resize": "Redimensionar",
+    "deleteBlock": "Eliminar bloc"
+  },
+  "fields": {
+    "name": "Nom",
+    "description": "Descripció",
+    "status": "Estat",
+    "noDescription": "Sense descripció",
+    "author": "Autor",
+    "owner": "Propietari"
+  },
+  "align": {
+    "left": "Esquerra",
+    "center": "Centre",
+    "right": "Dreta"
+  },
+  "status": {
+    "pendingChanges": "Canvis pendents",
+    "saved": "Guardat"
+  },
+  "errors": {
+    "saveFailed": "Error en guardar"
+  },
+  "confirm": {
+    "deleteBlock": "Eliminar aquest bloc?",
+    "deleteIrreversible": "Estàs a punt d'eliminar aquest element. Aquesta acció és irreversible i no es pot desfer."
+  },
+  "search": {
+    "minChars": "Escriu almenys 2 caràcters per a cercar.",
+    "userByName": "Cercar usuari per nom…"
+  },
+  "comments": {
+    "label": "Comentaris",
+    "deleted": "Comentari eliminat",
+    "deleteConfirm": "Eliminar aquest comentari?"
+  },
+  "favorites": {
+    "marked": "En preferits"
+  },
+  "saving": "Guardant…",
+  "savingChanges": "Guardant canvis…",
+  "uploading": "Pujant…",
+  "preview": "Vista prèvia",
+  "loading": "Carregant…",
+  "searching": "Cercant…",
+  "info": "Info",
+  "messages": "Missatges",
+  "viewChanges": "Veure canvis",
+  "properties": "Propietats",
+  "noContent": "Sense contingut.",
+  "noBlocks": "No hi ha blocs.",
+  "noBlockContent": "Sense contingut en aquest bloc.",
+  "noBlockDescription": "Aquest bloc no té descripció.",
+  "unreadMessages": "Missatges sense llegir",
+  "requiredBlock": "Obligatori — aquest bloc s'ha d'omplir",
+  "loadingDocument": "Carregant document…",
+  "loadingTemplate": "Carregant plantilla…",
+  "loadingPreview": "Carregant vista prèvia…",
+  "loadingPermissions": "Carregant permisos…",
+  "loadingUsers": "Carregant usuaris…",
   "navigation": {
     "backToProcesses": "Tornar a Processos",
     "backToThemes": "Tornar a Temes",

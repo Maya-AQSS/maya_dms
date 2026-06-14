@@ -43,7 +43,7 @@ class TemplateRenderService implements TemplateRenderServiceInterface
     {
         $template = $this->templateRepository->findForRenderingWithoutCatalogScope($templateId);
         if ($template === null) {
-            throw new NotFoundHttpException('Template no encontrado.');
+            throw new NotFoundHttpException(__('template.not_found'));
         }
 
         $theme = $this->resolveTheme($template->themeId);
@@ -132,13 +132,13 @@ class TemplateRenderService implements TemplateRenderServiceInterface
     {
         $template = $this->templateRepository->findForRenderingWithoutCatalogScope($templateId);
         if ($template === null) {
-            throw new NotFoundHttpException('Template no encontrado.');
+            throw new NotFoundHttpException(__('template.not_found'));
         }
 
         // Validate that the version belongs to this template (type + entity id match).
         $entityVersion = $this->entityVersionRepository->findPublishedByIdAndType($versionId, Template::class);
         if ($entityVersion === null || (string) $entityVersion->versionable_id !== $templateId) {
-            throw new NotFoundHttpException('Versión no encontrada para esta plantilla.');
+            throw new NotFoundHttpException(__('template.version_not_found'));
         }
 
         // Reconstruct the frozen block list from the snapshot layers.

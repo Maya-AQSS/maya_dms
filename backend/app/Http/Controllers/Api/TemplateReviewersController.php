@@ -36,7 +36,7 @@ class TemplateReviewersController extends Controller
         $this->templateService->syncReviewers($model->id, $request->toDto());
 
         return new TemplateReviewersSyncMessageResource([
-            'message' => 'Revisores de plantilla sincronizados correctamente.',
+            'message' => __('template_reviewers.synced'),
         ]);
     }
 
@@ -51,7 +51,7 @@ class TemplateReviewersController extends Controller
         $this->templateService->syncDocumentReviewers($model->id, $request->toDto());
 
         return new TemplateReviewersSyncMessageResource([
-            'message' => 'Validadores de documento sincronizados correctamente.',
+            'message' => __('template_reviewers.document_synced'),
         ]);
     }
 }

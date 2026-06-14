@@ -55,13 +55,13 @@ class EntityVersion extends Model
             // Permite transición draft → publicado (p. ej. marcar inmutable al publicar);
             // bloquea cualquier mutación si la fila ya era inmutable en BD.
             if ((bool) $model->getOriginal('is_snapshot_immutable', false)) {
-                throw new AuthorizationException('Las versiones de snapshot inmutables no se pueden modificar.');
+                throw new AuthorizationException(__('snapshots.version_no_modify'));
             }
         });
 
         static::deleting(function (EntityVersion $model) {
             if ($model->is_snapshot_immutable) {
-                throw new AuthorizationException('Las versiones de snapshot inmutables no se pueden eliminar.');
+                throw new AuthorizationException(__('snapshots.version_no_delete'));
             }
         });
     }

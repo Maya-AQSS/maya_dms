@@ -15,7 +15,13 @@
   "wizard": {
     "purposePlaceholder": "Propósito de la plantilla…",
     "selectDatePlaceholder": "Seleccionar fecha…",
-    "filterUsersPlaceholder": "Filtrar usuarios…"
+    "filterUsersPlaceholder": "Filtrar usuarios…",
+    "selectBlock": "Selecciona un bloque para editar",
+    "blockName": "Nombre del bloque",
+    "blockType": "Tipo de bloque",
+    "blockTheme": "Tema del bloque",
+    "defaultTheme": "Tema por defecto de la plantilla",
+    "noBlocksYet": "Aún no se han añadido bloques."
   },
   "table": {
     "columns": {
@@ -80,7 +86,9 @@
     "viewDescription": "Ver descripción",
     "viewBlockHistory": "Ver historial del bloque",
     "blockCommentsTitle": "Comentarios del Bloque",
-    "closePanelAria": "Cerrar panel"
+    "closePanelAria": "Cerrar panel",
+    "noBlocks": "Esta plantilla no tiene bloques configurados.",
+    "requiredComments": "Comentarios obligatorios"
   },
   "history": {
     "panelHeader": "⎇ Bloque {{n}} · Historial de cambios",
@@ -105,7 +113,87 @@
     "deadline": "Plazo de entrega",
     "theme": "Theme aplicado",
     "linking": "Vinculación",
-    "module": "Módulo"
+    "module": "Módulo",
+    "studyType": "Tipo de Estudio",
+    "study": "Estudio",
+    "team": "Equipo"
+  },
+  "reviewComments": "Comentarios de revisión",
+  "visibility": {
+    "personal": "Personal",
+    "global": "Global",
+    "studyType": "Tipo de Estudio",
+    "study": "Estudio",
+    "module": "Módulo",
+    "team": "Equipo"
+  },
+  "status": {
+    "all": "Todos",
+    "draft": "Borrador",
+    "in_review": "En revisión",
+    "rejected": "Rechazada",
+    "published": "Publicada",
+    "archived": "Archivada"
+  },
+  "favoritesFilter": {
+    "all": "Todos",
+    "onlyFavorites": "Solo favoritos"
+  },
+  "cover": {
+    "inspector": "Inspector",
+    "inspectorEmpty": "Selecciona un elemento del lienzo para editar sus propiedades, o añade uno nuevo.",
+    "positionSize": "Posición y tamaño (mm)",
+    "properties": "Propiedades",
+    "dateShort": "Corto (01/01/2026)",
+    "dateLong": "Largo (1 de enero de 2026)",
+    "pageN": "Página N",
+    "pageNofM": "Página N de M",
+    "fitContain": "Contener",
+    "fitCover": "Cubrir (recorte)",
+    "fitFill": "Estirar",
+    "weightNormal": "Normal",
+    "weightBold": "Negrita",
+    "fillFields": "Campos de la portada",
+    "fillEmpty": "Esta portada no tiene campos rellenables.",
+    "notEditable": "El documento no es editable en su estado actual.",
+    "imagePlaceholder": "Imagen"
+  },
+  "newVersion": {
+    "description": "Se creará un nuevo borrador editable a partir de la plantilla publicada.",
+    "confirm": "Crear nueva versión"
+  },
+  "confirm": {
+    "deleteTitle": "¿Eliminar esta plantilla?"
+  },
+  "discardVersion": {
+    "description": "Se descartarán los cambios en borrador/en revisión y se volverá a la versión publicada.",
+    "confirm": "Descartar versión"
+  },
+  "validators": {
+    "empty": "Sin validadores asignados.",
+    "removeConfirm": "Estás a punto de eliminar este validador de la plantilla.",
+    "noUsersFound": "No se encontraron usuarios con permiso de revisión."
+  },
+  "index": {
+    "autoTitle": "Índice automático"
+  },
+  "docx": {
+    "splitH1": "Un bloque por cada H1",
+    "splitH1H2": "Un bloque por cada H1/H2",
+    "assignTo": "Asignar a…",
+    "noElements": "Sin elementos — asígnale alguno.",
+    "noImportable": "El documento no contiene contenido importable.",
+    "readError": "No se pudo leer el archivo. ¿Es un .docx válido?",
+    "createError": "Falló la creación de bloques. Revisa los que se hayan creado y reintenta.",
+    "kind": {
+      "heading": "Encabezado",
+      "list": "Lista",
+      "table": "Tabla",
+      "figure": "Figura",
+      "blockquote": "Cita",
+      "horizontalRule": "Separador",
+      "other": "Elemento"
+    }
   },
   "selectPlaceholder": "— Seleccionar —",
   "notEditableInState": "No editable en estado actual.",
@@ -125,7 +213,9 @@
     "draftAlreadyExistsUnknownAuthor": "otro usuario",
     "discardNewVersionTitle": "¿Descartar nueva versión?",
     "rejectValidationTitle": "¿Rechazar validación?",
-    "clone": "Clonar"
+    "clone": "Clonar",
+    "pdfTooltip": "Genera y descarga el PDF de la plantilla",
+    "newTemplateTooltip": "Crea una plantilla nueva e independiente a partir de ésta."
   },
   "errors": {
     "errorForbidden": "No tienes permiso para esta acción (p. ej. visibilidad compartida solo para coordinación).",
@@ -134,6 +224,15 @@
     "errorNotFound": "Plantilla no encontrada.",
     "errorServer": "Error del servidor.",
     "errorNetwork": "Error de conexión.",
-    "errorUnknown": "Error desconocido."
+    "errorUnknown": "Error desconocido.",
+    "invalidId": "Identificador de plantilla no válido.",
+    "versionMismatch": "La versión seleccionada no pertenece a esta plantilla.",
+    "noValidationPermission": "No tienes permisos de validación sobre esta plantilla.",
+    "noReviewPermission": "No tienes permiso para revisar plantillas.",
+    "noListBlocksPermission": "No tienes permiso para listar bloques (block.index).",
+    "noCreateBlockPermission": "No tienes permiso para crear bloques (block.create).",
+    "noUpdateBlockPermission": "No tienes permiso para actualizar bloques (block.update).",
+    "noDeleteBlockPermission": "No tienes permiso para eliminar bloques (block.delete).",
+    "noReorderBlockPermission": "No tienes permiso para reordenar bloques (block.update)."
   }
 }

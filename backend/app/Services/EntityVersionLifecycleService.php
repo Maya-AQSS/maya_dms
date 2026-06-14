@@ -29,13 +29,13 @@ class EntityVersionLifecycleService implements EntityVersionLifecycleServiceInte
 
             if (! in_array($version->status, ['draft', 'in_review'], true)) {
                 throw ValidationException::withMessages([
-                    'status' => ['Solo se puede publicar una versión en borrador o en revisión.'],
+                    'status' => [__('validation.version.publish_state')],
                 ]);
             }
 
             if ($version->is_snapshot_immutable) {
                 throw ValidationException::withMessages([
-                    'snapshot_data' => ['La versión ya tiene un snapshot inmutable publicado.'],
+                    'snapshot_data' => [__('validation.version.already_snapshot')],
                 ]);
             }
 
@@ -67,7 +67,7 @@ class EntityVersionLifecycleService implements EntityVersionLifecycleServiceInte
     ): EntityVersionDto {
         if ($versionNumber < 1) {
             throw ValidationException::withMessages([
-                'version_number' => ['El número de versión debe ser mayor o igual a 1.'],
+                'version_number' => [__('validation.version.number_min')],
             ]);
         }
 
@@ -119,7 +119,7 @@ class EntityVersionLifecycleService implements EntityVersionLifecycleServiceInte
     {
         if ($snapshotData === []) {
             throw ValidationException::withMessages([
-                'snapshot_data' => ['El snapshot de publicación es obligatorio.'],
+                'snapshot_data' => [__('validation.version.snapshot_required')],
             ]);
         }
     }

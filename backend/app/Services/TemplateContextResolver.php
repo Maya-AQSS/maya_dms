@@ -52,7 +52,7 @@ class TemplateContextResolver
             $templateTeamId = $this->nullableString($templateMeta['team_id'] ?? null);
             if ($templateTeamId === null) {
                 throw ValidationException::withMessages([
-                    'template_id' => ['La plantilla de equipo no tiene un equipo válido asociado.'],
+                    'template_id' => [__('validation.template_context.team_no_team')],
                 ]);
             }
 
@@ -67,7 +67,7 @@ class TemplateContextResolver
                 $dto->teamId !== null
             ) {
                 throw ValidationException::withMessages([
-                    'template_id' => ['Las plantillas personales no permiten cambiar el contexto académico al crear documentos.'],
+                    'template_id' => [__('validation.template_context.personal_no_context_change')],
                 ]);
             }
 
@@ -82,17 +82,17 @@ class TemplateContextResolver
         if ($visibility === TemplateVisibilityLevel::Module->value) {
             if ($dto->teamId !== null) {
                 throw ValidationException::withMessages([
-                    'team_id' => ['Las plantillas de módulo no permiten asignar equipo al documento.'],
+                    'team_id' => [__('validation.template_context.module_no_team')],
                 ]);
             }
             if ($templateModuleId === null) {
                 throw ValidationException::withMessages([
-                    'template_id' => ['La plantilla de módulo no tiene un módulo válido asociado.'],
+                    'template_id' => [__('validation.template_context.module_no_module')],
                 ]);
             }
             if ($dto->moduleId !== null && $dto->moduleId !== $templateModuleId) {
                 throw ValidationException::withMessages([
-                    'module_id' => ['El documento debe crearse en el mismo módulo de la plantilla.'],
+                    'module_id' => [__('validation.template_context.module_same_module')],
                 ]);
             }
 
@@ -128,17 +128,17 @@ class TemplateContextResolver
     {
         if ($dto->teamId !== null) {
             throw ValidationException::withMessages([
-                'team_id' => ['Las plantillas de estudio no permiten asignar equipo al documento.'],
+                'team_id' => [__('validation.template_context.study_no_team')],
             ]);
         }
         if ($templateStudyId === null) {
             throw ValidationException::withMessages([
-                'template_id' => ['La plantilla de estudio no tiene un estudio válido asociado.'],
+                'template_id' => [__('validation.template_context.study_no_study')],
             ]);
         }
         if ($dto->studyId !== null && $dto->studyId !== $templateStudyId) {
             throw ValidationException::withMessages([
-                'study_id' => ['El documento debe crearse en el mismo estudio o en un módulo de ese estudio.'],
+                'study_id' => [__('validation.template_context.study_same_study')],
             ]);
         }
 
@@ -149,7 +149,7 @@ class TemplateContextResolver
             $moduleStudyId = $this->academicHierarchyRepository->findStudyIdByModuleId($dto->moduleId);
             if ($moduleStudyId === null || $moduleStudyId !== $templateStudyId) {
                 throw ValidationException::withMessages([
-                    'module_id' => ['El módulo debe pertenecer al mismo estudio de la plantilla.'],
+                    'module_id' => [__('validation.template_context.study_module_same_study')],
                 ]);
             }
             $moduleId = $dto->moduleId;
@@ -167,17 +167,17 @@ class TemplateContextResolver
     {
         if ($dto->teamId !== null) {
             throw ValidationException::withMessages([
-                'team_id' => ['Las plantillas por tipo de estudio no permiten asignar equipo al documento.'],
+                'team_id' => [__('validation.template_context.study_type_no_team')],
             ]);
         }
         if ($templateStudyTypeId === null) {
             throw ValidationException::withMessages([
-                'template_id' => ['La plantilla por tipo de estudio no tiene un study_type válido asociado.'],
+                'template_id' => [__('validation.template_context.study_type_no_study_type')],
             ]);
         }
         if ($dto->studyTypeId !== null && $dto->studyTypeId !== $templateStudyTypeId) {
             throw ValidationException::withMessages([
-                'study_type_id' => ['El documento debe crearse en el mismo tipo de estudio o en niveles inferiores.'],
+                'study_type_id' => [__('validation.template_context.study_type_same_type')],
             ]);
         }
 
@@ -185,12 +185,12 @@ class TemplateContextResolver
             $module = $this->academicHierarchyRepository->findStudyAndTypeByModuleId($dto->moduleId);
             if ($module === null || $module['study_type_id'] !== $templateStudyTypeId) {
                 throw ValidationException::withMessages([
-                    'module_id' => ['El módulo debe pertenecer a un estudio del mismo tipo que la plantilla.'],
+                    'module_id' => [__('validation.template_context.study_type_module_same_type')],
                 ]);
             }
             if ($dto->studyId !== null && $dto->studyId !== $module['study_id']) {
                 throw ValidationException::withMessages([
-                    'study_id' => ['El estudio indicado no corresponde con el módulo seleccionado.'],
+                    'study_id' => [__('validation.template_context.study_not_match_module')],
                 ]);
             }
 
@@ -206,7 +206,7 @@ class TemplateContextResolver
             $studyTypeFromStudy = $this->academicHierarchyRepository->findStudyTypeIdByStudyId($dto->studyId);
             if ($studyTypeFromStudy === null || $studyTypeFromStudy !== $templateStudyTypeId) {
                 throw ValidationException::withMessages([
-                    'study_id' => ['El estudio debe pertenecer al mismo tipo de estudio de la plantilla.'],
+                    'study_id' => [__('validation.template_context.study_same_study_type')],
                 ]);
             }
 
@@ -226,12 +226,12 @@ class TemplateContextResolver
         if ($dto->teamId !== null) {
             if ($dto->studyTypeId !== null || $dto->studyId !== null || $dto->moduleId !== null) {
                 throw ValidationException::withMessages([
-                    'team_id' => ['En plantillas globales, selecciona equipo o contexto académico, pero no ambos a la vez.'],
+                    'team_id' => [__('validation.template_context.global_team_or_context')],
                 ]);
             }
             if (! $this->teamReadRepository->isMember($dto->teamId, (string) $dto->createdBy)) {
                 throw ValidationException::withMessages([
-                    'team_id' => ['Solo miembros del equipo seleccionado pueden crear este documento en ese equipo.'],
+                    'team_id' => [__('validation.template_context.global_team_member')],
                 ]);
             }
 
@@ -242,17 +242,17 @@ class TemplateContextResolver
             $module = $this->academicHierarchyRepository->findStudyAndTypeByModuleId($dto->moduleId);
             if ($module === null) {
                 throw ValidationException::withMessages([
-                    'module_id' => ['El módulo seleccionado no existe.'],
+                    'module_id' => [__('validation.template_context.global_module_not_found')],
                 ]);
             }
             if ($dto->studyId !== null && $dto->studyId !== $module['study_id']) {
                 throw ValidationException::withMessages([
-                    'study_id' => ['El estudio indicado no corresponde con el módulo seleccionado.'],
+                    'study_id' => [__('validation.template_context.study_not_match_module')],
                 ]);
             }
             if ($dto->studyTypeId !== null && $dto->studyTypeId !== $module['study_type_id']) {
                 throw ValidationException::withMessages([
-                    'study_type_id' => ['El tipo de estudio indicado no corresponde con el módulo seleccionado.'],
+                    'study_type_id' => [__('validation.template_context.global_study_type_not_match_module')],
                 ]);
             }
 
@@ -268,12 +268,12 @@ class TemplateContextResolver
             $studyTypeFromStudy = $this->academicHierarchyRepository->findStudyTypeIdByStudyId($dto->studyId);
             if ($studyTypeFromStudy === null) {
                 throw ValidationException::withMessages([
-                    'study_id' => ['El estudio seleccionado no existe.'],
+                    'study_id' => [__('validation.template_context.global_study_not_found')],
                 ]);
             }
             if ($dto->studyTypeId !== null && $dto->studyTypeId !== $studyTypeFromStudy) {
                 throw ValidationException::withMessages([
-                    'study_type_id' => ['El tipo de estudio indicado no corresponde con el estudio seleccionado.'],
+                    'study_type_id' => [__('validation.template_context.global_study_type_not_match_study')],
                 ]);
             }
 

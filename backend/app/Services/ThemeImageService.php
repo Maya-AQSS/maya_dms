@@ -32,12 +32,12 @@ class ThemeImageService extends MediaUploadService implements ThemeImageServiceI
         // Parsear y validar URL.
         $parsed = parse_url($url);
         if ($parsed === false || empty($parsed['scheme']) || empty($parsed['host'])) {
-            throw ValidationException::withMessages(['url' => 'La URL no es válida.']);
+            throw ValidationException::withMessages(['url' => __('validation.theme_image.url_invalid')]);
         }
 
         $scheme = strtolower($parsed['scheme']);
         if (! in_array($scheme, ['http', 'https'], true)) {
-            throw ValidationException::withMessages(['url' => 'Solo se permiten URLs http/https.']);
+            throw ValidationException::withMessages(['url' => __('validation.theme_image.url_scheme')]);
         }
 
         $host = $parsed['host'];
@@ -46,17 +46,17 @@ class ThemeImageService extends MediaUploadService implements ThemeImageServiceI
         $ip = @gethostbyname($host);
         if ($ip === $host || $ip === false) {
             // No se resolvió o devolvió el hostname sin cambios.
-            throw ValidationException::withMessages(['url' => 'No se puede acceder a esta URL.']);
+            throw ValidationException::withMessages(['url' => __('validation.theme_image.url_unreachable')]);
         }
 
         // Rechazar IPs privadas/loopback/reservadas.
         if (@filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
-            throw ValidationException::withMessages(['url' => 'No se pueden descargar recursos de redes privadas.']);
+            throw ValidationException::withMessages(['url' => __('validation.theme_image.private_network')]);
         }
 
         // Rechazar explícitamente ::1, 127.0.0.0/8, etc.
         if (in_array($ip, ['::1', '0.0.0.0'], true)) {
-            throw ValidationException::withMessages(['url' => 'No se pueden descargar recursos de redes privadas.']);
+            throw ValidationException::withMessages(['url' => __('validation.theme_image.private_network')]);
         }
 
         // Descargar con timeout corto.
@@ -64,19 +64,19 @@ class ThemeImageService extends MediaUploadService implements ThemeImageServiceI
             $response = Http::timeout(5)->get($url);
             $response->throw();
         } catch (\Exception $e) {
-            throw ValidationException::withMessages(['url' => 'No se pudo descargar la imagen.']);
+            throw ValidationException::withMessages(['url' => __('validation.theme_image.download_failed')]);
         }
 
         // Validar content-type.
         $contentType = $response->header('content-type');
         if (! $this->isValidImageContentType($contentType)) {
-            throw ValidationException::withMessages(['url' => 'El archivo no es una imagen válida.']);
+            throw ValidationException::withMessages(['url' => __('validation.theme_image.not_image')]);
         }
 
         // Validar tamaño (≤10MB).
         $body = $response->body();
         if (strlen($body) > 10 * 1024 * 1024) {
-            throw ValidationException::withMessages(['url' => 'La imagen es demasiado grande (máximo 10MB).']);
+            throw ValidationException::withMessages(['url' => __('validation.theme_image.too_large')]);
         }
 
         // Almacenar.

@@ -30,7 +30,7 @@ class ListTemplatesRequest extends PaginatedFilterRequest
 
     protected function failedAuthorization(): void
     {
-        throw new AuthorizationException('Se requiere permiso para listar plantillas.');
+        throw new AuthorizationException(__('auth.template.list_required'));
     }
 
     /**

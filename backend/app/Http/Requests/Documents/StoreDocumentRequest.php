@@ -41,7 +41,7 @@ class StoreDocumentRequest extends FormRequest
 
     protected function failedAuthorization(): void
     {
-        throw new AuthorizationException('Se requiere permiso document.create para crear documentos.');
+        throw new AuthorizationException(__('auth.document.create_required'));
     }
 
     /**

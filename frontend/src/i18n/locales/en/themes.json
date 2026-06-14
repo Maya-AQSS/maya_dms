@@ -58,6 +58,59 @@
     "imageEmpty": "No image"
   },
   "emptyMessage": "No themes yet. Create one from \"New theme\".",
+  "detail": {
+    "subtitle": "Theme · Reusable visual identity"
+  },
+  "fields": {
+    "blocks": "Blocks",
+    "palette": "Palette"
+  },
+  "verification": {
+    "title": "Verification"
+  },
+  "layout": {
+    "editorTitle": "Layout editor"
+  },
+  "fonts": {
+    "sansSerif": "Sans-serif",
+    "serif": "Serif",
+    "monospace": "Monospace",
+    "customLegacy": "Custom (legacy)"
+  },
+  "blocks": {
+    "documentContent": "Document content",
+    "bodyPlaceholder": "The document body is loaded here",
+    "text": "Text",
+    "image": "Image",
+    "pageNumber": "Page number",
+    "date": "Date"
+  },
+  "inspector": {
+    "title": "Inspector",
+    "properties": "Properties",
+    "x": "X (mm)",
+    "y": "Y (mm)",
+    "width": "Width (mm)",
+    "height": "Height (mm)",
+    "content": "Content",
+    "sizePt": "Size (pt)",
+    "color": "Color",
+    "noThemeId": "Theme ID unavailable",
+    "format": "Format",
+    "dateShort": "Short (01/01/2026)",
+    "dateLong": "Long (January 1, 2026)",
+    "editorLabel": "Label shown in the editor",
+    "noEditableProps": "No editable properties.",
+    "uploadImage": "Upload image",
+    "orUseUrl": "Or use URL",
+    "altText": "Alt text",
+    "opacity": "Opacity (0–1)",
+    "rotation": "Rotation (degrees)",
+    "imageFit": "Image fit",
+    "fitContain": "Contain (empty space)",
+    "fitCover": "Cover (crop)",
+    "fitStretch": "Stretch"
+  },
   "errors": {
     "errorForbidden": "You do not have permission for this action on the theme.",
     "errorUnauthorized": "Invalid session or missing token.",

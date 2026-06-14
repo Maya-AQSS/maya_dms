@@ -23,7 +23,7 @@ class StoreTemplateBlockRequest extends FormRequest
 
     protected function failedAuthorization(): void
     {
-        throw new AuthorizationException('Se requiere permiso para crear bloques en esta plantilla.');
+        throw new AuthorizationException(__('auth.template_block.create_required'));
     }
 
     public function rules(): array

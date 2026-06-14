@@ -1,4 +1,5 @@
 import { useEffect, useRef, type MutableRefObject } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -52,6 +53,7 @@ export function ProcessFormModal({
   initial,
   processes,
 }: ProcessFormModalProps) {
+  const { t } = useTranslation(['processes', 'common']);
   const firstInputRef = useRef<HTMLInputElement | null>(null) as MutableRefObject<HTMLInputElement | null>;
 
   const form = useForm<ProcessFormValues>({
@@ -86,7 +88,7 @@ export function ProcessFormModal({
       onClose();
     } catch (err) {
       setError('root', {
-        message: err instanceof Error ? err.message : 'Error al guardar el proceso.',
+        message: err instanceof Error ? err.message : t('processes:form.saveError'),
       });
     }
   };
@@ -115,13 +117,13 @@ export function ProcessFormModal({
       <div className="relative bg-ui-card dark:bg-ui-dark-card w-full max-w-lg rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         <div className="flex items-center justify-between px-5 py-4 border-b border-ui-border dark:border-ui-dark-border">
           <h2 className="text-sm font-black uppercase tracking-widest text-text-primary dark:text-text-dark-primary">
-            {isEditing ? 'Editar proceso' : 'Nuevo proceso'}
+            {isEditing ? t('processes:form.editTitle') : t('processes:form.newTitle')}
           </h2>
           <button
             type="button"
             className="text-text-muted hover:text-text-primary dark:text-text-dark-muted dark:hover:text-text-dark-primary transition-colors p-1 rounded"
             onClick={onClose}
-            aria-label="Cerrar"
+            aria-label={t('common:actions.close')}
           >
             ✕
           </button>
@@ -137,7 +139,7 @@ export function ProcessFormModal({
 
             <div>
               <label className={labelClass}>
-                Código <span className="text-danger">*</span>
+                {t('processes:form.code')} <span className="text-danger">*</span>
               </label>
               <input
                 {...codeRest}
@@ -146,7 +148,7 @@ export function ProcessFormModal({
                   firstInputRef.current = el;
                 }}
                 type="text"
-                placeholder="Ej. PE01"
+                placeholder={t('processes:form.codePlaceholder')}
                 className={inputClass}
               />
               {errors.code && <p className="mt-1 text-xs text-danger">{errors.code.message}</p>}
@@ -154,12 +156,12 @@ export function ProcessFormModal({
 
             <div>
               <label className={labelClass}>
-                Nombre <span className="text-danger">*</span>
+                {t('processes:form.name')} <span className="text-danger">*</span>
               </label>
               <input
                 {...register('name')}
                 type="text"
-                placeholder="Nombre completo del proceso"
+                placeholder={t('processes:form.namePlaceholder')}
                 className={inputClass}
               />
               {errors.name && <p className="mt-1 text-xs text-danger">{errors.name.message}</p>}
@@ -167,31 +169,31 @@ export function ProcessFormModal({
 
             <div>
               <label className={labelClass}>
-                Alias <span className="text-danger">*</span>
+                {t('processes:form.alias')} <span className="text-danger">*</span>
               </label>
               <input
                 {...register('alias')}
                 type="text"
-                placeholder="Etiqueta corta"
+                placeholder={t('processes:form.aliasPlaceholder')}
                 className={inputClass}
               />
               {errors.alias && <p className="mt-1 text-xs text-danger">{errors.alias.message}</p>}
             </div>
 
             <div>
-              <label className={labelClass}>Descripción</label>
+              <label className={labelClass}>{t('common:fields.description')}</label>
               <textarea
                 {...register('description')}
                 rows={3}
-                placeholder="Descripción opcional"
+                placeholder={t('processes:form.descriptionPlaceholder')}
                 className={`${inputClass} resize-none`}
               />
             </div>
 
             <div>
-              <label className={labelClass}>Proceso padre</label>
+              <label className={labelClass}>{t('processes:form.parent')}</label>
               <select {...register('process_parent_id')} className={inputClass}>
-                <option value="">Sin padre (proceso raíz)</option>
+                <option value="">{t('processes:form.noParent')}</option>
                 {parentCandidates.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.code} — {p.name}
@@ -201,7 +203,7 @@ export function ProcessFormModal({
             </div>
 
             <div>
-              <label className={labelClass}>Color</label>
+              <label className={labelClass}>{t('processes:form.color')}</label>
               <div className="flex items-center gap-3">
                 {watchColor ? (
                   <>
@@ -219,7 +221,7 @@ export function ProcessFormModal({
                       onClick={() => setValue('color', null, { shouldValidate: true })}
                       className="text-xs text-text-muted dark:text-text-dark-muted underline hover:text-danger transition-colors"
                     >
-                      Quitar color
+                      {t('processes:form.removeColor')}
                     </button>
                   </>
                 ) : (
@@ -228,7 +230,7 @@ export function ProcessFormModal({
                     onClick={() => setValue('color', '#6366f1', { shouldValidate: true })}
                     className="text-xs text-text-muted dark:text-text-dark-muted underline hover:text-text-primary dark:hover:text-text-dark-primary transition-colors"
                   >
-                    + Asignar color
+                    {t('processes:form.assignColor')}
                   </button>
                 )}
               </div>
@@ -237,14 +239,14 @@ export function ProcessFormModal({
 
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className={labelClass}>Icono</label>
+                <label className={labelClass}>{t('processes:form.icon')}</label>
                 {watchIcon && (
                   <button
                     type="button"
                     onClick={() => setValue('icon', null)}
                     className="text-xs text-text-muted dark:text-text-dark-muted underline hover:text-danger transition-colors"
                   >
-                    Quitar icono
+                    {t('processes:form.removeIcon')}
                   </button>
                 )}
               </div>
@@ -284,10 +286,14 @@ export function ProcessFormModal({
 
           <div className="flex justify-end gap-2 px-5 py-3 border-t border-ui-border dark:border-ui-dark-border">
             <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={isSubmitting}>
-              Cancelar
+              {t('common:actions.cancel')}
             </Button>
             <Button type="submit" variant="primary" size="sm" disabled={isSubmitting}>
-              {isSubmitting ? 'Guardando…' : isEditing ? 'Guardar cambios' : 'Crear proceso'}
+              {isSubmitting
+                ? t('common:saving')
+                : isEditing
+                  ? t('processes:form.saveChanges')
+                  : t('processes:form.createProcess')}
             </Button>
           </div>
         </form>

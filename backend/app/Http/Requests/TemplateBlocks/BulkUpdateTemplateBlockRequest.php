@@ -26,10 +26,10 @@ class BulkUpdateTemplateBlockRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'ids.required' => 'Se requiere al menos un ID de bloque.',
-            'ids.*.uuid' => 'Cada ID de bloque debe ser un UUID válido.',
-            'block_state.required' => 'Debes enviar block_state para actualizar.',
-            'block_state.in' => 'El estado del bloque debe ser uno de: '.implode(', ', BlockState::values()).'. Valor recibido: :input.',
+            'ids.required' => __('validation.block_ids.required'),
+            'ids.*.uuid' => __('validation.block_ids.uuid'),
+            'block_state.required' => __('validation.block_state.required'),
+            'block_state.in' => __('validation.block_state.in', ['values' => implode(', ', BlockState::values())]),
         ];
     }
 }

@@ -47,7 +47,7 @@ trait SanitizesBlockContent
     public function messages(): array
     {
         return [
-            'block_state.in' => 'El estado del bloque debe ser uno de: '.implode(', ', BlockState::values()).'. Valor recibido: :input.',
+            'block_state.in' => __('validation.block_state.in', ['values' => implode(', ', BlockState::values())]),
         ];
     }
 

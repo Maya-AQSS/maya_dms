@@ -60,23 +60,23 @@ class DocumentReviewService
 
             if ($document->status !== 'in_review') {
                 throw ValidationException::withMessages([
-                    'status' => ['Las revisiones solo aplican a documentos en revisión.'],
+                    'status' => [__('validation.review.only_in_review')],
                 ]);
             }
 
             $review = $this->documentRepository->findReviewInDocument($reviewId, $documentId);
 
             if ($review === null) {
-                throw new ModelNotFoundException('Revisión no encontrada.');
+                throw new ModelNotFoundException(__('review.not_found'));
             }
 
             if ($review->reviewer_id !== $actorId) {
-                throw new AuthorizationException('No eres el revisor asignado a esta etapa.');
+                throw new AuthorizationException(__('auth.review.not_assigned'));
             }
 
             if ($review->status !== 'pending') {
                 throw ValidationException::withMessages([
-                    'review' => ['Esta revisión ya fue procesada.'],
+                    'review' => [__('validation.review.already_processed')],
                 ]);
             }
 
@@ -161,8 +161,8 @@ class DocumentReviewService
             fn (string $recipientId): array => [
                 'type' => 'document.validation_requested',
                 'recipientId' => $recipientId,
-                'title' => 'Nueva solicitud de revisión',
-                'body' => 'El documento "'.$documentTitle.'" requiere tu revisión',
+                'title' => __('notifications.document.validation_requested.title'),
+                'body' => __('notifications.document.validation_requested.body', ['document_title' => $documentTitle]),
                 'titleKey' => 'notifications.document.validation_requested.title',
                 'bodyKey' => 'notifications.document.validation_requested.body',
                 'params' => ['document_id' => $documentId, 'document_title' => $documentTitle],
@@ -229,23 +229,23 @@ class DocumentReviewService
 
             if ($document->status !== 'in_review') {
                 throw ValidationException::withMessages([
-                    'status' => ['Las revisiones solo aplican a documentos en revisión.'],
+                    'status' => [__('validation.review.only_in_review')],
                 ]);
             }
 
             $review = $this->documentRepository->findReviewInDocument($reviewId, $documentId);
 
             if ($review === null) {
-                throw new ModelNotFoundException('Revisión no encontrada.');
+                throw new ModelNotFoundException(__('review.not_found'));
             }
 
             if ($review->reviewer_id !== $actorId) {
-                throw new AuthorizationException('No eres el revisor asignado a esta etapa.');
+                throw new AuthorizationException(__('auth.review.not_assigned'));
             }
 
             if ($review->status !== 'pending') {
                 throw ValidationException::withMessages([
-                    'review' => ['Esta revisión ya fue procesada.'],
+                    'review' => [__('validation.review.already_processed')],
                 ]);
             }
 
@@ -295,7 +295,7 @@ class DocumentReviewService
 
         if ($review->stage !== $minStage) {
             throw ValidationException::withMessages([
-                'review' => ['En revisión secuencial, solo puede actuar la etapa pendiente más baja.'],
+                'review' => [__('validation.review.sequential_order')],
             ]);
         }
     }

@@ -58,6 +58,59 @@
     "imageEmpty": "Sense imatge"
   },
   "emptyMessage": "Encara no hi ha temes. Crea'n un des de \"Nou tema\".",
+  "detail": {
+    "subtitle": "Tema · Identitat visual reutilitzable"
+  },
+  "fields": {
+    "blocks": "Blocs",
+    "palette": "Paleta"
+  },
+  "verification": {
+    "title": "Verificació"
+  },
+  "layout": {
+    "editorTitle": "Editor de layout"
+  },
+  "fonts": {
+    "sansSerif": "Sans-serif",
+    "serif": "Serif",
+    "monospace": "Monoespai",
+    "customLegacy": "Personalitzada (legacy)"
+  },
+  "blocks": {
+    "documentContent": "Contingut del document",
+    "bodyPlaceholder": "Ací es carrega el cos del document",
+    "text": "Text",
+    "image": "Imatge",
+    "pageNumber": "Núm. de pàgina",
+    "date": "Data"
+  },
+  "inspector": {
+    "title": "Inspector",
+    "properties": "Propietats",
+    "x": "X (mm)",
+    "y": "Y (mm)",
+    "width": "Amplària (mm)",
+    "height": "Alçària (mm)",
+    "content": "Contingut",
+    "sizePt": "Mida (pt)",
+    "color": "Color",
+    "noThemeId": "ID de theme no disponible",
+    "format": "Format",
+    "dateShort": "Curt (01/01/2026)",
+    "dateLong": "Llarg (1 de gener de 2026)",
+    "editorLabel": "Etiqueta visible en l'editor",
+    "noEditableProps": "Sense propietats editables.",
+    "uploadImage": "Pujar imatge",
+    "orUseUrl": "O usar URL",
+    "altText": "Text alternatiu",
+    "opacity": "Opacitat (0–1)",
+    "rotation": "Rotació (graus)",
+    "imageFit": "Ajust d'imatge",
+    "fitContain": "Contindre (espai buit)",
+    "fitCover": "Cobrir (retall)",
+    "fitStretch": "Estirar"
+  },
   "errors": {
     "errorForbidden": "No tens permís per a esta acció sobre el tema.",
     "errorUnauthorized": "Sessió no vàlida o token absent.",

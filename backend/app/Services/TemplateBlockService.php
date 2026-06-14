@@ -81,7 +81,7 @@ class TemplateBlockService implements TemplateBlockServiceInterface
 
         if ($unique === []) {
             throw ValidationException::withMessages([
-                'ids' => ['Se requiere al menos un ID de bloque.'],
+                'ids' => [__('validation.block_ids.required')],
             ]);
         }
 
@@ -89,7 +89,7 @@ class TemplateBlockService implements TemplateBlockServiceInterface
 
         if ($blocks->count() !== count($unique)) {
             throw ValidationException::withMessages([
-                'ids' => ['Uno o más bloques no existen.'],
+                'ids' => [__('validation.block_ids.not_found')],
             ]);
         }
 
@@ -103,13 +103,13 @@ class TemplateBlockService implements TemplateBlockServiceInterface
     {
         if ($orderedBlockIds === []) {
             throw ValidationException::withMessages([
-                'block_ids' => ['Debes enviar al menos un bloque para reordenar.'],
+                'block_ids' => [__('validation.block_ids.reorder_required')],
             ]);
         }
 
         if (count($orderedBlockIds) !== count(array_unique($orderedBlockIds))) {
             throw ValidationException::withMessages([
-                'block_ids' => ['La lista de bloques no puede contener IDs duplicados.'],
+                'block_ids' => [__('validation.block_ids.duplicate')],
             ]);
         }
 
@@ -120,7 +120,7 @@ class TemplateBlockService implements TemplateBlockServiceInterface
 
         if (count($currentIds) !== count($orderedBlockIds)) {
             throw ValidationException::withMessages([
-                'block_ids' => ['Debes enviar todos los bloques de la plantilla.'],
+                'block_ids' => [__('validation.block_ids.all_required')],
             ]);
         }
 
@@ -130,7 +130,7 @@ class TemplateBlockService implements TemplateBlockServiceInterface
 
         if ($currentIds !== $incomingIds) {
             throw ValidationException::withMessages([
-                'block_ids' => ['La lista enviada no coincide con los bloques reales de la plantilla.'],
+                'block_ids' => [__('validation.block_ids.mismatch')],
             ]);
         }
 
