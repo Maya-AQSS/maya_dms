@@ -200,12 +200,22 @@ export function ProcessesTable() {
         }
       />
 
-      <Pagination
-        currentPage={meta?.current_page ?? 1}
-        totalPages={meta?.last_page ?? 1}
-        onChange={onPageChange}
-        info={`${meta?.total ?? 0} proceso${(meta?.total ?? 0) !== 1 ? 's' : ''}`}
-      />
+      {meta && (
+        <Pagination
+          currentPage={meta.current_page}
+          totalPages={meta.last_page}
+          onChange={onPageChange}
+          info={
+            meta.total > 0
+              ? t('processes:table.paginationInfo', {
+                  from: (meta.current_page - 1) * meta.per_page + 1,
+                  to: Math.min(meta.current_page * meta.per_page, meta.total),
+                  total: meta.total,
+                })
+              : undefined
+          }
+        />
+      )}
     </div>
   );
 }

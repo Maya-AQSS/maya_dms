@@ -49,6 +49,7 @@
     "clearFiltersLabel": "Limpiar filtros",
     "pageSizeLabel": "Por página",
     "emptyMessage": "No se encontraron procesos.",
-    "noIndexPermission": "No tienes permiso para ver el listado de procesos."
+    "noIndexPermission": "No tienes permiso para ver el listado de procesos.",
+    "paginationInfo": "{{from}}–{{to}} de {{total}}"
   }
 }

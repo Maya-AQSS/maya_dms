@@ -49,6 +49,7 @@
     "clearFiltersLabel": "Netejar filtres",
     "pageSizeLabel": "Per pàgina",
     "emptyMessage": "No s'han trobat processos.",
-    "noIndexPermission": "No tens permís per a veure el llistat de processos."
+    "noIndexPermission": "No tens permís per a veure el llistat de processos.",
+    "paginationInfo": "{{from}}–{{to}} de {{total}}"
   }
 }
