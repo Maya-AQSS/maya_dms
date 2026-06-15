@@ -95,8 +95,9 @@ export function WizardStep1Properties({ errors, templateStatus, isCreator, curre
     if (!studyTypeId || studyId) return;
     const typeNode = hierarchy.find((t) => String(t.id) === studyTypeId);
     if (!typeNode) return;
-    if ((typeNode.studies ?? []).length === 1) {
-      setValue('studyId', String(typeNode.studies[0].id), { shouldDirty: false });
+    const studies = typeNode.studies ?? [];
+    if (studies.length > 0) {
+      setValue('studyId', String(studies[0].id), { shouldDirty: false });
     }
   }, [hierarchy, studyTypeId, studyId, setValue]);
 
@@ -105,8 +106,9 @@ export function WizardStep1Properties({ errors, templateStatus, isCreator, curre
     if (!studyId || moduleId) return;
     const studyNode = allStudies.find((s) => String(s.id) === studyId);
     if (!studyNode) return;
-    if ((studyNode.course_modules ?? []).length === 1) {
-      setValue('moduleId', String(studyNode.course_modules[0].id), { shouldDirty: false });
+    const modules = studyNode.course_modules ?? [];
+    if (modules.length > 0) {
+      setValue('moduleId', String(modules[0].id), { shouldDirty: false });
     }
   }, [allStudies, studyId, moduleId, setValue]);
 
