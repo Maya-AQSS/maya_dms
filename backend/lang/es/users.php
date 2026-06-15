@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'search' => [
         'forbidden' => 'No tienes permiso para buscar usuarios.',

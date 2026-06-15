@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'document' => [
         'validation_requested' => [

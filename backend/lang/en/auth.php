@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'document' => [
         'delete_forbidden' => 'You cannot delete this document.',

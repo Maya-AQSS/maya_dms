@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'options' => [
         'no_templates' => 'No hay plantillas publicadas disponibles para este módulo.',

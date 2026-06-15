@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'template_append_only' => 'Template snapshots are insert-only (append-only).',
     'document_append_only' => 'Document snapshots are insert-only (append-only).',

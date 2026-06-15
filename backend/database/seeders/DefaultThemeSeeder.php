@@ -6,6 +6,7 @@ namespace Database\Seeders;
 
 use App\Constants\DocumentConstants;
 use App\Models\Theme;
+use App\Policies\ThemePolicy;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Schema;
 
@@ -17,7 +18,7 @@ use Illuminate\Support\Facades\Schema;
  * materializa esa identidad visual en BD para que:
  *   - exista siempre y sea referenciable por las plantillas demo;
  *   - los admins puedan editarla y clonarla como base;
- *   - NO se pueda borrar (`is_system = true`, ver {@see \App\Policies\ThemePolicy::delete}).
+ *   - NO se pueda borrar (`is_system = true`, ver {@see ThemePolicy::delete}).
  *
  * Idempotente: usa un UUID fijo y no toca el registro si ya existe, de modo que
  * las ediciones de un admin sobreviven a un re-seed. El contenido visual deriva

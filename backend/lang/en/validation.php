@@ -285,6 +285,7 @@ return [
         'not_image' => 'The file is not a valid image.',
         'too_large' => 'The image is too large (maximum 10MB).',
         'svg_unsafe' => 'The SVG contains potentially dangerous content (scripts or event handlers).',
+        'storage_failed' => 'The image could not be saved. Please try again.',
     ],
 
     'attributes' => [

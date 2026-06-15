@@ -123,7 +123,7 @@ it('searches templates by template name (accent/case insensitive)', function () 
 it('filters templates by favorite_ids (head version id)', function () {
     $favId = makeOwnTemplate('Favorita');
     makeOwnTemplate('Otra');
-    $headEv = (string) \App\Models\Template::query()->withoutGlobalScopes()->find($favId)->head_entity_version_id;
+    $headEv = (string) Template::query()->withoutGlobalScopes()->find($favId)->head_entity_version_id;
 
     $ids = $this->getJson('/api/v1/templates?favorite_ids='.$headEv)
         ->assertOk()

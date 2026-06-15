@@ -1,6 +1,9 @@
 <?php
 
 declare(strict_types=1);
+use App\Enums\BlockType;
+use Database\Seeders\DefaultThemeSeeder;
+use Database\Seeders\DemoThemesSeeder;
 
 /**
  * Programaciones didácticas reales del CEEDCV (curso 2025-26) — seed pack.
@@ -56,7 +59,7 @@ return (static function (): array {
     $uJefeEBach = $u('jefe_e_bach');
 
     // Theme de sistema sembrado por DefaultThemeSeeder (UUID fijo, single source of truth).
-    $defaultThemeId = \Database\Seeders\DefaultThemeSeeder::DEFAULT_THEME_ID;
+    $defaultThemeId = DefaultThemeSeeder::DEFAULT_THEME_ID;
 
     // --- Helpers Tiptap (ProseMirror) ---
     $para = static function (string $text): array {
@@ -180,7 +183,7 @@ return (static function (): array {
     $T4 = 'aa000004-0000-4000-8000-000000000000'; // DemoTipTap — showcase editor (global)
 
     // Tema demo limpio sembrado por DemoThemesSeeder (override de tema por bloque).
-    $demoThemeId = \Database\Seeders\DemoThemesSeeder::DEMO_THEME_ID;
+    $demoThemeId = DemoThemesSeeder::DEMO_THEME_ID;
 
     $deadline = '2026-09-15 14:00:00';
 
@@ -409,7 +412,7 @@ return (static function (): array {
      * bloque de contenido con tema por bloque. A diferencia de $L, el
      * default_content NO se finaliza como doc Tiptap: la portada lleva un payload
      * de geometría `{"kind":"cover",...}` y el índice/hoja en blanco no llevan
-     * cuerpo (null). Espejo de {@see \App\Enums\BlockType}.
+     * cuerpo (null). Espejo de {@see BlockType}.
      *
      * @param  array<string, mixed>|null  $layout  Payload de maquetación (portada) o null.
      */
