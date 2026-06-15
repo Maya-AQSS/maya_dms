@@ -57,9 +57,10 @@ RUN composer dump-autoload --optimize --classmap-authoritative --no-dev
 FROM php:8.4-fpm-alpine AS runtime
 
 # Extensiones PHP nativas — mismo set que dev menos pcov (solo para coverage).
+# procps: provee `pgrep` que usa el livenessProbe del Deployment del worker.
 RUN apk add --no-cache \
         bash git curl libpng-dev libxml2-dev libzip-dev zip unzip \
-        postgresql-dev oniguruma-dev linux-headers tini \
+        postgresql-dev oniguruma-dev linux-headers tini procps \
  && docker-php-ext-install \
         pdo pdo_pgsql pgsql mbstring exif pcntl bcmath gd sockets zip
 

@@ -13,11 +13,12 @@ set -e
 ROLE="${CONTAINER_ROLE:-api}"
 
 # Limpiar caches con env del pod ANTES de regenerarlos (los cachés de la imagen
-# se construyeron sin secrets).
-php artisan config:clear --ansi >/dev/null 2>&1 || true
-php artisan route:clear  --ansi >/dev/null 2>&1 || true
-php artisan view:clear   --ansi >/dev/null 2>&1 || true
-php artisan event:clear  --ansi >/dev/null 2>&1 || true
+# se construyeron sin secrets). No silenciamos stderr para que un fallo real
+# salga a los logs del pod en vez de quedar enterrado bajo un `|| true`.
+php artisan config:clear --ansi || true
+php artisan route:clear  --ansi || true
+php artisan view:clear   --ansi || true
+php artisan event:clear  --ansi || true
 
 # Warm-up para todos los roles excepto migrate (que no debería usar este entrypoint).
 php artisan config:cache --ansi
