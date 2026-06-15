@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'accepted' => 'El campo :attribute debe ser aceptado.',
     'active_url' => 'El campo :attribute debe ser una URL válida.',
@@ -282,6 +284,7 @@ return [
         'download_failed' => 'No se pudo descargar la imagen.',
         'not_image' => 'El archivo no es una imagen válida.',
         'too_large' => 'La imagen es demasiado grande (máximo 10MB).',
+        'svg_unsafe' => 'El SVG contiene contenido potencialmente peligroso (scripts o event handlers).',
     ],
 
     'attributes' => [

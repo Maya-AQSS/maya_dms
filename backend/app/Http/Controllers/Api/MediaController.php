@@ -54,10 +54,22 @@ class MediaController extends Controller
         $content = $this->mediaService->retrieve($uuid, $contextType, $contextId, $token);
         $mimeType = $this->mediaService->detectMimeType($content);
 
-        return response($content, 200, [
+        $headers = [
             'Content-Type' => $mimeType,
             'X-Content-Type-Options' => 'nosniff',
             'Cache-Control' => 'private, max-age=31536000, immutable',
-        ]);
+        ];
+
+        // Defensa en profundidad anti-XSS: aunque ThemeImageService rechaza SVG con
+        // <script>, event handlers o javascript:, cualquier SVG (incl. los antiguos
+        // ya almacenados) se sirve como descarga con CSP estricta y MIME genérico
+        // para que el navegador no lo ejecute si llega por una URL directa.
+        if ($mimeType === 'image/svg+xml' || $mimeType === 'image/svg') {
+            $headers['Content-Type'] = 'application/octet-stream';
+            $headers['Content-Disposition'] = 'attachment; filename="'.$uuid.'.svg"';
+            $headers['Content-Security-Policy'] = "default-src 'none'; sandbox";
+        }
+
+        return response($content, 200, $headers);
     }
 }

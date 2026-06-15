@@ -55,7 +55,10 @@ return [
         'themes' => [
             'driver' => 'local',
             'root' => storage_path('app/media'),
-            'throw' => false,
+            // throw=true: en producción el media vive en un PVC RWX (NFS). Un fallo
+            // de escritura silencioso degradaría a 200 OK con datos perdidos. Con
+            // throw=true cualquier error de IO sale como excepción al controlador.
+            'throw' => true,
             'report' => false,
         ],
 
@@ -66,7 +69,7 @@ return [
         'media' => [
             'driver' => 'local',
             'root' => storage_path('app/media'),
-            'throw' => false,
+            'throw' => true,
             'report' => false,
         ],
 

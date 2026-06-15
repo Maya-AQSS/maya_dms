@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'accepted' => 'El camp :attribute ha de ser acceptat.',
     'active_url' => 'El camp :attribute ha de ser una URL vàlida.',
@@ -282,6 +284,7 @@ return [
         'download_failed' => 'No s\'ha pogut descarregar la imatge.',
         'not_image' => 'L\'arxiu no és una imatge vàlida.',
         'too_large' => 'La imatge és massa gran (màxim 10MB).',
+        'svg_unsafe' => 'El SVG conté contingut potencialment perillós (scripts o event handlers).',
     ],
 
     'attributes' => [
