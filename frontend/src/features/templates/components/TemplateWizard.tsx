@@ -1,7 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useBlocker } from 'react-router-dom';
 import { useBackNavigation } from '@ceedcv-maya/shared-hooks-react';
 import { useTranslation } from 'react-i18next';
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
@@ -164,12 +163,20 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blocksCount, blocksLoading, step]);
 
-  const blocker = useBlocker(step === 'blocks' && hasInvalidBlocks);
+  // El shell unificado (MayaProviders) monta <BrowserRouter>, no un data router,
+  // así que useBlocker de react-router no está disponible (lanzaría en render).
+  // Guardamos el cierre/recarga de la pestaña con beforeunload cuando hay bloques
+  // inválidos en el paso 'blocks'. La navegación interna entre pasos ya está
+  // guardada por el modal en el handler de "siguiente" (setInvalidBlocksModal).
   useEffect(() => {
-    if (blocker.state === 'blocked') {
-      setInvalidBlocksModal({ onProceed: (_remaining) => blocker.proceed() });
-    }
-  }, [blocker.state]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (step !== 'blocks' || !hasInvalidBlocks) return undefined;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [step, hasInvalidBlocks]);
 
   // Clear permission error when user changes visibility selection.
   useEffect(() => {
@@ -736,7 +743,6 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
           cb?.(remaining);
         }}
         onCancel={() => {
-          if (blocker.state === 'blocked') blocker.reset();
           setInvalidBlocksModal(null);
         }}
       />
