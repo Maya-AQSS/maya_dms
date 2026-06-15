@@ -21,7 +21,13 @@ Verificación rápida:
 Notas operativas:
   · El Secret "{{ include "maya-dms.secretName" . }}" se asume gestionado FUERA del
     chart (kubectl create secret / SealedSecret). Si secret.create=true, se crea
-    desde values.yaml — NO commitear valores reales.
+    desde values.yaml — NO commitear valores reales. SIN Secret, los pods
+    quedarán Pending con "Error: secret not found" (envFrom.secretRef no es
+    opcional por diseño — preferimos fallo explícito a arranque silencioso).
   · PVC "{{ include "maya-dms.pvcName" . }}" tiene la anotación
     helm.sh/resource-policy=keep para no perder media al desinstalar.
   · helm rollback NO revierte el esquema de BD — migraciones forward-only.
+  · El backend pod corre con un sidecar nginx (puerto 8000) que hace
+    fastcgi_pass al php-fpm (9000). El Service de backend apunta al nginx.
+  · El ConfigMap y el Secret se renderizan como hooks pre-install/pre-upgrade
+    con weight=-10 para que la migración (weight=0) los vea actualizados.

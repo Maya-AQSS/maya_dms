@@ -12,7 +12,10 @@ namespace: "maya-dms"
 image:
   registry: "gitea.ceedcv.es"
   repository: "maya"          # imagenes: <registry>/<repository>/maya-dms-{backend,frontend}
-  tag: "latest"               # sobreescribir con --set image.tag=$(git rev-parse --short HEAD)
+  # Tag por defecto vacío: el deploy DEBE pasar `--set image.tag=$(git rev-parse --short HEAD)`.
+  # `latest` con IfNotPresent provoca split-brain entre nodos (algunos cachean
+  # versiones obsoletas mientras otros pullean la nueva).
+  tag: ""
   pullPolicy: IfNotPresent
   pullSecret: "regcred"
 
@@ -24,8 +27,9 @@ backend:
   port: 9000                   # php-fpm fastcgi (sidecar nginx en el pod sirve HTTP)
   resources:
     requests:
+      # 512Mi: WeasyPrint puede consumir 400-600MB renderizando PDFs con fuentes.
       cpu: 200m
-      memory: 384Mi
+      memory: 512Mi
     limits:
       cpu: 1000m
       memory: 768Mi
@@ -34,14 +38,22 @@ backend:
   probes:
     liveness:
       path: /api/v1/health/live
-      port: 8000
       initialDelaySeconds: 10
       periodSeconds: 15
     readiness:
       path: /api/v1/health/ready
-      port: 8000
       initialDelaySeconds: 5
       periodSeconds: 10
+  # nginx sidecar — convierte HTTP/8000 → FastCGI/9000 (php-fpm).
+  nginx:
+    image: "nginx:1.29-alpine"
+    resources:
+      requests:
+        cpu: 50m
+        memory: 32Mi
+      limits:
+        cpu: 200m
+        memory: 64Mi
 
 # ─── Frontend (React + nginx) ─────────────────────────────────────────────────
 frontend:
@@ -86,6 +98,8 @@ reverb:
   enabled: true
   replicas: 1                  # singleton salvo scaling con Redis (no soportado aquí)
   port: 8080
+  # 60s para drenar conexiones WS abiertas en rollout.
+  terminationGracePeriodSeconds: 60
   resources:
     requests:
       cpu: 100m
@@ -103,7 +117,8 @@ scheduler:
 # ─── Migración (Job helm hook pre-upgrade) ────────────────────────────────────
 migrate:
   enabled: true
-  backoffLimit: 1
+  # 3 reintentos absorben failovers transitorios de Patroni durante el upgrade.
+  backoffLimit: 3
   resources:
     requests:
       cpu: 100m
@@ -123,7 +138,10 @@ storage:
     - ReadWriteMany
   size: 20Gi
   mountPath: /var/www/html/storage/app/media
-  subPath: ""                  # vacío = raíz del PVC
+  # subPath aísla los uploads de DMS dentro del PVC compartido por NFS;
+  # evita colisiones si dos releases (staging/prod) acabasen apuntando al
+  # mismo export por error.
+  subPath: "dms"
 
 # ─── Ingress (Traefik + MetalLB + CA interna) ─────────────────────────────────
 ingress:
@@ -267,6 +285,14 @@ networkPolicy:
     - "172.29.71.0/24"
     - "172.29.70.7/32"
 
+# ─── PodDisruptionBudget — protege la disponibilidad durante drenajes de nodo ──
+pdb:
+  enabled: true
+  backend:
+    minAvailable: 1
+  frontend:
+    minAvailable: 1
+
 # Termination y rollout.
 rollout:
   terminationGracePeriodSeconds: 30
@@ -274,5 +300,9 @@ rollout:
   maxSurge: 1
   maxUnavailable: 0
 
-# ─── Trust proxies (W1) — pasado al backend vía env. Por defecto Traefik del cluster ──
-trustProxies: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+# ─── Trust proxies (W1) — pasado al backend vía env ────────────────────────────
+# CIDR de la pod-network de K3s (Traefik corre como pod en kube-system). Ajustar
+# tras el primer despliegue si MetalLB/Calico usan otro CIDR. Evitar el patrón
+# `10/8,172.16/12,192.168/16` porque cualquier pod del clúster podría falsificar
+# X-Forwarded-For y contaminar el audit log.
+trustProxies: "10.42.0.0/16"

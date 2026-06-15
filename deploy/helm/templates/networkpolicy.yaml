@@ -32,8 +32,9 @@ spec:
             matchLabels:
               kubernetes.io/metadata.name: {{ .Values.networkPolicy.traefikNamespace | quote }}
       ports:
+        # Backend: el Service apunta al sidecar nginx (8000), no al fastcgi.
         - protocol: TCP
-          port: {{ .Values.backend.port }}
+          port: 8000
         - protocol: TCP
           port: {{ .Values.frontend.port }}
         - protocol: TCP

@@ -12,13 +12,12 @@ spec:
     {{- include "maya-dms.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: backend
   ports:
+    # El backend pod corre un sidecar nginx (puerto 8000) que hace
+    # fastcgi_pass al php-fpm (9000). El Service apunta al puerto HTTP,
+    # NUNCA directamente al socket FastCGI.
     - name: http
-      # El frontend usa el Ingress directo; este Service apunta al fastcgi del
-      # backend (port 9000). El Ingress de Traefik se conecta vía middleware o
-      # un sidecar nginx en la imagen — aquí simplificamos exponiendo 8000 → 9000
-      # vía proxy-protocol del Ingress; para Maya el Ingress real apunta al pod.
       port: 8000
-      targetPort: fastcgi
+      targetPort: http
       protocol: TCP
 {{- end }}
 ---

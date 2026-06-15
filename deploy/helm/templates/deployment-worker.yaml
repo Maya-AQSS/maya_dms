@@ -44,8 +44,10 @@ spec:
             {{- toYaml .Values.worker.resources | nindent 12 }}
           livenessProbe:
             exec:
-              # El worker está vivo si el proceso queue:work sigue corriendo.
-              command: ["pgrep", "-f", "queue:work"]
+              # Match exacto contra el proceso `php artisan queue:work` para
+              # evitar falsos positivos con el propio script de entrypoint o
+              # con tini en re-exec. Requiere `procps` instalado en la imagen.
+              command: ["/bin/sh", "-c", "pgrep -f 'artisan queue:work' > /dev/null"]
             initialDelaySeconds: 20
             periodSeconds: 30
             timeoutSeconds: 5

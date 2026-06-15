@@ -1,0 +1,33 @@
+{{- if .Values.pdb.enabled }}
+{{- if and .Values.backend.enabled (gt (int .Values.backend.replicas) 1) }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "maya-dms.fullname" . }}-backend
+  labels:
+    {{- include "maya-dms.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  minAvailable: {{ .Values.pdb.backend.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "maya-dms.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: backend
+---
+{{- end }}
+{{- if and .Values.frontend.enabled (gt (int .Values.frontend.replicas) 1) }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "maya-dms.fullname" . }}-frontend
+  labels:
+    {{- include "maya-dms.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  minAvailable: {{ .Values.pdb.frontend.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "maya-dms.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: frontend
+{{- end }}
+{{- end }}

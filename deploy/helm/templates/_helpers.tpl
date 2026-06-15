@@ -98,9 +98,13 @@ Volumes y volumeMounts para el media PVC (solo backend/worker).
 
 {{/*
 emptyDir para directorios escribibles (readOnlyRootFilesystem: true).
+storage/logs incluido — con el daily log channel Laravel necesita escribir aquí
+o el handler degrada silenciosamente / lanza excepción.
 */}}
 {{- define "maya-dms.writableVolumes" -}}
 - name: storage-framework
+  emptyDir: {}
+- name: storage-logs
   emptyDir: {}
 - name: bootstrap-cache
   emptyDir: {}
@@ -111,6 +115,8 @@ emptyDir para directorios escribibles (readOnlyRootFilesystem: true).
 {{- define "maya-dms.writableVolumeMounts" -}}
 - name: storage-framework
   mountPath: /var/www/html/storage/framework
+- name: storage-logs
+  mountPath: /var/www/html/storage/logs
 - name: bootstrap-cache
   mountPath: /var/www/html/bootstrap/cache
 - name: tmp

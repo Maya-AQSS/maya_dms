@@ -15,7 +15,12 @@
       "properties": {
         "registry":   { "type": "string", "minLength": 1 },
         "repository": { "type": "string", "minLength": 1 },
-        "tag":        { "type": "string", "minLength": 1 },
+        "tag":        {
+          "type": "string",
+          "minLength": 1,
+          "not": { "const": "latest" },
+          "description": "Tag debe ser una sha o version explicita; 'latest' provoca split-brain entre nodos con IfNotPresent."
+        },
         "pullPolicy": { "enum": ["Always", "IfNotPresent", "Never"] },
         "pullSecret": { "type": "string", "minLength": 1 }
       }
@@ -27,7 +32,15 @@
         "enabled":  { "type": "boolean" },
         "replicas": { "type": "integer", "minimum": 1 },
         "port":     { "type": "integer", "minimum": 1, "maximum": 65535 },
-        "resources": { "type": "object" }
+        "resources": { "type": "object" },
+        "nginx": {
+          "type": "object",
+          "required": ["image"],
+          "properties": {
+            "image":     { "type": "string", "minLength": 1 },
+            "resources": { "type": "object" }
+          }
+        }
       }
     },
 
@@ -52,7 +65,8 @@
       "type": "object",
       "properties": {
         "enabled":  { "type": "boolean" },
-        "replicas": { "type": "integer", "minimum": 1, "maximum": 1 }
+        "replicas": { "type": "integer", "minimum": 1, "maximum": 1 },
+        "terminationGracePeriodSeconds": { "type": "integer", "minimum": 1 }
       }
     },
 
@@ -103,10 +117,13 @@
 
     "config": {
       "type": "object",
-      "required": ["APP_ENV", "APP_DEBUG", "DB_HOST", "DB_DATABASE", "JWKS_URL", "JWT_ISSUER"],
+      "required": [
+        "APP_ENV", "APP_DEBUG", "SESSION_SECURE_COOKIE",
+        "DB_HOST", "DB_DATABASE", "JWKS_URL", "JWT_ISSUER"
+      ],
       "properties": {
-        "APP_ENV":   { "type": "string", "const": "production" },
-        "APP_DEBUG": { "type": "string", "const": "false" },
+        "APP_ENV":               { "type": "string", "const": "production" },
+        "APP_DEBUG":             { "type": "string", "const": "false" },
         "SESSION_SECURE_COOKIE": { "type": "string", "const": "true" }
       }
     },
@@ -125,6 +142,15 @@
         "enabled":           { "type": "boolean" },
         "traefikNamespace":  { "type": "string" },
         "egressCidrs":       { "type": "array", "items": { "type": "string" } }
+      }
+    },
+
+    "pdb": {
+      "type": "object",
+      "properties": {
+        "enabled":  { "type": "boolean" },
+        "backend":  { "type": "object" },
+        "frontend": { "type": "object" }
       }
     },
 

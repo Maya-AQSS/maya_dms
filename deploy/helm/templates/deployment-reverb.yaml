@@ -22,8 +22,7 @@ spec:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
     spec:
-      # 60s para drenar conexiones WS abiertas.
-      terminationGracePeriodSeconds: 60
+      terminationGracePeriodSeconds: {{ .Values.reverb.terminationGracePeriodSeconds }}
       imagePullSecrets:
         - name: {{ .Values.image.pullSecret }}
       securityContext:

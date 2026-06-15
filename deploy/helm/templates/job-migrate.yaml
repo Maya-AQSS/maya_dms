@@ -14,8 +14,10 @@ metadata:
     # y al terminar bien, para no acumular Jobs huérfanos.
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
 spec:
+  # backoffLimit: raise to absorb transient Patroni failovers durante el rollout.
   backoffLimit: {{ .Values.migrate.backoffLimit }}
   ttlSecondsAfterFinished: 600
+  activeDeadlineSeconds: 600
   template:
     metadata:
       labels:
