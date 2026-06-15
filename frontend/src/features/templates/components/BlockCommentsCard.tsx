@@ -94,6 +94,7 @@ function QuotedReply({
   parent: BlockComment;
   onClick: () => void;
 }) {
+  const { t } = useTranslation('common');
   if (parent.is_deleted) {
     return (
       <div className="flex mb-3 rounded-lg overflow-hidden border border-ui-border/50 dark:border-ui-dark-border/50 opacity-60">
@@ -102,7 +103,7 @@ function QuotedReply({
           <svg className="w-3 h-3 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" />
           </svg>
-          <p className="text-xs text-text-muted dark:text-text-dark-muted italic">{t('common:comments.deleted')}</p>
+          <p className="text-xs text-text-muted dark:text-text-dark-muted italic">{t('comments.deleted')}</p>
         </div>
       </div>
     );

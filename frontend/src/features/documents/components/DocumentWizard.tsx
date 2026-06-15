@@ -1066,7 +1066,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
     );
     if (!block) return;
 
-    const editorBaseline = normalizeBlockContentForEditor(activeBlock.content);
+    // Usar `block` (recién resuelto y comprobado no-null) en lugar de
+    // `activeBlock` (memo derivado que el compilador no puede narrowar aquí).
+    const editorBaseline = normalizeBlockContentForEditor(block.content);
     applyLocalContent(editorBaseline);
     // Misma base que muestra el editor (content persistido o default_content de plantilla).
     lastSavedContentRef.current = editorBaseline;
