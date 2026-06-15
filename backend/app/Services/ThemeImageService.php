@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use League\Flysystem\FilesystemException;
 
 class ThemeImageService extends MediaUploadService implements ThemeImageServiceInterface
 {
@@ -22,11 +23,13 @@ class ThemeImageService extends MediaUploadService implements ThemeImageServiceI
     // el FormRequest + content-type en la ingesta remota).
 
     /**
-     * Rechaza SVGs con vectores XSS activos (script tags, event handlers, javascript:
-     * URIs, foreignObject embebido). El MediaController además sirve cualquier SVG
-     * como attachment con CSP estricta, pero esta capa evita persistir contenido
-     * malicioso. PNG/JPEG/WEBP pasan sin inspección — los magic bytes los validó
-     * el FormRequest.
+     * Rechaza SVGs con vectores XSS activos. El MediaController además sirve
+     * cualquier SVG como attachment con CSP estricta, pero esta capa evita
+     * persistir contenido malicioso. PNG/JPEG/WEBP pasan sin inspección —
+     * los magic bytes los validó el FormRequest.
+     *
+     * Estrategia: blocklist sobre el contenido + decode de entidades HTML
+     * para neutralizar bypasses tipo `&#x6A;avascript:`.
      *
      * @throws ValidationException
      */
@@ -41,12 +44,25 @@ class ThemeImageService extends MediaUploadService implements ThemeImageServiceI
             return;
         }
 
-        $lower = strtolower($content);
+        // Decodificar entidades HTML antes del match — bypass común con
+        // `&#x6A;avascript:` o `&#106;avascript:`.
+        $decoded = html_entity_decode($content, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $lower = strtolower($decoded);
         $dangerous = [
             '<script',
             '<foreignobject',
+            '<use',                 // <use href="javascript:..."> / xlink:href
+            '<animate',             // <animate from="javascript:...">
+            '<set',                 // <set attributeName="href" to="javascript:...">
+            '<image',               // <image href="javascript:...">
+            '<iframe',
+            '<style',               // <style>...expression(...)</style>
+            '<![cdata[',            // CDATA-wrapped script
+            'xlink:href',
             'javascript:',
+            'vbscript:',
             'data:text/html',
+            'expression(',
         ];
         foreach ($dangerous as $needle) {
             if (str_contains($lower, $needle)) {
@@ -56,7 +72,7 @@ class ThemeImageService extends MediaUploadService implements ThemeImageServiceI
             }
         }
         // Event handlers inline (onclick, onload, onerror, ...).
-        if (preg_match('/\son[a-z]+\s*=/i', $content) === 1) {
+        if (preg_match('/\son[a-z]+\s*=/i', $decoded) === 1) {
             throw ValidationException::withMessages([
                 'file' => __('validation.theme_image.svg_unsafe'),
             ]);
@@ -81,7 +97,24 @@ class ThemeImageService extends MediaUploadService implements ThemeImageServiceI
             throw ValidationException::withMessages(['url' => __('validation.theme_image.url_scheme')]);
         }
 
+        // userinfo en URL: parse_url y la lib HTTP/curl pueden disentir sobre el
+        // host real (`http://10.0.0.1@evil.com/`). Rechazar la forma directamente.
+        if (! empty($parsed['user']) || ! empty($parsed['pass'])) {
+            throw ValidationException::withMessages(['url' => __('validation.theme_image.url_invalid')]);
+        }
+
         $host = $parsed['host'];
+
+        // Hosts en forma de literal numérico (decimal, octal o hex) son aceptados
+        // por curl como IPs (`http://2130706433/` → 127.0.0.1) y suelen saltarse
+        // la validación de filter_var. Rechazar tajante.
+        if (preg_match('/^(0x[0-9a-f]+|0[0-7]+|[0-9]+)$/i', $host) === 1) {
+            throw ValidationException::withMessages(['url' => __('validation.theme_image.url_invalid')]);
+        }
+        // Host con caracteres URL-encoded o trailing dot también merecen rechazo.
+        if (str_contains($host, '%')) {
+            throw ValidationException::withMessages(['url' => __('validation.theme_image.url_invalid')]);
+        }
 
         // Resolver TODAS las IPs (A + AAAA) del host y validar anti-SSRF en cada
         // una. Un host con varias A o con AAAA puede esconder un loopback/RFC1918
@@ -96,10 +129,27 @@ class ThemeImageService extends MediaUploadService implements ThemeImageServiceI
             }
         }
 
+        // Anti-DNS-rebinding: pinear la conexión a la IP ya validada vía
+        // CURLOPT_RESOLVE. Si Http no usa curl (entornos de test con fake), la
+        // opción se ignora silenciosamente — el fallback es la validación previa.
+        $pinnedIp = $ips[0];
+        // Si la IP es IPv6, envolverla en corchetes para la cabecera Host implícita.
+        $resolveEntries = [
+            sprintf('%s:443:%s', $host, $pinnedIp),
+            sprintf('%s:80:%s', $host, $pinnedIp),
+        ];
+
         // Descargar con timeout corto y SIN seguir redirects: un 30x podría apuntar
         // a un host privado tras pasar la validación inicial.
         try {
-            $response = Http::timeout(5)->withoutRedirecting()->get($url);
+            $response = Http::timeout(5)
+                ->withoutRedirecting()
+                ->withOptions([
+                    'curl' => [
+                        CURLOPT_RESOLVE => $resolveEntries,
+                    ],
+                ])
+                ->get($url);
             // Una redirección no seguida ya no es una respuesta válida para nosotros.
             if ($response->status() >= 300 && $response->status() < 400) {
                 throw ValidationException::withMessages(['url' => __('validation.theme_image.download_failed')]);
@@ -126,10 +176,16 @@ class ThemeImageService extends MediaUploadService implements ThemeImageServiceI
         // Sanea contenido SVG (las imágenes raster pasan sin tocar).
         $this->validateContent($body);
 
-        // Almacenar.
+        // Almacenar. Con `throw => true` en el disco, un fallo de IO en NFS sale
+        // como FilesystemException; lo traducimos a ValidationException para no
+        // filtrar el path interno en la respuesta de error.
         $uuid = (string) Str::uuid();
         $path = "themes/{$themeId}/{$uuid}";
-        Storage::disk('media')->put($path, $body);
+        try {
+            Storage::disk('media')->put($path, $body);
+        } catch (FilesystemException $e) {
+            throw ValidationException::withMessages(['url' => __('validation.theme_image.storage_failed')]);
+        }
 
         return new UploadedMediaDto(src: $path, uuid: $uuid);
     }
@@ -198,6 +254,7 @@ class ThemeImageService extends MediaUploadService implements ThemeImageServiceI
      *  - es una IP válida,
      *  - no está en rangos privados / reservados (RFC1918, loopback, link-local,
      *    multicast, ULA fc00::/7, IPv6 link-local, ::1, ::, 0.0.0.0, etc.),
+     *  - no está en CGNAT 100.64.0.0/10 (RFC6598 — usable como pod CIDR en K3s),
      *  - y no es uno de los catch-all peligrosos.
      */
     private function isPublicIp(string $ip): bool
@@ -214,8 +271,34 @@ class ThemeImageService extends MediaUploadService implements ThemeImageServiceI
         // IPv4-mapped IPv6 (::ffff:127.0.0.1) — extraer la parte v4 y revalidar.
         if (str_starts_with($ip, '::ffff:')) {
             $v4 = substr($ip, 7);
+            if (filter_var($v4, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+                return false;
+            }
 
-            return filter_var($v4, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false;
+            return $this->isPublicIpv4($v4);
+        }
+
+        // IPv4: aplicar también el corte CGNAT (RFC6598 100.64.0.0/10) que
+        // FILTER_FLAG_NO_PRIV_RANGE no cubre.
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false) {
+            return $this->isPublicIpv4($ip);
+        }
+
+        return true;
+    }
+
+    /**
+     * Comprobaciones extra IPv4 que filter_var no cubre (CGNAT RFC6598).
+     */
+    private function isPublicIpv4(string $ip): bool
+    {
+        $long = ip2long($ip);
+        if ($long === false) {
+            return false;
+        }
+        // 100.64.0.0/10 — Shared Address Space (CGNAT).
+        if (($long & 0xFFC00000) === (ip2long('100.64.0.0') & 0xFFC00000)) {
+            return false;
         }
 
         return true;

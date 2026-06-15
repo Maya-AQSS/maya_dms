@@ -65,9 +65,17 @@ class MediaController extends Controller
         // ya almacenados) se sirve como descarga con CSP estricta y MIME genérico
         // para que el navegador no lo ejecute si llega por una URL directa.
         if ($mimeType === 'image/svg+xml' || $mimeType === 'image/svg') {
+            // El router ya impone whereUuid('uuid') en la ruta de show(), pero
+            // sanitizamos defensivamente para que el header no admita inyección
+            // si alguien introduce esta ruta sin el constraint.
+            $safeFilename = preg_replace('/[^a-f0-9\-]/i', '', $uuid) ?? '';
             $headers['Content-Type'] = 'application/octet-stream';
-            $headers['Content-Disposition'] = 'attachment; filename="'.$uuid.'.svg"';
+            $headers['Content-Disposition'] = 'attachment; filename="'.$safeFilename.'.svg"';
             $headers['Content-Security-Policy'] = "default-src 'none'; sandbox";
+            // No cachear SVG largo tiempo: si un fichero malicioso pasara los
+            // controles y luego se eliminase, un cache de 1 año podría seguir
+            // sirviéndolo desde el navegador del usuario.
+            $headers['Cache-Control'] = 'private, no-store';
         }
 
         return response($content, 200, $headers);

@@ -22,7 +22,7 @@ class JwtMiddlewareTest extends TestCase
     {
         $this->getJson('/api/v1/me')
             ->assertStatus(401)
-            ->assertExactJson(['error' => 'Unauthenticated']);
+            ->assertExactJson(['error' => 'Unauthenticated.']);
     }
 
     // ── Escenario 4: token con formato incorrecto ─────────────────────────────
@@ -32,7 +32,7 @@ class JwtMiddlewareTest extends TestCase
         $this->withHeaders(['Authorization' => 'Bearer not.valid.token'])
             ->getJson('/api/v1/me')
             ->assertStatus(401)
-            ->assertExactJson(['error' => 'Unauthenticated']);
+            ->assertExactJson(['error' => 'Unauthenticated.']);
     }
 
     // ── Escenario 4: cuerpo JSON usa 'error', no 'message' ───────────────────
@@ -158,7 +158,7 @@ class JwtMiddlewareTest extends TestCase
         $this->withHeaders(['Authorization' => "Bearer {$token}"])
             ->getJson('/api/v1/me')
             ->assertStatus(401)
-            ->assertExactJson(['error' => 'Unauthenticated']);
+            ->assertExactJson(['error' => 'Unauthenticated.']);
     }
 
     public function test_token_with_wrong_issuer_returns_401(): void
@@ -179,7 +179,7 @@ class JwtMiddlewareTest extends TestCase
         $this->withHeaders(['Authorization' => "Bearer {$token}"])
             ->getJson('/api/v1/me')
             ->assertStatus(401)
-            ->assertExactJson(['error' => 'Unauthenticated']);
+            ->assertExactJson(['error' => 'Unauthenticated.']);
     }
 
     public function test_token_with_wrong_audience_returns_401(): void
@@ -200,7 +200,7 @@ class JwtMiddlewareTest extends TestCase
         $this->withHeaders(['Authorization' => "Bearer {$token}"])
             ->getJson('/api/v1/me')
             ->assertStatus(401)
-            ->assertExactJson(['error' => 'Unauthenticated']);
+            ->assertExactJson(['error' => 'Unauthenticated.']);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
