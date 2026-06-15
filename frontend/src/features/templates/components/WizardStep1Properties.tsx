@@ -84,33 +84,37 @@ export function WizardStep1Properties({ errors, templateStatus, isCreator, curre
     ? (allStudies.find((s) => String(s.id) === studyId)?.course_modules ?? [])
     : [];
 
+  const needsStudyType = visibility === 'study_type' || visibility === 'study' || visibility === 'module';
+  const needsStudy = visibility === 'study' || visibility === 'module';
+  const needsModule = visibility === 'module';
+
   useEffect(() => {
-    if (hierarchyLoading || hierarchy.length === 0 || studyTypeId) return;
+    if (!needsStudyType || hierarchyLoading || hierarchy.length === 0 || studyTypeId) return;
     if (hierarchy.length === 1) {
       setValue('studyTypeId', String(hierarchy[0].id), { shouldDirty: false });
     }
-  }, [hierarchy, hierarchyLoading, studyTypeId, setValue]);
+  }, [needsStudyType, hierarchy, hierarchyLoading, studyTypeId, setValue]);
 
   useEffect(() => {
-    if (!studyTypeId || studyId) return;
+    if (!needsStudy || !studyTypeId || studyId) return;
     const typeNode = hierarchy.find((t) => String(t.id) === studyTypeId);
     if (!typeNode) return;
     const studies = typeNode.studies ?? [];
     if (studies.length > 0) {
       setValue('studyId', String(studies[0].id), { shouldDirty: false });
     }
-  }, [hierarchy, studyTypeId, studyId, setValue]);
+  }, [needsStudy, hierarchy, studyTypeId, studyId, setValue]);
 
   const moduleId = useWatch({ control, name: 'moduleId' });
   useEffect(() => {
-    if (!studyId || moduleId) return;
+    if (!needsModule || !studyId || moduleId) return;
     const studyNode = allStudies.find((s) => String(s.id) === studyId);
     if (!studyNode) return;
     const modules = studyNode.course_modules ?? [];
     if (modules.length > 0) {
       setValue('moduleId', String(modules[0].id), { shouldDirty: false });
     }
-  }, [allStudies, studyId, moduleId, setValue]);
+  }, [needsModule, allStudies, studyId, moduleId, setValue]);
 
   const showAcademicBlock = visibility !== 'personal' && visibility !== 'global';
 
