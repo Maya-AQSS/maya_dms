@@ -1,0 +1,20 @@
+apiVersion: v2
+name: maya-dms
+description: |
+  Maya DMS — Document Management System del ecosistema Maya (CEEDCV).
+  Chart autocontenido: backend (Laravel 13 + php-fpm), frontend (React + nginx),
+  worker (RabbitMQ), Reverb (WebSocket), Ingress (Traefik), ConfigMap, Secret,
+  Job de migración (helm hook pre-upgrade), NetworkPolicy y PVC RWX en NFS.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+icon: https://ceedcv.es/favicon.ico
+maintainers:
+  - name: CEEDCV Platform
+    email: platform@ceedcv.es
+keywords:
+  - maya
+  - dms
+  - laravel
+  - react
+  - traefik

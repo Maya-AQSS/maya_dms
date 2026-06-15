@@ -1,0 +1,278 @@
+# Maya DMS — values de PRODUCCIÓN (placeholders, sin credenciales reales).
+#
+# El chart se sobreescribe en deploy con: --set image.tag=<sha> y --set-file/--set
+# para los secrets desde un archivo fuera de git (o con Sealed Secrets).
+
+# Nombres y release.
+nameOverride: ""
+fullnameOverride: "maya-dms"
+serviceName: "dms"          # usado en hosts e identificadores
+namespace: "maya-dms"
+
+image:
+  registry: "gitea.ceedcv.es"
+  repository: "maya"          # imagenes: <registry>/<repository>/maya-dms-{backend,frontend}
+  tag: "latest"               # sobreescribir con --set image.tag=$(git rev-parse --short HEAD)
+  pullPolicy: IfNotPresent
+  pullSecret: "regcred"
+
+# ─── Backend (API + WeasyPrint) ───────────────────────────────────────────────
+backend:
+  enabled: true
+  replicas: 2                  # multinodo con PVC RWX → escalable
+  containerName: maya-dms-backend
+  port: 9000                   # php-fpm fastcgi (sidecar nginx en el pod sirve HTTP)
+  resources:
+    requests:
+      cpu: 200m
+      memory: 384Mi
+    limits:
+      cpu: 1000m
+      memory: 768Mi
+  env:
+    CONTAINER_ROLE: "api"
+  probes:
+    liveness:
+      path: /api/v1/health/live
+      port: 8000
+      initialDelaySeconds: 10
+      periodSeconds: 15
+    readiness:
+      path: /api/v1/health/ready
+      port: 8000
+      initialDelaySeconds: 5
+      periodSeconds: 10
+
+# ─── Frontend (React + nginx) ─────────────────────────────────────────────────
+frontend:
+  enabled: true
+  replicas: 2
+  containerName: maya-dms-frontend
+  port: 80
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
+  probes:
+    liveness:
+      path: /healthz
+      initialDelaySeconds: 5
+      periodSeconds: 15
+    readiness:
+      path: /healthz
+      initialDelaySeconds: 2
+      periodSeconds: 5
+
+# ─── Worker (queue:work RabbitMQ) ─────────────────────────────────────────────
+worker:
+  enabled: true
+  replicas: 1                  # singleton; escalar requiere idempotencia probada
+  command: "queue:work"        # informativo: el rol lo decide CONTAINER_ROLE en el entrypoint
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  env:
+    CONTAINER_ROLE: "worker"
+
+# ─── Reverb (WebSocket) ───────────────────────────────────────────────────────
+reverb:
+  enabled: true
+  replicas: 1                  # singleton salvo scaling con Redis (no soportado aquí)
+  port: 8080
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  env:
+    CONTAINER_ROLE: "reverb"
+
+# ─── Scheduler (deshabilitado en DMS) ────────────────────────────────────────
+scheduler:
+  enabled: false
+
+# ─── Migración (Job helm hook pre-upgrade) ────────────────────────────────────
+migrate:
+  enabled: true
+  backoffLimit: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# ─── Almacenamiento (PVC RWX en StorageClass maya-nfs) ────────────────────────
+# Solo DMS necesita media persistente. Montado por subPath SOLO en
+# storage/app/media (backend y worker). No montar storage/framework ni
+# bootstrap/cache (cada pod escribe a su emptyDir local).
+storage:
+  enabled: true
+  storageClass: "maya-nfs"
+  accessModes:
+    - ReadWriteMany
+  size: 20Gi
+  mountPath: /var/www/html/storage/app/media
+  subPath: ""                  # vacío = raíz del PVC
+
+# ─── Ingress (Traefik + MetalLB + CA interna) ─────────────────────────────────
+ingress:
+  enabled: true
+  className: traefik
+  host: dms.ceedcv.es
+  apiHost: dms-api.ceedcv.es
+  reverbHost: dms-reverb.ceedcv.es
+  tls:
+    enabled: true
+    secretName: maya-dms-tls   # cert de la CA interna, gestionado por cert-manager o manual
+  annotations: {}
+
+# ─── ConfigMap (no sensible) ──────────────────────────────────────────────────
+# Endpoints reales de la infra interna; los secretos van aparte.
+config:
+  APP_ENV: "production"
+  APP_DEBUG: "false"
+  APP_URL: "https://dms-api.ceedcv.es"
+  LOG_CHANNEL: "stack"
+  LOG_STACK: "daily,rabbit"
+  LOG_LEVEL: "info"
+  LOG_RABBIT_LEVEL: "warning"
+  MAYA_MESSAGING_APP: "maya-dms"
+
+  # DB (Patroni VIP) — los secretos (user/pass) los carga el Secret.
+  DB_CONNECTION: "pgsql"
+  DB_HOST: "172.29.71.252"
+  DB_PORT: "5432"
+  DB_DATABASE: "maya_dms_db"
+
+  # Redis
+  REDIS_CLIENT: "phpredis"
+  REDIS_HOST: "redis.maya-infra.svc.cluster.local"
+  REDIS_PORT: "6379"
+  REDIS_DB: "0"
+
+  # Sessions / Cache / Queue
+  CACHE_STORE: "redis"
+  QUEUE_CONNECTION: "rabbitmq"
+  SESSION_DRIVER: "redis"
+  SESSION_LIFETIME: "120"
+  SESSION_SECURE_COOKIE: "true"
+  SESSION_SAME_SITE: "lax"
+
+  # JWT / JWKS — Keycloak realm maya
+  JWKS_URL: "http://keycloak.maya-infra.svc.cluster.local:8080/realms/maya/protocol/openid-connect/certs"
+  JWT_AUDIENCE: "maya-dms"
+  JWT_ISSUER: "https://keycloak.ceedcv.es/realms/maya"
+  JWKS_CACHE_TTL: "3600"
+
+  # RabbitMQ
+  RABBITMQ_HOST: "rabbitmq.maya-infra.svc.cluster.local"
+  RABBITMQ_PORT: "5672"
+  RABBITMQ_USER: "maya_dms"
+  RABBITMQ_VHOST: "/maya_dms"
+
+  # Reverb (websocket público vía Ingress)
+  REVERB_APP_ID: "maya-dms"
+  REVERB_HOST: "dms-reverb.ceedcv.es"
+  REVERB_PORT: "443"
+  REVERB_SCHEME: "https"
+  REVERB_SERVER_HOST: "0.0.0.0"
+  REVERB_SERVER_PORT: "8080"
+  BROADCAST_CONNECTION: "reverb"
+
+  # Editor
+  EDITOR_BACKEND: "tiptap"
+
+  # CORS — explícito y forzando https (el ConfigMap manda sobre .env.example).
+  CORS_ALLOWED_ORIGINS: "https://dms.ceedcv.es"
+
+  # Mail (placeholder; ajustar al SMTP interno).
+  MAIL_MAILER: "log"
+
+  # FDW: usuarios (Odoo maya_erp vía Patroni)
+  FDW_USERS_HOST: "172.29.71.252"
+  FDW_USERS_PORT: "5432"
+  FDW_USERS_DATABASE: "maya_erp"
+  FDW_USERS_USERNAME: "maya"
+  FDW_USERS_SCHEMA: "public"
+  FDW_USERS_TABLE: "v_app_users"
+  FDW_USERS_CACHE_TTL: "900"
+
+  # FDW: permisos resueltos (federados desde maya_authorization)
+  FDW_USER_PERMISSIONS_HOST: "172.29.71.252"
+  FDW_USER_PERMISSIONS_PORT: "5432"
+  FDW_USER_PERMISSIONS_DATABASE: "maya_auth"
+  FDW_USER_PERMISSIONS_USERNAME: "maya"
+  FDW_USER_PERMISSIONS_SCHEMA: "public"
+  FDW_USER_PERMISSIONS_REMOTE_VIEW: "v_dms_user_permissions"
+
+  # Roles de gestión de equipos.
+  TEAM_MANAGEMENT_ROLES: "manager,super-admin,admin"
+
+  # Acceso este-oeste a maya_authorization (servicio interno).
+  AUTH_EXTERNAL_URL: "http://maya-auth-backend.maya-authz.svc.cluster.local:8000"
+
+# ─── Secret (placeholders — sustituir en deploy desde fichero local o SealedSecret) ──
+# IMPORTANTE: NO commitear los valores reales. Estos son placeholders documentales
+# que el chart escribe al Secret si secret.create=true; en producción se carga el
+# Secret aparte con `kubectl create secret` o un SealedSecret.
+secret:
+  create: false                # poner true SOLO si se pasa --set-file con valores reales
+  name: "maya-dms-secret"
+  data:
+    APP_KEY: "REPLACE_ME_BASE64"
+    DB_USERNAME: "REPLACE_ME"
+    DB_PASSWORD: "REPLACE_ME"
+    REDIS_PASSWORD: "REPLACE_ME"
+    RABBITMQ_PASSWORD: "REPLACE_ME"
+    KEYCLOAK_CLIENT_SECRET: "REPLACE_ME"
+    REVERB_APP_KEY: "REPLACE_ME"
+    REVERB_APP_SECRET: "REPLACE_ME"
+    FDW_USERS_PASSWORD: "REPLACE_ME"
+    FDW_USER_PERMISSIONS_PASSWORD: "REPLACE_ME"
+
+# ─── securityContext (W4) ─────────────────────────────────────────────────────
+securityContext:
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 33               # www-data en alpine
+    runAsGroup: 33
+    fsGroup: 33                  # alinear con la share NFS
+    seccompProfile:
+      type: RuntimeDefault
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+
+# ─── NetworkPolicy (W5) — deny-all + permitir el este-oeste necesario ─────────
+networkPolicy:
+  enabled: true
+  # CIDR de Traefik (ajustar si MetalLB usa otro pool).
+  traefikNamespace: "kube-system"
+  # CIDRs externos permitidos como destino (Patroni, NFS, Keycloak, RabbitMQ, Redis).
+  egressCidrs:
+    - "172.29.71.0/24"
+    - "172.29.70.7/32"
+
+# Termination y rollout.
+rollout:
+  terminationGracePeriodSeconds: 30
+  preStopSleep: 5
+  maxSurge: 1
+  maxUnavailable: 0
+
+# ─── Trust proxies (W1) — pasado al backend vía env. Por defecto Traefik del cluster ──
+trustProxies: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"

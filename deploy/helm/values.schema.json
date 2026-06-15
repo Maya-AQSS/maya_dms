@@ -1,0 +1,133 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "maya-dms values schema",
+  "type": "object",
+  "required": ["image", "ingress", "config", "storage"],
+  "properties": {
+    "nameOverride": { "type": "string" },
+    "fullnameOverride": { "type": "string" },
+    "serviceName": { "type": "string" },
+    "namespace": { "type": "string" },
+
+    "image": {
+      "type": "object",
+      "required": ["registry", "repository", "tag", "pullSecret"],
+      "properties": {
+        "registry":   { "type": "string", "minLength": 1 },
+        "repository": { "type": "string", "minLength": 1 },
+        "tag":        { "type": "string", "minLength": 1 },
+        "pullPolicy": { "enum": ["Always", "IfNotPresent", "Never"] },
+        "pullSecret": { "type": "string", "minLength": 1 }
+      }
+    },
+
+    "backend": {
+      "type": "object",
+      "properties": {
+        "enabled":  { "type": "boolean" },
+        "replicas": { "type": "integer", "minimum": 1 },
+        "port":     { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "resources": { "type": "object" }
+      }
+    },
+
+    "frontend": {
+      "type": "object",
+      "properties": {
+        "enabled":  { "type": "boolean" },
+        "replicas": { "type": "integer", "minimum": 1 }
+      }
+    },
+
+    "worker": {
+      "type": "object",
+      "properties": {
+        "enabled":  { "type": "boolean" },
+        "replicas": { "type": "integer", "minimum": 1, "maximum": 1,
+                      "description": "DMS worker is a singleton (queue:work)." }
+      }
+    },
+
+    "reverb": {
+      "type": "object",
+      "properties": {
+        "enabled":  { "type": "boolean" },
+        "replicas": { "type": "integer", "minimum": 1, "maximum": 1 }
+      }
+    },
+
+    "scheduler": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean", "const": false,
+                     "description": "Scheduler vive en maya_dashboard, no en DMS." }
+      }
+    },
+
+    "storage": {
+      "type": "object",
+      "required": ["enabled", "storageClass", "size", "mountPath"],
+      "properties": {
+        "enabled":      { "type": "boolean" },
+        "storageClass": { "type": "string", "minLength": 1 },
+        "accessModes":  {
+          "type": "array",
+          "items": { "enum": ["ReadWriteOnce", "ReadOnlyMany", "ReadWriteMany"] },
+          "minItems": 1
+        },
+        "size":      { "type": "string", "pattern": "^[0-9]+(Mi|Gi|Ti)$" },
+        "mountPath": { "type": "string", "minLength": 1 },
+        "subPath":   { "type": "string" }
+      }
+    },
+
+    "ingress": {
+      "type": "object",
+      "required": ["enabled", "host", "apiHost", "reverbHost"],
+      "properties": {
+        "enabled":     { "type": "boolean" },
+        "className":   { "type": "string" },
+        "host":        { "type": "string", "minLength": 1 },
+        "apiHost":     { "type": "string", "minLength": 1 },
+        "reverbHost":  { "type": "string", "minLength": 1 },
+        "tls": {
+          "type": "object",
+          "properties": {
+            "enabled":    { "type": "boolean" },
+            "secretName": { "type": "string" }
+          }
+        },
+        "annotations": { "type": "object" }
+      }
+    },
+
+    "config": {
+      "type": "object",
+      "required": ["APP_ENV", "APP_DEBUG", "DB_HOST", "DB_DATABASE", "JWKS_URL", "JWT_ISSUER"],
+      "properties": {
+        "APP_ENV":   { "type": "string", "const": "production" },
+        "APP_DEBUG": { "type": "string", "const": "false" },
+        "SESSION_SECURE_COOKIE": { "type": "string", "const": "true" }
+      }
+    },
+
+    "secret": {
+      "type": "object",
+      "properties": {
+        "create": { "type": "boolean" },
+        "name":   { "type": "string" }
+      }
+    },
+
+    "networkPolicy": {
+      "type": "object",
+      "properties": {
+        "enabled":           { "type": "boolean" },
+        "traefikNamespace":  { "type": "string" },
+        "egressCidrs":       { "type": "array", "items": { "type": "string" } }
+      }
+    },
+
+    "trustProxies": { "type": "string", "minLength": 1 }
+  }
+}

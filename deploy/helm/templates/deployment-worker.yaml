@@ -1,0 +1,58 @@
+{{- if .Values.worker.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "maya-dms.fullname" . }}-worker
+  labels:
+    {{- include "maya-dms.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  replicas: {{ .Values.worker.replicas }}
+  strategy:
+    # Singleton: recreate evita 2 workers consumiendo la misma cola durante rollout.
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "maya-dms.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      labels:
+        {{- include "maya-dms.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: worker
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      terminationGracePeriodSeconds: {{ .Values.rollout.terminationGracePeriodSeconds }}
+      imagePullSecrets:
+        - name: {{ .Values.image.pullSecret }}
+      securityContext:
+        {{- toYaml .Values.securityContext.podSecurityContext | nindent 8 }}
+      containers:
+        - name: maya-dms-worker
+          image: {{ include "maya-dms.backendImage" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext.containerSecurityContext | nindent 12 }}
+          envFrom:
+            {{- include "maya-dms.envFrom" . | nindent 12 }}
+          env:
+            - name: CONTAINER_ROLE
+              value: {{ .Values.worker.env.CONTAINER_ROLE | quote }}
+            {{- include "maya-dms.extraEnv" . | nindent 12 }}
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}
+          livenessProbe:
+            exec:
+              # El worker está vivo si el proceso queue:work sigue corriendo.
+              command: ["pgrep", "-f", "queue:work"]
+            initialDelaySeconds: 20
+            periodSeconds: 30
+            timeoutSeconds: 5
+          volumeMounts:
+            {{- include "maya-dms.writableVolumeMounts" . | nindent 12 }}
+            {{- include "maya-dms.mediaVolumeMount" . | nindent 12 }}
+      volumes:
+        {{- include "maya-dms.writableVolumes" . | nindent 8 }}
+        {{- include "maya-dms.mediaVolume" . | nindent 8 }}
+{{- end }}

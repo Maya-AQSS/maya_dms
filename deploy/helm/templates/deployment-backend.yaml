@@ -1,0 +1,75 @@
+{{- if .Values.backend.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "maya-dms.fullname" . }}-backend
+  labels:
+    {{- include "maya-dms.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  replicas: {{ .Values.backend.replicas }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: {{ .Values.rollout.maxSurge }}
+      maxUnavailable: {{ .Values.rollout.maxUnavailable }}
+  selector:
+    matchLabels:
+      {{- include "maya-dms.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: backend
+  template:
+    metadata:
+      labels:
+        {{- include "maya-dms.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: backend
+      annotations:
+        # Forzar rollout cuando cambia ConfigMap o Secret.
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      terminationGracePeriodSeconds: {{ .Values.rollout.terminationGracePeriodSeconds }}
+      imagePullSecrets:
+        - name: {{ .Values.image.pullSecret }}
+      securityContext:
+        {{- toYaml .Values.securityContext.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Values.backend.containerName }}
+          image: {{ include "maya-dms.backendImage" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext.containerSecurityContext | nindent 12 }}
+          ports:
+            - name: fastcgi
+              containerPort: {{ .Values.backend.port }}
+              protocol: TCP
+          envFrom:
+            {{- include "maya-dms.envFrom" . | nindent 12 }}
+          env:
+            - name: CONTAINER_ROLE
+              value: {{ .Values.backend.env.CONTAINER_ROLE | quote }}
+            {{- include "maya-dms.extraEnv" . | nindent 12 }}
+          # Probes contra el endpoint de salud servido por php-fpm vía nginx local
+          # del frontend o port-forward; aquí usamos un TCP check al puerto 9000
+          # como fallback genérico (no necesita sidecar).
+          livenessProbe:
+            tcpSocket:
+              port: fastcgi
+            initialDelaySeconds: {{ .Values.backend.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.backend.probes.liveness.periodSeconds }}
+          readinessProbe:
+            tcpSocket:
+              port: fastcgi
+            initialDelaySeconds: {{ .Values.backend.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.backend.probes.readiness.periodSeconds }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep {{ .Values.rollout.preStopSleep }}"]
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+          volumeMounts:
+            {{- include "maya-dms.writableVolumeMounts" . | nindent 12 }}
+            {{- include "maya-dms.mediaVolumeMount" . | nindent 12 }}
+      volumes:
+        {{- include "maya-dms.writableVolumes" . | nindent 8 }}
+        {{- include "maya-dms.mediaVolume" . | nindent 8 }}
+{{- end }}

@@ -1,0 +1,87 @@
+{{- if .Values.networkPolicy.enabled }}
+# Deny-all por defecto + reglas explícitas. Defensa en profundidad: la red ya es
+# interna pero NetworkPolicy evita movimientos laterales de un pod comprometido.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "maya-dms.fullname" . }}-default-deny
+  labels:
+    {{- include "maya-dms.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+# Ingress: permitir desde Traefik (Ingress controller) hacia backend/frontend/reverb.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "maya-dms.fullname" . }}-allow-traefik
+  labels:
+    {{- include "maya-dms.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "maya-dms.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.networkPolicy.traefikNamespace | quote }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.backend.port }}
+        - protocol: TCP
+          port: {{ .Values.frontend.port }}
+        - protocol: TCP
+          port: {{ .Values.reverb.port }}
+---
+# Egress: permitir DNS + tráfico hacia infra externa (Patroni, NFS, Keycloak,
+# RabbitMQ, Redis) y este-oeste hacia maya-authz.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "maya-dms.fullname" . }}-allow-egress
+  labels:
+    {{- include "maya-dms.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "maya-dms.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Egress
+  egress:
+    # DNS interno (CoreDNS de K3s).
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Este-oeste a maya-authz.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: maya-authz
+      ports:
+        - protocol: TCP
+          port: 8000
+    # Este-oeste a infra in-cluster (Redis, RabbitMQ, Keycloak en maya-infra).
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: maya-infra
+    # Egress a infra externa por CIDR (Patroni VIP, NFS, Keycloak host real).
+    - to:
+{{- range .Values.networkPolicy.egressCidrs }}
+        - ipBlock:
+            cidr: {{ . | quote }}
+{{- end }}
+{{- end }}

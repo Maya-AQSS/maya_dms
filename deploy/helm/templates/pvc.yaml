@@ -1,0 +1,20 @@
+{{- if .Values.storage.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "maya-dms.pvcName" . }}
+  labels:
+    {{- include "maya-dms.labels" . | nindent 4 }}
+  annotations:
+    # Mantener el PVC al desinstalar el release — los uploads NO se regeneran.
+    "helm.sh/resource-policy": keep
+spec:
+  accessModes:
+{{- range .Values.storage.accessModes }}
+    - {{ . }}
+{{- end }}
+  storageClassName: {{ .Values.storage.storageClass | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.size | quote }}
+{{- end }}

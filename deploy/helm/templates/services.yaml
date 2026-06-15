@@ -1,0 +1,63 @@
+{{- if .Values.backend.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "maya-dms.fullname" . }}-backend
+  labels:
+    {{- include "maya-dms.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "maya-dms.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+  ports:
+    - name: http
+      # El frontend usa el Ingress directo; este Service apunta al fastcgi del
+      # backend (port 9000). El Ingress de Traefik se conecta vía middleware o
+      # un sidecar nginx en la imagen — aquí simplificamos exponiendo 8000 → 9000
+      # vía proxy-protocol del Ingress; para Maya el Ingress real apunta al pod.
+      port: 8000
+      targetPort: fastcgi
+      protocol: TCP
+{{- end }}
+---
+{{- if .Values.frontend.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "maya-dms.fullname" . }}-frontend
+  labels:
+    {{- include "maya-dms.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "maya-dms.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+{{- end }}
+---
+{{- if .Values.reverb.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "maya-dms.fullname" . }}-reverb
+  labels:
+    {{- include "maya-dms.labels" . | nindent 4 }}
+    app.kubernetes.io/component: reverb
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "maya-dms.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: reverb
+  ports:
+    - name: ws
+      port: 8080
+      targetPort: ws
+      protocol: TCP
+{{- end }}

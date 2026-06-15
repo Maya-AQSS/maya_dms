@@ -1,0 +1,149 @@
+# syntax=docker/dockerfile:1.7-labs
+#
+# Maya DMS — backend de PRODUCCIÓN (php-fpm 8.4 alpine).
+#
+# Multi-stage:
+#   1. composer-deps  → vendor/ aislado, sin dev, sin scripts. Usa BuildKit
+#                       --secret id=composer_auth para el repo VCS privado de
+#                       ceedcv-maya/shared-editor-laravel.
+#   2. runtime        → php-fpm + extensiones + WeasyPrint + fuentes; copia el
+#                       código + vendor/ ya resuelto. Sin pcov.
+#
+# Variables runtime soportadas por entrypoint.prod.sh:
+#   CONTAINER_ROLE = api | worker | scheduler | reverb (default: api)
+#
+# Build:
+#   DOCKER_BUILDKIT=1 docker buildx build -f backend/Dockerfile.prod \
+#     --secret id=composer_auth,src=$HOME/.composer/auth.json \
+#     -t <registry>/maya/maya-dms-backend:<sha> backend
+
+############################
+# Stage 1 — Composer deps  #
+############################
+FROM composer:2.9 AS composer-deps
+
+WORKDIR /build
+
+# Extensiones nativas que las dependencias declaran como requeridas.
+# Estamos en la imagen oficial de composer (alpine + php-cli), pero falta pgsql
+# para que --no-platform-check pueda omitirse si se quiere; lo dejamos opcional
+# vía --ignore-platform-reqs porque la imagen runtime sí tiene las extensiones.
+
+# Copiamos solo los archivos necesarios para resolver dependencias — maximiza
+# cache hit cuando solo cambia el código fuente.
+COPY composer.json composer.lock ./
+
+# Acceso al VCS privado vía BuildKit secret (NO ARG, no se filtra al historial
+# de la imagen). El secret debe ser un auth.json válido de composer.
+RUN --mount=type=secret,id=composer_auth,target=/root/.composer/auth.json \
+    composer install \
+        --no-dev \
+        --optimize-autoloader \
+        --no-scripts \
+        --no-interaction \
+        --no-progress \
+        --prefer-dist \
+        --ignore-platform-reqs
+
+# Copiar el resto del código y regenerar el autoloader optimizado con todas las
+# clases ya disponibles (necesario para autoload classmap).
+COPY . .
+RUN composer dump-autoload --optimize --classmap-authoritative --no-dev
+
+
+############################
+# Stage 2 — Runtime        #
+############################
+FROM php:8.4-fpm-alpine AS runtime
+
+# Extensiones PHP nativas — mismo set que dev menos pcov (solo para coverage).
+RUN apk add --no-cache \
+        bash git curl libpng-dev libxml2-dev libzip-dev zip unzip \
+        postgresql-dev oniguruma-dev linux-headers tini \
+ && docker-php-ext-install \
+        pdo pdo_pgsql pgsql mbstring exif pcntl bcmath gd sockets zip
+
+# WeasyPrint (Python) — necesario para PDF/UA accesible en producción.
+RUN apk add --no-cache \
+        python3 py3-pip \
+        pango harfbuzz \
+        cairo gdk-pixbuf \
+        fontconfig \
+        libffi shared-mime-info \
+        ttf-dejavu ttf-liberation \
+        font-roboto font-roboto-flex font-roboto-mono \
+        font-opensans \
+        font-noto font-noto-extra \
+        font-inconsolata \
+        font-droid font-mononoki \
+ && fc-cache -f \
+ && pip3 install --no-cache-dir --break-system-packages 'weasyprint~=68.0' \
+ && weasyprint --version
+
+# Fuentes Google adicionales (Inter / Lora / Merriweather) — variable fonts oficiales.
+RUN mkdir -p /usr/share/fonts/google \
+ && cd /usr/share/fonts/google \
+ && wget -q -O 'Inter.ttf'        'https://github.com/google/fonts/raw/main/ofl/inter/Inter%5Bopsz%2Cwght%5D.ttf' \
+ && wget -q -O 'Inter-Italic.ttf' 'https://github.com/google/fonts/raw/main/ofl/inter/Inter-Italic%5Bopsz%2Cwght%5D.ttf' \
+ && wget -q -O 'Lora.ttf'         'https://github.com/google/fonts/raw/main/ofl/lora/Lora%5Bwght%5D.ttf' \
+ && wget -q -O 'Lora-Italic.ttf'  'https://github.com/google/fonts/raw/main/ofl/lora/Lora-Italic%5Bwght%5D.ttf' \
+ && wget -q -O 'Merriweather.ttf' 'https://github.com/google/fonts/raw/main/ofl/merriweather/Merriweather%5Bopsz%2Cwdth%2Cwght%5D.ttf' \
+ && wget -q -O 'Merriweather-Italic.ttf' 'https://github.com/google/fonts/raw/main/ofl/merriweather/Merriweather-Italic%5Bopsz%2Cwdth%2Cwght%5D.ttf' \
+ && for f in *.ttf; do test -s "$f" || (echo "Missing $f"; exit 1); done \
+ && fc-cache -f
+
+# phpredis: imprescindible en runtime (cache/queue/session). Sin pcov.
+ENV PHPREDIS_VERSION=6.2.0
+RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
+ && curl -fsSL "https://github.com/phpredis/phpredis/archive/refs/tags/${PHPREDIS_VERSION}.tar.gz" | tar -xz -C /tmp \
+ && cd /tmp/phpredis-${PHPREDIS_VERSION} \
+ && phpize && ./configure --enable-redis && make -j"$(nproc)" && make install \
+ && docker-php-ext-enable redis \
+ && rm -rf /tmp/phpredis-${PHPREDIS_VERSION} \
+ && apk del .build-deps
+
+# PHP de producción.
+RUN { \
+        echo 'expose_php=Off'; \
+        echo 'memory_limit=512M'; \
+        echo 'post_max_size=20M'; \
+        echo 'upload_max_filesize=20M'; \
+        echo 'max_execution_time=60'; \
+        echo 'opcache.enable=1'; \
+        echo 'opcache.enable_cli=0'; \
+        echo 'opcache.memory_consumption=192'; \
+        echo 'opcache.interned_strings_buffer=16'; \
+        echo 'opcache.max_accelerated_files=20000'; \
+        echo 'opcache.validate_timestamps=0'; \
+        echo 'opcache.preload_user=www-data'; \
+    } > /usr/local/etc/php/conf.d/zz-prod.ini
+
+WORKDIR /var/www/html
+
+# Código + vendor/ ya resuelto desde la stage anterior. www-data:www-data es el
+# usuario por defecto de php-fpm en la imagen oficial.
+COPY --from=composer-deps --chown=www-data:www-data /build /var/www/html
+
+# storage/ y bootstrap/cache se montarán normalmente como emptyDir en K8s con
+# securityContext readOnlyRootFilesystem=true. Aquí garantizamos que existen
+# como árbol mínimo para que la imagen funcione fuera de K8s.
+RUN mkdir -p storage/framework/cache/data \
+             storage/framework/sessions \
+             storage/framework/views \
+             storage/logs \
+             storage/app/media \
+             bootstrap/cache \
+ && chown -R www-data:www-data storage bootstrap/cache \
+ && chmod -R ug+rwX storage bootstrap/cache
+
+COPY --chown=www-data:www-data docker-entrypoint.prod.sh /usr/local/bin/docker-entrypoint.prod.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.prod.sh
+
+# php-fpm escucha en 9000 (api); reverb en 8080; el healthcheck del rol api
+# usa /api/v1/health/live vía nginx-sidecar o port-forward.
+EXPOSE 9000 8080
+
+USER www-data
+
+ENTRYPOINT ["tini", "--", "/usr/local/bin/docker-entrypoint.prod.sh"]
+CMD ["php-fpm", "--nodaemonize"]

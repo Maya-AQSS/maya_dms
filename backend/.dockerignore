@@ -1,0 +1,55 @@
+# Build context exclusions for Dockerfile.prod / Dockerfile.
+# Mantener mínimo: solo lo que NO debe entrar en la imagen.
+
+# Composer / Node / Python artifacts — la imagen los resuelve dentro.
+vendor/
+node_modules/
+**/__pycache__/
+
+# Secretos y configuración local — NUNCA entran en la imagen.
+.env
+.env.*
+!.env.example
+composer.local.json
+auth.json
+
+# Git y herramientas de desarrollo.
+.git/
+.gitignore
+.gitattributes
+.editorconfig
+
+# Tests — se ejecutan en CI, no en la imagen de prod.
+tests/
+phpunit.xml
+phpunit.xml.dist
+.phpunit.result.cache
+.phpunit.cache/
+pint.json
+
+# Estado runtime que no debe horneamientarse.
+storage/logs/*
+!storage/logs/.gitignore
+storage/framework/cache/*
+!storage/framework/cache/.gitignore
+storage/framework/sessions/*
+!storage/framework/sessions/.gitignore
+storage/framework/views/*
+!storage/framework/views/.gitignore
+storage/app/media/*
+storage/app/public/*
+storage/app/private/*
+bootstrap/cache/*.php
+
+# Documentación y notas de desarrollo.
+README.md
+docs/
+errores.md
+traducciones.md
+*.md
+
+# Editor / OS.
+.idea/
+.vscode/
+*.swp
+.DS_Store

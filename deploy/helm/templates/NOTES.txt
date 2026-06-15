@@ -1,0 +1,27 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Maya DMS — release "{{ .Release.Name }}" desplegado en ns "{{ .Release.Namespace }}".
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Imágenes:
+  backend:  {{ include "maya-dms.backendImage" . }}
+  frontend: {{ include "maya-dms.frontendImage" . }}
+
+Hosts (Traefik Ingress, TLS CA interna):
+  Frontend: https://{{ .Values.ingress.host }}
+  API:      https://{{ .Values.ingress.apiHost }}/api/v1
+  Reverb:   wss://{{ .Values.ingress.reverbHost }}
+
+Verificación rápida:
+  kubectl -n {{ .Release.Namespace }} get pods
+  kubectl -n {{ .Release.Namespace }} get jobs            # migrate Completed
+  kubectl -n {{ .Release.Namespace }} get ingress
+  kubectl -n {{ .Release.Namespace }} port-forward deploy/{{ include "maya-dms.fullname" . }}-backend 8000:9000 &
+  curl -s localhost:8000/api/v1/health/live
+
+Notas operativas:
+  · El Secret "{{ include "maya-dms.secretName" . }}" se asume gestionado FUERA del
+    chart (kubectl create secret / SealedSecret). Si secret.create=true, se crea
+    desde values.yaml — NO commitear valores reales.
+  · PVC "{{ include "maya-dms.pvcName" . }}" tiene la anotación
+    helm.sh/resource-policy=keep para no perder media al desinstalar.
+  · helm rollback NO revierte el esquema de BD — migraciones forward-only.

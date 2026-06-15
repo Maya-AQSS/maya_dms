@@ -1,0 +1,48 @@
+{{- if .Values.migrate.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "maya-dms.fullname" . }}-migrate
+  labels:
+    {{- include "maya-dms.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migrate
+  annotations:
+    # Pre-install para releases nuevos, pre-upgrade para los siguientes.
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "0"
+    # Borrar el Job antes de la siguiente migración para evitar conflicto de nombre
+    # y al terminar bien, para no acumular Jobs huérfanos.
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: {{ .Values.migrate.backoffLimit }}
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        {{- include "maya-dms.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: migrate
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+        - name: {{ .Values.image.pullSecret }}
+      securityContext:
+        {{- toYaml .Values.securityContext.podSecurityContext | nindent 8 }}
+      containers:
+        - name: migrate
+          image: {{ include "maya-dms.backendImage" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext.containerSecurityContext | nindent 12 }}
+          envFrom:
+            {{- include "maya-dms.envFrom" . | nindent 12 }}
+          env:
+            - name: CONTAINER_ROLE
+              value: "migrate"
+            {{- include "maya-dms.extraEnv" . | nindent 12 }}
+          resources:
+            {{- toYaml .Values.migrate.resources | nindent 12 }}
+          volumeMounts:
+            {{- include "maya-dms.writableVolumeMounts" . | nindent 12 }}
+      volumes:
+        {{- include "maya-dms.writableVolumes" . | nindent 8 }}
+{{- end }}

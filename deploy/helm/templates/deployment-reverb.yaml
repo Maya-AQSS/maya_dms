@@ -1,0 +1,63 @@
+{{- if .Values.reverb.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "maya-dms.fullname" . }}-reverb
+  labels:
+    {{- include "maya-dms.labels" . | nindent 4 }}
+    app.kubernetes.io/component: reverb
+spec:
+  replicas: {{ .Values.reverb.replicas }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "maya-dms.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: reverb
+  template:
+    metadata:
+      labels:
+        {{- include "maya-dms.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: reverb
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      # 60s para drenar conexiones WS abiertas.
+      terminationGracePeriodSeconds: 60
+      imagePullSecrets:
+        - name: {{ .Values.image.pullSecret }}
+      securityContext:
+        {{- toYaml .Values.securityContext.podSecurityContext | nindent 8 }}
+      containers:
+        - name: maya-dms-reverb
+          image: {{ include "maya-dms.backendImage" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext.containerSecurityContext | nindent 12 }}
+          ports:
+            - name: ws
+              containerPort: {{ .Values.reverb.port }}
+              protocol: TCP
+          envFrom:
+            {{- include "maya-dms.envFrom" . | nindent 12 }}
+          env:
+            - name: CONTAINER_ROLE
+              value: {{ .Values.reverb.env.CONTAINER_ROLE | quote }}
+            {{- include "maya-dms.extraEnv" . | nindent 12 }}
+          livenessProbe:
+            tcpSocket:
+              port: ws
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            tcpSocket:
+              port: ws
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.reverb.resources | nindent 12 }}
+          volumeMounts:
+            {{- include "maya-dms.writableVolumeMounts" . | nindent 12 }}
+      volumes:
+        {{- include "maya-dms.writableVolumes" . | nindent 8 }}
+{{- end }}
