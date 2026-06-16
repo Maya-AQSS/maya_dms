@@ -168,14 +168,6 @@ function blockToDiffLines(node: unknown, listPrefix = ''): string[] {
     return text ? [listPrefix + text] : [listPrefix + label];
   }
 
-  if (type === 'iframeBlock') {
-    const attrs = asRecord(n.attrs);
-    const src = String(attrs?.src ?? attrs?.url ?? '').trim();
-    if (!src) return [listPrefix + '[Iframe]'];
-    const label = tiptapImageDiffLabel({ src });
-    return [listPrefix + label.replace('[Imagen:', '[Iframe:')];
-  }
-
   // Cualquier otro nodo TipTap: aplanar hijos antes de descartar
   const inner = Array.isArray(n.content) ? n.content : [];
   if (inner.length > 0) {
@@ -191,7 +183,7 @@ function blockToDiffLines(node: unknown, listPrefix = ''): string[] {
 
 /**
  * Líneas de texto para el diff lateral (preview / validación).
- * Cubre párrafos, encabezados, listas, tablas, imágenes, código, avisos e iframes.
+ * Cubre párrafos, encabezados, listas, tablas, imágenes, código y avisos.
  * No sustituye `tiptapContentEquals` (comparación canónica del JSON).
  */
 export function extractTiptapDiffLines(content: unknown): string[] {

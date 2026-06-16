@@ -32,14 +32,12 @@ export type TiptapNode = {
   content?: TiptapNode[];
 };
 
-/** Tipos de nodo sin texto que cuentan como contenido real.
- *  Incluye iframe/alert (fix histórico: el saneado los borraba del Contenido). */
+/** Tipos de nodo sin texto que cuentan como contenido real. */
 const MEANINGFUL_NODE_TYPES: ReadonlySet<string> = new Set([
   'image',
   'table',
   'bulletList',
   'orderedList',
-  'iframe',
   'alert',
 ]);
 
@@ -49,7 +47,7 @@ const MEANINGFUL_NODE_TYPES: ReadonlySet<string> = new Set([
  * mutaba estado React durante la recursión (setMeaningFullContent por nodo).
  * Misma tabla de verdad que el validador histórico:
  * - `text` → significativo solo si `text.trim()` no está vacío.
- * - image/table/bulletList/orderedList/iframe/alert → siempre significativos.
+ * - image/table/bulletList/orderedList/alert → siempre significativos.
  * - resto → significativo si algún hijo lo es (párrafos vacíos → false).
  */
 export function hasMeaningfulTiptapNode(node: TiptapNode): boolean {
