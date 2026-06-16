@@ -153,6 +153,7 @@ export default function App() {
       navItems={navItems}
       loginPermission={DMS_PERMISSIONS.login}
       portalLoginSlug="dashboard.login"
+      onNotificationNavigate={(n) => window.location.assign(`${DASHBOARD_URL}/notifications/${n.id}`)}
       loadingInitializingMessage={t('auth.initializing')}
       loadingRedirectingMessage={t('auth.redirecting')}
       loadingProfileMessage={t('auth.initializing')}
