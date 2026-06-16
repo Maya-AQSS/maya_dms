@@ -105,6 +105,7 @@
     "tabDescription": "Descripción",
     "noChangesInSubmission": "Sin cambios en este envío.",
     "noChanges": "Este bloque no tiene cambios registrados.",
+    "noDescription": "Este bloque no tiene descripción.",
     "revision": "Revisión {{n}}",
     "legendRemoved": "Eliminado",
     "legendAdded": "Añadido",

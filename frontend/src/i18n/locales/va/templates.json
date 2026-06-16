@@ -105,6 +105,7 @@
     "tabDescription": "Descripció",
     "noChangesInSubmission": "Sense canvis en aquest enviament.",
     "noChanges": "Aquest bloc no té canvis registrats.",
+    "noDescription": "Aquest bloc no té descripció.",
     "revision": "Revisió {{n}}",
     "legendRemoved": "Eliminat",
     "legendAdded": "Afegit",

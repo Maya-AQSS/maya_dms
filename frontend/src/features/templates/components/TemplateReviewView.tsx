@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useBackNavigation } from '@ceedcv-maya/shared-hooks-react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -64,6 +64,7 @@ type HistoryPanelProps = {
   blockId: string;
   blockNumber: number | string;
   history: ReviewCycleSnapshot[];
+  hasDescription: boolean;
   onClose: () => void;
 };
 
@@ -97,10 +98,14 @@ function DiffLines({ lines }: { lines: DiffLine[] }) {
   );
 }
 
-function TemplateBlockHistoryPanel({ blockId, blockNumber, history, onClose }: HistoryPanelProps) {
+function TemplateBlockHistoryPanel({ blockId, blockNumber, history, hasDescription, onClose }: HistoryPanelProps) {
   const { t } = useTranslation('templates');
   const [ascending, setAscending] = useState(false);
   const [tab, setTab] = useState<HistoryTab>('content');
+
+  useEffect(() => {
+    if (!hasDescription && tab === 'description') setTab('content');
+  }, [hasDescription, tab]);
 
   const entriesChron = useMemo((): CycleEntry[] => {
     return history
@@ -161,21 +166,28 @@ function TemplateBlockHistoryPanel({ blockId, blockNumber, history, onClose }: H
 
       {/* Tabs */}
       <div className="shrink-0 flex border-b border-ui-border dark:border-ui-dark-border">
-        {(['content', 'description'] as HistoryTab[]).map((tabKey) => (
-          <button
-            key={tabKey}
-            type="button"
-            onClick={() => setTab(tabKey)}
-            className={[
-              'flex-1 py-2 text-2xs font-black uppercase tracking-widest transition-colors cursor-pointer',
-              tab === tabKey
-                ? 'text-odoo-purple border-b-2 border-odoo-purple -mb-px bg-odoo-purple/5'
-                : 'text-text-muted hover:text-text-primary dark:hover:text-text-dark-primary',
-            ].join(' ')}
-          >
-            {tabKey === 'content' ? t('history.tabContent') : t('history.tabDescription')}
-          </button>
-        ))}
+        {(['content', 'description'] as HistoryTab[]).map((tabKey) => {
+          const isDisabled = tabKey === 'description' && !hasDescription;
+          return (
+            <button
+              key={tabKey}
+              type="button"
+              disabled={isDisabled}
+              onClick={() => !isDisabled && setTab(tabKey)}
+              title={isDisabled ? t('history.noDescription') : undefined}
+              className={[
+                'flex-1 py-2 text-2xs font-black uppercase tracking-widest transition-colors',
+                isDisabled
+                  ? 'opacity-40 cursor-not-allowed text-text-muted dark:text-text-dark-muted'
+                  : tab === tabKey
+                    ? 'text-odoo-purple border-b-2 border-odoo-purple -mb-px bg-odoo-purple/5 cursor-pointer'
+                    : 'text-text-muted hover:text-text-primary dark:hover:text-text-dark-primary cursor-pointer',
+              ].join(' ')}
+            >
+              {tabKey === 'content' ? t('history.tabContent') : t('history.tabDescription')}
+            </button>
+          );
+        })}
       </div>
 
       {/* Body */}
@@ -457,6 +469,7 @@ export function TemplateReviewView({ template }: Props) {
               blockId={diffBlockId}
               blockNumber={(blocks.findIndex((b) => b.id === diffBlockId) + 1) || '?'}
               history={template.review_history ?? []}
+              hasDescription={Boolean(blocks.find((b) => b.id === diffBlockId)?.description)}
               onClose={() => setDiffBlockId(null)}
             />
           )
