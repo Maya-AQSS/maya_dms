@@ -1,15 +1,15 @@
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useUserProfile } from '../../user-profile';
 import { DMS_PERMISSIONS } from '../../../permissions';
 import { useDmsDashboard } from '../hooks/useDmsDashboard';
+import { useDmsDashboardFilter } from '../hooks/useDmsDashboardFilter';
 
 /** Widget StatCard: nº de documentos pendientes de validación del usuario. */
 export default function PendingValidationsWidget() {
   const { t } = useTranslation('common');
   const { hasPermission } = useUserProfile();
   const canViewDashboard = hasPermission(DMS_PERMISSIONS.index);
-  const [activeFilter, setActiveFilter] = useState<'all' | 'template' | 'document'>('all');
+  const { filter: activeFilter, setFilter: setActiveFilter } = useDmsDashboardFilter();
   const state = useDmsDashboard();
 
   const templateCount =
@@ -22,15 +22,8 @@ export default function PendingValidationsWidget() {
   const error = state.status === 'error';
 
   const emitFilter = (filter: 'all' | 'template' | 'document') => {
-    if (!canViewDashboard) {
-      return;
-    }
+    if (!canViewDashboard) return;
     setActiveFilter(filter);
-    window.dispatchEvent(
-      new CustomEvent('maya:dms:pending-validations-filter-change', {
-        detail: { filter },
-      }),
-    );
   };
 
   if (!canViewDashboard) {

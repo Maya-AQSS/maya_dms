@@ -13,6 +13,7 @@ import { Alert, PageTitle } from '@ceedcv-maya/shared-ui-react';
 import { useUserProfile } from '../../user-profile';
 import { DMS_PERMISSIONS } from '../../../permissions';
 import { WIDGET_REGISTRY, DEFAULT_LAYOUT } from '../widgets/registry';
+import { DmsDashboardFilterProvider } from '../hooks/useDmsDashboardFilter';
 
 const STORAGE_KEY = 'maya:dms:dashboard-layout';
 
@@ -143,16 +144,18 @@ export function DashboardPage() {
         </Alert>
       )}
 
-      <WidgetGrid
-        registry={WIDGET_REGISTRY}
-        layout={activeLayout}
-        onLayoutChange={handleLayoutChange}
-        editable={editable}
-        onRemoveWidget={handleRemoveWidget}
-        t={t}
-        emptyKey="dashboard.noWidgets"
-        removeAriaLabel={t('actions.delete')}
-      />
+      <DmsDashboardFilterProvider>
+        <WidgetGrid
+          registry={WIDGET_REGISTRY}
+          layout={activeLayout}
+          onLayoutChange={handleLayoutChange}
+          editable={editable}
+          onRemoveWidget={handleRemoveWidget}
+          t={t}
+          emptyKey="dashboard.noWidgets"
+          removeAriaLabel={t('actions.delete')}
+        />
+      </DmsDashboardFilterProvider>
     </>
   );
 }

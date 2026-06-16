@@ -1,6 +1,8 @@
 {
   "dashboard": {
     "noWidgets": "No hay widgets en el panel.",
+    "addWidget": "Añadir widget",
+    "exitEdit": "Listo",
     "noIndexPermission": "Tienes acceso a DocuCEED (dms.login) pero no permiso para ver el listado del panel (dms.index). Pide dms.index a un administrador.",
     "noShowPermission": "Sin permiso para abrir desde el panel (dms.show).",
     "widgets": {
@@ -84,7 +86,12 @@
     "approve": "Aprobar",
     "understood": "Entendido",
     "resize": "Redimensionar",
-    "deleteBlock": "Eliminar bloque"
+    "deleteBlock": "Eliminar bloque",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "reset": "Restablecer",
+    "delete": "Eliminar",
+    "edit": "Editar"
   },
   "fields": {
     "name": "Nombre",

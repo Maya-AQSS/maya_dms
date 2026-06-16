@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
 import { buildBackState } from '@ceedcv-maya/shared-hooks-react';
 import { useUserProfile } from '../../user-profile';
 import { DMS_PERMISSIONS } from '../../../permissions';
 import { useDmsDashboard } from '../hooks/useDmsDashboard';
+import { useDmsDashboardFilter } from '../hooks/useDmsDashboardFilter';
 import type { DocumentReviewInboxItem, TemplateReviewInboxItem } from '../../../api/dashboard';
 
 type PendingReviewItem =
@@ -28,27 +29,28 @@ export default function RecentDocumentsWidget() {
   const { hasPermission } = useUserProfile();
   const canViewDashboard = hasPermission(DMS_PERMISSIONS.index);
   const canOpenFromDashboard = hasPermission(DMS_PERMISSIONS.show);
-  const [filter, setFilter] = useState<'all' | 'template' | 'document'>('all');
+  const { filter } = useDmsDashboardFilter();
   const state = useDmsDashboard();
 
-  const items = useMemo((): PendingReviewItem[] => {
-    if (state.status !== 'ready') {
-      return [];
-    }
+  const templateInbox = state.status === 'ready' ? state.data.template_review_inbox : undefined;
+  const documentInbox = state.status === 'ready' ? state.data.document_review_inbox : undefined;
 
-    const templateItems: PendingReviewItem[] = (state.data.template_review_inbox ?? []).map(
+  const items = useMemo((): PendingReviewItem[] => {
+    if (!templateInbox || !documentInbox) return [];
+
+    const templateItems: PendingReviewItem[] = (templateInbox ?? []).map(
       (item: TemplateReviewInboxItem) => ({
         kind: 'template',
         id: item.template_id,
-        title: item.title?.trim() || 'Plantilla sin título',
+        title: item.title?.trim() || t('dashboard.widgets.templateUntitled', { defaultValue: 'Plantilla sin título' }),
         daysRemaining: item.days_remaining ?? null,
       }),
     );
-    const documentItems: PendingReviewItem[] = (state.data.document_review_inbox ?? []).map(
+    const documentItems: PendingReviewItem[] = (documentInbox ?? []).map(
       (item: DocumentReviewInboxItem) => ({
         kind: 'document',
         id: item.document_id,
-        title: item.title?.trim() || 'Documento sin título',
+        title: item.title?.trim() || t('dashboard.widgets.documentUntitled', { defaultValue: 'Documento sin título' }),
         daysRemaining: item.days_remaining ?? null,
       }),
     );
@@ -61,25 +63,18 @@ export default function RecentDocumentsWidget() {
       if (db == null) return -1;
       return da - db;
     });
-  }, [state]);
-
-  useEffect(() => {
-    const handleFilterChange = (event: Event) => {
-      const customEvent = event as CustomEvent<{ filter?: 'all' | 'template' | 'document' }>;
-      const nextFilter = customEvent.detail?.filter ?? 'all';
-      setFilter(nextFilter);
-    };
-    window.addEventListener('maya:dms:pending-validations-filter-change', handleFilterChange as EventListener);
-    return () => {
-      window.removeEventListener('maya:dms:pending-validations-filter-change', handleFilterChange as EventListener);
-    };
-  }, []);
+  }, [templateInbox, documentInbox, t]);
 
   const formatRemaining = (daysRemaining: number | null): string => {
     if (daysRemaining == null) return '—';
-    if (daysRemaining < 0) return `Vencido (${Math.abs(daysRemaining)}d)`;
-    if (daysRemaining === 0) return 'Vence hoy';
-    return `${daysRemaining}d`;
+    if (daysRemaining < 0)
+      return t('dashboard.widgets.overdue', {
+        count: Math.abs(daysRemaining),
+        defaultValue: `Vencido (${Math.abs(daysRemaining)}d)`,
+      });
+    if (daysRemaining === 0)
+      return t('dashboard.widgets.dueToday', { defaultValue: 'Vence hoy' });
+    return t('dashboard.widgets.daysLeft', { count: daysRemaining, defaultValue: `${daysRemaining}d` });
   };
 
   if (!canViewDashboard) {
@@ -93,7 +88,7 @@ export default function RecentDocumentsWidget() {
   if (state.status === 'loading') {
     return (
       <p className="text-sm text-text-secondary dark:text-text-dark-secondary py-4 text-center">
-        Cargando…
+        {t('loading')}
       </p>
     );
   }
@@ -101,7 +96,7 @@ export default function RecentDocumentsWidget() {
   if (state.status === 'error') {
     return (
       <p className="text-sm text-danger py-4 text-center">
-        No se pudieron cargar los documentos.
+        {t('dashboard.widgets.loadError', { defaultValue: 'No se pudieron cargar los documentos.' })}
       </p>
     );
   }
@@ -109,7 +104,7 @@ export default function RecentDocumentsWidget() {
   if (items.length === 0) {
     return (
       <p className="text-sm text-text-secondary dark:text-text-dark-secondary py-4 text-center">
-        No tienes pendientes de validación.
+        {t('dashboard.widgets.noPending', { defaultValue: 'No tienes pendientes de validación.' })}
       </p>
     );
   }
@@ -120,7 +115,7 @@ export default function RecentDocumentsWidget() {
   if (visibleItems.length === 0) {
     return (
       <p className="text-sm text-text-secondary dark:text-text-dark-secondary py-4 text-center">
-        No hay pendientes para ese filtro.
+        {t('dashboard.widgets.noFilteredPending', { defaultValue: 'No hay pendientes para ese filtro.' })}
       </p>
     );
   }

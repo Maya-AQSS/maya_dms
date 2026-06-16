@@ -1,6 +1,8 @@
 {
   "dashboard": {
     "noWidgets": "No widgets on the dashboard.",
+    "addWidget": "Add widget",
+    "exitEdit": "Done",
     "noIndexPermission": "You have access to DocuCEED (dms.login) but not permission to view the dashboard listings (dms.index). Ask an administrator for dms.index.",
     "noShowPermission": "No permission to open from the dashboard (dms.show).",
     "widgets": {
@@ -84,7 +86,12 @@
     "approve": "Approve",
     "understood": "Understood",
     "resize": "Resize",
-    "deleteBlock": "Delete block"
+    "deleteBlock": "Delete block",
+    "save": "Save",
+    "cancel": "Cancel",
+    "reset": "Reset",
+    "delete": "Delete",
+    "edit": "Edit"
   },
   "fields": {
     "name": "Name",
