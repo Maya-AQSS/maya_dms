@@ -23,6 +23,7 @@ class NotificationRule extends Model
     {
         return [
             'params' => 'array',
+            'conditions' => 'array',
             'audience' => 'array',
         ];
     }

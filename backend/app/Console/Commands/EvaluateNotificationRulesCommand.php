@@ -6,6 +6,7 @@ namespace App\Console\Commands;
 
 use App\Models\NotificationRule;
 use App\Models\NotificationRuleRun;
+use App\Notifications\Rules\GenericConditionEvaluator;
 use App\Notifications\Rules\PendingValidationsThresholdRule;
 use App\Notifications\Rules\ScheduledNotificationRule;
 use App\Notifications\Rules\ValidationDeadlineApproachingRule;
@@ -36,6 +37,7 @@ final class EvaluateNotificationRulesCommand extends Command
     private const EVALUATORS = [
         'dms.validation_deadline_approaching' => ValidationDeadlineApproachingRule::class,
         'dms.pending_validations_threshold' => PendingValidationsThresholdRule::class,
+        'dms.generic_condition' => GenericConditionEvaluator::class,
     ];
 
     public function handle(NotificationPublisher $publisher): int
@@ -62,6 +64,7 @@ final class EvaluateNotificationRulesCommand extends Command
                     $publisher,
                     is_array($rule->params) ? $rule->params : [],
                     (string) ($rule->severity ?? 'info'),
+                    is_array($rule->conditions) ? $rule->conditions : null,
                 );
 
                 $this->stampRun((int) $rule->id, $now);
