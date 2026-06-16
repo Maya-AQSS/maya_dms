@@ -43,6 +43,8 @@ class DocumentSubmittedForReview implements AuditableEvent
             'document_title' => $this->title,
             'review_mode' => $this->reviewMode,
             'changelog' => $this->changelog,
+            'url' => "/documents/{$this->documentId}/validate",
+            'target_app' => 'dms',
         ], static fn ($v): bool => $v !== null && $v !== '');
 
         return [

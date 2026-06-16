@@ -40,6 +40,8 @@ class DocumentReviewApproved implements AuditableEvent
             'document_title' => $this->documentTitle,
             'reviewer_name' => $this->reviewerName,
             'reviewer_stage' => $stage,
+            'url' => "/documents/{$this->documentId}/validate",
+            'target_app' => 'dms',
         ], static fn ($v): bool => $v !== null && $v !== '');
 
         return [

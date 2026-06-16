@@ -44,6 +44,8 @@ class TemplateSubmittedForReview implements AuditableEvent
             'template_name' => $this->name,
             'review_mode' => $this->reviewMode,
             'changelog' => $this->changelog,
+            'url' => "/templates/{$this->templateId}/review",
+            'target_app' => 'dms',
         ], static fn ($v): bool => $v !== null && $v !== '');
 
         return [

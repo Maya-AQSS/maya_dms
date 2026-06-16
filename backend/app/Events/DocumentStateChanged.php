@@ -51,6 +51,10 @@ class DocumentStateChanged implements AuditableEvent
             'reviewer_name' => $this->reviewerName,
             'reviewer_stage' => $this->reviewerStage,
             'rejection_reason' => $this->rejectionReason,
+            'url' => $this->newStatus === 'in_review'
+                ? "/documents/{$this->document->id}/validate"
+                : "/documents/{$this->document->id}",
+            'target_app' => 'dms',
         ], static fn ($v): bool => $v !== null);
 
         return [

@@ -49,6 +49,10 @@ class TemplateStateChanged implements AuditableEvent
             'template_name' => $name !== '' ? $name : null,
             'reviewer_name' => $this->reviewerName,
             'reviewer_stage' => $this->reviewerStage,
+            'url' => $this->newStatus === 'in_review'
+                ? "/templates/{$this->template->id}/review"
+                : "/templates/{$this->template->id}",
+            'target_app' => 'dms',
         ], static fn ($v): bool => $v !== null);
 
         return [

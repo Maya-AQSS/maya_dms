@@ -40,6 +40,8 @@ class TemplateReviewApproved implements AuditableEvent
             'template_name' => $this->templateName,
             'reviewer_name' => $this->reviewerName,
             'reviewer_stage' => $stage,
+            'url' => "/templates/{$this->templateId}/review",
+            'target_app' => 'dms',
         ], static fn ($v): bool => $v !== null && $v !== '');
 
         return [
