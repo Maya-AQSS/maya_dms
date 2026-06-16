@@ -26,18 +26,27 @@ class DocumentStateChanged implements AuditableEvent
     public function toAuditPayload(): array
     {
         $title = (string) ($this->document->title ?? '');
-        $label = $title !== '' ? "'{$title}'" : 'documento';
-        $byReviewer = $this->reviewerName ? " por {$this->reviewerName}" : '';
-        $atStage = $this->reviewerStage !== null ? " (etapa {$this->reviewerStage})" : '';
+        $stageInfo = $this->reviewerStage !== null
+            ? trans('audit.at_stage', ['stage' => $this->reviewerStage], 'es')
+            : '';
+        $byInfo = $this->reviewerName
+            ? trans('audit.by_reviewer', ['reviewer' => $this->reviewerName], 'es')
+            : '';
 
-        $description = match (true) {
-            $this->newStatus === 'rejected' => "Documento {$label} rechazado{$atStage}{$byReviewer}",
-            $this->newStatus === 'published' => "Documento {$label} publicado{$atStage}{$byReviewer}",
-            default => "Estado de documento {$label} cambiado de '{$this->oldStatus}' a '{$this->newStatus}'",
+        $key = match (true) {
+            $this->newStatus === 'rejected' => 'audit.document.state_changed.rejected',
+            $this->newStatus === 'published' => 'audit.document.state_changed.published',
+            default => 'audit.document.state_changed.default',
         };
 
         $context = array_filter([
-            'description' => $description,
+            'description' => trans($key, [
+                'title' => $title ?: trans('audit.unnamed', [], 'es'),
+                'stage_info' => $stageInfo,
+                'by_info' => $byInfo,
+                'old' => $this->oldStatus,
+                'new' => $this->newStatus,
+            ], 'es'),
             'document_title' => $title !== '' ? $title : null,
             'reviewer_name' => $this->reviewerName,
             'reviewer_stage' => $this->reviewerStage,

@@ -36,11 +36,11 @@ class TemplateSubmittedForReview implements AuditableEvent
 
     public function toAuditPayload(): array
     {
-        $label = $this->name ? "'{$this->name}'" : 'plantilla';
-        $reviewerCount = count($this->reviewers);
-
         $context = array_filter([
-            'description' => "Plantilla {$label} enviada a revisión con {$reviewerCount} validador(es)",
+            'description' => trans('audit.template.submitted_for_review', [
+                'name' => $this->name ?: trans('audit.unnamed', [], 'es'),
+                'count' => count($this->reviewers),
+            ], 'es'),
             'template_name' => $this->name,
             'review_mode' => $this->reviewMode,
             'changelog' => $this->changelog,

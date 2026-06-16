@@ -26,12 +26,17 @@ class TemplateReviewApproved implements AuditableEvent
 
     public function toAuditPayload(): array
     {
-        $label = $this->templateName ? "'{$this->templateName}'" : 'plantilla';
-        $byReviewer = $this->reviewerName ? " por {$this->reviewerName}" : '';
         $stage = (int) $this->reviewer->stage;
+        $byInfo = $this->reviewerName
+            ? trans('audit.by_reviewer', ['reviewer' => $this->reviewerName], 'es')
+            : '';
 
         $context = array_filter([
-            'description' => "Etapa {$stage} de plantilla {$label} aprobada{$byReviewer}",
+            'description' => trans('audit.template.review_approved', [
+                'stage' => $stage,
+                'name' => $this->templateName ?: trans('audit.unnamed', [], 'es'),
+                'by_info' => $byInfo,
+            ], 'es'),
             'template_name' => $this->templateName,
             'reviewer_name' => $this->reviewerName,
             'reviewer_stage' => $stage,

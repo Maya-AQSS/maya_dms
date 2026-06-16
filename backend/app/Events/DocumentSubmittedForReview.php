@@ -35,11 +35,11 @@ class DocumentSubmittedForReview implements AuditableEvent
 
     public function toAuditPayload(): array
     {
-        $label = $this->title ? "'{$this->title}'" : 'documento';
-        $reviewerCount = count($this->reviewers);
-
         $context = array_filter([
-            'description' => "Documento {$label} enviado a revisión con {$reviewerCount} validador(es)",
+            'description' => trans('audit.document.submitted_for_review', [
+                'title' => $this->title ?: trans('audit.unnamed', [], 'es'),
+                'count' => count($this->reviewers),
+            ], 'es'),
             'document_title' => $this->title,
             'review_mode' => $this->reviewMode,
             'changelog' => $this->changelog,

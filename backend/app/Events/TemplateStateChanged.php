@@ -25,18 +25,27 @@ class TemplateStateChanged implements AuditableEvent
     public function toAuditPayload(): array
     {
         $name = (string) ($this->template->name ?? '');
-        $label = $name !== '' ? "'{$name}'" : 'plantilla';
-        $byReviewer = $this->reviewerName ? " por {$this->reviewerName}" : '';
-        $atStage = $this->reviewerStage !== null ? " (etapa {$this->reviewerStage})" : '';
+        $stageInfo = $this->reviewerStage !== null
+            ? trans('audit.at_stage', ['stage' => $this->reviewerStage], 'es')
+            : '';
+        $byInfo = $this->reviewerName
+            ? trans('audit.by_reviewer', ['reviewer' => $this->reviewerName], 'es')
+            : '';
 
-        $description = match (true) {
-            $this->newStatus === 'rejected' => "Plantilla {$label} rechazada{$atStage}{$byReviewer}",
-            $this->newStatus === 'published' => "Plantilla {$label} publicada{$atStage}{$byReviewer}",
-            default => "Estado de plantilla {$label} cambiado de '{$this->oldStatus}' a '{$this->newStatus}'",
+        $key = match (true) {
+            $this->newStatus === 'rejected' => 'audit.template.state_changed.rejected',
+            $this->newStatus === 'published' => 'audit.template.state_changed.published',
+            default => 'audit.template.state_changed.default',
         };
 
         $context = array_filter([
-            'description' => $description,
+            'description' => trans($key, [
+                'name' => $name ?: trans('audit.unnamed', [], 'es'),
+                'stage_info' => $stageInfo,
+                'by_info' => $byInfo,
+                'old' => $this->oldStatus,
+                'new' => $this->newStatus,
+            ], 'es'),
             'template_name' => $name !== '' ? $name : null,
             'reviewer_name' => $this->reviewerName,
             'reviewer_stage' => $this->reviewerStage,

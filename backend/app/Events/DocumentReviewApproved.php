@@ -26,12 +26,17 @@ class DocumentReviewApproved implements AuditableEvent
 
     public function toAuditPayload(): array
     {
-        $label = $this->documentTitle ? "'{$this->documentTitle}'" : 'documento';
-        $byReviewer = $this->reviewerName ? " por {$this->reviewerName}" : '';
         $stage = (int) $this->review->stage;
+        $byInfo = $this->reviewerName
+            ? trans('audit.by_reviewer', ['reviewer' => $this->reviewerName], 'es')
+            : '';
 
         $context = array_filter([
-            'description' => "Etapa {$stage} de documento {$label} aprobada{$byReviewer}",
+            'description' => trans('audit.document.review_approved', [
+                'stage' => $stage,
+                'title' => $this->documentTitle ?: trans('audit.unnamed', [], 'es'),
+                'by_info' => $byInfo,
+            ], 'es'),
             'document_title' => $this->documentTitle,
             'reviewer_name' => $this->reviewerName,
             'reviewer_stage' => $stage,
