@@ -65,7 +65,7 @@ export function ViewCardHeader({
       className="flex items-stretch border-b border-ui-border dark:border-ui-dark-border shrink-0 bg-white dark:bg-ui-dark-card"
     >
       <div className="px-4 py-4 flex items-center shrink-0 border-r border-ui-border dark:border-ui-dark-border bg-ui-body/30 dark:bg-ui-dark-bg/50">
-        <span className="text-2xs font-black uppercase tracking-[0.2em] text-odoo-purple">
+        <span className="text-2xs font-black uppercase tracking-[0.2em] text-odoo-purple dark:text-odoo-dark-purple">
           Bloque #{blockSortOrder ?? '?'}
         </span>
       </div>
@@ -121,7 +121,7 @@ function QuotedReply({
     >
       <div className="w-1 bg-odoo-purple shrink-0" />
       <div className="px-3 py-2 bg-black/5 dark:bg-white/5 group-hover:bg-odoo-purple/5 transition-colors flex-1 min-w-0">
-        <p className="text-2xs font-black text-odoo-purple mb-0.5 truncate">
+        <p className="text-2xs font-black text-odoo-purple dark:text-odoo-dark-purple mb-0.5 truncate">
           {parent.author?.name || 'Usuario'}
         </p>
         <p className="text-xs text-text-muted dark:text-text-dark-muted line-clamp-2 break-words whitespace-pre-wrap">
@@ -313,7 +313,7 @@ function CommentItem({
                   type="button"
                   onClick={handleStartEdit}
                   aria-label={t('common:actions.edit')}
-                  className="p-1 rounded-full text-text-muted hover:text-odoo-purple hover:bg-odoo-purple/10 transition-colors"
+                  className="p-1 rounded-full text-text-muted dark:text-text-dark-muted hover:text-odoo-purple dark:hover:text-odoo-dark-purple hover:bg-odoo-purple/10 dark:hover:bg-odoo-dark-purple/10 transition-colors"
                 >
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 0l.172.172a2 2 0 010 2.828L12 15H9v-3z" />
@@ -370,7 +370,7 @@ function CommentItem({
             type="button"
             onClick={handleMarkAsRead}
             disabled={markReadLoading}
-            className="text-xs font-bold text-odoo-purple hover:underline disabled:opacity-40"
+            className="text-xs font-bold text-odoo-purple dark:text-odoo-dark-purple hover:underline disabled:opacity-40"
           >
             {markReadLoading ? t('comments.markAsReadLoading') : t('comments.markAsRead')}
           </button>
@@ -386,7 +386,7 @@ function CommentItem({
               e.stopPropagation();
               onReplyClick(comment.id, comment.author?.name || 'Usuario');
             }}
-            className="text-xs font-bold text-odoo-purple hover:underline opacity-0 group-hover/comment:opacity-100 transition-opacity duration-150"
+            className="text-xs font-bold text-odoo-purple dark:text-odoo-dark-purple hover:underline opacity-0 group-hover/comment:opacity-100 transition-opacity duration-150"
           >
             Responder
           </button>
@@ -537,7 +537,7 @@ export function BlockCommentsCard({
             onClick={() => void handleMarkAllAsRead()}
             disabled={markAllLoading || unreadFromOthers.length === 0}
             title={unreadFromOthers.length === 0 ? t('comments.markAllAsReadNone') : undefined}
-            className="text-2xs font-black uppercase tracking-widest text-odoo-purple hover:text-odoo-purple/80 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-odoo-purple transition-colors"
+            className="text-2xs font-black uppercase tracking-widest text-odoo-purple dark:text-odoo-dark-purple hover:text-odoo-purple/80 dark:hover:text-odoo-dark-purple/80 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-odoo-purple dark:disabled:hover:text-odoo-dark-purple transition-colors"
           >
             {markAllLoading ? t('comments.markAllAsReadLoading') : t('comments.markAllAsRead')}
           </button>
@@ -650,7 +650,7 @@ export function BlockCommentsCard({
             {replyingTo && (
               <div className="flex items-stretch mb-2 rounded-lg overflow-hidden border-l-4 border-odoo-purple bg-odoo-purple/10 animate-in slide-in-from-bottom-1">
                 <div className="flex-1 px-3 py-2 min-w-0">
-                  <p className="text-2xs font-black text-odoo-purple mb-0.5 truncate">
+                  <p className="text-2xs font-black text-odoo-purple dark:text-odoo-dark-purple mb-0.5 truncate">
                     {replyingTo.name}
                   </p>
                   {replyingToMessage && (
@@ -661,7 +661,7 @@ export function BlockCommentsCard({
                 </div>
                 <button
                   onClick={() => setReplyingTo(null)}
-                  className="px-3 flex items-center justify-center hover:bg-odoo-purple/20 transition-colors text-odoo-purple"
+                  className="px-3 flex items-center justify-center hover:bg-odoo-purple/20 dark:hover:bg-odoo-dark-purple/20 transition-colors text-odoo-purple dark:text-odoo-dark-purple"
                 >
                   ✕
                 </button>

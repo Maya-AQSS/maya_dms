@@ -167,8 +167,8 @@ function ValidatorSection({
                 onClick={() => onValidationTypeChange(t)}
                 className={`px-2 py-0.5 rounded text-xs font-bold transition-all border ${
                   validationType === t
-                    ? 'bg-odoo-purple text-text-inverse border-odoo-purple'
-                    : 'bg-transparent text-text-secondary border-ui-border hover:border-odoo-purple/50'
+                    ? 'bg-odoo-purple dark:bg-odoo-dark-purple text-text-inverse border-odoo-purple dark:border-odoo-dark-purple'
+                    : 'bg-transparent text-text-secondary dark:text-text-dark-secondary border-ui-border dark:border-ui-dark-border hover:border-odoo-purple/50 dark:hover:border-odoo-dark-purple/50'
                 }`}
               >
                 {t === 'libre' ? 'Libre' : 'Ordenada'}

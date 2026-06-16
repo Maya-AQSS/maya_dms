@@ -102,7 +102,7 @@ export function IndexBlockEditor({ blocks, currentBlockId, value, onChange }: In
             <button
               type="button"
               onClick={toggleAll}
-              className="shrink-0 text-xs font-bold text-odoo-purple hover:underline"
+              className="shrink-0 text-xs font-bold text-odoo-purple dark:text-odoo-dark-purple hover:underline"
             >
               {allIncluded ? t('index.none') : t('index.all')}
             </button>

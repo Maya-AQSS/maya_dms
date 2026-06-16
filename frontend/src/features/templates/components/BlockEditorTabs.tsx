@@ -54,8 +54,8 @@ export function BlockEditorTabs({
           className={[
             'px-3 py-2 text-sm font-medium transition-colors relative',
             activeTab === tab.id
-              ? 'text-odoo-purple border-b-2 border-odoo-purple'
-              : 'text-text-secondary hover:text-text-primary',
+              ? 'text-odoo-purple dark:text-odoo-dark-purple border-b-2 border-odoo-purple dark:border-odoo-dark-purple'
+              : 'text-text-secondary dark:text-text-dark-secondary hover:text-text-primary dark:hover:text-text-dark-primary',
             'disabled:opacity-50 disabled:pointer-events-none',
           ].join(' ')}
         >

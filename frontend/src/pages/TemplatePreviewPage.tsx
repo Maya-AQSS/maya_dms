@@ -451,7 +451,7 @@ export function TemplatePreviewPage() {
         onClick={() => setViewMode(prev => (prev === 'edit' ? 'themed' : 'edit'))}
         className={[
           'rounded-full px-2.5 py-1 font-medium transition-colors',
-          viewMode === 'edit' ? 'bg-white dark:opacity-60 shadow-sm text-text-primary duration-900 group-hover:translate-x-2 group-hover:animate-slide group-hover:pl-0 group-hover:pr-5 group-hover:opacity-100 dark:bg-dark' : 'text-text-mutted',
+          viewMode === 'edit' ? 'bg-white dark:opacity-60 shadow-sm text-text-primary duration-900 group-hover:translate-x-2 group-hover:animate-slide group-hover:pl-0 group-hover:pr-5 group-hover:opacity-100 dark:bg-dark' : 'text-text-muted dark:text-text-dark-muted',
         ].join(' ')}
         aria-pressed={viewMode === 'edit'}
       >
@@ -462,7 +462,7 @@ export function TemplatePreviewPage() {
         onClick={() => setViewMode(prev => (prev === 'themed' ? 'edit' : 'themed'))}
         className={[
           'rounded-full px-2.5 py-1 font-medium transition-colors',
-          viewMode === 'themed' ? 'bg-white dark:opacity-60 shadow-sm text-text-primary duration-900 group-hover:-translate-x-2 group-hover:animate-slide group-hover:pr-0 group-hover:pl-5 group-hover:opacity-100 dark:bg-dark ' : 'text-text-mutted',
+          viewMode === 'themed' ? 'bg-white dark:opacity-60 shadow-sm text-text-primary duration-900 group-hover:-translate-x-2 group-hover:animate-slide group-hover:pr-0 group-hover:pl-5 group-hover:opacity-100 dark:bg-dark ' : 'text-text-muted dark:text-text-dark-muted',
         ].join(' ')}
         aria-pressed={viewMode === 'themed'}
       >
@@ -743,7 +743,7 @@ export function TemplatePreviewPage() {
                               onClick={(e) => { e.stopPropagation(); setActiveView({ blockId: block.id, mode: 'info' }); }}
                               className={[
                                 'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
-                                infoActive ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm' : 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5'
+                                infoActive ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm' : 'border-ui-border dark:border-ui-dark-border text-text-muted dark:text-text-dark-muted bg-ui-body/30 hover:text-odoo-purple dark:hover:text-odoo-dark-purple hover:border-odoo-purple/50 dark:hover:border-odoo-dark-purple/50 hover:bg-odoo-purple/5 dark:hover:bg-odoo-dark-purple/5'
                               ].join(' ')}
                               title={t('review.viewDescription')}
                             >
@@ -761,7 +761,7 @@ export function TemplatePreviewPage() {
                                 'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
                                 isSelected && activeView?.mode === 'comments'
                                   ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm'
-                                  : 'border-ui-border dark:border-ui-dark-border text-text bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5',
+                                  : 'border-ui-border dark:border-ui-dark-border text-text-muted dark:text-text-dark-muted bg-ui-body/30 hover:text-odoo-purple dark:hover:text-odoo-dark-purple hover:border-odoo-purple/50 dark:hover:border-odoo-dark-purple/50 hover:bg-odoo-purple/5 dark:hover:bg-odoo-dark-purple/5',
                               ].join(' ')}
                               >
                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>

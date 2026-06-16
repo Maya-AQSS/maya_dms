@@ -1971,7 +1971,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                   onClick={() => setBlocksViewMode(prev => (prev === 'per-block' ? 'continuous' : 'per-block'))}
                   className={[
                     'rounded-full px-2.5 py-1 font-medium transition-colors',
-                    blocksViewMode === 'per-block' ? 'bg-white dark:opacity-60 shadow-sm text-text-primary duration-900 group-hover:translate-x-2 group-hover:animate-slide group-hover:pl-0 group-hover:pr-5 dark:bg-dark' : 'text-text-mutted',
+                    blocksViewMode === 'per-block' ? 'bg-white dark:opacity-60 shadow-sm text-text-primary duration-900 group-hover:translate-x-2 group-hover:animate-slide group-hover:pl-0 group-hover:pr-5 dark:bg-dark' : 'text-text-muted dark:text-text-dark-muted',
                   ].join(' ')}
                   aria-pressed={blocksViewMode === 'per-block'}
                 >
@@ -1982,7 +1982,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                   onClick={() => setBlocksViewMode(prev => (prev === 'continuous' ? 'per-block' : 'continuous'))}
                   className={[
                     'rounded-full px-2.5 py-1 font-medium transition-colors',
-                    blocksViewMode === 'continuous' ? 'bg-white dark:opacity-60 shadow-sm text-text-primary duration-900 group-hover:-translate-x-2 group-hover:animate-slide group-hover:pr-0 group-hover:pl-5 dark:bg-dark' : 'text-text-mutted',
+                    blocksViewMode === 'continuous' ? 'bg-white dark:opacity-60 shadow-sm text-text-primary duration-900 group-hover:-translate-x-2 group-hover:animate-slide group-hover:pr-0 group-hover:pl-5 dark:bg-dark' : 'text-text-muted dark:text-text-dark-muted',
                   ].join(' ')}
                   aria-pressed={blocksViewMode === 'continuous'}
                   title={t('documents:wizard.viewMode.continuousHint', 'Documento completo con edición inline')}

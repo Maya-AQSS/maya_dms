@@ -697,7 +697,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
         onClick={() => setViewMode(prev => (prev === 'edit' ? 'themed' : 'edit'))}
         className={[
           'rounded-full px-2.5 py-1 font-medium transition-colors',
-          viewMode === 'edit' ? 'bg-white dark:opacity-60 shadow-sm text-text-primary duration-900 group-hover:translate-x-2 group-hover:animate-slide group-hover:pl-0 group-hover:pr-5 group-hover:opacity-100 dark:bg-dark' : 'text-text-mutted',
+          viewMode === 'edit' ? 'bg-white dark:opacity-60 shadow-sm text-text-primary duration-900 group-hover:translate-x-2 group-hover:animate-slide group-hover:pl-0 group-hover:pr-5 group-hover:opacity-100 dark:bg-dark' : 'text-text-muted dark:text-text-dark-muted',
         ].join(' ')}
         aria-pressed={viewMode === 'edit'}
       >
@@ -708,7 +708,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
         onClick={() => setViewMode(prev => (prev === 'themed' ? 'edit' : 'themed'))}
         className={[
           'rounded-full px-2.5 py-1 font-medium transition-colors',
-          viewMode === 'themed' ? 'bg-white dark:opacity-60 shadow-sm text-text-primary duration-900 group-hover:-translate-x-2 group-hover:animate-slide group-hover:pr-0 group-hover:pl-5 group-hover:opacity-100 dark:bg-dark ' : 'text-text-mutted',
+          viewMode === 'themed' ? 'bg-white dark:opacity-60 shadow-sm text-text-primary duration-900 group-hover:-translate-x-2 group-hover:animate-slide group-hover:pr-0 group-hover:pl-5 group-hover:opacity-100 dark:bg-dark ' : 'text-text-muted dark:text-text-dark-muted',
         ].join(' ')}
         aria-pressed={viewMode === 'themed'}
       >
@@ -1118,8 +1118,8 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                     const nodes = normalizeBlockContentForEditor(block.content ?? block.default_content);
                     const hasDescription = !!block.description;
                     const btnBase = 'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider';
-                    const btnActive = 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm';
-                    const btnIdle = 'border-ui-border dark:border-ui-dark-border bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5';
+                    const btnActive = 'border-odoo-purple dark:border-odoo-dark-purple text-odoo-purple dark:text-odoo-dark-purple bg-odoo-purple/10 dark:bg-odoo-dark-purple/10 shadow-sm';
+                    const btnIdle = 'border-ui-border dark:border-ui-dark-border bg-ui-body/30 text-text-muted dark:text-text-dark-muted hover:text-odoo-purple dark:hover:text-odoo-dark-purple hover:border-odoo-purple/50 dark:hover:border-odoo-dark-purple/50 hover:bg-odoo-purple/5 dark:hover:bg-odoo-dark-purple/5';
 
                     return (
                       <section
@@ -1169,7 +1169,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                                 onClick={(e) => { e.stopPropagation(); openValidateView(blockId, 'info'); }}
                                 className={[
                                   'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
-                                  infoActive ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm' : 'border-ui-border dark:border-ui-dark-border bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5'
+                                  infoActive ? 'border-odoo-purple dark:border-odoo-dark-purple text-odoo-purple dark:text-odoo-dark-purple bg-odoo-purple/10 dark:bg-odoo-dark-purple/10 shadow-sm' : 'border-ui-border dark:border-ui-dark-border bg-ui-body/30 text-text-muted dark:text-text-dark-muted hover:text-odoo-purple dark:hover:text-odoo-dark-purple hover:border-odoo-purple/50 dark:hover:border-odoo-dark-purple/50 hover:bg-odoo-purple/5 dark:hover:bg-odoo-dark-purple/5'
                                 ].join(' ')}
                                 title={t('preview.viewBlockDescriptionTitle')}
                               >
@@ -1188,7 +1188,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                               onClick={(e) => { e.stopPropagation(); if (block.document_block_id) openValidateView(blockId, 'comments'); }}
                               className={[
                                 'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
-                                !block.document_block_id ? 'cursor-not-allowed opacity-40 border-ui-border dark:border-ui-dark-border bg-ui-body/30' : commentsActive ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm' : 'border-ui-border dark:border-ui-dark-border bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5',
+                                !block.document_block_id ? 'cursor-not-allowed opacity-40 border-ui-border dark:border-ui-dark-border bg-ui-body/30' : commentsActive ? 'border-odoo-purple dark:border-odoo-dark-purple text-odoo-purple dark:text-odoo-dark-purple bg-odoo-purple/10 dark:bg-odoo-dark-purple/10 shadow-sm' : 'border-ui-border dark:border-ui-dark-border bg-ui-body/30 text-text-muted dark:text-text-dark-muted hover:text-odoo-purple dark:hover:text-odoo-dark-purple hover:border-odoo-purple/50 dark:hover:border-odoo-dark-purple/50 hover:bg-odoo-purple/5 dark:hover:bg-odoo-dark-purple/5',
                               ].join(' ')}
                             >
                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -1410,7 +1410,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                               onClick={(e) => { e.stopPropagation(); setSelectedReviewView(null); setDiffBlockId(prev => prev === block.template_block_id ? null : block.template_block_id); }}
                               className={[
                                 'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
-                                diffBlockId === block.template_block_id ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm' : 'border-ui-border dark:border-ui-dark-border bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5'
+                                diffBlockId === block.template_block_id ? 'border-odoo-purple dark:border-odoo-dark-purple text-odoo-purple dark:text-odoo-dark-purple bg-odoo-purple/10 dark:bg-odoo-dark-purple/10 shadow-sm' : 'border-ui-border dark:border-ui-dark-border bg-ui-body/30 text-text-muted dark:text-text-dark-muted hover:text-odoo-purple dark:hover:text-odoo-dark-purple hover:border-odoo-purple/50 dark:hover:border-odoo-dark-purple/50 hover:bg-odoo-purple/5 dark:hover:bg-odoo-dark-purple/5'
                               ].join(' ')}
                               title={t('preview.viewBlockChangesTitle')}
                             >
@@ -1426,7 +1426,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                               onClick={(e) => { e.stopPropagation(); setSelectedReviewView({ blockId, mode: 'info' }); }}
                               className={[
                                 'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
-                                infoActive ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm' : 'border-ui-border dark:border-ui-dark-border bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5'
+                                infoActive ? 'border-odoo-purple dark:border-odoo-dark-purple text-odoo-purple dark:text-odoo-dark-purple bg-odoo-purple/10 dark:bg-odoo-dark-purple/10 shadow-sm' : 'border-ui-border dark:border-ui-dark-border bg-ui-body/30 text-text-muted dark:text-text-dark-muted hover:text-odoo-purple dark:hover:text-odoo-dark-purple hover:border-odoo-purple/50 dark:hover:border-odoo-dark-purple/50 hover:bg-odoo-purple/5 dark:hover:bg-odoo-dark-purple/5'
                               ].join(' ')}
                               title={t('preview.viewBlockDescriptionTitle')}
                             >
@@ -1442,7 +1442,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                             onClick={(e) => { e.stopPropagation(); if (block.document_block_id) setSelectedReviewView({ blockId, mode: 'comments' }); }}
                             className={[
                               'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
-                              !block.document_block_id ? 'cursor-not-allowed opacity-40 border-ui-border dark:border-ui-dark-border bg-ui-body/30' : commentsActive ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm' : 'border-ui-border dark:border-ui-dark-border bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5'
+                              !block.document_block_id ? 'cursor-not-allowed opacity-40 border-ui-border dark:border-ui-dark-border bg-ui-body/30' : commentsActive ? 'border-odoo-purple dark:border-odoo-dark-purple text-odoo-purple dark:text-odoo-dark-purple bg-odoo-purple/10 dark:bg-odoo-dark-purple/10 shadow-sm' : 'border-ui-border dark:border-ui-dark-border bg-ui-body/30 text-text-muted dark:text-text-dark-muted hover:text-odoo-purple dark:hover:text-odoo-dark-purple hover:border-odoo-purple/50 dark:hover:border-odoo-dark-purple/50 hover:bg-odoo-purple/5 dark:hover:bg-odoo-dark-purple/5'
                             ].join(' ')}
                           >
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
