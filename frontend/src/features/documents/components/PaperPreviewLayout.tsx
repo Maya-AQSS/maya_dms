@@ -169,8 +169,8 @@ export function PaperPreviewLayout({
       />
       </div>
 
-      <div className={sidebar ? 'flex flex-row flex-nowrap items-start min-h-screen relative overflow-visible gap-8' : ''}>
-        <div className={sidebar ? 'flex-1' : ''}>
+      <div className={sidebar && !isFullscreen ? 'flex flex-row flex-nowrap items-start min-h-screen relative overflow-visible gap-8' : ''}>
+        <div className={sidebar && !isFullscreen ? 'flex-1' : ''}>
           <article
             className="mx-auto bg-white dark:bg-ui-dark-card shadow-xl preview-content"
             style={articleStyle}
@@ -179,7 +179,7 @@ export function PaperPreviewLayout({
           </article>
         </div>
 
-        {sidebar && (
+        {sidebar && !isFullscreen && (
           <div
             className="flex-1 min-w-0 sticky top-24 self-start z-30"
             style={{ minWidth: '320px', maxWidth: '70vh', height: 'calc(100vh - 200px)' }}
