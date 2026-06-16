@@ -21,10 +21,22 @@ class TemplateReviewApproved implements AuditableEvent
         public readonly TemplateReviewer $reviewer,
         public readonly string $actorId,
         public readonly ?string $reviewerName = null,
+        public readonly ?string $templateName = null,
     ) {}
 
     public function toAuditPayload(): array
     {
+        $label = $this->templateName ? "'{$this->templateName}'" : 'plantilla';
+        $byReviewer = $this->reviewerName ? " por {$this->reviewerName}" : '';
+        $stage = (int) $this->reviewer->stage;
+
+        $context = array_filter([
+            'description' => "Etapa {$stage} de plantilla {$label} aprobada{$byReviewer}",
+            'template_name' => $this->templateName,
+            'reviewer_name' => $this->reviewerName,
+            'reviewer_stage' => $stage,
+        ], static fn ($v): bool => $v !== null && $v !== '');
+
         return [
             'applicationSlug' => MessagingConfig::appSlug(),
             'entityType' => 'template',
@@ -32,13 +44,14 @@ class TemplateReviewApproved implements AuditableEvent
             'action' => 'review_approved',
             'userId' => $this->actorId,
             'previousValue' => [
-                'stage' => (int) $this->reviewer->stage,
+                'stage' => $stage,
                 'status' => 'pending',
             ],
             'newValue' => [
-                'stage' => (int) $this->reviewer->stage,
+                'stage' => $stage,
                 'status' => 'approved',
                 'reviewer_name' => $this->reviewerName,
+                '_context' => $context,
             ],
         ];
     }

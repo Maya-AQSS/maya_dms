@@ -24,6 +24,24 @@ class TemplateStateChanged implements AuditableEvent
 
     public function toAuditPayload(): array
     {
+        $name = (string) ($this->template->name ?? '');
+        $label = $name !== '' ? "'{$name}'" : 'plantilla';
+        $byReviewer = $this->reviewerName ? " por {$this->reviewerName}" : '';
+        $atStage = $this->reviewerStage !== null ? " (etapa {$this->reviewerStage})" : '';
+
+        $description = match (true) {
+            $this->newStatus === 'rejected' => "Plantilla {$label} rechazada{$atStage}{$byReviewer}",
+            $this->newStatus === 'published' => "Plantilla {$label} publicada{$atStage}{$byReviewer}",
+            default => "Estado de plantilla {$label} cambiado de '{$this->oldStatus}' a '{$this->newStatus}'",
+        };
+
+        $context = array_filter([
+            'description' => $description,
+            'template_name' => $name !== '' ? $name : null,
+            'reviewer_name' => $this->reviewerName,
+            'reviewer_stage' => $this->reviewerStage,
+        ], static fn ($v): bool => $v !== null);
+
         return [
             'applicationSlug' => MessagingConfig::appSlug(),
             'entityType' => 'template',
@@ -31,13 +49,11 @@ class TemplateStateChanged implements AuditableEvent
             'action' => 'state_changed',
             'userId' => $this->actorId,
             'previousValue' => ['status' => $this->oldStatus],
-            // Cuando la transición la provoca la decisión de un validador (rechazo o
-            // aprobación final que publica), adjuntamos su etapa y nombre; en el resto
-            // de transiciones quedan ausentes.
             'newValue' => array_filter([
                 'status' => $this->newStatus,
                 'stage' => $this->reviewerStage,
                 'reviewer_name' => $this->reviewerName,
+                '_context' => $context,
             ], static fn ($v): bool => $v !== null),
         ];
     }

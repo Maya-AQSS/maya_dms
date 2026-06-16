@@ -313,6 +313,7 @@ class TemplateReviewService
                 $reviewer,
                 $actorId,
                 $this->userDirectoryRepository->findNameById($actorId),
+                (string) ($template->name ?? ''),
             );
 
             $fresh = $this->templateRepository->refresh($template);

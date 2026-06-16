@@ -36,6 +36,16 @@ class TemplateSubmittedForReview implements AuditableEvent
 
     public function toAuditPayload(): array
     {
+        $label = $this->name ? "'{$this->name}'" : 'plantilla';
+        $reviewerCount = count($this->reviewers);
+
+        $context = array_filter([
+            'description' => "Plantilla {$label} enviada a revisión con {$reviewerCount} validador(es)",
+            'template_name' => $this->name,
+            'review_mode' => $this->reviewMode,
+            'changelog' => $this->changelog,
+        ], static fn ($v): bool => $v !== null && $v !== '');
+
         return [
             'applicationSlug' => MessagingConfig::appSlug(),
             'entityType' => 'template',
@@ -54,6 +64,7 @@ class TemplateSubmittedForReview implements AuditableEvent
                     'module_id' => $this->moduleId,
                 ], static fn ($v) => $v !== null && $v !== ''),
                 'changelog' => $this->changelog,
+                '_context' => $context,
             ],
         ];
     }

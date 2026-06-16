@@ -35,6 +35,16 @@ class DocumentSubmittedForReview implements AuditableEvent
 
     public function toAuditPayload(): array
     {
+        $label = $this->title ? "'{$this->title}'" : 'documento';
+        $reviewerCount = count($this->reviewers);
+
+        $context = array_filter([
+            'description' => "Documento {$label} enviado a revisión con {$reviewerCount} validador(es)",
+            'document_title' => $this->title,
+            'review_mode' => $this->reviewMode,
+            'changelog' => $this->changelog,
+        ], static fn ($v): bool => $v !== null && $v !== '');
+
         return [
             'applicationSlug' => MessagingConfig::appSlug(),
             'entityType' => 'document',
@@ -52,6 +62,7 @@ class DocumentSubmittedForReview implements AuditableEvent
                     'module_id' => $this->moduleId,
                 ], static fn ($v) => $v !== null && $v !== ''),
                 'changelog' => $this->changelog,
+                '_context' => $context,
             ],
         ];
     }

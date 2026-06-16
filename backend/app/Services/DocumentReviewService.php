@@ -124,6 +124,7 @@ class DocumentReviewService
                 $review,
                 $actorId,
                 $this->userDirectoryRepository->findNameById($actorId),
+                (string) ($document->title ?? ''),
             );
 
             $refreshed = $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
