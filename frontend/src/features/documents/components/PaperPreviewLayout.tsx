@@ -122,17 +122,25 @@ export function PaperPreviewLayout({
   // - Modo fullscreen: 100% del contenedor disponible (sin aside) con un
   //   max razonable para legibilidad en pantallas muy anchas.
   const articleStyle: CSSProperties = isFullscreen
-  ? {
-      width: '100%',
-      maxWidth: 'none',
-      minHeight: 'calc(100vh - 14rem)',
-      padding: viewMode === 'themed' ? 0 : '64px 96px',
-    }
-  : {
-      maxWidth: '760px',
-      minHeight: 'calc(100vh - 12rem)',
-      padding: viewMode === 'themed' ? 0 : '56px 72px',
-    }
+    ? viewMode === 'themed'
+      ? {
+          // Vista PDF fullscreen: mismo ancho que vista normal para que el PDF
+          // no cambie de tamaño. mx-auto (en className) lo centra en el overlay.
+          maxWidth: '760px',
+          minHeight: 'calc(100vh - 14rem)',
+          padding: 0,
+        }
+      : {
+          width: '100%',
+          maxWidth: 'none',
+          minHeight: 'calc(100vh - 14rem)',
+          padding: '64px 96px',
+        }
+    : {
+        maxWidth: '760px',
+        minHeight: 'calc(100vh - 12rem)',
+        padding: viewMode === 'themed' ? 0 : '56px 72px',
+      }
 
   const fullscreenButton = (
     <Button

@@ -105,7 +105,7 @@ export function PagedThemedPreview({ kind, id, className }: PagedThemedPreviewPr
       // nuestro backend autenticado, así que el riesgo es bajo, pero
       // limitamos por defensa en profundidad.
       sandbox="allow-scripts allow-same-origin"
-      className={`h-full w-[80vh] flex border-0 bg-white ${className ?? ''}`}
+      className={`h-full w-full border-0 bg-white ${className ?? ''}`}
     />
   );
 }
