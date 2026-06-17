@@ -2542,9 +2542,13 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                   value={detail ? documentStatusLabel(detail.status, t) : ''}
                 />
                 <DocSummaryRow label={t('list.versionColumn')} value={detail ? `v${detail.current_version}` : ''} />
-                <DocSummaryRow label={t('fields.studyType')} value={detail?.study_type_id} />
-                <DocSummaryRow label={t('fields.study')} value={detail?.study_id} />
-                <DocSummaryRow label={t('fields.module')} value={detail?.module_id} />
+                {visibilityRule !== 'personal' && (
+                  <>
+                    <DocSummaryRow label={t('fields.studyType')} value={detail?.study_type_id} />
+                    <DocSummaryRow label={t('fields.study')} value={detail?.study_id} />
+                    <DocSummaryRow label={t('fields.module')} value={detail?.module_id} />
+                  </>
+                )}
                 <DocSummaryRow
                   label={t('summary.deliveryDeadline')}
                   value={detail?.delivery_deadline ? new Date(detail.delivery_deadline).toLocaleDateString() : null}

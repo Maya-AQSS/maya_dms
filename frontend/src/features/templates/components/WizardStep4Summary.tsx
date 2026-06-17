@@ -80,7 +80,7 @@ export function WizardStep4Summary({
     }
   }, [blocks, selectedBlock]);
 
-  const hierarchyFields = [
+  const hierarchyFields = template.visibility_level === 'personal' ? [] : [
     { label: t('templates:fields.studyType'), value: template.study_type_id },
     { label: t('templates:fields.study'), value: template.study_id },
     { label: t('documents:fields.module'), value: template.module_id },
