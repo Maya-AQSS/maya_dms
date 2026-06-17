@@ -11,6 +11,7 @@ import {
   updateTemplate as apiUpdateTemplate,
   createTemplate as apiCreateTemplate,
   submitTemplateForReview as apiSubmitTemplateForReview,
+  publishTemplate as apiPublishTemplate,
   syncTemplateValidators,
   syncDocumentReviewers,
 } from '../../../api/templates';
@@ -302,7 +303,9 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     setErrors({});
     setChangelogModalError(null);
     try {
-      const res = await apiSubmitTemplateForReview(template.id, changelog);
+      const res = changelogModalMode === 'publish'
+        ? await apiPublishTemplate(template.id, changelog)
+        : await apiSubmitTemplateForReview(template.id, changelog);
       setTemplate(res);
       setShowChangelogModal(false);
       goBack();
@@ -497,8 +500,8 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       );
       setStep('users');
 
-    }else if (step === 'users') {
-      void saveUsers();
+    } else if (step === 'users') {
+      await saveUsers();
 
     } else if (step === 'summary') {
       goBack();
@@ -509,9 +512,13 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     if (step === 'properties') {
       const ok = await saveProperties();
       if (!ok) return;
-    }else if (step === 'blocks') {
-      await saveBlocks()
+    } else if (step === 'blocks') {
+      await saveBlocks();
       if (!(await validateBlocksStep())) return;
+    } else if (step === 'users') {
+      // saveUsers persists and navigates internally; returning avoids a double setStep.
+      await saveUsers();
+      return;
     }
     if (s === 'users' && completedSteps.includes('blocks')) {
       if (!(await validateBlocksStep())) return;

@@ -1201,10 +1201,11 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
             throw new Error(t('errors.templateNoProcess'));
           }
 
+          const targetVersionId = migrationPayload?.target_template_version_id ?? selectedTemplateVersionUuid;
           const created = await createDocument({
             template_id: templateId,
             process_id: template.process_id,
-            ...(selectedTemplateVersionUuid ? { template_version_id: selectedTemplateVersionUuid } : {}),
+            ...(targetVersionId ? { template_version_id: targetVersionId } : {}),
             title: title.trim(),
             study_type_id: studyTypeId || undefined,
             study_id: studyId || undefined,

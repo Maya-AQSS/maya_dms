@@ -31,7 +31,7 @@ use Illuminate\Support\Facades\DB;
  * - `template.review`: aprobar/rechazar; además debe figurar en `template_reviewers`.
  * - `template.assign-review`: asignar revisores en plantillas no personales; en personal solo el creador en borrador/rechazado.
  * - `template.version`: abrir ciclo de nueva versión sobre publicada (no creador).
- * - `template.clone`: clonar publicada (no creador); además `template.update` o ser creador del origen.
+ * - `template.clone`: clonar publicada (no creador); ser creador del origen exime de este slug.
  * - `template.history.view`: listar/ver snapshots publicados (no creador).
  * - La visibilidad no personal (compartida) exige además `template.create`.
  *
@@ -269,8 +269,7 @@ class TemplatePolicy
      * Clonar plantilla publicada en un borrador nuevo.
      *
      * Requiere poder ver el origen, `template.create` en la visibilidad del clon,
-     * y (creador del origen o `template.clone`). Quien no es creador del origen
-     * necesita además `template.update` (misma línea que editar publicadas ajenas).
+     * y (creador del origen o `template.clone`).
      */
     public function clone(JwtUser $user, Template $template): bool
     {
@@ -301,10 +300,10 @@ class TemplatePolicy
             return true;
         }
 
-        // Quien no es creador del origen necesita `template.clone` y además
-        // `template.update` (misma línea que editar publicadas ajenas).
-        return $user->hasPermission('template.clone')
-            && $user->hasPermission('template.update');
+        // Quien no es creador del origen necesita `template.clone`.
+        // Clonar crea un borrador nuevo del clonador, no modifica el origen,
+        // por lo que exigir `template.update` es desproporcionado.
+        return $user->hasPermission('template.clone');
     }
 
     /**

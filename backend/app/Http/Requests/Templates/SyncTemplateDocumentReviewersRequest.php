@@ -16,7 +16,7 @@ class SyncTemplateDocumentReviewersRequest extends FormRequest
     {
         $template = $this->resolveTemplate();
 
-        return $this->user()->can('update', $template);
+        return $this->user()->can('assignReview', $template);
     }
 
     protected function failedAuthorization(): void

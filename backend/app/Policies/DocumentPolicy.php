@@ -105,6 +105,10 @@ class DocumentPolicy
      */
     public function update(JwtUser $user, Document $document): bool
     {
+        if (! in_array($document->status, ['draft', 'rejected'], true)) {
+            return false;
+        }
+
         $userId = (string) $user->getAuthIdentifier();
 
         if ($this->isTitular($user, $document)) {
