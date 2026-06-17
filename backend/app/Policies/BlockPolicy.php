@@ -27,7 +27,8 @@ class BlockPolicy
      */
     public function viewAny(JwtUser $user): bool
     {
-        return $user->hasPermission('block.index') && $this->hasCompanionMutationSlug($user);
+        return $user->canReadAll()
+            || ($user->hasPermission('block.index') && $this->hasCompanionMutationSlug($user));
     }
 
     /**
@@ -35,7 +36,8 @@ class BlockPolicy
      */
     public function view(JwtUser $user): bool
     {
-        return $user->hasPermission('block.show') && $this->hasCompanionMutationSlug($user);
+        return $user->canReadAll()
+            || ($user->hasPermission('block.show') && $this->hasCompanionMutationSlug($user));
     }
 
     /**
@@ -43,7 +45,7 @@ class BlockPolicy
      */
     public function listForTemplate(JwtUser $user, Template $template): bool
     {
-        if (! $user->hasPermission('block.index')) {
+        if (! $user->canReadAll() && ! $user->hasPermission('block.index')) {
             return false;
         }
 
@@ -55,7 +57,7 @@ class BlockPolicy
      */
     public function showForTemplate(JwtUser $user, Template $template): bool
     {
-        if (! $user->hasPermission('block.show')) {
+        if (! $user->canReadAll() && ! $user->hasPermission('block.show')) {
             return false;
         }
 

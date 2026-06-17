@@ -31,6 +31,7 @@ use App\Models\Document;
 use App\Models\DocumentBlock;
 use App\Models\DocumentVersion;
 use App\Models\EntityVersion;
+use App\Models\JwtUser;
 use App\Models\Template;
 use App\Repositories\Contracts\AcademicHierarchyRepositoryInterface;
 use App\Repositories\Contracts\CommentRepositoryInterface;
@@ -1724,6 +1725,20 @@ class DocumentService implements DocumentServiceInterface
             $this->documentRepository->findOrFail($documentId);
         } catch (ModelNotFoundException) {
             $servePublishedSnapshot = true;
+        }
+
+        // Admin de SOLO LECTURA: ve el contenido VIVO de cualquier documento (no se le
+        // fuerza el snapshot publicado). No se le trata como titular/creador ni como revisor:
+        // sigue sin poder mutar nada (las policies de escritura lo excluyen vía viewScoped()).
+        $viewer = auth()->user();
+        if ($viewer instanceof JwtUser && $viewer->canReadAll()) {
+            $isAssignedReviewer = $resolved->status === 'in_review'
+                && $this->documentRepository->isReviewerAssignedToDocument($documentId, $viewerId);
+
+            return [
+                'serve_published_snapshot' => $servePublishedSnapshot,
+                'is_assigned_reviewer' => $isAssignedReviewer,
+            ];
         }
 
         // Titular efectivo: si hay titular operativo (owner_id) solo cuenta ese; si no,

@@ -66,7 +66,7 @@ class TemplatePolicy
      */
     public function viewAny(JwtUser $user): bool
     {
-        return $user->hasPermission('template.index');
+        return $user->canReadAll() || $user->hasPermission('template.index');
     }
 
     /**
@@ -77,6 +77,24 @@ class TemplatePolicy
      * Los controladores que resuelven la plantilla sin el scope `user_access` deben delegar aquí.
      */
     public function view(JwtUser $user, Template $template): bool
+    {
+        // Admin de SOLO LECTURA: ve cualquier plantilla. Atajo exclusivo de lectura;
+        // las acciones de escritura usan viewScoped() (sin este atajo).
+        if ($user->canReadAll()) {
+            return true;
+        }
+
+        return $this->viewScoped($user, $template);
+    }
+
+    /**
+     * Visibilidad ACOTADA real, sin el atajo de admin-lectura.
+     *
+     * Precondición de visibilidad de las acciones de ESCRITURA: reaplica el filtro
+     * `user_access` real ignorando el bypass de admin-lectura, de modo que
+     * `dms.admin.read` no pueda autorizar nunca una mutación sobre plantillas ajenas.
+     */
+    private function viewScoped(JwtUser $user, Template $template): bool
     {
         $userId = (string) $user->getAuthIdentifier();
 
@@ -124,8 +142,13 @@ class TemplatePolicy
         }
 
         // Catálogo visible (scope user_access): incluye compartidas con snapshot publicado aunque el
-        // cabezal esté en borrador; excluye plantillas personales ajenas.
-        if (Template::query()->whereKey($templateId)->exists()) {
+        // cabezal esté en borrador; excluye plantillas personales ajenas. Se reaplica el filtro real
+        // con el scope global desactivado para que el bypass de admin-lectura no amplíe la escritura.
+        if (Template::query()
+            ->withoutGlobalScope('user_access')
+            ->where(fn ($q) => Template::applyUserAccessFilter($q, $userId))
+            ->whereKey($templateId)
+            ->exists()) {
             return true;
         }
 
@@ -213,7 +236,7 @@ class TemplatePolicy
             return false;
         }
 
-        if (! $this->view($user, $template)) {
+        if (! $this->viewScoped($user, $template)) {
             return false;
         }
 
@@ -254,7 +277,13 @@ class TemplatePolicy
      * Eliminar o archivar plantilla.
      *
      * El creador puede borrar su propia plantilla.
-     * Cualquier usuario con `template.delete` puede borrar cualquier plantilla.
+     * Cualquier usuario con `template.delete` puede borrar cualquier plantilla (borrado global,
+     * comportamiento intencionado del slug destructivo).
+     *
+     * Excepción: el bypass de admin-lectura (`dms.admin.read`) NO debe ampliar el alcance de
+     * borrado. Un admin de lectura que además tenga `template.delete` solo puede borrar dentro
+     * de su ámbito real ({@see self::viewScoped()}), nunca plantillas personales ajenas que
+     * solo ve gracias a la visibilidad total de lectura.
      */
     public function delete(JwtUser $user, Template $template): bool
     {
@@ -262,7 +291,15 @@ class TemplatePolicy
             return true;
         }
 
-        return $user->hasPermission('template.delete');
+        if (! $user->hasPermission('template.delete')) {
+            return false;
+        }
+
+        if ($user->canReadAll()) {
+            return $this->viewScoped($user, $template);
+        }
+
+        return true;
     }
 
     /**
@@ -273,7 +310,7 @@ class TemplatePolicy
      */
     public function clone(JwtUser $user, Template $template): bool
     {
-        if (! $this->view($user, $template)) {
+        if (! $this->viewScoped($user, $template)) {
             return false;
         }
 
@@ -311,6 +348,11 @@ class TemplatePolicy
      */
     public function viewHistory(JwtUser $user, Template $template): bool
     {
+        // Lectura: el admin de solo lectura ve el historial completo.
+        if ($user->canReadAll()) {
+            return true;
+        }
+
         if (! $this->view($user, $template)) {
             return false;
         }
@@ -341,7 +383,9 @@ class TemplatePolicy
      */
     public function attemptStartRevision(JwtUser $user, Template $template): bool
     {
-        if (! $this->view($user, $template)) {
+        // Acción de escritura (abre un ciclo de nueva versión): usa la visibilidad acotada,
+        // de modo que `dms.admin.read` no habilite iniciar revisiones de plantillas ajenas.
+        if (! $this->viewScoped($user, $template)) {
             return false;
         }
 

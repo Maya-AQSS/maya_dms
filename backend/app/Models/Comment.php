@@ -35,6 +35,15 @@ class Comment extends Model
                 return;
             }
 
+            $user = auth()->user();
+            if ($user instanceof JwtUser && $user->canReadAll()) {
+                // Admin de SOLO LECTURA: ve los comentarios de cualquier documento/plantilla.
+                // No hay capa de policy en la LECTURA de comentarios (la escritura sí: ver
+                // CommentPolicy::mayParticipate*, que no consulta este scope), así que el
+                // bypass aquí no concede ninguna capacidad de mutación.
+                return;
+            }
+
             $userId = auth()->id();
             $builder->where(function ($query) use ($userId) {
                 $query->where('comments.author_id', $userId)

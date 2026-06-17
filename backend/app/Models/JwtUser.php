@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Policies\DocumentPolicy;
 use App\Services\UserProfileService;
 use Maya\Auth\Models\BaseJwtUser;
 
@@ -20,6 +21,14 @@ use Maya\Auth\Models\BaseJwtUser;
  */
 class JwtUser extends BaseJwtUser
 {
+    /**
+     * Permiso de administrador de solo lectura: ve todos los documentos,
+     * plantillas, themes, bloques y comentarios del sistema sin ser
+     * creador/titular/revisor. NO concede ninguna capacidad de escritura
+     * ni rompe la Segregación de Funciones (revisar/enviar/publicar/delegar).
+     */
+    public const READ_ALL_SLUG = 'dms.admin.read';
+
     /**
      * IDs de contexto académico.
      *
@@ -68,5 +77,19 @@ class JwtUser extends BaseJwtUser
             $claims['team_ids'] ?? null,
             $claims['team_id'] ?? null,
         );
+    }
+
+    /**
+     * Indica si el usuario tiene visibilidad total de SOLO LECTURA.
+     *
+     * Pensado para usarse exclusivamente en rutas de lectura (listados, detalle,
+     * historial, bloques y comentarios). Las comprobaciones de ESCRITURA nunca
+     * deben apoyarse en este método: las policies de escritura usan
+     * {@see DocumentPolicy::viewScoped()} y equivalentes, que ignoran
+     * deliberadamente esta capacidad para no escalar a permisos de mutación.
+     */
+    public function canReadAll(): bool
+    {
+        return $this->hasPermission(self::READ_ALL_SLUG);
     }
 }

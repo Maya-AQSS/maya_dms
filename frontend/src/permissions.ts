@@ -4,6 +4,8 @@ export const DMS_PERMISSIONS = {
   index: 'dms.index',
   show: 'dms.show',
   dashboardUpdate: 'dms.dashboard.update',
+  /** Admin de SOLO LECTURA: ve todo el sistema sin ser creador/validador. No habilita edición. */
+  adminRead: 'dms.admin.read',
   processIndex: 'process.index',
   processShow: 'process.show',
   processCreate: 'process.create',
@@ -44,11 +46,27 @@ export const DMS_PERMISSIONS = {
 } as const;
 
 /**
+ * Admin de SOLO LECTURA (`dms.admin.read`): ve todos los documentos, plantillas, themes,
+ * bloques y comentarios del sistema sin ser creador/titular/validador.
+ *
+ * IMPORTANTE: usar EXCLUSIVAMENTE en comprobaciones de lectura/visibilidad. Nunca debe
+ * intervenir en `canUpdate*`/`canDelete*`/`canMutate*`/comentarios — espeja el backend,
+ * donde este permiso jamás autoriza una mutación (ver DocumentPolicy::viewScoped()).
+ */
+export function canReadAll(hasPermission: (slug: string) => boolean): boolean {
+  return hasPermission(DMS_PERMISSIONS.adminRead);
+}
+
+/**
  * Sección Themes en navegación y gestión (no el selector del wizard de plantilla).
- * Requiere theme.index y theme.show; el profesor no los tiene.
+ * Requiere theme.index y theme.show; el profesor no los tiene. El admin de solo lectura
+ * también puede navegar el catálogo.
  */
 export function canManageThemesCatalog(hasPermission: (slug: string) => boolean): boolean {
-  return hasPermission(DMS_PERMISSIONS.themeIndex) && hasPermission(DMS_PERMISSIONS.themeShow);
+  return (
+    canReadAll(hasPermission) ||
+    (hasPermission(DMS_PERMISSIONS.themeIndex) && hasPermission(DMS_PERMISSIONS.themeShow))
+  );
 }
 
 export function canCreateTheme(hasPermission: (slug: string) => boolean): boolean {
@@ -108,6 +126,10 @@ export type TemplateBlockPermissionContext = {
 
 /** `block.index` / `block.show` requieren además mutación de plantilla o documento (catálogo). */
 export function canAccessBlockCatalog(hasPermission: (slug: string) => boolean): boolean {
+  if (canReadAll(hasPermission)) {
+    return true;
+  }
+
   const hasMutation =
     hasPermission(DMS_PERMISSIONS.templateCreate) ||
     hasPermission(DMS_PERMISSIONS.templateUpdate) ||
@@ -118,6 +140,9 @@ export function canAccessBlockCatalog(hasPermission: (slug: string) => boolean):
 }
 
 export function canListBlocks(hasPermission: (slug: string) => boolean): boolean {
+  if (canReadAll(hasPermission)) {
+    return true;
+  }
   return hasPermission(DMS_PERMISSIONS.blockIndex) && canAccessBlockCatalog(hasPermission);
 }
 
@@ -130,6 +155,10 @@ export function canListTemplateBlocks(
   profileId: string | undefined,
   template?: TemplateBlockPermissionContext,
 ): boolean {
+  if (canReadAll(hasPermission)) {
+    return true;
+  }
+
   if (!hasPermission(DMS_PERMISSIONS.blockIndex)) {
     return false;
   }
@@ -150,6 +179,9 @@ export function canListTemplateBlocks(
 }
 
 export function canShowBlockDetail(hasPermission: (slug: string) => boolean): boolean {
+  if (canReadAll(hasPermission)) {
+    return true;
+  }
   return hasPermission(DMS_PERMISSIONS.blockShow) && canAccessBlockCatalog(hasPermission);
 }
 
@@ -192,6 +224,9 @@ export function canOpenDocument(
   profileId: string | undefined,
   doc: DocumentOpenContext,
 ): boolean {
+  if (canReadAll(hasPermission)) {
+    return true;
+  }
   if (hasPermission(DMS_PERMISSIONS.documentShow)) {
     return true;
   }

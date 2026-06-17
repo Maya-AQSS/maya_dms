@@ -33,7 +33,7 @@ class ThemePolicy
      */
     public function viewAny(JwtUser $user): bool
     {
-        return $user->hasPermission('theme.index');
+        return $user->canReadAll() || $user->hasPermission('theme.index');
     }
 
     /**
@@ -49,6 +49,21 @@ class ThemePolicy
      * Ver detalle: `theme.show` (gestión) o theme publicado con `dms.login` (selector en plantilla).
      */
     public function view(JwtUser $user, Theme $theme): bool
+    {
+        // Admin de SOLO LECTURA: ve cualquier theme. Atajo exclusivo de lectura; las
+        // acciones de escritura (update/delete/clone) usan viewScoped(), que lo ignora.
+        if ($user->canReadAll()) {
+            return true;
+        }
+
+        return $this->viewScoped($user, $theme);
+    }
+
+    /**
+     * Visibilidad sin el atajo de admin-lectura, precondición de las acciones de escritura:
+     * `dms.admin.read` no puede por sí solo autorizar editar/borrar/clonar un theme ajeno.
+     */
+    private function viewScoped(JwtUser $user, Theme $theme): bool
     {
         if ($user->hasPermission('theme.show')) {
             return true;
@@ -71,7 +86,7 @@ class ThemePolicy
      */
     public function update(JwtUser $user, Theme $theme): bool
     {
-        if (! $this->view($user, $theme)) {
+        if (! $this->viewScoped($user, $theme)) {
             return false;
         }
 
@@ -91,7 +106,7 @@ class ThemePolicy
             return false;
         }
 
-        if (! $this->view($user, $theme)) {
+        if (! $this->viewScoped($user, $theme)) {
             return false;
         }
 
@@ -107,7 +122,7 @@ class ThemePolicy
      */
     public function clone(JwtUser $user, Theme $theme): bool
     {
-        return $user->hasPermission('theme.clone') && $this->view($user, $theme);
+        return $user->hasPermission('theme.clone') && $this->viewScoped($user, $theme);
     }
 
     /**

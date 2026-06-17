@@ -17,6 +17,7 @@ use App\DTOs\Versioning\WorkingRevisionConflictDto;
 use App\Enums\TemplateVisibilityLevel;
 use App\Events\OwnershipTransferred;
 use App\Models\EntityVersion;
+use App\Models\JwtUser;
 use App\Models\Template;
 use App\Repositories\Contracts\AcademicHierarchyRepositoryInterface;
 use App\Repositories\Contracts\DocumentBlockRepositoryInterface;
@@ -1258,6 +1259,19 @@ class TemplateService implements TemplateServiceInterface
      */
     public function resolveTemplateViewerContext(Template $model, string $templateId, string $viewerId): array
     {
+        // Admin de SOLO LECTURA: ve el contenido VIVO de cualquier plantilla (sin forzar el
+        // snapshot publicado). No se le trata como creador ni revisor: no puede mutar nada.
+        $viewer = auth()->user();
+        if ($viewer instanceof JwtUser && $viewer->canReadAll()) {
+            $isAssignedReviewer = $model->status === 'in_review'
+                && $this->templateReviewerRepository->existsReviewerForTemplate($templateId, $viewerId);
+
+            return [
+                'serve_published_snapshot' => false,
+                'is_assigned_reviewer' => $isAssignedReviewer,
+            ];
+        }
+
         $isCreator = (string) $model->created_by === $viewerId;
         $isAssignedReviewer = false;
         $servePublishedSnapshot = false;

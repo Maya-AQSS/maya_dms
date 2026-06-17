@@ -8,6 +8,7 @@ use App\Models\Concerns\HasAcademicOverlapScope;
 use App\Models\Concerns\HasCommentingStatus;
 use App\Models\Concerns\HasEntityVersionHead;
 use App\Observers\DocumentObserver;
+use App\Policies\DocumentPolicy;
 use App\Support\DocumentHeadSnapshot;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
@@ -54,60 +55,80 @@ class Document extends Model
                 return;
             }
 
-            $userId = (string) (auth()->user()?->getAuthIdentifier() ?? '');
+            $user = auth()->user();
+            if ($user instanceof JwtUser && $user->canReadAll()) {
+                // Admin de SOLO LECTURA: ve todas las filas (se conserva el join de cabezal).
+                // La escritura nunca pasa por aquí: las policies usan applyUserAccessFilter()
+                // con el scope desactivado (ver DocumentPolicy::viewScoped()).
+                return;
+            }
+
+            $userId = (string) ($user?->getAuthIdentifier() ?? '');
             if ($userId === '') {
                 $builder->whereRaw('1 = 0');
 
                 return;
             }
 
-            $builder->where(function (Builder $outer) use ($userId) {
-                $outer->where('document_head_ev.snapshot_data->document->owner_id', $userId)
-                    ->orWhere(function (Builder $author) use ($userId) {
-                        // El autor (created_by) conserva acceso solo mientras no exista un
-                        // titular operativo distinto. Tras ceder la titularidad (owner_id
-                        // pasa a otro usuario) deja de tener acceso al documento.
-                        $author->where('document_head_ev.snapshot_data->document->created_by', $userId)
-                            ->where('document_head_ev.snapshot_data->document->owner_id', '');
-                    })
-                    ->orWhereExists(function ($subQuery) use ($userId) {
-                        $subQuery->select(DB::raw(1))
-                            ->from('document_shares')
-                            ->whereColumn('document_shares.document_id', 'documents.id')
-                            ->where('user_id', $userId);
-                    })
-                    ->orWhere(function ($q) use ($userId) {
-                        // Any assigned reviewer (any status) can see the document while in_review.
-                        // Stage/status constraints are enforced at action level (approve/reject), not visibility.
-                        $q->where('document_head_ev.snapshot_data->document->status', 'in_review')
-                            ->whereExists(function ($subQuery) use ($userId) {
-                                $subQuery->select(DB::raw(1))
-                                    ->from('document_reviews as dr_scope')
-                                    ->whereColumn('dr_scope.document_id', 'documents.id')
-                                    ->where('dr_scope.reviewer_id', $userId);
-                            });
-                    })
-                    ->orWhere(function (Builder $pub) use ($userId) {
-                        // Catálogo publicado: visible aunque el head esté en draft/in_review.
-                        // El contexto se evalúa sobre el snapshot publicado (pub_snap), no
-                        // sobre el head en curso, para no ocultar la versión publicada cuando
-                        // alguien está editando una nueva versión.
-                        $pub->whereExists(function ($sub) use ($userId) {
-                            $sub->select(DB::raw(1))
-                                ->from('entity_versions as pub_snap')
-                                ->whereColumn('pub_snap.versionable_id', 'documents.id')
-                                ->where('pub_snap.versionable_type', self::class)
-                                ->where('pub_snap.version_number', '>', 0)
-                                ->where('pub_snap.status', 'published')
-                                ->where(function ($ctx) use ($userId) {
-                                    self::applyAcademicOverlapOnDocumentSnapshotAlias($ctx, $userId, 'pub_snap');
-                                });
-                        });
-                    });
-            });
+            self::applyUserAccessFilter($builder, $userId);
         });
 
         static::registerEntityVersionHeadHook();
+    }
+
+    /**
+     * Filtro real de visibilidad por usuario (owner/creador/share/revisor/publicado).
+     *
+     * Centralizado para que {@see DocumentPolicy::viewScoped()} pueda
+     * reaplicarlo con el scope global `user_access` desactivado, garantizando que el
+     * bypass de admin-lectura JAMÁS se aplique en una decisión de escritura.
+     */
+    public static function applyUserAccessFilter(Builder $builder, string $userId): void
+    {
+        $builder->where(function (Builder $outer) use ($userId) {
+            $outer->where('document_head_ev.snapshot_data->document->owner_id', $userId)
+                ->orWhere(function (Builder $author) use ($userId) {
+                    // El autor (created_by) conserva acceso solo mientras no exista un
+                    // titular operativo distinto. Tras ceder la titularidad (owner_id
+                    // pasa a otro usuario) deja de tener acceso al documento.
+                    $author->where('document_head_ev.snapshot_data->document->created_by', $userId)
+                        ->where('document_head_ev.snapshot_data->document->owner_id', '');
+                })
+                ->orWhereExists(function ($subQuery) use ($userId) {
+                    $subQuery->select(DB::raw(1))
+                        ->from('document_shares')
+                        ->whereColumn('document_shares.document_id', 'documents.id')
+                        ->where('user_id', $userId);
+                })
+                ->orWhere(function ($q) use ($userId) {
+                    // Any assigned reviewer (any status) can see the document while in_review.
+                    // Stage/status constraints are enforced at action level (approve/reject), not visibility.
+                    $q->where('document_head_ev.snapshot_data->document->status', 'in_review')
+                        ->whereExists(function ($subQuery) use ($userId) {
+                            $subQuery->select(DB::raw(1))
+                                ->from('document_reviews as dr_scope')
+                                ->whereColumn('dr_scope.document_id', 'documents.id')
+                                ->where('dr_scope.reviewer_id', $userId);
+                        });
+                })
+                ->orWhere(function (Builder $pub) use ($userId) {
+                    // Catálogo publicado: visible aunque el head esté en draft/in_review.
+                    // El contexto se evalúa sobre el snapshot publicado (pub_snap), no
+                    // sobre el head en curso, para no ocultar la versión publicada cuando
+                    // alguien está editando una nueva versión.
+                    $pub->whereExists(function ($sub) use ($userId) {
+                        $sub->select(DB::raw(1))
+                            ->from('entity_versions as pub_snap')
+                            ->whereColumn('pub_snap.versionable_id', 'documents.id')
+                            ->where('pub_snap.versionable_type', self::class)
+                            ->where('pub_snap.version_number', '>', 0)
+                            ->where('pub_snap.status', 'published')
+                            ->where(function ($ctx) use ($userId) {
+                                self::applyAcademicOverlapOnDocumentSnapshotAlias($ctx, $userId, 'pub_snap');
+                            });
+                    });
+                });
+        });
     }
 
     protected static function delegatedAttributes(): array

@@ -369,14 +369,16 @@ class TemplatePolicyTest extends TestCase
         $this->assertTrue($this->policy->clone($creator, $template));
     }
 
-    public function test_clone_requires_template_clone_and_update_for_non_creator(): void
+    public function test_clone_requires_template_clone_for_non_creator(): void
     {
         $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
-        $withSlug = $this->makeJwtUser(
+        // Clonar crea un borrador nuevo del clonador, no modifica el origen: para un no-creador
+        // basta `template.clone` (no se exige `template.update`), además de poder ver el origen.
+        $withClone = $this->makeJwtUser(
             '11111111-2222-3333-4444-555555555555',
-            ['template.show', 'template.create', 'template.clone', 'template.update'],
+            ['template.show', 'template.create', 'template.clone'],
         );
-        auth()->setUser($withSlug);
+        auth()->setUser($withClone);
         $template = $this->makeTemplate(
             createdBy: $creatorId,
             status: 'published',
@@ -384,14 +386,14 @@ class TemplatePolicyTest extends TestCase
         );
         $this->seedPublishedTemplateSnapshot($template, $creatorId);
 
-        $this->assertTrue($this->policy->clone($withSlug, $template));
+        $this->assertTrue($this->policy->clone($withClone, $template));
 
-        $cloneOnly = $this->makeJwtUser(
+        $withoutClone = $this->makeJwtUser(
             '22222222-3333-4444-5555-666666666666',
-            ['template.show', 'template.create', 'template.clone'],
+            ['template.show', 'template.create'],
         );
-        auth()->setUser($cloneOnly);
-        $this->assertFalse($this->policy->clone($cloneOnly, $template));
+        auth()->setUser($withoutClone);
+        $this->assertFalse($this->policy->clone($withoutClone, $template));
     }
 
     public function test_view_history_allows_creator_without_slug(): void

@@ -46,7 +46,7 @@ class DocumentPolicy
      */
     public function viewAny(JwtUser $user): bool
     {
-        return $user->hasPermission('document.index');
+        return $user->canReadAll() || $user->hasPermission('document.index');
     }
 
     /**
@@ -59,6 +59,24 @@ class DocumentPolicy
      * Los controladores que resuelven sin scope deben delegar aquí tras comprobar snapshot.
      */
     public function view(JwtUser $user, Document $document): bool
+    {
+        // Admin de SOLO LECTURA: ve el detalle de cualquier documento. Este atajo vive
+        // únicamente en la ruta de lectura; las acciones de escritura usan viewScoped().
+        if ($user->canReadAll()) {
+            return true;
+        }
+
+        return $this->viewScoped($user, $document);
+    }
+
+    /**
+     * Visibilidad ACOTADA real, sin el atajo de admin-lectura.
+     *
+     * Es la precondición de visibilidad de las acciones de ESCRITURA. Reaplica el filtro
+     * `user_access` real ignorando el bypass de admin-lectura, garantizando que
+     * `dms.admin.read` no pueda autorizar nunca una mutación sobre documentos ajenos.
+     */
+    private function viewScoped(JwtUser $user, Document $document): bool
     {
         $userId = (string) $user->getAuthIdentifier();
 
@@ -84,12 +102,13 @@ class DocumentPolicy
         }
 
         // Catálogo visible (scope user_access): compartidos en contexto académico; excluye
-        // documentos personales ajenos (visibilidad heredada de plantilla personal).
-        if (Document::query()->whereKey($documentId)->exists()) {
-            return true;
-        }
-
-        return false;
+        // documentos personales ajenos. Se reaplica el filtro real con el scope global
+        // desactivado para que el bypass de admin-lectura no amplíe la visibilidad de escritura.
+        return Document::query()
+            ->withoutGlobalScope('user_access')
+            ->where(fn ($q) => Document::applyUserAccessFilter($q, $userId))
+            ->whereKey($documentId)
+            ->exists();
     }
 
     /**
@@ -123,7 +142,7 @@ class DocumentPolicy
             return false;
         }
 
-        return $this->view($user, $document);
+        return $this->viewScoped($user, $document);
     }
 
     /**
@@ -173,7 +192,7 @@ class DocumentPolicy
             return false;
         }
 
-        return $this->view($user, $document);
+        return $this->viewScoped($user, $document);
     }
 
     /**
@@ -239,7 +258,7 @@ class DocumentPolicy
      */
     public function clone(JwtUser $user, Document $document): bool
     {
-        if (! $this->view($user, $document)) {
+        if (! $this->viewScoped($user, $document)) {
             return false;
         }
 
@@ -285,6 +304,11 @@ class DocumentPolicy
      */
     public function viewHistory(JwtUser $user, Document $document): bool
     {
+        // Lectura: el admin de solo lectura ve el historial completo.
+        if ($user->canReadAll()) {
+            return true;
+        }
+
         if (! $this->view($user, $document)) {
             return false;
         }
@@ -302,7 +326,9 @@ class DocumentPolicy
      */
     public function attemptStartRevision(JwtUser $user, Document $document): bool
     {
-        if (! $this->view($user, $document)) {
+        // Acción de escritura (abre un ciclo de nueva versión): usa la visibilidad acotada,
+        // de modo que `dms.admin.read` no habilite iniciar revisiones de documentos ajenos.
+        if (! $this->viewScoped($user, $document)) {
             return false;
         }
 

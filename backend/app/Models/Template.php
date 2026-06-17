@@ -51,56 +51,76 @@ class Template extends Model
                 return;
             }
 
-            $userId = (string) (auth()->user()?->getAuthIdentifier() ?? '');
+            $user = auth()->user();
+            if ($user instanceof JwtUser && $user->canReadAll()) {
+                // Admin de SOLO LECTURA: ve todas las filas (se conserva el join de cabezal).
+                // La escritura nunca pasa por aquí: las policies usan applyUserAccessFilter()
+                // con el scope desactivado (ver TemplatePolicy::viewScoped()).
+                return;
+            }
+
+            $userId = (string) ($user?->getAuthIdentifier() ?? '');
             if ($userId === '') {
                 $builder->whereRaw('1 = 0');
 
                 return;
             }
 
-            $builder->where(function (Builder $outer) use ($userId) {
-                $headCreatorExpr = TemplateHeadSnapshot::jsonTemplateFieldExpression('template_head_ev', 'created_by');
-                $outer->whereRaw($headCreatorExpr.' = ?', [$userId])
-                    ->orWhere(function (Builder $legacyOwner) use ($userId, $headCreatorExpr) {
-                        $legacyOwner
-                            ->where(function (Builder $emptyHeadCreator) use ($headCreatorExpr) {
-                                $emptyHeadCreator
-                                    ->whereRaw($headCreatorExpr.' IS NULL')
-                                    ->orWhereRaw($headCreatorExpr." = ''");
-                            })
-                            ->where('template_head_ev.created_by', $userId);
-                    })
-                    ->orWhere(function (Builder $reviewScope) use ($userId) {
-                        $reviewScope->where('template_head_ev.snapshot_data->template->status', 'in_review')
-                            ->whereExists(function ($subQuery) use ($userId) {
-                                $subQuery->select(DB::raw(1))
-                                    ->from('template_reviewers')
-                                    ->whereColumn('template_reviewers.template_id', 'templates.id')
-                                    ->where('template_reviewers.user_id', $userId);
-                            });
-                    })
-                    ->orWhere(function (Builder $prevCreator) use ($userId) {
-                        // Creador original que cedió la plantilla: puede seguir viendo las
-                        // versiones publicadas si aparece como created_by en algún snapshot inmutable.
-                        $prevCreator->whereExists(function ($sub) use ($userId) {
-                            $sub->select(DB::raw(1))
-                                ->from('entity_versions as prev_pub')
-                                ->whereColumn('prev_pub.versionable_id', 'templates.id')
-                                ->where('prev_pub.versionable_type', self::class)
-                                ->where('prev_pub.version_number', '>', 0)
-                                ->where('prev_pub.is_snapshot_immutable', true)
-                                ->whereRaw(
-                                    TemplateHeadSnapshot::jsonTemplateFieldExpression('prev_pub', 'created_by').' = ?',
-                                    [$userId]
-                                );
-                        });
-                    });
-
-                $outer->orWhere(fn (Builder $shared) => self::scopeSharedTemplatesForTeacher($shared, $userId));
-            });
+            self::applyUserAccessFilter($builder, $userId);
         });
 
         static::registerEntityVersionHeadHook();
+    }
+
+    /**
+     * Filtro real de visibilidad por usuario (creador/legacy/revisor/creador-original/compartida).
+     *
+     * Centralizado para que {@see TemplatePolicy::viewScoped()} pueda
+     * reaplicarlo con el scope global `user_access` desactivado, garantizando que el
+     * bypass de admin-lectura JAMÁS se aplique en una decisión de escritura.
+     */
+    public static function applyUserAccessFilter(Builder $builder, string $userId): void
+    {
+        $builder->where(function (Builder $outer) use ($userId) {
+            $headCreatorExpr = TemplateHeadSnapshot::jsonTemplateFieldExpression('template_head_ev', 'created_by');
+            $outer->whereRaw($headCreatorExpr.' = ?', [$userId])
+                ->orWhere(function (Builder $legacyOwner) use ($userId, $headCreatorExpr) {
+                    $legacyOwner
+                        ->where(function (Builder $emptyHeadCreator) use ($headCreatorExpr) {
+                            $emptyHeadCreator
+                                ->whereRaw($headCreatorExpr.' IS NULL')
+                                ->orWhereRaw($headCreatorExpr." = ''");
+                        })
+                        ->where('template_head_ev.created_by', $userId);
+                })
+                ->orWhere(function (Builder $reviewScope) use ($userId) {
+                    $reviewScope->where('template_head_ev.snapshot_data->template->status', 'in_review')
+                        ->whereExists(function ($subQuery) use ($userId) {
+                            $subQuery->select(DB::raw(1))
+                                ->from('template_reviewers')
+                                ->whereColumn('template_reviewers.template_id', 'templates.id')
+                                ->where('template_reviewers.user_id', $userId);
+                        });
+                })
+                ->orWhere(function (Builder $prevCreator) use ($userId) {
+                    // Creador original que cedió la plantilla: puede seguir viendo las
+                    // versiones publicadas si aparece como created_by en algún snapshot inmutable.
+                    $prevCreator->whereExists(function ($sub) use ($userId) {
+                        $sub->select(DB::raw(1))
+                            ->from('entity_versions as prev_pub')
+                            ->whereColumn('prev_pub.versionable_id', 'templates.id')
+                            ->where('prev_pub.versionable_type', self::class)
+                            ->where('prev_pub.version_number', '>', 0)
+                            ->where('prev_pub.is_snapshot_immutable', true)
+                            ->whereRaw(
+                                TemplateHeadSnapshot::jsonTemplateFieldExpression('prev_pub', 'created_by').' = ?',
+                                [$userId]
+                            );
+                    });
+                });
+
+            $outer->orWhere(fn (Builder $shared) => self::scopeSharedTemplatesForTeacher($shared, $userId));
+        });
     }
 
     protected static function delegatedAttributes(): array
