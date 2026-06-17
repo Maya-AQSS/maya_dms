@@ -44,9 +44,9 @@ class ListDocumentsRequest extends PaginatedFilterRequest
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],
             'favorite_ids' => ['nullable', 'string', 'max:4000'],
-            'study_type_id' => ['nullable', 'uuid'],
-            'study_id' => ['nullable', 'uuid'],
-            'module_id' => ['nullable', 'uuid'],
+            'study_type_id' => ['nullable', 'string', 'max:255'],
+            'study_id' => ['nullable', 'string', 'max:255'],
+            'module_id' => ['nullable', 'string', 'max:255'],
         ];
     }
 

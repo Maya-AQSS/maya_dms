@@ -140,3 +140,14 @@ it('ignores empty favorite_ids (returns all)', function () {
 
     expect($count)->toBe(2);
 });
+
+it('accepts odoo company id as study_type_id filter', function () {
+    $match = makeOwnTemplate('Del tipo Odoo', ['study_type_id' => '2']);
+    makeOwnTemplate('De otro tipo', ['study_type_id' => '3']);
+
+    $ids = $this->getJson('/api/v1/templates?study_type_id=2')
+        ->assertOk()
+        ->json('data.*.id');
+
+    expect($ids)->toBe([$match]);
+});
