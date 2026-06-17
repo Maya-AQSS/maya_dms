@@ -33,6 +33,7 @@ class UpdateDocumentRequest extends FormRequest
             'study_type_id' => ['sometimes', 'nullable', 'string'],
             'study_id' => ['sometimes', 'nullable', 'string'],
             'module_id' => ['sometimes', 'nullable', 'string'],
+            'team_id' => ['sometimes', 'nullable', 'string'],
         ];
     }
 
@@ -47,6 +48,7 @@ class UpdateDocumentRequest extends FormRequest
             studyTypeId: $this->stringOrNull($validated, 'study_type_id'),
             studyId: $this->stringOrNull($validated, 'study_id'),
             moduleId: $this->stringOrNull($validated, 'module_id'),
+            teamId: $this->stringOrNull($validated, 'team_id'),
             changedFields: array_keys($validated),
         );
     }

@@ -22,6 +22,7 @@ readonly class UpdateDocumentDto
         public ?string $studyTypeId = null,
         public ?string $studyId = null,
         public ?string $moduleId = null,
+        public ?string $teamId = null,
         public array $changedFields = [],
     ) {}
 
@@ -44,6 +45,7 @@ readonly class UpdateDocumentDto
             'study_type_id' => $this->studyTypeId,
             'study_id' => $this->studyId,
             'module_id' => $this->moduleId,
+            'team_id' => $this->teamId,
         ];
 
         return array_intersect_key($map, array_flip($this->changedFields));

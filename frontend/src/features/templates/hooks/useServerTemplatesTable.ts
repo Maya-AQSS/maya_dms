@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { mapApiErrorToI18nKey } from '@ceedcv-maya/shared-auth-react';
 import { useServerTable } from '@ceedcv-maya/shared-hooks-react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import {
   cloneTemplate as cloneTemplateRequest,
   deleteTemplate as deleteTemplateRequest,
@@ -45,6 +46,7 @@ export function useServerTemplatesTable(
   storageKey = 'maya:dms:templates-table',
 ) {
   const { t } = useTranslation('templates');
+  const navigate = useNavigate();
   const { hasPermission } = useUserProfile();
   const canIndex = hasPermission(DMS_PERMISSIONS.templateIndex);
   const { templateIds: favoriteTemplateIds } = useFavoritesIds();
@@ -156,15 +158,15 @@ export function useServerTemplatesTable(
       try {
         setActionError(null);
         setActionInfo(null);
-        await cloneTemplateRequest(id);
+        const newTemplate = await cloneTemplateRequest(id);
         setActionInfo('Copia en borrador creada con el sufijo «(copia)».');
-        refetch();
+        navigate(`/templates/${newTemplate.id}/edit`);
       } catch (e) {
         setActionError(formatListError(e));
         throw e;
       }
     },
-    [refetch, formatListError],
+    [refetch, formatListError, navigate],
   );
 
   return {

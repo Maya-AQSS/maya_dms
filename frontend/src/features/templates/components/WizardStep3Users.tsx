@@ -402,15 +402,19 @@ export function WizardStep3Users({
       setSearchResultsTemplate([]);
       return;
     }
+    let cancelled = false;
     const timer = setTimeout(() => {
       setSearchingTemplate(true);
       setSearchErrorTemplate(null);
       searchTemplateReviewerCandidates(q, undefined, reviewerAcademicContext)
-        .then((res) => setSearchResultsTemplate(res.data))
-        .catch(() => setSearchErrorTemplate('No se pudo completar la búsqueda. Inténtalo de nuevo.'))
-        .finally(() => setSearchingTemplate(false));
+        .then((res) => { if (!cancelled) setSearchResultsTemplate(res.data); })
+        .catch(() => { if (!cancelled) setSearchErrorTemplate('No se pudo completar la búsqueda. Inténtalo de nuevo.'); })
+        .finally(() => { if (!cancelled) setSearchingTemplate(false); });
     }, 300);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      cancelled = true;
+    };
   }, [searchQueryTemplate, canSearchUsers, reviewerAcademicContext]);
 
   useEffect(() => {
@@ -423,15 +427,19 @@ export function WizardStep3Users({
       setSearchResultsDocument([]);
       return;
     }
+    let cancelled = false;
     const timer = setTimeout(() => {
       setSearchingDocument(true);
       setSearchErrorDocument(null);
       searchDocumentReviewerCandidates(q, undefined, reviewerAcademicContext)
-        .then((res) => setSearchResultsDocument(res.data))
-        .catch(() => setSearchErrorDocument('No se pudo completar la búsqueda. Inténtalo de nuevo.'))
-        .finally(() => setSearchingDocument(false));
+        .then((res) => { if (!cancelled) setSearchResultsDocument(res.data); })
+        .catch(() => { if (!cancelled) setSearchErrorDocument('No se pudo completar la búsqueda. Inténtalo de nuevo.'); })
+        .finally(() => { if (!cancelled) setSearchingDocument(false); });
     }, 300);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      cancelled = true;
+    };
   }, [searchQueryDocument, canSearchUsers, reviewerAcademicContext]);
 
   const handleAddToTemplate = (user: User) => {

@@ -47,6 +47,7 @@ class ListDocumentsRequest extends PaginatedFilterRequest
             'study_type_id' => ['nullable', 'uuid'],
             'study_id' => ['nullable', 'uuid'],
             'module_id' => ['nullable', 'uuid'],
+            'team_id' => ['nullable', 'uuid'],
         ];
     }
 
@@ -68,6 +69,7 @@ class ListDocumentsRequest extends PaginatedFilterRequest
             studyTypeId: $validated['study_type_id'] ?? null,
             studyId: $validated['study_id'] ?? null,
             moduleId: $validated['module_id'] ?? null,
+            teamId: $validated['team_id'] ?? null,
             page: $this->getPage(),
             perPage: $this->getPerPage(),
             sortBy: $this->getSortBy() ?? 'updated_at',

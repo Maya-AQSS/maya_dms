@@ -27,6 +27,7 @@ final readonly class DocumentFilterDto extends FilterDto
         public readonly ?string $studyTypeId = null,
         public readonly ?string $studyId = null,
         public readonly ?string $moduleId = null,
+        public readonly ?string $teamId = null,
         int $page = 1,
         int $perPage = 15,
         ?string $sortBy = 'updated_at',

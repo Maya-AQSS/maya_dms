@@ -479,10 +479,15 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     return true;
   };
 
-  const saveBlocks = async () => {
+  const saveBlocks = async (): Promise<boolean> => {
     setSaving(true);
     try {
       await blocksRef.current?.saveIfPending();
+      return true;
+    } catch (e) {
+      const detail = e instanceof Error ? e.message : 'Error al guardar los bloques';
+      setErrors({ api: detail });
+      return false;
     } finally {
       setSaving(false);
     }
@@ -493,7 +498,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       const ok = await saveProperties();
       if (!ok) return;
     } else if (step === 'blocks') {
-      await saveBlocks()
+      if (!(await saveBlocks())) return;
       if (!(await validateBlocksStep())) return;
       setCompletedSteps(prev =>
         Array.from(new Set([...prev, 'blocks'])) as Step[]
@@ -513,7 +518,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       const ok = await saveProperties();
       if (!ok) return;
     } else if (step === 'blocks') {
-      await saveBlocks();
+      if (!(await saveBlocks())) return;
       if (!(await validateBlocksStep())) return;
     } else if (step === 'users') {
       // saveUsers persists and navigates internally; returning avoids a double setStep.
