@@ -29,6 +29,11 @@ import {
   emptyTemplateStep1,
   type TemplateStep1Input,
 } from '../schemas/templateStep1';
+import {
+  emptyTemplateAcademicFormValues,
+  initialTemplateAcademicField,
+  templateAcademicPayload,
+} from '../templateFormUtils';
 
 type Step = 'properties' | 'blocks' | 'users' | 'summary';
 
@@ -74,10 +79,10 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       description: initial?.description || '',
       visibility: initial?.visibility_level || 'personal',
       deliveryDeadline: initial?.delivery_deadline ? initial.delivery_deadline.split('T')[0] : '',
-      studyTypeId: initial?.study_type_id || '',
-      studyId: initial?.study_id || '',
-      moduleId: initial?.module_id || '',
-      teamId: initial?.team_id || '',
+      studyTypeId: initialTemplateAcademicField(initial?.visibility_level, initial?.study_type_id),
+      studyId: initialTemplateAcademicField(initial?.visibility_level, initial?.study_id),
+      moduleId: initialTemplateAcademicField(initial?.visibility_level, initial?.module_id),
+      teamId: initialTemplateAcademicField(initial?.visibility_level, initial?.team_id),
       themeId: initial?.theme_id ?? '',
     },
     resolver: zodResolver(templateStep1Schema),
@@ -245,10 +250,12 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
         description: values.description.trim() || null,
         ...(visibilityChanged ? { visibility_level: values.visibility } : {}),
         delivery_deadline: values.deliveryDeadline ? `${values.deliveryDeadline}T00:00:00Z` : null,
-        study_type_id: values.studyTypeId || null,
-        study_id: values.studyId || null,
-        module_id: values.moduleId || null,
-        team_id: values.teamId || null,
+        ...templateAcademicPayload(values.visibility, {
+          studyTypeId: values.studyTypeId,
+          studyId: values.studyId,
+          moduleId: values.moduleId,
+          teamId: values.teamId,
+        }),
         theme_id: values.themeId || null,
         // created_by is transferred explicitly via handleTransferOwnership on the summary step
       };
@@ -270,7 +277,14 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
         });
       }
       setTemplate(res);
-      step1Methods.reset(values);
+      const clearedAcademic = templateAcademicPayload(values.visibility, emptyTemplateAcademicFormValues);
+      step1Methods.reset({
+        ...values,
+        studyTypeId: clearedAcademic.study_type_id ?? '',
+        studyId: clearedAcademic.study_id ?? '',
+        moduleId: clearedAcademic.module_id ?? '',
+        teamId: clearedAcademic.team_id ?? '',
+      });
       setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'properties'])) as Step[]);
       setStep('blocks');
       success = true;
@@ -393,7 +407,18 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     setSaving(true);
     setErrors({});
     try {
-      await apiUpdateTemplate(template.id, { created_by: pendingOwnerTransfer });
+      const res = await apiUpdateTemplate(template.id, { created_by: pendingOwnerTransfer });
+      setTemplate(res);
+      const visibility = step1Methods.getValues('visibility');
+      const clearedAcademic = templateAcademicPayload(visibility, emptyTemplateAcademicFormValues);
+      step1Methods.reset({
+        ...step1Methods.getValues(),
+        studyTypeId: clearedAcademic.study_type_id ?? '',
+        studyId: clearedAcademic.study_id ?? '',
+        moduleId: clearedAcademic.module_id ?? '',
+        teamId: clearedAcademic.team_id ?? '',
+        createdBy: undefined,
+      });
       goBack();
     } catch (e) {
       const detail =

@@ -1,5 +1,60 @@
 import type { Template, TemplateVisibilityLevel } from '../../types/templates';
 
+export function academicScopeApplies(visibility: TemplateVisibilityLevel): boolean {
+  return visibility !== 'personal' && visibility !== 'global';
+}
+
+export function initialTemplateAcademicField(
+  visibility: TemplateVisibilityLevel | undefined,
+  value: string | null | undefined,
+): string {
+  if (!academicScopeApplies(visibility ?? 'personal')) {
+    return '';
+  }
+
+  return value || '';
+}
+
+export type TemplateAcademicFormValues = {
+  studyTypeId: string;
+  studyId: string;
+  moduleId: string;
+  teamId: string;
+};
+
+export function templateAcademicPayload(
+  visibility: TemplateVisibilityLevel,
+  values: TemplateAcademicFormValues,
+): {
+  study_type_id: string | null;
+  study_id: string | null;
+  module_id: string | null;
+  team_id: string | null;
+} {
+  if (!academicScopeApplies(visibility)) {
+    return {
+      study_type_id: null,
+      study_id: null,
+      module_id: null,
+      team_id: null,
+    };
+  }
+
+  return {
+    study_type_id: values.studyTypeId || null,
+    study_id: values.studyId || null,
+    module_id: values.moduleId || null,
+    team_id: values.teamId || null,
+  };
+}
+
+export const emptyTemplateAcademicFormValues: TemplateAcademicFormValues = {
+  studyTypeId: '',
+  studyId: '',
+  moduleId: '',
+  teamId: '',
+};
+
 export function isoToDatetimeLocal(iso: string | null): string {
   if (!iso) return '';
   const d = new Date(iso);

@@ -517,6 +517,18 @@ class TemplateService implements TemplateServiceInterface
         if ($dto->setCreatedBy && $dto->createdBy !== null) {
             $attributes['created_by'] = $dto->createdBy;
         }
+
+        $ownershipTransferred = $dto->setCreatedBy
+            && $dto->createdBy !== null
+            && (string) $dto->createdBy !== $previousCreatedBy;
+
+        if ($ownershipTransferred) {
+            $attributes['study_type_id'] = null;
+            $attributes['study_id'] = null;
+            $attributes['module_id'] = null;
+            $attributes['team_id'] = null;
+        }
+
         $this->assertTemplateMetadataInvariants(
             (string) ($attributes['name'] ?? $template->name),
             $attributes['delivery_deadline'] ?? $template->delivery_deadline,
@@ -525,7 +537,7 @@ class TemplateService implements TemplateServiceInterface
 
         $updated = $this->templateRepository->update($template, $attributes);
 
-        if ($dto->setCreatedBy && $dto->createdBy !== null && (string) $dto->createdBy !== $previousCreatedBy) {
+        if ($ownershipTransferred) {
             $request = request();
             OwnershipTransferred::dispatch(
                 'template',

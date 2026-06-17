@@ -7,6 +7,7 @@ namespace App\Http\Requests\Templates;
 use App\DTOs\Templates\UpdateTemplateDto;
 use App\Enums\TemplateVisibilityLevel;
 use App\Http\Requests\Templates\Concerns\ResolvesTemplateForAuthorization;
+use App\Http\Requests\Templates\Concerns\ValidatesTemplateAcademicScope;
 use App\Repositories\Contracts\TeamReadRepositoryInterface;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -14,6 +15,7 @@ use Illuminate\Validation\Rule;
 class UpdateTemplateRequest extends FormRequest
 {
     use ResolvesTemplateForAuthorization;
+    use ValidatesTemplateAcademicScope;
 
     /**
      * Verifica si el usuario puede actualizar la plantilla.
@@ -58,7 +60,7 @@ class UpdateTemplateRequest extends FormRequest
                 'sometimes', 'nullable', 'string', 'max:255',
                 'required_if:visibility_level,study_type',
                 function (string $attribute, mixed $value, \Closure $fail): void {
-                    if ($value !== null && ! in_array($value, $this->user()->studyTypeIds, true)) {
+                    if ($value !== null && $this->academicScopeApplies($this->effectiveVisibilityLevel()) && ! in_array($value, $this->user()->studyTypeIds, true)) {
                         $fail('El tipo de estudio indicado no pertenece a tu contexto académico.');
                     }
                 },
@@ -67,7 +69,7 @@ class UpdateTemplateRequest extends FormRequest
                 'sometimes', 'nullable', 'string', 'max:255',
                 'required_if:visibility_level,study',
                 function (string $attribute, mixed $value, \Closure $fail): void {
-                    if ($value !== null && ! in_array($value, $this->user()->studyIds, true)) {
+                    if ($value !== null && $this->academicScopeApplies($this->effectiveVisibilityLevel()) && ! in_array($value, $this->user()->studyIds, true)) {
                         $fail('El estudio indicado no pertenece a tu contexto académico.');
                     }
                 },
@@ -76,7 +78,7 @@ class UpdateTemplateRequest extends FormRequest
                 'sometimes', 'nullable', 'string', 'max:255',
                 'required_if:visibility_level,module',
                 function (string $attribute, mixed $value, \Closure $fail): void {
-                    if ($value !== null && ! in_array($value, $this->user()->moduleIds, true)) {
+                    if ($value !== null && $this->academicScopeApplies($this->effectiveVisibilityLevel()) && ! in_array($value, $this->user()->moduleIds, true)) {
                         $fail('El módulo indicado no pertenece a tu contexto académico.');
                     }
                 },
@@ -85,7 +87,7 @@ class UpdateTemplateRequest extends FormRequest
                 'sometimes', 'nullable', 'uuid', 'exists:teams,id',
                 'required_if:visibility_level,team',
                 function (string $attribute, mixed $value, \Closure $fail): void {
-                    if ($value !== null) {
+                    if ($value !== null && $this->teamScopeApplies($this->effectiveVisibilityLevel())) {
                         $isMember = app(TeamReadRepositoryInterface::class)
                             ->isMember($value, (string) $this->user()->getAuthIdentifier());
                         if (! $isMember) {
@@ -138,5 +140,17 @@ class UpdateTemplateRequest extends FormRequest
             createdBy: $this->input('created_by'),
             setCreatedBy: $this->has('created_by'),
         );
+    }
+
+    private function effectiveVisibilityLevel(): string
+    {
+        if ($this->filled('visibility_level')) {
+            return (string) $this->input('visibility_level');
+        }
+
+        $template = $this->resolveTemplate();
+        $level = $template->visibility_level;
+
+        return $level instanceof TemplateVisibilityLevel ? $level->value : (string) $level;
     }
 }

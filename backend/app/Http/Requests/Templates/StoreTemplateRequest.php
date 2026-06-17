@@ -6,6 +6,7 @@ namespace App\Http\Requests\Templates;
 
 use App\DTOs\Templates\CreateTemplateDto;
 use App\Enums\TemplateVisibilityLevel;
+use App\Http\Requests\Templates\Concerns\ValidatesTemplateAcademicScope;
 use App\Models\Template;
 use App\Repositories\Contracts\TeamReadRepositoryInterface;
 use Illuminate\Foundation\Http\FormRequest;
@@ -13,6 +14,8 @@ use Illuminate\Validation\Rule;
 
 class StoreTemplateRequest extends FormRequest
 {
+    use ValidatesTemplateAcademicScope;
+
     /**
      * Verifica si el usuario puede crear una plantilla.
      */
@@ -39,7 +42,11 @@ class StoreTemplateRequest extends FormRequest
                 'nullable', 'string', 'max:255',
                 'required_if:visibility_level,study_type',
                 function (string $attribute, mixed $value, \Closure $fail): void {
-                    if ($value !== null && ! in_array($value, $this->user()->studyTypeIds, true)) {
+                    $visibility = (string) $this->input(
+                        'visibility_level',
+                        TemplateVisibilityLevel::Personal->value,
+                    );
+                    if ($value !== null && $this->academicScopeApplies($visibility) && ! in_array($value, $this->user()->studyTypeIds, true)) {
                         $fail('El tipo de estudio indicado no pertenece a tu contexto académico.');
                     }
                 },
@@ -48,7 +55,11 @@ class StoreTemplateRequest extends FormRequest
                 'nullable', 'string', 'max:255',
                 'required_if:visibility_level,study',
                 function (string $attribute, mixed $value, \Closure $fail): void {
-                    if ($value !== null && ! in_array($value, $this->user()->studyIds, true)) {
+                    $visibility = (string) $this->input(
+                        'visibility_level',
+                        TemplateVisibilityLevel::Personal->value,
+                    );
+                    if ($value !== null && $this->academicScopeApplies($visibility) && ! in_array($value, $this->user()->studyIds, true)) {
                         $fail('El estudio indicado no pertenece a tu contexto académico.');
                     }
                 },
@@ -57,7 +68,11 @@ class StoreTemplateRequest extends FormRequest
                 'nullable', 'string', 'max:255',
                 'required_if:visibility_level,module',
                 function (string $attribute, mixed $value, \Closure $fail): void {
-                    if ($value !== null && ! in_array($value, $this->user()->moduleIds, true)) {
+                    $visibility = (string) $this->input(
+                        'visibility_level',
+                        TemplateVisibilityLevel::Personal->value,
+                    );
+                    if ($value !== null && $this->academicScopeApplies($visibility) && ! in_array($value, $this->user()->moduleIds, true)) {
                         $fail('El módulo indicado no pertenece a tu contexto académico.');
                     }
                 },
@@ -66,7 +81,11 @@ class StoreTemplateRequest extends FormRequest
                 'nullable', 'uuid', 'exists:teams,id',
                 'required_if:visibility_level,team',
                 function (string $attribute, mixed $value, \Closure $fail): void {
-                    if ($value !== null) {
+                    $visibility = (string) $this->input(
+                        'visibility_level',
+                        TemplateVisibilityLevel::Personal->value,
+                    );
+                    if ($value !== null && $this->teamScopeApplies($visibility)) {
                         $isMember = app(TeamReadRepositoryInterface::class)
                             ->isMember($value, (string) $this->user()->getAuthIdentifier());
                         if (! $isMember) {
