@@ -166,7 +166,7 @@ export function useServerTemplatesTable(
         throw e;
       }
     },
-    [refetch, formatListError, navigate],
+    [formatListError, navigate],
   );
 
   return {

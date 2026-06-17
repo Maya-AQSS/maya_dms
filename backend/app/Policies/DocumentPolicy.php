@@ -212,7 +212,7 @@ class DocumentPolicy
             return false;
         }
 
-        return (new CommentPolicy)->mayParticipateOnDocument($user, $document);
+        return app(CommentPolicy::class)->mayParticipateOnDocument($user, $document);
     }
 
     /**

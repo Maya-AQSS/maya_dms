@@ -337,8 +337,8 @@ return (static function (): array {
             'template_version_id' => $EV_T1_PUB,
             'title' => "IPO I — Itinerari Personal per a l'Ocupabilitat I (1709) — 2025-26",
             'study_type_id' => '2',
-            'study_id' => '7',           // DAW (también está en DAM, asignamos al DAW del archivo)
-            'module_id' => '7_7',        // IPO1
+            'study_id' => '7',           // DAW
+            'module_id' => '7_3',        // DAW (Despliegue de aplicaciones web) — 7_7 no existe en el catálogo
             'delivery_deadline' => '2026-09-30 14:00:00',
             'created_by' => $uFp,
             'owner_id' => $uFp,
@@ -351,7 +351,7 @@ return (static function (): array {
             'title' => 'LAP — Logística de Aprovisionamiento (0626) — 2025-26',
             'study_type_id' => '2',
             'study_id' => '15',          // TIL
-            'module_id' => '15_8',       // LAP
+            'module_id' => null,         // TIL no tiene módulos en el catálogo Odoo actual
             'delivery_deadline' => '2026-09-30 14:00:00',
             'created_by' => $uJefeEFp,
             'owner_id' => $uJefeEFp,
@@ -364,7 +364,7 @@ return (static function (): array {
             'title' => 'PXSI1 — Programación, Redes y Sistemas Informáticos I (1º Bachillerato) — 2025-26',
             'study_type_id' => '3',
             'study_id' => '3',           // BCT
-            'module_id' => '3_9',        // PXSI1
+            'module_id' => null,         // BCT no tiene módulos en el catálogo Odoo actual
             'delivery_deadline' => '2026-09-30 14:00:00',
             'created_by' => $uBach,
             'owner_id' => $uBach,

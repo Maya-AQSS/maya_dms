@@ -22,7 +22,7 @@ class StoreMediaRequest extends FormRequest
         $contextType = $this->input('context_type');
         $contextId   = $this->input('context_id');
 
-        if ($contextType === null || $contextId === null) {
+        if (! $contextType || ! $contextId) {
             return true;
         }
 

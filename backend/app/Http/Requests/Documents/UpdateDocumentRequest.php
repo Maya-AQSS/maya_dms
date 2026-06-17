@@ -6,6 +6,8 @@ namespace App\Http\Requests\Documents;
 
 use App\DTOs\Documents\UpdateDocumentDto;
 use App\Models\Document;
+use App\Models\JwtUser;
+use App\Repositories\Contracts\TeamReadRepositoryInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Http\FormRequest;
@@ -30,10 +32,45 @@ class UpdateDocumentRequest extends FormRequest
         return [
             'title' => ['sometimes', 'filled', 'string', 'max:255'],
             'delivery_deadline' => ['sometimes', 'date', 'after_or_equal:today'],
-            'study_type_id' => ['sometimes', 'nullable', 'string'],
-            'study_id' => ['sometimes', 'nullable', 'string'],
-            'module_id' => ['sometimes', 'nullable', 'string'],
-            'team_id' => ['sometimes', 'nullable', 'string'],
+            'study_type_id' => [
+                'sometimes', 'nullable', 'string', 'max:255',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    $user = $this->user();
+                    if ($value !== null && $user instanceof JwtUser && ! in_array($value, $user->studyTypeIds, true)) {
+                        $fail('El tipo de estudio indicado no pertenece a tu contexto académico.');
+                    }
+                },
+            ],
+            'study_id' => [
+                'sometimes', 'nullable', 'string', 'max:255',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    $user = $this->user();
+                    if ($value !== null && $user instanceof JwtUser && ! in_array($value, $user->studyIds, true)) {
+                        $fail('El estudio indicado no pertenece a tu contexto académico.');
+                    }
+                },
+            ],
+            'module_id' => [
+                'sometimes', 'nullable', 'string', 'max:255',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    $user = $this->user();
+                    if ($value !== null && $user instanceof JwtUser && ! in_array($value, $user->moduleIds, true)) {
+                        $fail('El módulo indicado no pertenece a tu contexto académico.');
+                    }
+                },
+            ],
+            'team_id' => [
+                'sometimes', 'nullable', 'uuid', 'exists:teams,id',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if ($value !== null) {
+                        $isMember = app(TeamReadRepositoryInterface::class)
+                            ->isMember($value, (string) $this->user()->getAuthIdentifier());
+                        if (! $isMember) {
+                            $fail('No eres miembro del equipo indicado.');
+                        }
+                    }
+                },
+            ],
         ];
     }
 

@@ -416,7 +416,7 @@ class TemplatePolicy
             return false;
         }
 
-        return (new CommentPolicy)->mayParticipateOnTemplate($user, $template);
+        return app(CommentPolicy::class)->mayParticipateOnTemplate($user, $template);
     }
 
     /**

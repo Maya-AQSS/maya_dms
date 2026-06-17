@@ -111,7 +111,9 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     setUsersDirty(true);
     if (template?.id) {
       const reviewMode: ReviewMode = mode === 'ordenada' ? 'sequential' : 'parallel';
-      void apiUpdateTemplate(template.id, { review_mode: reviewMode }).catch(() => {/* non-blocking */ });
+      void apiUpdateTemplate(template.id, { review_mode: reviewMode }).catch((e: unknown) => {
+        setErrors({ api: e instanceof Error ? e.message : 'Error al actualizar el modo de validación de plantilla' });
+      });
     }
   };
 
@@ -120,7 +122,9 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     setUsersDirty(true);
     if (template?.id) {
       const documentReviewMode: ReviewMode = mode === 'ordenada' ? 'sequential' : 'parallel';
-      void apiUpdateTemplate(template.id, { document_review_mode: documentReviewMode }).catch(() => {/* non-blocking */ });
+      void apiUpdateTemplate(template.id, { document_review_mode: documentReviewMode }).catch((e: unknown) => {
+        setErrors({ api: e instanceof Error ? e.message : 'Error al actualizar el modo de validación de documento' });
+      });
     }
   };
 
@@ -404,11 +408,11 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     }
   };
 
-  const saveUsers = async () => {
-    if (!template?.id) return;
+  const saveUsers = async (): Promise<boolean> => {
+    if (!template?.id) return false;
     if (blocksLoading || blocksCount < 1) {
       setErrors({ api: 'Añade al menos un bloque antes de continuar.' });
-      return;
+      return false;
     }
 
     const currentVisibility = step1Methods.getValues('visibility');
@@ -424,7 +428,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
               : 'Las plantillas con visibilidad no personal requieren al menos un validador de documento asignado. Añade un validador de documento antes de continuar.';
         setNoValidatorsModalMessage(msg);
         setShowNoValidatorsModal(true);
-        return;
+        return false;
       }
     }
 
@@ -444,9 +448,8 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       }
 
       setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'users'])) as Step[]);
-      setStep('summary');
+      return true;
     } catch (e) {
-      // TODO: send to error tracker
       const detail =
         e instanceof ApiHttpError
           ? e.message
@@ -454,6 +457,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
             ? e.message
             : 'Error al guardar los validadores';
       setErrors({ api: detail || 'Error al guardar los validadores' });
+      return false;
     } finally {
       setSaving(false);
     }
@@ -506,7 +510,8 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       setStep('users');
 
     } else if (step === 'users') {
-      await saveUsers();
+      const ok = await saveUsers();
+      if (ok) setStep('summary');
 
     } else if (step === 'summary') {
       goBack();
@@ -521,9 +526,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       if (!(await saveBlocks())) return;
       if (!(await validateBlocksStep())) return;
     } else if (step === 'users') {
-      // saveUsers persists and navigates internally; returning avoids a double setStep.
-      await saveUsers();
-      return;
+      if (!(await saveUsers())) return;
     }
     if (s === 'users' && completedSteps.includes('blocks')) {
       if (!(await validateBlocksStep())) return;

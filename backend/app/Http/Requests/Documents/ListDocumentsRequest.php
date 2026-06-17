@@ -47,6 +47,8 @@ class ListDocumentsRequest extends PaginatedFilterRequest
             'study_type_id' => ['nullable', 'string', 'max:255'],
             'study_id' => ['nullable', 'string', 'max:255'],
             'module_id' => ['nullable', 'string', 'max:255'],
+            // Sin exists:teams,id: es un filtro de listado, no una escritura; la ausencia de fila
+            // simplemente devuelve 0 resultados sin riesgo de integridad.
             'team_id' => ['nullable', 'uuid'],
         ];
     }
