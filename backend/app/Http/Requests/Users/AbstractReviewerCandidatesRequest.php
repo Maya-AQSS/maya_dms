@@ -39,9 +39,9 @@ abstract class AbstractReviewerCandidatesRequest extends FormRequest
             'per_page' => ['nullable', 'integer', 'min:1'],
             'exclude_user_id' => ['nullable', 'uuid'],
             'visibility_level' => ['nullable', 'string', 'max:255'],
-            'study_type_id' => ['nullable', 'uuid'],
-            'study_id' => ['nullable', 'uuid'],
-            'module_id' => ['nullable', 'uuid'],
+            'study_type_id' => ['nullable', 'string', 'max:255'],
+            'study_id' => ['nullable', 'string', 'max:255'],
+            'module_id' => ['nullable', 'string', 'max:255'],
             'team_id' => ['nullable', 'uuid'],
         ];
     }

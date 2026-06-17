@@ -68,6 +68,10 @@ function appendReviewerAcademicContext(
     return;
   }
   params.set('visibility_level', academicContext.visibility_level);
+  // Personal y global no acotan por contexto académico en el backend.
+  if (academicContext.visibility_level === 'personal' || academicContext.visibility_level === 'global') {
+    return;
+  }
   if (academicContext.study_type_id) {
     params.set('study_type_id', academicContext.study_type_id);
   }
