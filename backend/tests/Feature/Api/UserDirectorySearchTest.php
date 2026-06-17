@@ -182,4 +182,26 @@ final class UserDirectorySearchTest extends TestCase
         $this->getJson('/api/v1/users/reviewer-candidates?study_type_id='.$studyTypeId, $this->authHeaders)
             ->assertOk();
     }
+
+    public function test_reviewer_candidates_accepts_odoo_company_id_as_study_type_id(): void
+    {
+        $this->authenticate([]);
+
+        $mock = Mockery::mock(UserDirectoryServiceInterface::class);
+        $mock->shouldReceive('searchTemplateReviewerCandidates')
+            ->once()
+            ->withArgs(function (string $search, int $limit, ?string $exclude, $filter) {
+                return $search === 'je'
+                    && $limit === 50
+                    && $exclude === null
+                    && $filter->studyTypeId === '2';
+            })
+            ->andReturn([]);
+        $this->app->instance(UserDirectoryServiceInterface::class, $mock);
+
+        $this->getJson(
+            '/api/v1/users/reviewer-candidates?search=je&per_page=50&visibility_level=study_type&study_type_id=2',
+            $this->authHeaders,
+        )->assertOk();
+    }
 }
