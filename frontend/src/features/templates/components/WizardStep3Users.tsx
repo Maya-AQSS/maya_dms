@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DndContext,
@@ -16,7 +16,8 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { User } from '../../../types/users';
-import { searchDocumentReviewerCandidates, searchTemplateReviewerCandidates, type ReviewerCandidateAcademicContext } from '../../../api/users';
+import { searchDocumentReviewerCandidates, searchTemplateReviewerCandidates } from '../../../api/users';
+import { ApiHttpError } from '../../../api/http';
 import { useUserProfile } from '../../../features/user-profile';
 import { DMS_PERMISSIONS } from '../../../permissions';
 import { ConfirmDialog, TextInput } from '@ceedcv-maya/shared-ui-react';
@@ -331,10 +332,6 @@ function UserAddPanel({
 
 type Props = {
   visibilityLevel?: string;
-  studyTypeId?: string;
-  studyId?: string;
-  moduleId?: string;
-  teamId?: string;
   validators: ValidatorEntry[];
   onValidatorsChange: (validators: ValidatorEntry[]) => void;
   validationType: 'libre' | 'ordenada';
@@ -347,10 +344,6 @@ type Props = {
 
 export function WizardStep3Users({
   visibilityLevel = 'personal',
-  studyTypeId,
-  studyId,
-  moduleId,
-  teamId,
   validators,
   onValidatorsChange,
   validationType,
@@ -379,19 +372,6 @@ export function WizardStep3Users({
   const [searchingDocument, setSearchingDocument] = useState(false);
   const [searchErrorDocument, setSearchErrorDocument] = useState<string | null>(null);
 
-  const reviewerAcademicContext = useMemo((): ReviewerCandidateAcademicContext | undefined => {
-    if (!visibilityLevel) {
-      return undefined;
-    }
-    return {
-      visibility_level: visibilityLevel,
-      study_type_id: studyTypeId || undefined,
-      study_id: studyId || undefined,
-      module_id: moduleId || undefined,
-      team_id: teamId || undefined,
-    };
-  }, [visibilityLevel, studyTypeId, studyId, moduleId, teamId]);
-
   useEffect(() => {
     if (!canSearchUsers) {
       setSearchResultsTemplate([]);
@@ -400,22 +380,29 @@ export function WizardStep3Users({
     const q = searchQueryTemplate.trim();
     if (q.length < 2) {
       setSearchResultsTemplate([]);
+      setSearchErrorTemplate(null);
       return;
     }
     let cancelled = false;
     const timer = setTimeout(() => {
       setSearchingTemplate(true);
       setSearchErrorTemplate(null);
-      searchTemplateReviewerCandidates(q, undefined, reviewerAcademicContext)
+      searchTemplateReviewerCandidates(q)
         .then((res) => { if (!cancelled) setSearchResultsTemplate(res.data); })
-        .catch(() => { if (!cancelled) setSearchErrorTemplate('No se pudo completar la búsqueda. Inténtalo de nuevo.'); })
+        .catch((e) => {
+          if (!cancelled) {
+            setSearchErrorTemplate(
+              e instanceof ApiHttpError ? e.message : 'No se pudo completar la búsqueda. Inténtalo de nuevo.',
+            );
+          }
+        })
         .finally(() => { if (!cancelled) setSearchingTemplate(false); });
     }, 300);
     return () => {
       clearTimeout(timer);
       cancelled = true;
     };
-  }, [searchQueryTemplate, canSearchUsers, reviewerAcademicContext]);
+  }, [searchQueryTemplate, canSearchUsers]);
 
   useEffect(() => {
     if (!canSearchUsers) {
@@ -425,22 +412,29 @@ export function WizardStep3Users({
     const q = searchQueryDocument.trim();
     if (q.length < 2) {
       setSearchResultsDocument([]);
+      setSearchErrorDocument(null);
       return;
     }
     let cancelled = false;
     const timer = setTimeout(() => {
       setSearchingDocument(true);
       setSearchErrorDocument(null);
-      searchDocumentReviewerCandidates(q, undefined, reviewerAcademicContext)
+      searchDocumentReviewerCandidates(q)
         .then((res) => { if (!cancelled) setSearchResultsDocument(res.data); })
-        .catch(() => { if (!cancelled) setSearchErrorDocument('No se pudo completar la búsqueda. Inténtalo de nuevo.'); })
+        .catch((e) => {
+          if (!cancelled) {
+            setSearchErrorDocument(
+              e instanceof ApiHttpError ? e.message : 'No se pudo completar la búsqueda. Inténtalo de nuevo.',
+            );
+          }
+        })
         .finally(() => { if (!cancelled) setSearchingDocument(false); });
     }, 300);
     return () => {
       clearTimeout(timer);
       cancelled = true;
     };
-  }, [searchQueryDocument, canSearchUsers, reviewerAcademicContext]);
+  }, [searchQueryDocument, canSearchUsers]);
 
   const handleAddToTemplate = (user: User) => {
     if (!validators.some((v) => v.userId === user.id)) {

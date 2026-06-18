@@ -410,13 +410,22 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       const res = await apiUpdateTemplate(template.id, { created_by: pendingOwnerTransfer });
       setTemplate(res);
       const visibility = step1Methods.getValues('visibility');
-      const clearedAcademic = templateAcademicPayload(visibility, emptyTemplateAcademicFormValues);
+      const academicValues =
+        visibility === 'personal'
+          ? emptyTemplateAcademicFormValues
+          : {
+              studyTypeId: res.study_type_id ?? '',
+              studyId: res.study_id ?? '',
+              moduleId: res.module_id ?? '',
+              teamId: res.team_id ?? '',
+            };
+      const syncedAcademic = templateAcademicPayload(visibility, academicValues);
       step1Methods.reset({
         ...step1Methods.getValues(),
-        studyTypeId: clearedAcademic.study_type_id ?? '',
-        studyId: clearedAcademic.study_id ?? '',
-        moduleId: clearedAcademic.module_id ?? '',
-        teamId: clearedAcademic.team_id ?? '',
+        studyTypeId: syncedAcademic.study_type_id ?? '',
+        studyId: syncedAcademic.study_id ?? '',
+        moduleId: syncedAcademic.module_id ?? '',
+        teamId: syncedAcademic.team_id ?? '',
         createdBy: undefined,
       });
       goBack();
@@ -740,10 +749,6 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
           {step === 'users' && (
             <WizardStep3Users
               visibilityLevel={step1Methods.watch('visibility')}
-              studyTypeId={step1Methods.watch('studyTypeId') || undefined}
-              studyId={step1Methods.watch('studyId') || undefined}
-              moduleId={step1Methods.watch('moduleId') || undefined}
-              teamId={step1Methods.watch('teamId') || undefined}
               validators={validators}
               onValidatorsChange={(v) => { setValidators(v); setUsersDirty(true); }}
               validationType={validationType}

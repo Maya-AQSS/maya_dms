@@ -10,13 +10,13 @@ use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Services\Contracts\UserDirectoryServiceInterface;
 
 /**
- * Orquesta búsquedas de directorio; candidatos a validador = filas en `user_resolved_permissions` con el permiso de revisión pedido.
+ * Orquesta búsquedas de directorio; candidatos a validador = filas en `user_resolved_permissions`
+ * con el permiso de revisión pedido (sin filtro por ámbito académico de plantilla).
  */
 class UserDirectoryService implements UserDirectoryServiceInterface
 {
     public function __construct(
         private readonly UserDirectoryRepositoryInterface $repository,
-        private readonly ReviewerAcademicScopeResolver $academicScopeResolver,
     ) {}
 
     /**
@@ -35,12 +35,10 @@ class UserDirectoryService implements UserDirectoryServiceInterface
         ?string $excludeUserId = null,
         ?ReviewerCandidateFilterDto $academicFilter = null,
     ): array {
-        $scope = $academicFilter !== null
-            ? $this->academicScopeResolver->resolveFromFilter($academicFilter)
-            : null;
+        unset($academicFilter);
 
         return $this->toSummaries(
-            $this->repository->searchTemplateReviewerCandidates($search, $limit, $excludeUserId, $scope),
+            $this->repository->searchTemplateReviewerCandidates($search, $limit, $excludeUserId, null),
         );
     }
 
@@ -50,12 +48,10 @@ class UserDirectoryService implements UserDirectoryServiceInterface
         ?string $excludeUserId = null,
         ?ReviewerCandidateFilterDto $academicFilter = null,
     ): array {
-        $scope = $academicFilter !== null
-            ? $this->academicScopeResolver->resolveFromFilter($academicFilter)
-            : null;
+        unset($academicFilter);
 
         return $this->toSummaries(
-            $this->repository->searchDocumentReviewerCandidates($search, $limit, $excludeUserId, $scope),
+            $this->repository->searchDocumentReviewerCandidates($search, $limit, $excludeUserId, null),
         );
     }
 

@@ -6,11 +6,8 @@ namespace Tests\Unit\Services;
 
 use App\DTOs\Templates\SyncUsersDto;
 use App\Models\Template;
-use App\Repositories\Contracts\AcademicHierarchyRepositoryInterface;
 use App\Repositories\Contracts\ResolvedPermissionReaderInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
-use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
-use App\Services\ReviewerAcademicScopeResolver;
 use App\Services\TemplateReviewerAssignmentService;
 use Illuminate\Validation\ValidationException;
 use Mockery;
@@ -61,24 +58,10 @@ final class TemplateReviewerAssignmentServiceTest extends TestCase
     private function makeService(
         TemplateRepositoryInterface $templateRepo,
         ResolvedPermissionReaderInterface $permRepo,
-        ?ReviewerAcademicScopeResolver $scopeResolver = null,
-        ?UserDirectoryRepositoryInterface $userDirectoryRepository = null,
     ): TemplateReviewerAssignmentService {
-        // ReviewerAcademicScopeResolver es `final` (no doblable por Mockery bajo
-        // type hint). Se instancia real: con visibilidad `personal`/`global` su
-        // `resolve()` devuelve null sin tocar el repositorio académico.
-        $scopeResolver ??= new ReviewerAcademicScopeResolver(
-            Mockery::mock(AcademicHierarchyRepositoryInterface::class),
-        );
-
-        $userDirectoryRepository ??= Mockery::mock(UserDirectoryRepositoryInterface::class);
-        $userDirectoryRepository->shouldReceive('filterUserIdsMatchingAcademicScope')->andReturn([])->byDefault();
-
         return new TemplateReviewerAssignmentService(
             $templateRepo,
             $permRepo,
-            $scopeResolver,
-            $userDirectoryRepository,
         );
     }
 

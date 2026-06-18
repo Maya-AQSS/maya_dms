@@ -4,15 +4,6 @@ import { apiFetchJson, apiGetJson } from './http';
 
 export type { MeProfile, User, UserTeam } from '../types/users';
 
-/** Contexto académico para acotar candidatos a validador según visibilidad de plantilla. */
-export type ReviewerCandidateAcademicContext = {
-  visibility_level?: string;
-  study_type_id?: string;
-  study_id?: string;
-  module_id?: string;
-  team_id?: string;
-};
-
 const profileApi = createProfileApi<MeProfile>({ apiFetchJson, apiGetJson });
 
 /** GET /api/v1/users?search={query}&per_page=20 */
@@ -28,7 +19,6 @@ export async function searchUsers(query: string, excludeUserId?: string): Promis
 export async function searchTemplateReviewerCandidates(
   query = '',
   excludeUserId?: string,
-  academicContext?: ReviewerCandidateAcademicContext,
 ): Promise<UsersSearchResponse> {
   const q = new URLSearchParams({ per_page: '50' });
   const trimmed = query.trim();
@@ -38,7 +28,6 @@ export async function searchTemplateReviewerCandidates(
   if (excludeUserId) {
     q.set('exclude_user_id', excludeUserId);
   }
-  appendReviewerAcademicContext(q, academicContext);
   return apiGetJson<UsersSearchResponse>(`users/reviewer-candidates?${q.toString()}`);
 }
 
@@ -46,7 +35,6 @@ export async function searchTemplateReviewerCandidates(
 export async function searchDocumentReviewerCandidates(
   query = '',
   excludeUserId?: string,
-  academicContext?: ReviewerCandidateAcademicContext,
 ): Promise<UsersSearchResponse> {
   const q = new URLSearchParams({ per_page: '50' });
   const trimmed = query.trim();
@@ -56,34 +44,7 @@ export async function searchDocumentReviewerCandidates(
   if (excludeUserId) {
     q.set('exclude_user_id', excludeUserId);
   }
-  appendReviewerAcademicContext(q, academicContext);
   return apiGetJson<UsersSearchResponse>(`users/document-reviewer-candidates?${q.toString()}`);
-}
-
-function appendReviewerAcademicContext(
-  params: URLSearchParams,
-  academicContext?: ReviewerCandidateAcademicContext,
-): void {
-  if (!academicContext?.visibility_level) {
-    return;
-  }
-  params.set('visibility_level', academicContext.visibility_level);
-  // Personal y global no acotan por contexto académico en el backend.
-  if (academicContext.visibility_level === 'personal' || academicContext.visibility_level === 'global') {
-    return;
-  }
-  if (academicContext.study_type_id) {
-    params.set('study_type_id', academicContext.study_type_id);
-  }
-  if (academicContext.study_id) {
-    params.set('study_id', academicContext.study_id);
-  }
-  if (academicContext.module_id) {
-    params.set('module_id', academicContext.module_id);
-  }
-  if (academicContext.team_id) {
-    params.set('team_id', academicContext.team_id);
-  }
 }
 
 /** GET /api/v1/users/owner-candidates?search={query}&per_page=20 */

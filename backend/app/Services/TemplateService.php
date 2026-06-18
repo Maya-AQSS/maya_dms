@@ -523,10 +523,20 @@ class TemplateService implements TemplateServiceInterface
             && (string) $dto->createdBy !== $previousCreatedBy;
 
         if ($ownershipTransferred) {
-            $attributes['study_type_id'] = null;
-            $attributes['study_id'] = null;
-            $attributes['module_id'] = null;
-            $attributes['team_id'] = null;
+            $visibility = $attributes['visibility_level'] ?? $template->visibility_level;
+            $level = $visibility instanceof TemplateVisibilityLevel
+                ? $visibility
+                : TemplateVisibilityLevel::tryFrom((string) $visibility);
+
+            // Solo las plantillas personales pueden arrastrar contexto académico del
+            // titular anterior (restos que no aplican). El ámbito de visibilidad
+            // study_type/study/module/team es propiedad de la plantilla, no del owner.
+            if ($level === TemplateVisibilityLevel::Personal) {
+                $attributes['study_type_id'] = null;
+                $attributes['study_id'] = null;
+                $attributes['module_id'] = null;
+                $attributes['team_id'] = null;
+            }
         }
 
         $this->assertTemplateMetadataInvariants(

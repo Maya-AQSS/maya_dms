@@ -103,9 +103,14 @@ function makeTransferableTemplate(array $overrides = []): string
     return $id;
 }
 
-it('clears academic scope when ownership is transferred', function () {
+it('clears academic scope when a personal template ownership is transferred', function () {
     $newOwner = (string) Str::uuid();
-    $templateId = makeTransferableTemplate();
+    $templateId = makeTransferableTemplate([
+        'visibility_level' => 'personal',
+        'study_type_id' => '2',
+        'study_id' => '101',
+        'module_id' => '101_9',
+    ]);
 
     $this->patchJson("/api/v1/templates/{$templateId}", [
         'created_by' => $newOwner,
@@ -117,6 +122,23 @@ it('clears academic scope when ownership is transferred', function () {
         ->and($template->study_type_id)->toBeNull()
         ->and($template->study_id)->toBeNull()
         ->and($template->module_id)->toBeNull()
+        ->and($template->team_id)->toBeNull();
+});
+
+it('preserves template academic scope when a scoped template ownership is transferred', function () {
+    $newOwner = (string) Str::uuid();
+    $templateId = makeTransferableTemplate();
+
+    $this->patchJson("/api/v1/templates/{$templateId}", [
+        'created_by' => $newOwner,
+    ])->assertOk();
+
+    $template = Template::query()->withoutGlobalScopes()->findOrFail($templateId);
+
+    expect($template->created_by)->toBe($newOwner)
+        ->and($template->study_type_id)->toBe('2')
+        ->and($template->study_id)->toBe('101')
+        ->and($template->module_id)->toBe('101_9')
         ->and($template->team_id)->toBeNull();
 });
 

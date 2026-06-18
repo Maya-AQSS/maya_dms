@@ -9,8 +9,10 @@ use App\Models\JwtUser;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Base para los buscadores de candidatos a validador (revisor) que aceptan
- * un contexto académico opcional para acotar el resultado.
+ * Base para los buscadores de candidatos a validador (revisor).
+ *
+ * Los parámetros de contexto académico se aceptan por compatibilidad pero el
+ * directorio filtra solo por permiso de revisión.
  *
  * Las subclases definen el permiso requerido ({@see permission()}) y el
  * mensaje de error de autorización ({@see failedAuthorization()}).
@@ -73,7 +75,7 @@ abstract class AbstractReviewerCandidatesRequest extends FormRequest
     }
 
     /**
-     * Construye el filtro académico desde los datos validados.
+     * Construye el filtro académico desde los datos validados (ignorado al buscar).
      */
     public function academicFilter(): ReviewerCandidateFilterDto
     {

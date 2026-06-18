@@ -8,11 +8,13 @@ use App\DTOs\Templates\SyncUsersDto;
 use App\Models\Template;
 use App\Repositories\Contracts\ResolvedPermissionReaderInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
-use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use Illuminate\Validation\ValidationException;
 
 /**
  * Sincroniza revisores de plantilla y pool de validadores de documento.
+ *
+ * Los candidatos se validan solo por permiso de revisión; el ámbito académico
+ * de la plantilla no restringe quién puede ser validador.
  *
  * Las notificaciones de trabajo pendiente se envían solo al enviar a revisión
  * ({@see TemplateReviewService::submitForReview}, {@see DocumentService::submitToReview}),
@@ -23,8 +25,6 @@ class TemplateReviewerAssignmentService
     public function __construct(
         private readonly TemplateRepositoryInterface $templateRepository,
         private readonly ResolvedPermissionReaderInterface $resolvedPermissions,
-        private readonly ReviewerAcademicScopeResolver $academicScopeResolver,
-        private readonly UserDirectoryRepositoryInterface $userDirectoryRepository,
     ) {}
 
     /**
@@ -59,7 +59,6 @@ class TemplateReviewerAssignmentService
             }
 
             $this->assertUsersHavePermission($uniqueUserIds, 'template.review', 'user_ids');
-            $this->assertUsersMatchTemplateAcademicScope($template, $uniqueUserIds, 'user_ids');
 
             // TemplateReviewer usa SoftDeletes; forceDelete elimina filas físicamente
             // para no violar la restricción única (template_id, user_id) al reinsertar.
@@ -79,7 +78,7 @@ class TemplateReviewerAssignmentService
     public function syncDocumentReviewers(string $templateId, SyncUsersDto $dto): void
     {
         $this->templateRepository->transaction(function () use ($templateId, $dto): void {
-            $template = $this->templateRepository->findOrFail($templateId);
+            $this->templateRepository->findOrFail($templateId);
 
             $uniqueUserIds = array_values(array_unique($dto->userIds));
 
@@ -90,7 +89,6 @@ class TemplateReviewerAssignmentService
             }
 
             $this->assertUsersHavePermission($uniqueUserIds, 'document.review', 'user_ids');
-            $this->assertUsersMatchTemplateAcademicScope($template, $uniqueUserIds, 'user_ids');
 
             // TemplateDocumentReviewer no usa SoftDeletes: delete() es borrado físico.
             // Usamos repository para encapsular esta lógica.
@@ -125,40 +123,6 @@ class TemplateReviewerAssignmentService
         throw ValidationException::withMessages([
             $field => [
                 __('validation.reviewers.missing_permission', ['permission' => $requiredPermission]),
-            ],
-        ]);
-    }
-
-    /**
-     * @param  list<string>  $userIds
-     */
-    private function assertUsersMatchTemplateAcademicScope(Template $template, array $userIds, string $field): void
-    {
-        if ($userIds === []) {
-            return;
-        }
-
-        $scope = $this->academicScopeResolver->resolve(
-            is_string($template->visibility_level) ? $template->visibility_level : null,
-            is_string($template->study_type_id) ? $template->study_type_id : null,
-            is_string($template->study_id) ? $template->study_id : null,
-            is_string($template->module_id) ? $template->module_id : null,
-            is_string($template->team_id) ? $template->team_id : null,
-        );
-
-        if ($scope === null) {
-            return;
-        }
-
-        $matching = $this->userDirectoryRepository->filterUserIdsMatchingAcademicScope($userIds, $scope);
-
-        if (count($matching) === count($userIds)) {
-            return;
-        }
-
-        throw ValidationException::withMessages([
-            $field => [
-                __('validation.reviewers.academic_scope'),
             ],
         ]);
     }
