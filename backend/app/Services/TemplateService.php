@@ -28,6 +28,7 @@ use App\Repositories\Contracts\TemplateReviewerRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Services\Contracts\TemplateServiceInterface;
+use App\Services\Concerns\NotifiesOwner;
 use App\Support\AcademicScopeContext;
 use App\Support\AcademicScopeNormalizer;
 use App\Support\TemplateHeadSnapshot;
@@ -38,10 +39,13 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Maya\Http\Pagination\PaginatedDto;
+use Maya\Messaging\Publishers\NotificationPublisher;
 use RuntimeException;
 
 class TemplateService implements TemplateServiceInterface
 {
+    use NotifiesOwner;
+
     public function __construct(
         private readonly TemplateRepositoryInterface $templateRepository,
         private readonly TemplateVersionRepositoryInterface $templateVersionRepository,
@@ -56,6 +60,7 @@ class TemplateService implements TemplateServiceInterface
         private readonly UserDirectoryRepositoryInterface $userDirectoryRepository,
         private readonly EntityVersionDestroyService $entityVersionDestroyService,
         private readonly TemplateVersionBlockLayerResolver $templateVersionBlockLayerResolver,
+        private readonly NotificationPublisher $notificationPublisher,
     ) {}
 
     /** @var array<string, ?string> */
@@ -527,16 +532,39 @@ class TemplateService implements TemplateServiceInterface
 
         if ($dto->setCreatedBy && $dto->createdBy !== null && (string) $dto->createdBy !== $previousCreatedBy) {
             $request = request();
+            $actorId = (string) (Auth::id() ?? '');
+            $newOwnerId = (string) $dto->createdBy;
+            $actorName = $this->userDirectoryRepository->findNameById($actorId) ?? '';
+
             OwnershipTransferred::dispatch(
                 'template',
                 (string) $updated->getKey(),
                 $previousCreatedBy,
-                (string) $dto->createdBy,
-                (string) (Auth::id() ?? ''),
+                $newOwnerId,
+                $actorId,
                 $this->userDirectoryRepository->findNameById($previousCreatedBy),
-                $this->userDirectoryRepository->findNameById((string) $dto->createdBy),
+                $this->userDirectoryRepository->findNameById($newOwnerId),
                 $request?->ip(),
                 $request?->userAgent(),
+            );
+
+            $this->notifyOwner(
+                recipientId: $newOwnerId,
+                type: 'template.ownership_transferred',
+                title: __('notifications.template.ownership_transferred.title'),
+                body: __('notifications.template.ownership_transferred.body', [
+                    'actor_name' => $actorName,
+                    'template_name' => $updated->name,
+                ]),
+                titleKey: 'notifications.template.ownership_transferred.title',
+                bodyKey: 'notifications.template.ownership_transferred.body',
+                params: [
+                    'template_id' => (string) $updated->getKey(),
+                    'template_name' => $updated->name,
+                    'actor_name' => $actorName,
+                ],
+                severity: 'info',
+                metadata: ['template_id' => (string) $updated->getKey()],
             );
         }
 

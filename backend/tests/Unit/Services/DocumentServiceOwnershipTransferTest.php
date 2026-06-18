@@ -64,16 +64,27 @@ class DocumentServiceOwnershipTransferTest extends TestCase
         // current_version precargado: evita el subquery fallback del accessor en la conversión a DTO.
         $updated->forceFill(['id' => $documentId, 'current_version' => 1, 'submitted_at' => null, 'published_at' => null]);
         $updatedHead = new EntityVersion;
-        $updatedHead->forceFill(['snapshot_data' => ['document' => ['owner_id' => $newOwnerId]]]);
+        $updatedHead->forceFill(['snapshot_data' => ['document' => ['owner_id' => $newOwnerId, 'title' => 'Documento de prueba']]]);
         $updated->setRelation('headVersion', $updatedHead);
 
         $docRepo->shouldReceive('findOrFail')->once()->with($documentId)->andReturn($current);
         $docRepo->shouldReceive('updateOwner')->once()->with($current, $newOwnerId)->andReturn($updated);
 
-        $userDirectory->shouldReceive('findNameById')->once()->with($actorId)->andReturn('Titular Anterior');
-        $userDirectory->shouldReceive('findNameById')->once()->with($newOwnerId)->andReturn('Titular Nuevo');
+        $userDirectory->shouldReceive('findNameById')->with($actorId)->andReturn('Titular Anterior');
+        $userDirectory->shouldReceive('findNameById')->with($newOwnerId)->andReturn('Titular Nuevo');
 
-        $service = $this->makeService($docRepo, $userDirectory);
+        $notificationPublisher = Mockery::mock(NotificationPublisher::class);
+        $notificationPublisher->shouldReceive('send')
+            ->once()
+            ->withArgs(function (
+                string $type,
+                ?string $recipientId,
+            ) use ($newOwnerId): bool {
+                return $type === 'document.ownership_transferred'
+                    && $recipientId === $newOwnerId;
+            });
+
+        $service = $this->makeService($docRepo, $userDirectory, $notificationPublisher);
 
         $result = $service->delegateOwner($documentId, $newOwnerId, $actorId);
 
@@ -98,6 +109,7 @@ class DocumentServiceOwnershipTransferTest extends TestCase
     private function makeService(
         DocumentRepositoryInterface $docRepo,
         UserDirectoryRepositoryInterface $userDirectory,
+        ?NotificationPublisher $notificationPublisher = null,
     ): DocumentService {
         $entityVersionRepo = Mockery::mock(EntityVersionRepositoryInterface::class);
         $blockSvc = Mockery::mock(DocumentBlockService::class);
@@ -116,7 +128,7 @@ class DocumentServiceOwnershipTransferTest extends TestCase
             Mockery::mock(TemplateContextResolver::class),
             Mockery::mock(AcademicHierarchyRepositoryInterface::class),
             Mockery::mock(TeamReadRepositoryInterface::class),
-            Mockery::mock(NotificationPublisher::class),
+            $notificationPublisher ?? Mockery::mock(NotificationPublisher::class),
             new DocumentReviewModeResolver($entityVersionRepo),
             new DocumentMigrationPayloadResolver($docRepo, $entityVersionRepo, $blockSvc, new DocumentMigrationBlockDiffer),
             $userDirectory,
