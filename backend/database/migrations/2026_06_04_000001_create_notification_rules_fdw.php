@@ -75,6 +75,7 @@ return new class extends Migration
             $table->string('evaluator_key', 128);
             $table->string('source_app', 64);
             $table->json('params')->nullable();
+            $table->json('conditions')->nullable();
             $table->string('schedule_cron', 64);
             $table->json('audience')->nullable();
             $table->string('severity', 20)->nullable();
@@ -105,9 +106,9 @@ return new class extends Migration
         );
 
         $foreignColumnsSql = 'id BIGINT, evaluator_key VARCHAR(128), source_app VARCHAR(64), '
-            .'params JSONB, schedule_cron VARCHAR(64), audience JSONB, severity VARCHAR(20)';
+            .'params JSONB, conditions JSONB, schedule_cron VARCHAR(64), audience JSONB, severity VARCHAR(20)';
 
-        $viewSelectSql = 'id, evaluator_key, source_app, params, schedule_cron, audience, severity';
+        $viewSelectSql = 'id, evaluator_key, source_app, params, conditions, schedule_cron, audience, severity';
 
         PostgresFdwMigration::createForeignTableWithPassThroughView(
             self::VIEW_NAME,
