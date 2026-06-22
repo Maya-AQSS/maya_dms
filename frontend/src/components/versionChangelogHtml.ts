@@ -9,10 +9,11 @@ export function plainTextFromChangelogHtml(html: string): string {
     return trimmed.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
   }
 
-  const el = document.createElement('div');
-  el.innerHTML = trimmed;
+  // DOMParser produce un documento inerte: no ejecuta scripts ni dispara
+  // `img onerror`, a diferencia de asignar innerHTML a un nodo creado.
+  const parsed = new DOMParser().parseFromString(trimmed, 'text/html');
 
-  return (el.textContent ?? '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+  return (parsed.body.textContent ?? '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 export function normalizeChangelogHtml(html: string): string {
