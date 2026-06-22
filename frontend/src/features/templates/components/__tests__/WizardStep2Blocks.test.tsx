@@ -166,19 +166,23 @@ describe('WizardStep2Blocks', () => {
     });
   });
 
-  // Los tests "Seleccionar todos / Deseleccionar todos" se eliminaron porque la
-  // funcionalidad multi-selección ya no existe en WizardStep2Blocks. Los
-  // skippeamos para mantener histórico hasta que se decida si se reintroduce.
-  it.skip('enters multi-selection mode when selecting all blocks', () => {
-    // Feature removida del componente.
+  // La multi-selección SIGUE viva: botón "Todos" (handleToggleSelectAll) que
+  // alterna a "Deseleccionar" cuando todos los bloques quedan seleccionados.
+  it('selects all blocks and enters multi mode when "Todos" is clicked', async () => {
+    renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Todos' }));
+    // Con todos seleccionados el botón se invierte a "Deseleccionar".
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Deseleccionar' })).toBeTruthy();
+    });
   });
 
-  it.skip('toggles selection of all blocks when "Seleccionar todos" is clicked', () => {
-    // Feature removida del componente.
-  });
-
-  it.skip('sale del modo multi al deseleccionar todos', () => {
-    // Feature removida del componente.
+  it('exits multi mode when "Deseleccionar" is clicked', async () => {
+    renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Todos' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Deseleccionar' })).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: 'Deseleccionar' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Todos' })).toBeTruthy());
   });
 
   it('block name input shows "Nuevo bloque" placeholder', async () => {
@@ -210,10 +214,6 @@ describe('WizardStep2Blocks', () => {
         description: mockBlocks[0].description,
       }));
     });
-  });
-
-  it.skip('shows selected state on all blocks after "Seleccionar todos"', () => {
-    // Feature removida del componente.
   });
 
   describe('block title placeholder behavior', () => {
