@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DndContext,
@@ -17,7 +17,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import type { User } from '../../../types/users';
 import { searchDocumentReviewerCandidates, searchTemplateReviewerCandidates } from '../../../api/users';
-import { ApiHttpError } from '../../../api/http';
+import { useDebouncedUserSearch } from '../hooks/useDebouncedUserSearch';
 import { useUserProfile } from '../../../features/user-profile';
 import { DMS_PERMISSIONS } from '../../../permissions';
 import { ConfirmDialog, TextInput } from '@ceedcv-maya/shared-ui-react';
@@ -360,81 +360,20 @@ export function WizardStep3Users({
   const canAssignTemplateReviewers =
     isPersonal || hasPermission(DMS_PERMISSIONS.templateAssignReview);
 
-  // ── Estado de búsqueda para "Añadir a Plantilla"
+  // ── Búsqueda de candidatos (debounce + cancelación + error) vía hook compartido.
   const [searchQueryTemplate, setSearchQueryTemplate] = useState('');
-  const [searchResultsTemplate, setSearchResultsTemplate] = useState<User[]>([]);
-  const [searchingTemplate, setSearchingTemplate] = useState(false);
-  const [searchErrorTemplate, setSearchErrorTemplate] = useState<string | null>(null);
-
-  // ── Estado de búsqueda para "Añadir a Documento"
   const [searchQueryDocument, setSearchQueryDocument] = useState('');
-  const [searchResultsDocument, setSearchResultsDocument] = useState<User[]>([]);
-  const [searchingDocument, setSearchingDocument] = useState(false);
-  const [searchErrorDocument, setSearchErrorDocument] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!canSearchUsers) {
-      setSearchResultsTemplate([]);
-      return;
-    }
-    const q = searchQueryTemplate.trim();
-    if (q.length < 2) {
-      setSearchResultsTemplate([]);
-      setSearchErrorTemplate(null);
-      return;
-    }
-    let cancelled = false;
-    const timer = setTimeout(() => {
-      setSearchingTemplate(true);
-      setSearchErrorTemplate(null);
-      searchTemplateReviewerCandidates(q)
-        .then((res) => { if (!cancelled) setSearchResultsTemplate(res.data); })
-        .catch((e) => {
-          if (!cancelled) {
-            setSearchErrorTemplate(
-              e instanceof ApiHttpError ? e.message : 'No se pudo completar la búsqueda. Inténtalo de nuevo.',
-            );
-          }
-        })
-        .finally(() => { if (!cancelled) setSearchingTemplate(false); });
-    }, 300);
-    return () => {
-      clearTimeout(timer);
-      cancelled = true;
-    };
-  }, [searchQueryTemplate, canSearchUsers]);
-
-  useEffect(() => {
-    if (!canSearchUsers) {
-      setSearchResultsDocument([]);
-      return;
-    }
-    const q = searchQueryDocument.trim();
-    if (q.length < 2) {
-      setSearchResultsDocument([]);
-      setSearchErrorDocument(null);
-      return;
-    }
-    let cancelled = false;
-    const timer = setTimeout(() => {
-      setSearchingDocument(true);
-      setSearchErrorDocument(null);
-      searchDocumentReviewerCandidates(q)
-        .then((res) => { if (!cancelled) setSearchResultsDocument(res.data); })
-        .catch((e) => {
-          if (!cancelled) {
-            setSearchErrorDocument(
-              e instanceof ApiHttpError ? e.message : 'No se pudo completar la búsqueda. Inténtalo de nuevo.',
-            );
-          }
-        })
-        .finally(() => { if (!cancelled) setSearchingDocument(false); });
-    }, 300);
-    return () => {
-      clearTimeout(timer);
-      cancelled = true;
-    };
-  }, [searchQueryDocument, canSearchUsers]);
+  const {
+    results: searchResultsTemplate,
+    searching: searchingTemplate,
+    error: searchErrorTemplate,
+  } = useDebouncedUserSearch(searchQueryTemplate, searchTemplateReviewerCandidates, canSearchUsers);
+  const {
+    results: searchResultsDocument,
+    searching: searchingDocument,
+    error: searchErrorDocument,
+  } = useDebouncedUserSearch(searchQueryDocument, searchDocumentReviewerCandidates, canSearchUsers);
 
   const handleAddToTemplate = (user: User) => {
     if (!validators.some((v) => v.userId === user.id)) {
