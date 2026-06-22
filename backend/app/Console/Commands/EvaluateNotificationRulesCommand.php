@@ -70,7 +70,7 @@ final class EvaluateNotificationRulesCommand extends Command
                 $this->stampRun((int) $rule->id, $now);
                 $total += $count;
 
-                $this->line("✓ rule #{$rule->id} {$rule->evaluator_key}: {$count}");
+                $this->line("[ok] rule #{$rule->id} {$rule->evaluator_key}: {$count}");
             } catch (Throwable $e) {
                 Log::error('notifications.rule_execution_failed', [
                     'rule_id' => $rule->id ?? null,

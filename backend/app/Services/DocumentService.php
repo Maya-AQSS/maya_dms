@@ -41,8 +41,8 @@ use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TeamReadRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
-use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\Concerns\NotifiesOwner;
+use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
 use App\Support\AcademicScopeContext;
 use App\Support\AcademicScopeNormalizer;
@@ -1791,15 +1791,13 @@ class DocumentService implements DocumentServiceInterface
         ];
     }
 
-    private function extractPublishedTitleFromSnapshot(mixed $snapshot): ?string
+    /**
+     * @param  array<string, mixed>|null  $snapshot  Ya decodificado por el cast
+     *                                               `snapshot_data => array` de EntityVersion.
+     */
+    private function extractPublishedTitleFromSnapshot(?array $snapshot): ?string
     {
-        if (is_string($snapshot) && $snapshot !== '') {
-            $decoded = json_decode($snapshot, true);
-            if (is_array($decoded)) {
-                $snapshot = $decoded;
-            }
-        }
-        if (! is_array($snapshot)) {
+        if ($snapshot === null) {
             return null;
         }
         $title = data_get($snapshot, 'document.title');
