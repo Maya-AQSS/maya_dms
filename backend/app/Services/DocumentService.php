@@ -42,6 +42,7 @@ use App\Repositories\Contracts\TeamReadRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Services\Contracts\DocumentServiceInterface;
+use App\Services\Concerns\NotifiesOwner;
 use App\Services\Contracts\SnapshotServiceInterface;
 use App\Support\AcademicScopeContext;
 use App\Support\AcademicScopeNormalizer;
@@ -62,6 +63,8 @@ use Maya\Messaging\Publishers\NotificationPublisher;
 
 class DocumentService implements DocumentServiceInterface
 {
+    use NotifiesOwner;
+
     public function __construct(
         private readonly DocumentRepositoryInterface $documentRepository,
         private readonly TemplateRepositoryInterface $templateRepository,
@@ -1565,6 +1568,8 @@ class DocumentService implements DocumentServiceInterface
         $updated = $this->documentRepository->updateOwner($document, $newOwnerId);
 
         $request = request();
+        $actorName = $this->userDirectoryRepository->findNameById($actorId) ?? '';
+
         OwnershipTransferred::dispatch(
             'document',
             (string) $updated->getKey(),
@@ -1575,6 +1580,25 @@ class DocumentService implements DocumentServiceInterface
             $this->userDirectoryRepository->findNameById($newOwnerId),
             $request?->ip(),
             $request?->userAgent(),
+        );
+
+        $this->notifyOwner(
+            recipientId: $newOwnerId,
+            type: 'document.ownership_transferred',
+            title: __('notifications.document.ownership_transferred.title'),
+            body: __('notifications.document.ownership_transferred.body', [
+                'actor_name' => $actorName,
+                'document_title' => $updated->title,
+            ]),
+            titleKey: 'notifications.document.ownership_transferred.title',
+            bodyKey: 'notifications.document.ownership_transferred.body',
+            params: [
+                'document_id' => (string) $updated->getKey(),
+                'document_title' => $updated->title,
+                'actor_name' => $actorName,
+            ],
+            severity: 'info',
+            metadata: ['document_id' => (string) $updated->getKey()],
         );
 
         return $this->toDto($updated, $beforeMap);
