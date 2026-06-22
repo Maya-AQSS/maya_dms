@@ -538,7 +538,11 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
           setTemplate(res);
         }
       } catch (e) {
+        // No tragar el fallo: sin plantilla el wizard nuevo queda en blanco.
+        console.error('No se pudo cargar la plantilla del documento', e);
         if (!cancelled) {
+          setTemplate(null);
+          setFormError(e instanceof Error ? e.message : 'No se pudo cargar la plantilla.');
         }
       } finally {
         if (!cancelled) setLoadingTemplate(false);
@@ -874,7 +878,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
         if (!cancelled) {
           setTemplate(templateResp);
         }
-      } catch {
+      } catch (e) {
+        // La plantilla es complementaria aquí (el detalle ya cargó); no silenciar el error.
+        console.error('No se pudo cargar la plantilla del documento', e);
         if (!cancelled) {
           setTemplate(null);
         }
