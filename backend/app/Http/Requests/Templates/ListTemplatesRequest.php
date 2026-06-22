@@ -8,6 +8,7 @@ use App\DTOs\Templates\TemplateFilterDto;
 use App\Enums\TemplateVisibilityLevel;
 use App\Http\Requests\Concerns\ParsesFavoriteIds;
 use App\Models\Template;
+use App\Repositories\Eloquent\TemplateRepository;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Validation\Rule;
 use Maya\Http\Http\Requests\PaginatedFilterRequest;
@@ -49,6 +50,18 @@ class ListTemplatesRequest extends PaginatedFilterRequest
             'usable_for_documents' => ['nullable', 'boolean'],
             'favorite_ids' => ['nullable', 'string', 'max:4000'],
         ];
+    }
+
+    /**
+     * Whitelist de columnas ordenables; debe coincidir con las que acepta
+     * {@see TemplateRepository::applyTemplateSort()}.
+     * Un sort_by fuera de la lista recibe 422 en la capa de validación.
+     *
+     * @return list<string>
+     */
+    protected function allowedSortFields(): array
+    {
+        return ['updated_at', 'created_at', 'name', 'delivery_deadline'];
     }
 
     /**

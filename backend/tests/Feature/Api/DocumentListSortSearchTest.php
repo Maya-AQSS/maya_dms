@@ -114,15 +114,15 @@ it('sorts documents by status ascending', function () {
     expect($ids)->toBe([$draft, $published]);
 });
 
-it('falls back to created_at desc for an invalid sort column', function () {
-    $old = makeOwnDocument('Old', ['created_at' => now()->subDays(3)]);
-    $new = makeOwnDocument('New', ['created_at' => now()]);
+it('rejects an invalid sort column with 422', function () {
+    makeOwnDocument('Old', ['created_at' => now()->subDays(3)]);
+    makeOwnDocument('New', ['created_at' => now()]);
 
-    $ids = $this->getJson('/api/v1/documents?sort_by=evil_injection')
-        ->assertOk()
-        ->json('data.*.id');
-
-    expect($ids)->toBe([$new, $old]);
+    // La whitelist allowedSortFields() rechaza columnas fuera de contrato en la
+    // capa de validación (fail-fast) en vez de caer silenciosamente al default.
+    $this->getJson('/api/v1/documents?sort_by=evil_injection')
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('sort_by');
 });
 
 it('filters documents by favorite_ids (document id)', function () {

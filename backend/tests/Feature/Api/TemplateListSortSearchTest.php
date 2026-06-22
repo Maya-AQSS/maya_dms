@@ -86,15 +86,15 @@ it('sorts templates by name descending', function () {
     expect($ids)->toBe([$gamma, $beta, $alpha]);
 });
 
-it('falls back to updated_at desc for an invalid sort column', function () {
-    $old = makeOwnTemplate('Old', ['updated_at' => now()->subDays(3)]);
-    $new = makeOwnTemplate('New', ['updated_at' => now()]);
+it('rejects an invalid sort column with 422', function () {
+    makeOwnTemplate('Old', ['updated_at' => now()->subDays(3)]);
+    makeOwnTemplate('New', ['updated_at' => now()]);
 
-    $ids = $this->getJson('/api/v1/templates?sort_by=evil_injection')
-        ->assertOk()
-        ->json('data.*.id');
-
-    expect($ids)->toBe([$new, $old]);
+    // La whitelist allowedSortFields() rechaza columnas fuera de contrato en la
+    // capa de validación (fail-fast) en vez de caer silenciosamente al default.
+    $this->getJson('/api/v1/templates?sort_by=evil_injection')
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('sort_by');
 });
 
 it('sorts by delivery_deadline ascending with nulls last', function () {

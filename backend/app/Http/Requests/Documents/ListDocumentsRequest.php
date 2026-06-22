@@ -7,6 +7,7 @@ namespace App\Http\Requests\Documents;
 use App\DTOs\Documents\DocumentFilterDto;
 use App\Http\Requests\Concerns\ParsesFavoriteIds;
 use App\Models\Document;
+use App\Repositories\Eloquent\DocumentRepository;
 use Illuminate\Auth\Access\AuthorizationException;
 use Maya\Http\Http\Requests\PaginatedFilterRequest;
 
@@ -51,6 +52,18 @@ class ListDocumentsRequest extends PaginatedFilterRequest
             // simplemente devuelve 0 resultados sin riesgo de integridad.
             'team_id' => ['nullable', 'uuid'],
         ];
+    }
+
+    /**
+     * Whitelist de columnas ordenables; debe coincidir con las que acepta
+     * {@see DocumentRepository::applyDocumentSort()}.
+     * Un sort_by fuera de la lista recibe 422 en la capa de validación.
+     *
+     * @return list<string>
+     */
+    protected function allowedSortFields(): array
+    {
+        return ['updated_at', 'created_at', 'title', 'status', 'delivery_deadline'];
     }
 
     /**
