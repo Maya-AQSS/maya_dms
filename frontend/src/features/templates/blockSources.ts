@@ -9,7 +9,7 @@ export interface BlockSourceContext {
   /** ID de la plantilla actual. */
   templateId: string;
   /** Crea un bloque vacío (opcionalmente de un `block_type` de maquetación) y entra en edición. */
-  createBlock: (block: Partial<{ name: string; description: string; content: any; block_type: 'content' | 'cover' | 'blank' | 'index' }>) => void | Promise<void>;
+  createBlock: (block: Partial<{ name: string; description: string; content: unknown; block_type: 'content' | 'cover' | 'blank' | 'index' }>) => void | Promise<void>;
   /** Abre el modal DocxBlockSplitter. */
   openDocxSplitter: () => void;
   /** Cierra el diálogo activo (id=null) o uno específico. */

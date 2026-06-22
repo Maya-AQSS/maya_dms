@@ -7,6 +7,13 @@ import type { Theme } from '../../../types/themes';
 /** Columnas ordenables server-side (espejo de la whitelist del backend). */
 const SORTABLE_THEME_COLUMNS = ['name', 'created_at', 'updated_at'] as const;
 
+/** Estados válidos de tema; el filtro llega como string libre desde la URL. */
+const THEME_STATUSES = ['draft', 'published', 'archived'] as const;
+
+function isThemeStatus(value: string): value is Theme['status'] {
+  return (THEME_STATUSES as readonly string[]).includes(value);
+}
+
 /** Filtros de dominio sincronizados a URL. */
 const THEME_FILTER_DEFAULTS = {
   search: '',
@@ -48,7 +55,7 @@ export function useServerThemesTable() {
   const apiParams = useMemo(() => {
     const filters: ThemeListFilters = {};
     if (table.filters.search) filters.search = table.filters.search;
-    if (table.filters.status) filters.status = table.filters.status as any;
+    if (table.filters.status && isThemeStatus(table.filters.status)) filters.status = table.filters.status;
     if (table.filters.team_id) filters.team_id = table.filters.team_id;
     filters.page = table.page;
     filters.per_page = table.pageSize;

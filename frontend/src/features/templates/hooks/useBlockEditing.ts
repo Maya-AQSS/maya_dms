@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BLOCK_UI_STATE_CONFIG, type BlockUiState, blockToUiState } from '../blockUiState';
 import { useAutoSave } from '@ceedcv-maya/shared-hooks-react';
-import type { TemplateBlock } from '../../../types/blocks';
+import type { TemplateBlock, UpdateBlockPayload } from '../../../types/blocks';
 
 type TabId = 'properties' | 'content' | 'description' | 'comments';
 
 interface UseBlockEditingParams {
   activeSingleId: string | null;
-  updateBlock: (id: string, data: any) => Promise<void>;
+  updateBlock: (id: string, data: UpdateBlockPayload) => Promise<void>;
 }
 
 export interface BlockEditingState {

@@ -459,7 +459,7 @@ export function TemplateEditor({ template }: Props) {
             >
               <BlockNoteEditorPanel
                 key={activeBlockId}
-                initialContent={localContent as any}
+                initialContent={localContent}
                 onChange={(content) => {
                   setLocalContent(content);
                   markDirty();
