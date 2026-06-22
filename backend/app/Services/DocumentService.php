@@ -1138,7 +1138,7 @@ class DocumentService implements DocumentServiceInterface
     /**
      * Envia el documento a revisión.
      */
-    public function submitToReview(string $documentId, string $actorId, string $changelog): Document
+    public function submitToReview(string $documentId, string $actorId, string $changelog, ?callable $beforeMap = null): DocumentDto
     {
         $normalizedChangelog = VersionSubmissionChangelog::normalize($changelog);
         $document = $this->documentRepository->findOrFail($documentId);
@@ -1151,7 +1151,7 @@ class DocumentService implements DocumentServiceInterface
 
         $this->documentBlockService->assertMandatoryBlocksAreFilled($documentId);
 
-        return $this->documentRepository->transaction(function () use ($documentId, $actorId, $document, $normalizedChangelog) {
+        $model = $this->documentRepository->transaction(function () use ($documentId, $actorId, $document, $normalizedChangelog): Document {
             $this->documentRepository->deleteReviewsForDocument($documentId);
             $this->documentRepository->updateHeadVersionChangelog($documentId, $normalizedChangelog);
 
@@ -1242,6 +1242,8 @@ class DocumentService implements DocumentServiceInterface
 
             return $document;
         });
+
+        return $this->toDto($model, $beforeMap);
     }
 
     /**

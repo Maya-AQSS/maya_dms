@@ -50,14 +50,14 @@ class DocumentStateController extends Controller
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         $actorId = (string) $request->user()->getAuthIdentifier();
-        $updated = $this->documentService->submitToReview(
+        $dto = $this->documentService->submitToReview(
             $model->id,
             $actorId,
             (string) $request->validated('changelog'),
+            fn (Document $m) => $this->attachCanCloneMeta($m, $request),
         );
-        $this->attachCanCloneMeta($updated, $request);
 
-        return new DocumentResource(DocumentDto::fromModel($updated));
+        return new DocumentResource($dto);
     }
 
     /**

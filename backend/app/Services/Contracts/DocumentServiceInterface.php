@@ -138,9 +138,11 @@ interface DocumentServiceInterface
     public function transition(string $documentId, string $newStatus, string $actorId, array $extraAttributes = [], ?callable $beforeMap = null): DocumentDto;
 
     /**
-     * Envia el documento a revisión. Devuelve Model.
+     * Envia el documento a revisión.
+     *
+     * @param  callable(Document): void|null  $beforeMap
      */
-    public function submitToReview(string $documentId, string $actorId, string $changelog): Document;
+    public function submitToReview(string $documentId, string $actorId, string $changelog, ?callable $beforeMap = null): DocumentDto;
 
     /**
      * Publica el documento.
