@@ -76,12 +76,18 @@ export function tiptapContentHasMeaning(parsed: unknown): boolean {
 
 /**
  * Parses JSON string safely, returning null on parse error.
+ *
+ * A diferencia de un `try { JSON.parse } catch {}` inline, avisa en consola
+ * cuando el JSON está corrupto: el contenido Tiptap mal formado ha causado
+ * bugs reales (render PDF, descripción aplanada, accessor) imposibles de
+ * depurar al tragarse el error en silencio.
  */
 export function safeJsonParse(json: string | null): unknown {
   if (!json) return null;
   try {
     return JSON.parse(json);
-  } catch {
+  } catch (e) {
+    console.warn('safeJsonParse: contenido JSON inválido descartado', e);
     return null;
   }
 }

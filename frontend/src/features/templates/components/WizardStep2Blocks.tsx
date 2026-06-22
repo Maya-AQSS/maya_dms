@@ -346,10 +346,8 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     }
     setNameError('');
     const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState].payload;
-    let parsedContent: unknown = null;
-    let parsedDesc: unknown = null;
-    try { parsedContent = formContent ? JSON.parse(formContent) : null; } catch { parsedContent = null; }
-    try { parsedDesc = formDesc ? JSON.parse(formDesc) : null; } catch { parsedDesc = null; }
+    let parsedContent: unknown = safeJsonParse(formContent);
+    const parsedDesc: unknown = safeJsonParse(formDesc);
 
     // DMS-F02: validador puro (lib/blockValidation). Igual que antes, un array
     // pelado sin contenido con sustancia se persiste como null.
@@ -1105,7 +1103,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                       </div>
                     ) : (
                       <CoverDesignEditor
-                        value={parseCoverContent((() => { try { return JSON.parse(formContent); } catch { return null; } })(), coverPageSize)}
+                        value={parseCoverContent(safeJsonParse(formContent), coverPageSize)}
                         pageSize={coverPageSize}
                         templateId={template.id}
                         onChange={(next) => { setFormContent(JSON.stringify(next)); setTabIsDirty(true); }}
@@ -1128,7 +1126,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                       <IndexBlockEditor
                         blocks={blocks}
                         currentBlockId={activeSingleId}
-                        value={parseIndexConfig((() => { try { return JSON.parse(formContent); } catch { return null; } })())}
+                        value={parseIndexConfig(safeJsonParse(formContent))}
                         onChange={(next) => { setFormContent(JSON.stringify(next)); setTabIsDirty(true); }}
                       />
                     )}
@@ -1188,7 +1186,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                           <Suspense fallback={<div className="p-4 flex justify-center"><Spinner /></div>}>
                             <BlockNoteEditorPanel
                               key={`content-${activeSingleId ?? 'none'}`}
-                              initialContent={(() => { try { return JSON.parse(formContent); } catch { return undefined; } })()}
+                              initialContent={safeJsonParse(formContent) ?? undefined}
                               onChange={json => {
                                 setFormContent(JSON.stringify(json));
                                 setTabIsDirty(true);
@@ -1224,7 +1222,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                         <Suspense fallback={<div className="p-4 flex justify-center"><Spinner /></div>}>
                           <BlockNoteEditorPanel
                             key={`description-${activeSingleId ?? 'none'}`}
-                            initialContent={(() => { try { return JSON.parse(formDesc); } catch { return undefined; } })()}
+                            initialContent={safeJsonParse(formDesc) ?? undefined}
                             onChange={json => { setFormDesc(JSON.stringify(json)); setTabIsDirty(true); }}
                             onFlush={flushTemplateBlockSave}
                             editable={true}
