@@ -27,6 +27,10 @@ abstract class MediaUploadService
     {
         $content = $file->getContent();
         $this->validateContent($content);
+        // Saneado opcional: las subclases pueden devolver una versión limpia del
+        // contenido (p. ej. SVG pasado por un allowlist sanitizer) que es lo que
+        // se persiste — no el original.
+        $content = $this->sanitizeContent($content);
 
         $uuid = (string) Str::uuid();
         $path = $this->scopePrefix().'/'.$contextId.'/'.$uuid;
@@ -41,4 +45,13 @@ abstract class MediaUploadService
      * de tipo/tamaño la cubre el FormRequest); las subclases pueden reforzarla.
      */
     protected function validateContent(string $content): void {}
+
+    /**
+     * Hook de saneado de contenido: devuelve la versión a persistir. Por defecto
+     * el contenido tal cual; las subclases pueden limpiarlo (allowlist).
+     */
+    protected function sanitizeContent(string $content): string
+    {
+        return $content;
+    }
 }

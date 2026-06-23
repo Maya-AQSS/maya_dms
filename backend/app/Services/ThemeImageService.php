@@ -6,6 +6,9 @@ namespace App\Services;
 
 use App\DTOs\Media\UploadedMediaDto;
 use App\Services\Contracts\ThemeImageServiceInterface;
+use App\Support\Svg\ThemeSvgAllowedAttributes;
+use App\Support\Svg\ThemeSvgAllowedTags;
+use enshrined\svgSanitize\Sanitizer;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -23,60 +26,51 @@ class ThemeImageService extends MediaUploadService implements ThemeImageServiceI
     // el FormRequest + content-type en la ingesta remota).
 
     /**
-     * Rechaza SVGs con vectores XSS activos. El MediaController además sirve
-     * cualquier SVG como attachment con CSP estricta, pero esta capa evita
-     * persistir contenido malicioso. PNG/JPEG/WEBP pasan sin inspección —
-     * los magic bytes los validó el FormRequest.
-     *
-     * Estrategia: blocklist sobre el contenido + decode de entidades HTML
-     * para neutralizar bypasses tipo `&#x6A;avascript:`.
+     * DMS-B10b: los SVG se sanean con un allowlist (enshrined/svg-sanitize) en
+     * {@see sanitizeContent} y se persiste la versión limpia — en lugar del
+     * blocklist anterior, que era frágil ante vectores no enumerados. Aquí solo
+     * detectamos que el XML del SVG sea parseable (sanitize() falla en XML roto).
+     * PNG/JPEG/WEBP pasan sin inspección (magic bytes ya validados por el FormRequest).
+     * El MediaController además sirve cualquier SVG como attachment con CSP estricta.
+     */
+    protected function looksLikeSvg(string $content): bool
+    {
+        $head = ltrim(substr($content, 0, 512));
+
+        return $head !== ''
+            && (str_starts_with($head, '<?xml')
+                || stripos($head, '<svg') !== false);
+    }
+
+    /**
+     * Saneado allowlist del SVG: elimina scripts, handlers de eventos,
+     * referencias remotas y cualquier elemento/atributo fuera de la allowlist.
+     * Devuelve el SVG limpio (lo que se persiste). Rechaza solo XML no parseable.
      *
      * @throws ValidationException
      */
-    protected function validateContent(string $content): void
+    protected function sanitizeContent(string $content): string
     {
-        $head = ltrim(substr($content, 0, 512));
-        $isSvg = $head !== ''
-            && (str_starts_with($head, '<?xml')
-                || stripos($head, '<svg') !== false);
-
-        if (! $isSvg) {
-            return;
+        if (! $this->looksLikeSvg($content)) {
+            return $content;
         }
 
-        // Decodificar entidades HTML antes del match — bypass común con
-        // `&#x6A;avascript:` o `&#106;avascript:`.
-        $decoded = html_entity_decode($content, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        $lower = strtolower($decoded);
-        $dangerous = [
-            '<script',
-            '<foreignobject',
-            '<use',                 // <use href="javascript:..."> / xlink:href
-            '<animate',             // <animate from="javascript:...">
-            '<set',                 // <set attributeName="href" to="javascript:...">
-            '<image',               // <image href="javascript:...">
-            '<iframe',
-            '<style',               // <style>...expression(...)</style>
-            '<![cdata[',            // CDATA-wrapped script
-            'xlink:href',
-            'javascript:',
-            'vbscript:',
-            'data:text/html',
-            'expression(',
-        ];
-        foreach ($dangerous as $needle) {
-            if (str_contains($lower, $needle)) {
-                throw ValidationException::withMessages([
-                    'file' => __('validation.theme_image.svg_unsafe'),
-                ]);
-            }
-        }
-        // Event handlers inline (onclick, onload, onerror, ...).
-        if (preg_match('/\son[a-z]+\s*=/i', $decoded) === 1) {
+        $sanitizer = new Sanitizer;
+        // Defensa anti-SSRF/exfiltración: descarta url(...) remotos y, vía la
+        // allowlist propia, elimina <image>/<a>/<use>/<foreignObject> y los
+        // atributos href/xlink:href (un logo de tema no los necesita).
+        $sanitizer->removeRemoteReferences(true);
+        $sanitizer->setAllowedTags(new ThemeSvgAllowedTags);
+        $sanitizer->setAllowedAttrs(new ThemeSvgAllowedAttributes);
+
+        $clean = $sanitizer->sanitize($content);
+        if ($clean === false || trim($clean) === '') {
             throw ValidationException::withMessages([
                 'file' => __('validation.theme_image.svg_unsafe'),
             ]);
         }
+
+        return $clean;
     }
 
     /**
@@ -173,8 +167,9 @@ class ThemeImageService extends MediaUploadService implements ThemeImageServiceI
             throw ValidationException::withMessages(['url' => __('validation.theme_image.too_large')]);
         }
 
-        // Sanea contenido SVG (las imágenes raster pasan sin tocar).
-        $this->validateContent($body);
+        // Sanea contenido SVG con el allowlist y persiste la versión limpia (las
+        // imágenes raster pasan sin tocar). DMS-B10b: cubre también la ingesta remota.
+        $body = $this->sanitizeContent($body);
 
         // Almacenar. Con `throw => true` en el disco, un fallo de IO en NFS sale
         // como FilesystemException; lo traducimos a ValidationException para no
