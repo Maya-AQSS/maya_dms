@@ -224,4 +224,30 @@ class UserDirectoryRepository implements UserDirectoryRepositoryInterface
 
         return $trimmed === '' ? null : $trimmed;
     }
+
+    public function findNamesByIds(array $userIds): array
+    {
+        $ids = array_values(array_unique(array_filter(
+            $userIds,
+            static fn ($id): bool => is_string($id) && $id !== '',
+        )));
+
+        if ($ids === []) {
+            return [];
+        }
+
+        $names = [];
+        foreach (DB::table('users')->whereIn('id', $ids)->pluck('name', 'id') as $id => $name) {
+            if (! is_string($name)) {
+                continue;
+            }
+
+            $trimmed = trim($name);
+            if ($trimmed !== '') {
+                $names[(string) $id] = $trimmed;
+            }
+        }
+
+        return $names;
+    }
 }

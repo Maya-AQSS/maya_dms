@@ -1224,13 +1224,19 @@ class DocumentService implements DocumentServiceInterface
 
             $this->notifyReviewersOfValidationRequest($document, $candidates, $reviewMode);
 
+            // DMS-B11: resolvemos los nombres de revisores en una sola consulta
+            // (antes 1 findNameById por candidato dentro del array_map → N+1).
+            $reviewerNames = $this->userDirectoryRepository->findNamesByIds(
+                array_map(static fn (array $c) => (string) $c['reviewer_id'], $candidates),
+            );
+
             DocumentSubmittedForReview::dispatch(
                 $documentId,
                 $actorId,
                 $reviewMode,
                 array_map(fn (array $c) => [
                     'id' => $c['reviewer_id'],
-                    'name' => $this->userDirectoryRepository->findNameById($c['reviewer_id']),
+                    'name' => $reviewerNames[$c['reviewer_id']] ?? null,
                     'stage' => $c['stage'],
                 ], $candidates),
                 $document->title,

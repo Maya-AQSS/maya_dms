@@ -27,8 +27,8 @@ use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateReviewerRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
-use App\Services\Contracts\TemplateServiceInterface;
 use App\Services\Concerns\NotifiesOwner;
+use App\Services\Contracts\TemplateServiceInterface;
 use App\Support\AcademicScopeContext;
 use App\Support\AcademicScopeNormalizer;
 use App\Support\TemplateHeadSnapshot;
@@ -556,7 +556,13 @@ class TemplateService implements TemplateServiceInterface
             $request = request();
             $actorId = (string) (Auth::id() ?? '');
             $newOwnerId = (string) $dto->createdBy;
-            $actorName = $this->userDirectoryRepository->findNameById($actorId) ?? '';
+            // DMS-B11: nombres (actor / propietario anterior / nuevo) en una sola consulta.
+            $names = $this->userDirectoryRepository->findNamesByIds([
+                $actorId,
+                $previousCreatedBy,
+                $newOwnerId,
+            ]);
+            $actorName = $names[$actorId] ?? '';
 
             OwnershipTransferred::dispatch(
                 'template',
@@ -564,8 +570,8 @@ class TemplateService implements TemplateServiceInterface
                 $previousCreatedBy,
                 $newOwnerId,
                 $actorId,
-                $this->userDirectoryRepository->findNameById($previousCreatedBy),
-                $this->userDirectoryRepository->findNameById($newOwnerId),
+                $names[$previousCreatedBy] ?? null,
+                $names[$newOwnerId] ?? null,
                 $request?->ip(),
                 $request?->userAgent(),
             );
