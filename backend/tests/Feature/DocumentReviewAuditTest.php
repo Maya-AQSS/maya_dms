@@ -37,9 +37,19 @@ class DocumentReviewAuditTest extends TestCase
         parent::setUp();
 
         // Nombres deterministas para el enriquecimiento de auditoría.
-        $this->mock(UserDirectoryRepositoryInterface::class)
-            ->shouldReceive('findNameById')
+        $directory = $this->mock(UserDirectoryRepositoryInterface::class);
+        $directory->shouldReceive('findNameById')
             ->andReturnUsing(static fn (string $id): string => 'Nombre '.$id);
+        // DMS-B11: el envío a revisión resuelve nombres de revisores en lote.
+        $directory->shouldReceive('findNamesByIds')
+            ->andReturnUsing(static function (array $ids): array {
+                $out = [];
+                foreach ($ids as $id) {
+                    $out[(string) $id] = 'Nombre '.$id;
+                }
+
+                return $out;
+            });
     }
 
     public function test_intermediate_approval_dispatches_review_approved_with_reviewer_name(): void

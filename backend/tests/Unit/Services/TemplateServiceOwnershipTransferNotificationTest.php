@@ -14,12 +14,13 @@ use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateBlockRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateReviewerRepositoryInterface;
+use App\Repositories\Contracts\TemplateVersionBlockLayerRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Services\EntityVersionDestroyService;
 use App\Services\TemplatePublishingService;
-use App\Services\TemplateReviewService;
 use App\Services\TemplateReviewerAssignmentService;
+use App\Services\TemplateReviewService;
 use App\Services\TemplateService;
 use App\Services\TemplateVersionBlockLayerResolver;
 use Illuminate\Support\Facades\Auth;
@@ -94,9 +95,12 @@ final class TemplateServiceOwnershipTransferNotificationTest extends TestCase
         $templateRepo->shouldReceive('update')->once()->andReturn($updated);
 
         $userDirectory = Mockery::mock(UserDirectoryRepositoryInterface::class);
-        $userDirectory->shouldReceive('findNameById')->with($actorId)->andReturn('Coordinador');
-        $userDirectory->shouldReceive('findNameById')->with($previousOwner)->andReturn('Anterior');
-        $userDirectory->shouldReceive('findNameById')->with($newOwner)->andReturn('Nuevo');
+        // DMS-B11: la transferencia resuelve los 3 nombres en un solo findNamesByIds.
+        $userDirectory->shouldReceive('findNamesByIds')->andReturn([
+            $actorId => 'Coordinador',
+            $previousOwner => 'Anterior',
+            $newOwner => 'Nuevo',
+        ]);
 
         $notificationPublisher = Mockery::mock(NotificationPublisher::class);
         $notificationPublisher->shouldReceive('send')
@@ -120,8 +124,14 @@ final class TemplateServiceOwnershipTransferNotificationTest extends TestCase
             Mockery::mock(DocumentBlockRepositoryInterface::class),
             Mockery::mock(AcademicHierarchyRepositoryInterface::class),
             $userDirectory,
-            Mockery::mock(EntityVersionDestroyService::class),
-            Mockery::mock(TemplateVersionBlockLayerResolver::class),
+            // EntityVersionDestroyService y TemplateVersionBlockLayerResolver son
+            // `final` (no mockeables): instancias reales con deps mockeadas — no se
+            // ejercitan en el camino update→transferencia.
+            new EntityVersionDestroyService(Mockery::mock(EntityVersionRepositoryInterface::class)),
+            new TemplateVersionBlockLayerResolver(
+                Mockery::mock(EntityVersionRepositoryInterface::class),
+                Mockery::mock(TemplateVersionBlockLayerRepositoryInterface::class),
+            ),
             $notificationPublisher,
         );
 
