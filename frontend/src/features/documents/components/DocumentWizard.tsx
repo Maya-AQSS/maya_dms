@@ -1,11 +1,23 @@
+import {
+  normalizeTiptapContentForPersistence,
+  type TiptapDoc,
+} from '@ceedcv-maya/shared-editor-react';
+import {
+  useAutoSave,
+  useBackNavigation,
+  useFlushOnPageLeave,
+} from '@ceedcv-maya/shared-hooks-react';
+import { useDarkMode } from '@ceedcv-maya/shared-layout-react';
+import { Button } from '@ceedcv-maya/shared-ui-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
-import type { DocumentStep1Input } from '../schemas/documentStep1';
 import {
   applyTemplateMigration,
   approveDocumentReview,
   createDocument,
+  delegateDocument,
   deleteDocumentBlock,
   fetchDocument,
   fetchDocumentReviewers,
@@ -14,38 +26,30 @@ import {
   submitDocumentForReview,
   updateDocument,
   updateDocumentBlock,
-  delegateDocument,
 } from '../../../api/documents';
-import { DocumentMigrationStep } from './DocumentMigrationStep';
-import { useQueryClient } from '@tanstack/react-query';
-import { refreshDmsDashboardQuery } from '../../dashboard/hooks/useDmsDashboard';
 import { ApiHttpError } from '../../../api/http';
-import { useUserProfile } from '../../user-profile';
-import { canCommentOnDocument, canDeleteBlockComment } from '../../../permissions';
-import { useProcessesQuery } from '../../../hooks/useProcesses';
 import { fetchTemplate } from '../../../api/templates';
-import { useCompletedBlocks } from '../hooks/useCompletedBlocks';
 import { searchOwnerCandidates } from '../../../api/users';
-import { useAutoSave, useBackNavigation, useFlushOnPageLeave } from '@ceedcv-maya/shared-hooks-react';
-import {
-  normalizeTiptapContentForPersistence,
-  type TiptapDoc,
-} from '@ceedcv-maya/shared-editor-react';
-import { useDarkMode } from '@ceedcv-maya/shared-layout-react';
+import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
+import { useProcessesQuery } from '../../../hooks/useProcesses';
+import { canCommentOnDocument, canDeleteBlockComment } from '../../../permissions';
 import type { DocumentDetail, DocumentDisplayBlock } from '../../../types/documents';
-import { useHierarchy } from '../../hierarchy';
-import type { Study, CourseModule } from '../../../types/hierarchy';
+import type { CourseModule, Study } from '../../../types/hierarchy';
 import type { Template } from '../../../types/templates';
+import { refreshDmsDashboardQuery } from '../../dashboard/hooks/useDmsDashboard';
+import { useHierarchy } from '../../hierarchy';
 import { blockToUiState } from '../../templates/blockUiState';
+import { useUserProfile } from '../../user-profile';
+import { useCompletedBlocks } from '../hooks/useCompletedBlocks';
 import { applyBlockSaveToDetail } from '../lib/applyBlockSaveToDetail';
 import {
   documentBlockContentUnchanged,
   listUnresolvedEditableBlockTitles,
   planDocumentBlockSave,
 } from '../lib/blockContentEquals';
-import { Button } from '@ceedcv-maya/shared-ui-react';
-import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
 import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
+import type { DocumentStep1Input } from '../schemas/documentStep1';
+import { DocumentMigrationStep } from './DocumentMigrationStep';
 
 type BlocksViewMode = 'per-block' | 'continuous';
 
@@ -61,26 +65,26 @@ function readStoredViewMode(id: string | null | undefined): BlocksViewMode {
   return raw === 'continuous' ? 'continuous' : 'per-block';
 }
 
-import {
-  type Step,
-  type SummaryConfirmAction,
-  type BlockViewTab,
-  type ReviewModeView,
-  type VisibilityRuleMode,
-  type ReviewerView,
-  dateIsoToInput,
-  validationSuccessBannerMessage,
-  effectiveDocumentReviewMode,
-  pickActionableDocumentReview,
-  isUuidLike,
-} from './documentWizardUtils';
-import { useDocumentMigration } from './useDocumentMigration';
-import { useDocumentCommentHandlers } from './useDocumentCommentHandlers';
-import { useDocumentStep1Form } from './useDocumentStep1Form';
-import { DocumentPropertiesStep } from './DocumentPropertiesStep';
 import { DocumentBlocksStep } from './DocumentBlocksStep';
+import { DocumentPropertiesStep } from './DocumentPropertiesStep';
 import { DocumentSummaryStep } from './DocumentSummaryStep';
 import { DocumentWizardModals } from './DocumentWizardModals';
+import {
+  type BlockViewTab,
+  dateIsoToInput,
+  effectiveDocumentReviewMode,
+  isUuidLike,
+  pickActionableDocumentReview,
+  type ReviewerView,
+  type ReviewModeView,
+  type Step,
+  type SummaryConfirmAction,
+  type VisibilityRuleMode,
+  validationSuccessBannerMessage,
+} from './documentWizardUtils';
+import { useDocumentCommentHandlers } from './useDocumentCommentHandlers';
+import { useDocumentMigration } from './useDocumentMigration';
+import { useDocumentStep1Form } from './useDocumentStep1Form';
 
 type Props = {
   documentId?: string | null;
@@ -99,7 +103,13 @@ type Props = {
  * Asistente de edición de documento (3 pasos, sin usuarios/validadores).
  * Reutiliza estética y piezas de plantillas (BlockNote, preview HTML) sin acoplar al flujo de TemplateWizard.
  */
-export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDocumentId, migrationMode = 'clone' }: Props) {
+export function DocumentWizard({
+  documentId,
+  templateId,
+  mode = 'edit',
+  sourceDocumentId,
+  migrationMode = 'clone',
+}: Props) {
   const navigate = useNavigate();
   const { t } = useTranslation(['documents', 'common']);
   const queryClient = useQueryClient();
@@ -135,12 +145,18 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
 
   const step1Form = useDocumentStep1Form();
   const {
-    title, setTitle,
-    deliveryDeadline, setDeliveryDeadline,
-    studyTypeId, setStudyTypeId,
-    studyId, setStudyId,
-    moduleId, setModuleId,
-    teamId, setTeamId,
+    title,
+    setTitle,
+    deliveryDeadline,
+    setDeliveryDeadline,
+    studyTypeId,
+    setStudyTypeId,
+    studyId,
+    setStudyId,
+    moduleId,
+    setModuleId,
+    teamId,
+    setTeamId,
     handleStep1Submit,
     clearStep1Errors,
     setStep1Error,
@@ -162,7 +178,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
   const [blockSaveError, setBlockSaveError] = useState<string | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [documentReviewers, setDocumentReviewers] = useState<ReviewerView[]>([]);
-  const [reviewerListKind, setReviewerListKind] = useState<'document' | 'template_fallback' | 'none'>('none');
+  const [reviewerListKind, setReviewerListKind] = useState<
+    'document' | 'template_fallback' | 'none'
+  >('none');
   const [documentReviewMode, setDocumentReviewMode] = useState<ReviewModeView>('parallel');
   const [summaryConfirmAction, setSummaryConfirmAction] = useState<SummaryConfirmAction>(null);
   const [showChangelogModal, setShowChangelogModal] = useState(false);
@@ -261,7 +279,15 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
     } finally {
       setLoading(false);
     }
-  }, [documentId, setTitle, setDeliveryDeadline, setStudyTypeId, setStudyId, setModuleId, setTeamId]);
+  }, [
+    documentId,
+    setTitle,
+    setDeliveryDeadline,
+    setStudyTypeId,
+    setStudyId,
+    setModuleId,
+    setTeamId,
+  ]);
 
   const {
     reviewComments,
@@ -291,7 +317,10 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
       setModuleId(data.module_id ?? '');
       setTeamId(data.team_id ?? '');
       setActiveBlockKey((prev: string | null) => {
-        if (prev && data.blocks.some((b) => (b.document_block_id ?? b.template_block_id) === prev)) {
+        if (
+          prev &&
+          data.blocks.some((b) => (b.document_block_id ?? b.template_block_id) === prev)
+        ) {
           return prev;
         }
         if (data.blocks.length === 0) return null;
@@ -301,7 +330,15 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
     } catch (e) {
       setBlockSaveError(e instanceof Error ? e.message : 'No se pudo actualizar el documento.');
     }
-  }, [documentId, setTitle, setDeliveryDeadline, setStudyTypeId, setStudyId, setModuleId, setTeamId]);
+  }, [
+    documentId,
+    setTitle,
+    setDeliveryDeadline,
+    setStudyTypeId,
+    setStudyId,
+    setModuleId,
+    setTeamId,
+  ]);
 
   useEffect(() => {
     if (!templateId || documentId) {
@@ -328,7 +365,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
       }
     };
     void load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [templateId, documentId]);
 
   useEffect(() => {
@@ -387,7 +426,14 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
       setCompletedSteps(['properties']);
       setStep('blocks');
     }
-  }, [detail?.id, detail?.status, detail?.delivery_deadline, forcePropertiesStep, mode, isUpgradeMigration]);
+  }, [
+    detail?.id,
+    detail?.status,
+    detail?.delivery_deadline,
+    forcePropertiesStep,
+    mode,
+    isUpgradeMigration,
+  ]);
 
   useEffect(() => {
     if (mode === 'validate') return;
@@ -404,7 +450,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
       setActionableReviewId(null);
       return;
     }
-    if (!detail || detail.status !== 'in_review') {
+    if (detail?.status !== 'in_review') {
       return;
     }
     // El usuario actual sale del perfil compartido; si aún no se ha resuelto,
@@ -437,7 +483,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
       } catch (e) {
         if (!cancelled) {
           setValidationSetupError(
-            e instanceof ApiHttpError ? e.message : 'No se pudo cargar la información de validación.',
+            e instanceof ApiHttpError
+              ? e.message
+              : 'No se pudo cargar la información de validación.',
           );
           setActionableReviewId(null);
         }
@@ -468,16 +516,24 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
     const allStudiesFlat = hierarchy.flatMap((t) => t.studies ?? []);
     const studyNode = allStudiesFlat.find((s) => String(s.id) === studyId);
     if (!studyNode) return;
-    if ((studyNode.course_modules ?? []).length === 1) setModuleId(String(studyNode.course_modules[0].id));
+    if ((studyNode.course_modules ?? []).length === 1)
+      setModuleId(String(studyNode.course_modules[0].id));
   }, [documentId, hierarchy, studyId, moduleId, setModuleId]);
 
   const sortedBlocks = useMemo(
-    () => [...(detail?.blocks ?? [])].sort((a: DocumentDisplayBlock, b: DocumentDisplayBlock) => a.sort_order - b.sort_order),
+    () =>
+      [...(detail?.blocks ?? [])].sort(
+        (a: DocumentDisplayBlock, b: DocumentDisplayBlock) => a.sort_order - b.sort_order,
+      ),
     [detail?.blocks],
   );
 
   const activeBlock = useMemo(
-    () => sortedBlocks.find((b: DocumentDisplayBlock) => (b.document_block_id ?? b.template_block_id) === activeBlockKey) ?? null,
+    () =>
+      sortedBlocks.find(
+        (b: DocumentDisplayBlock) =>
+          (b.document_block_id ?? b.template_block_id) === activeBlockKey,
+      ) ?? null,
     [sortedBlocks, activeBlockKey],
   );
   const activeBlockUiState = activeBlock ? blockToUiState(activeBlock) : null;
@@ -512,8 +568,13 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
   }, [studyId, allStudies, visibilityRule, templateModuleId]);
 
   const studyTypeEditable = visibilityRule === 'global' || visibilityRule === 'unknown';
-  const studyEditable = visibilityRule === 'global' || visibilityRule === 'study_type' || visibilityRule === 'unknown';
-  const moduleEditable = visibilityRule === 'global' || visibilityRule === 'study_type' || visibilityRule === 'study' || visibilityRule === 'unknown';
+  const studyEditable =
+    visibilityRule === 'global' || visibilityRule === 'study_type' || visibilityRule === 'unknown';
+  const moduleEditable =
+    visibilityRule === 'global' ||
+    visibilityRule === 'study_type' ||
+    visibilityRule === 'study' ||
+    visibilityRule === 'unknown';
   const teamEditable = visibilityRule === 'global';
   const fixedTeamId = visibilityRule === 'team' ? (template?.team_id ?? '') : '';
   const templateScopeLabel = useMemo(() => {
@@ -530,10 +591,11 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
     return null;
   }, [template, hierarchy]);
 
-  const requireStudyType = visibilityRule === 'study_type' || visibilityRule === 'study' || visibilityRule === 'module';
+  const requireStudyType =
+    visibilityRule === 'study_type' || visibilityRule === 'study' || visibilityRule === 'module';
   const requireStudy = visibilityRule === 'study' || visibilityRule === 'module';
   const requireModule = visibilityRule === 'module';
-  const isGlobalAcademicMode = visibilityRule !== 'global' ? true : (!teamId);
+  const isGlobalAcademicMode = visibilityRule !== 'global' ? true : !teamId;
 
   useEffect(() => {
     if (!template) return;
@@ -548,25 +610,35 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
     }
     if (visibilityRule === 'study_type' && templateStudyTypeId) {
       setStudyTypeId(templateStudyTypeId);
-      if (studyId && selectedStudyNode && String(selectedStudyNode.study_type_id) !== String(templateStudyTypeId)) {
+      if (
+        studyId &&
+        selectedStudyNode &&
+        String(selectedStudyNode.study_type_id) !== String(templateStudyTypeId)
+      ) {
         setStudyId('');
         setModuleId('');
       }
       return;
     }
     if (visibilityRule === 'study' && templateStudyId) {
-      const stFromStudy = allStudies.find((s) => String(s.id) === String(templateStudyId))?.study_type_id;
+      const stFromStudy = allStudies.find(
+        (s) => String(s.id) === String(templateStudyId),
+      )?.study_type_id;
       if (stFromStudy) setStudyTypeId(String(stFromStudy));
       setStudyId(String(templateStudyId));
       if (moduleId) {
-        const moduleInStudy = (allStudies.find((s) => String(s.id) === String(templateStudyId))?.course_modules ?? [])
-          .some((m) => String(m.id) === String(moduleId));
+        const moduleInStudy = (
+          allStudies.find((s) => String(s.id) === String(templateStudyId))?.course_modules ?? []
+        ).some((m) => String(m.id) === String(moduleId));
         if (!moduleInStudy) setModuleId('');
       }
       return;
     }
     if (visibilityRule === 'module' && templateModuleId) {
-      const owningStudy = allStudies.find((s) => (s.course_modules ?? []).some((m) => String(m.id) === String(templateModuleId))) ?? null;
+      const owningStudy =
+        allStudies.find((s) =>
+          (s.course_modules ?? []).some((m) => String(m.id) === String(templateModuleId)),
+        ) ?? null;
       if (owningStudy) {
         setStudyTypeId(String(owningStudy.study_type_id));
         setStudyId(String(owningStudy.id));
@@ -591,7 +663,10 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
 
   const selectedSummaryBlock = useMemo(
     () =>
-      sortedBlocks.find((b: DocumentDisplayBlock) => (b.document_block_id ?? b.template_block_id) === summaryBlockKey) ??
+      sortedBlocks.find(
+        (b: DocumentDisplayBlock) =>
+          (b.document_block_id ?? b.template_block_id) === summaryBlockKey,
+      ) ??
       sortedBlocks[0] ??
       null,
     [sortedBlocks, summaryBlockKey],
@@ -602,7 +677,12 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
       return;
     }
     setSummaryBlockKey((prev: string | null) => {
-      if (prev && sortedBlocks.some((b: DocumentDisplayBlock) => (b.document_block_id ?? b.template_block_id) === prev)) {
+      if (
+        prev &&
+        sortedBlocks.some(
+          (b: DocumentDisplayBlock) => (b.document_block_id ?? b.template_block_id) === prev,
+        )
+      ) {
         return prev;
       }
       const first = sortedBlocks[0];
@@ -641,7 +721,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
         );
       } catch (e) {
         if (!cancelled) {
-          setSummaryError(e instanceof Error ? e.message : 'No se pudieron cargar los validadores de documento.');
+          setSummaryError(
+            e instanceof Error ? e.message : 'No se pudieron cargar los validadores de documento.',
+          );
           setDocumentReviewers([]);
           setReviewerListKind('none');
         }
@@ -713,7 +795,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
   }, [ownerQuery]);
 
   const canEditBlocks = isDraft && activeBlock !== null && activeBlockUiState !== 'locked';
-  const canDeleteOptionalBlock = isDraft && activeBlock !== null && activeBlockUiState === 'optional';
+  const canDeleteOptionalBlock =
+    isDraft && activeBlock !== null && activeBlockUiState === 'optional';
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: activeBlockKey is the intentional trigger to reset the tab when the active block changes.
   useEffect(() => {
@@ -747,7 +830,12 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
       lastSavedContentRef.current = localContentRef.current;
       return true;
     } catch (e) {
-      const msg = e instanceof ApiHttpError ? e.message : e instanceof Error ? e.message : 'Error al guardar el bloque.';
+      const msg =
+        e instanceof ApiHttpError
+          ? e.message
+          : e instanceof Error
+            ? e.message
+            : 'Error al guardar el bloque.';
       setBlockSaveError(msg);
       throw e;
     }
@@ -890,17 +978,15 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
       setIsSaving(true);
       await persistDocumentBlockChanges();
       setActiveBlockKey(key);
-
     } catch (e) {
       setFormError(e instanceof Error ? e.message : 'Error al guardar bloque');
-
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleGoToStep = async(s: Step) => {
-    if (step === 'properties'){
+  const handleGoToStep = async (s: Step) => {
+    if (step === 'properties') {
       // First run zod schema validation; if it fails, errors are set automatically.
       const valid = await new Promise<DocumentStep1Input | false>((resolve) => {
         void handleStep1Submit(
@@ -909,28 +995,28 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
         )();
       });
       if (!valid) return;
-    }else if (step === 'blocks'){
+    } else if (step === 'blocks') {
       try {
         setIsSaving(true);
         await persistDocumentBlockChanges();
-      }finally{
+      } finally {
         setIsSaving(false);
       }
     }
-    if (s === 'properties'){
+    if (s === 'properties') {
       setStep(s);
-    }
-    else if (s === 'migration' && showMigrationStep && completedSteps.includes('properties')){
+    } else if (s === 'migration' && showMigrationStep && completedSteps.includes('properties')) {
       setStep(s);
-    }
-    else if ((s === 'blocks' || s === 'summary') && showMigrationStep && !completedSteps.includes('migration')){
+    } else if (
+      (s === 'blocks' || s === 'summary') &&
+      showMigrationStep &&
+      !completedSteps.includes('migration')
+    ) {
       // No se puede saltar la migración pendiente: redirige al paso de migración.
       if (completedSteps.includes('properties')) setStep('migration');
-    }
-    else if (s === 'blocks' && completedSteps.includes('properties')){
+    } else if (s === 'blocks' && completedSteps.includes('properties')) {
       setStep(s);
-    }
-    else if (s === 'summary' && completedSteps.includes('blocks')){
+    } else if (s === 'summary' && completedSteps.includes('blocks')) {
       if (detail) {
         const unresolvedEditable = listUnresolvedEditableBlockTitles(detail.blocks);
         if (unresolvedEditable.length > 0) {
@@ -972,10 +1058,22 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
 
       // Context-dependent (derived) requirements not expressible in the zod schema.
       const contextErrors: Partial<Record<keyof DocumentStep1Input, string>> = {};
-      if ((requireStudyType || (visibilityRule === 'global' && isGlobalAcademicMode && (valid.studyId || valid.moduleId || valid.studyTypeId))) && !valid.studyTypeId) {
+      if (
+        (requireStudyType ||
+          (visibilityRule === 'global' &&
+            isGlobalAcademicMode &&
+            (valid.studyId || valid.moduleId || valid.studyTypeId))) &&
+        !valid.studyTypeId
+      ) {
         contextErrors.studyTypeId = 'Selecciona un tipo de estudio.';
       }
-      if ((requireStudy || (visibilityRule === 'global' && isGlobalAcademicMode && (valid.moduleId || valid.studyId))) && !valid.studyId) {
+      if (
+        (requireStudy ||
+          (visibilityRule === 'global' &&
+            isGlobalAcademicMode &&
+            (valid.moduleId || valid.studyId))) &&
+        !valid.studyId
+      ) {
         contextErrors.studyId = 'Selecciona un estudio.';
       }
       if (requireModule && !valid.moduleId) contextErrors.moduleId = 'Selecciona un módulo.';
@@ -989,7 +1087,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
 
       // Modo migración: no se crea aún; el usuario elige qué contenido antiguo arrastrar.
       if (!documentId && showMigrationStep) {
-        setCompletedSteps((prev: Step[]) => (prev.includes('properties') ? prev : [...prev, 'properties']));
+        setCompletedSteps((prev: Step[]) =>
+          prev.includes('properties') ? prev : [...prev, 'properties'],
+        );
         setStep('migration');
         return;
       }
@@ -1003,7 +1103,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
             throw new Error(t('errors.templateNoProcess'));
           }
 
-          const targetVersionId = migrationPayload?.target_template_version_id ?? selectedTemplateVersionUuid;
+          const targetVersionId =
+            migrationPayload?.target_template_version_id ?? selectedTemplateVersionUuid;
           const created = await createDocument({
             template_id: templateId,
             process_id: template.process_id,
@@ -1026,7 +1127,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
             },
           });
           setStep('blocks');
-          setCompletedSteps((prev: Step[]) => (prev.includes('properties') ? prev : [...prev, 'properties']));
+          setCompletedSteps((prev: Step[]) =>
+            prev.includes('properties') ? prev : [...prev, 'properties'],
+          );
         } else {
           // Edit Mode: Update existing document
           const updated = await updateDocument(documentId, {
@@ -1037,8 +1140,12 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
             module_id: moduleId || undefined,
           });
 
-          setDetail((prev: DocumentDetail | null) => (prev ? { ...prev, ...updated, blocks: prev.blocks } : prev));
-          setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'properties'] as Step[])));
+          setDetail((prev: DocumentDetail | null) =>
+            prev ? { ...prev, ...updated, blocks: prev.blocks } : prev,
+          );
+          setCompletedSteps((prev: Step[]) =>
+            Array.from(new Set([...prev, 'properties'] as Step[])),
+          );
           if (showMigrationStep) {
             // Upgrade con decisiones: pasar por el paso de migración.
             setStep('migration');
@@ -1050,7 +1157,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
           }
         }
       } catch (e) {
-        setFormError(e instanceof Error ? e.message : 'No se pudieron guardar los datos del documento.');
+        setFormError(
+          e instanceof Error ? e.message : 'No se pudieron guardar los datos del documento.',
+        );
       } finally {
         setSaving(false);
       }
@@ -1074,7 +1183,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
           if (!templateId || !template?.process_id) {
             throw new Error(t('errors.templateNoProcess'));
           }
-          const targetVersionId = migrationPayload?.target_template_version_id ?? selectedTemplateVersionUuid;
+          const targetVersionId =
+            migrationPayload?.target_template_version_id ?? selectedTemplateVersionUuid;
           const created = await createDocument({
             template_id: templateId,
             process_id: template.process_id,
@@ -1112,8 +1222,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
       try {
         setIsSaving(true);
         await persistDocumentBlockChanges();
-      }finally{
-        setIsSaving(false)
+      } finally {
+        setIsSaving(false);
       }
       if (!detail) {
         setFormError(t('errors.stillLoading'));
@@ -1124,7 +1234,11 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
         setEmptyEditableBlocksModal(unresolvedEditable);
         return;
       }
-      if (reviewerListKind === 'none' && selectedTemplateVisibility != null && selectedTemplateVisibility !== 'personal') {
+      if (
+        reviewerListKind === 'none' &&
+        selectedTemplateVisibility != null &&
+        selectedTemplateVisibility !== 'personal'
+      ) {
         setShowNoValidatorsDocModal(true);
         return;
       }
@@ -1177,7 +1291,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
       setNewOwnerForDoc(null);
       navigate(processBackTo, { state: { tab: 'documents' } });
     } catch (e) {
-      setTransferError(e instanceof Error ? e.message : 'No se pudo cambiar el propietario del documento.');
+      setTransferError(
+        e instanceof Error ? e.message : 'No se pudo cambiar el propietario del documento.',
+      );
     } finally {
       setSaving(false);
     }
@@ -1229,10 +1345,15 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
       await refreshDmsDashboardQuery(queryClient);
       setValidateConfirm(null);
       navigate(processBackTo, {
-        state: { documentValidationBanner: validationSuccessBannerMessage(updated, 'approve'), tab: 'documents' },
+        state: {
+          documentValidationBanner: validationSuccessBannerMessage(updated, 'approve'),
+          tab: 'documents',
+        },
       });
     } catch (e) {
-      setValidationModalError(e instanceof ApiHttpError ? e.message : 'No se pudo aprobar la revisión.');
+      setValidationModalError(
+        e instanceof ApiHttpError ? e.message : 'No se pudo aprobar la revisión.',
+      );
       return false;
     } finally {
       setValidationActionLoading(false);
@@ -1240,7 +1361,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
   };
 
   const validatorHasCommented = currentUserId
-    ? reviewComments.some(c => c.author_id === currentUserId)
+    ? reviewComments.some((c) => c.author_id === currentUserId)
     : false;
 
   const handleRejectValidation = async () => {
@@ -1257,10 +1378,15 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
       await refreshDmsDashboardQuery(queryClient);
       setValidateConfirm(null);
       navigate(processBackTo, {
-        state: { documentValidationBanner: validationSuccessBannerMessage(updated, 'reject'), tab: 'documents' },
+        state: {
+          documentValidationBanner: validationSuccessBannerMessage(updated, 'reject'),
+          tab: 'documents',
+        },
       });
     } catch (e) {
-      setValidationModalError(e instanceof ApiHttpError ? e.message : 'No se pudo rechazar la revisión.');
+      setValidationModalError(
+        e instanceof ApiHttpError ? e.message : 'No se pudo rechazar la revisión.',
+      );
       return false;
     } finally {
       setValidationActionLoading(false);
@@ -1286,20 +1412,26 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
 
   if (loading && !detail && !templateId) {
     return (
-      <div className="p-6 text-sm text-text-muted dark:text-text-dark-muted">Cargando documento…</div>
+      <div className="p-6 text-sm text-text-muted dark:text-text-dark-muted">
+        Cargando documento…
+      </div>
     );
   }
 
   if (loadingTemplate) {
     return (
-      <div className="p-6 text-sm text-text-muted dark:text-text-dark-muted">Cargando plantilla…</div>
+      <div className="p-6 text-sm text-text-muted dark:text-text-dark-muted">
+        Cargando plantilla…
+      </div>
     );
   }
 
   if ((loadError || !detail) && !templateId) {
     return (
       <div className="p-6 space-y-3">
-        <p className="text-sm text-warning-dark dark:text-warning-light">{loadError ?? 'Documento no encontrado.'}</p>
+        <p className="text-sm text-warning-dark dark:text-warning-light">
+          {loadError ?? 'Documento no encontrado.'}
+        </p>
         <Button
           type="button"
           variant="secondary"
@@ -1309,19 +1441,18 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
             })
           }
         >
-          {isValidateMode
-            ? t('common:navigation.backToPanel')
-            : t('common:navigation.backToList')}
+          {isValidateMode ? t('common:navigation.backToPanel') : t('common:navigation.backToList')}
         </Button>
       </div>
     );
   }
 
-  if (isValidateMode && (!detail || detail.status !== 'in_review')) {
+  if (isValidateMode && detail?.status !== 'in_review') {
     return (
       <div className="p-6 space-y-3">
         <p className="text-sm text-warning-dark dark:text-warning-light">
-          Este documento no está en revisión. Solo puedes validar programaciones enviadas a revisión.
+          Este documento no está en revisión. Solo puedes validar programaciones enviadas a
+          revisión.
         </p>
         <Button type="button" variant="secondary" onClick={() => navigate('/dashboard')}>
           {t('common:navigation.backToPanel')}
@@ -1349,7 +1480,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
   if (isValidateMode && detail && detail.status === 'in_review' && validationReviewLoading) {
     return (
       <div className="flex flex-col h-[calc(100dvh-7rem)] items-center justify-center overflow-hidden bg-ui-body dark:bg-ui-dark-bg px-6">
-        <p className="text-sm text-text-muted dark:text-text-dark-muted">{t('wizard.loadingValidation')}</p>
+        <p className="text-sm text-text-muted dark:text-text-dark-muted">
+          {t('wizard.loadingValidation')}
+        </p>
       </div>
     );
   }
@@ -1435,11 +1568,13 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
     </>
   );
 
-  const draftBanner = !isDraft && !isValidateMode ? (
-    <p className="px-6 py-2 text-xs bg-warning-light/20 text-warning-dark dark:bg-warning-dark/20 dark:text-warning-light border-b border-warning/20">
-      Este documento no está en borrador: la edición de bloques está deshabilitada; solo puedes revisar el contenido.
-    </p>
-  ) : null;
+  const draftBanner =
+    !isDraft && !isValidateMode ? (
+      <p className="px-6 py-2 text-xs bg-warning-light/20 text-warning-dark dark:bg-warning-dark/20 dark:text-warning-light border-b border-warning/20">
+        Este documento no está en borrador: la edición de bloques está deshabilitada; solo puedes
+        revisar el contenido.
+      </p>
+    ) : null;
 
   const handleWizardBack = async () => {
     const order: Step[] = stepsData.map((s) => s.id);
@@ -1449,15 +1584,16 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
       return;
     }
     if (idx > 0) {
-      if (step === "blocks"){
+      if (step === 'blocks') {
         try {
           setIsSaving(true);
           await persistDocumentBlockChanges();
-        }finally{
-          setIsSaving(false)
+        } finally {
+          setIsSaving(false);
         }
       }
-      setStep(order[idx - 1]!);
+      const prevStep = order[idx - 1];
+      if (prevStep) setStep(prevStep);
     } else {
       goBack();
     }
@@ -1465,229 +1601,225 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
 
   return (
     <>
-    <WizardShell<Step>
-      title={
-        detail?.title
-          ? `Editando: ${detail.title}`
-          : (documentId ? 'Documento' : 'Nuevo documento')
-      }
-      subtitle={processSubtitle}
-      onBack={handleWizardBack}
-      backLabel={
-        isValidateMode ? t('common:navigation.backToMainPanel') : t('common:actions.back')
-      }
-      actions={headerActions}
-      steps={stepsData}
-      currentStep={step}
-      completedSteps={completedSteps}
-      onGoToStep={handleGoToStep}
-      banner={draftBanner}
-      stepperOverride={isValidateMode ? validateModeStepper : undefined}
-    >
-      <>
-      {!isValidateMode && step === 'properties' && (
-        <DocumentPropertiesStep
-          form={step1Form}
-          isDraft={isDraft}
-          formError={formError}
-          template={template}
-          templateScopeLabel={templateScopeLabel}
-          visibility={{
-            rule: visibilityRule,
-            studyTypeEditable,
-            studyEditable,
-            moduleEditable,
-            teamEditable,
-            requireStudyType,
-            requireStudy,
-            requireModule,
-            isGlobalAcademicMode,
-            fixedTeamId,
-          }}
-          hierarchy={hierarchy}
-          hierarchyLoading={hierarchyLoading}
-          availableTeams={availableTeams}
-          filteredStudies={filteredStudies}
-          filteredModules={filteredModules}
-          detail={detail}
-          currentUserId={currentUserId}
-          profileName={profile?.name}
-          ownerSearch={{
-            query: ownerQuery,
-            setQuery: setOwnerQuery,
-            results: ownerResults,
-            setResults: setOwnerResults,
-            searching: ownerSearching,
-            newOwner: newOwnerForDoc,
-            setNewOwner: setNewOwnerForDoc,
-          }}
-          onChangeTemplate={() => navigate('/documents/new', { state: location.state })}
-        />
-      )}
+      <WizardShell<Step>
+        title={
+          detail?.title ? `Editando: ${detail.title}` : documentId ? 'Documento' : 'Nuevo documento'
+        }
+        subtitle={processSubtitle}
+        onBack={handleWizardBack}
+        backLabel={
+          isValidateMode ? t('common:navigation.backToMainPanel') : t('common:actions.back')
+        }
+        actions={headerActions}
+        steps={stepsData}
+        currentStep={step}
+        completedSteps={completedSteps}
+        onGoToStep={handleGoToStep}
+        banner={draftBanner}
+        stepperOverride={isValidateMode ? validateModeStepper : undefined}
+      >
+        {!isValidateMode && step === 'properties' && (
+          <DocumentPropertiesStep
+            form={step1Form}
+            isDraft={isDraft}
+            formError={formError}
+            template={template}
+            templateScopeLabel={templateScopeLabel}
+            visibility={{
+              rule: visibilityRule,
+              studyTypeEditable,
+              studyEditable,
+              moduleEditable,
+              teamEditable,
+              requireStudyType,
+              requireStudy,
+              requireModule,
+              isGlobalAcademicMode,
+              fixedTeamId,
+            }}
+            hierarchy={hierarchy}
+            hierarchyLoading={hierarchyLoading}
+            availableTeams={availableTeams}
+            filteredStudies={filteredStudies}
+            filteredModules={filteredModules}
+            detail={detail}
+            currentUserId={currentUserId}
+            profileName={profile?.name}
+            ownerSearch={{
+              query: ownerQuery,
+              setQuery: setOwnerQuery,
+              results: ownerResults,
+              setResults: setOwnerResults,
+              searching: ownerSearching,
+              newOwner: newOwnerForDoc,
+              setNewOwner: setNewOwnerForDoc,
+            }}
+            onChangeTemplate={() => navigate('/documents/new', { state: location.state })}
+          />
+        )}
 
-      {!isValidateMode && step === 'migration' && migrationPayload && (
-        <DocumentMigrationStep
-          payload={migrationPayload}
-          choices={migrationChoices}
-          onChoose={setMigrationChoice}
-          removedChoices={removedBlockChoices}
-          onChooseRemoved={setRemovedBlockChoice}
-          allowRemovedDecision={isUpgradeMigration}
-        />
-      )}
+        {!isValidateMode && step === 'migration' && migrationPayload && (
+          <DocumentMigrationStep
+            payload={migrationPayload}
+            choices={migrationChoices}
+            onChoose={setMigrationChoice}
+            removedChoices={removedBlockChoices}
+            onChooseRemoved={setRemovedBlockChoice}
+            allowRemovedDecision={isUpgradeMigration}
+          />
+        )}
 
-      {!isValidateMode && step === 'blocks' && (
-        <DocumentBlocksStep
-          documentId={documentId}
-          detail={detail}
-          sortedBlocks={sortedBlocks}
-          activeBlock={activeBlock}
-          activeBlockKey={activeBlockKey}
-          isDraft={isDraft}
-          canEditBlocks={canEditBlocks}
-          canDeleteOptionalBlock={canDeleteOptionalBlock}
-          isSidebarCollapsed={isSidebarCollapsed}
-          setIsSidebarCollapsed={setIsSidebarCollapsed}
-          blockViewTab={blockViewTab}
-          setBlockViewTab={setBlockViewTab}
-          completedBlocks={completedBlocks}
-          descriptionBlockKey={descriptionBlockKey}
-          setDescriptionBlockKey={setDescriptionBlockKey}
-          onBlockClick={handleBlockClick}
-          onContinue={handleContinue}
-          onShowDeleteBlock={() => setShowDeleteBlockConfirm(true)}
-          onPersistBlockContent={async (blockId, payload) => {
-            if (!documentId || !blockId) return;
-            const saved = await updateDocumentBlock(documentId, blockId, payload);
-            setDetail((prev) => (prev ? applyBlockSaveToDetail(prev, blockId, saved) : prev));
-          }}
-          editor={{
-            isDark,
-            isEditorFullscreen,
-            setIsEditorFullscreen,
-            onFullscreenChange: handleEditorFullscreenChange,
-            onContentChange: handleDocumentContentChange,
-            onFlush: handleEditorFlush,
-            editorFlushRef,
-            saveStatus,
-            blockSaveError,
-            isSaving,
-          }}
-          viewMode={{
-            mode: blocksViewMode,
-            setMode: setBlocksViewMode,
-            isContinuousFullscreen,
-            setIsContinuousFullscreen,
-          }}
-          comments={{
-            reviewComments,
-            showPanel: showDocumentCommentPanel,
-            setShowPanel: setShowDocumentCommentPanel,
-            loading: documentCommentLoading,
-            error: documentCommentSubmitError,
-            onSend: handleDocumentCommentSend,
-            onEdit: handleDocumentCommentEdit,
-            onDelete: handleDocumentCommentDelete,
-            onMarkAsRead: handleDocumentCommentMarkAsRead,
-            onMarkAllBlockAsRead: handleDocumentCommentMarkAllBlockAsRead,
-            canAdd: canCommentOnDocument(detail?.status),
-            canDeleteAny: canDeleteBlockComment(hasPermission),
-            currentUserId,
-          }}
-        />
-      )}
+        {!isValidateMode && step === 'blocks' && (
+          <DocumentBlocksStep
+            documentId={documentId}
+            detail={detail}
+            sortedBlocks={sortedBlocks}
+            activeBlock={activeBlock}
+            activeBlockKey={activeBlockKey}
+            isDraft={isDraft}
+            canEditBlocks={canEditBlocks}
+            canDeleteOptionalBlock={canDeleteOptionalBlock}
+            isSidebarCollapsed={isSidebarCollapsed}
+            setIsSidebarCollapsed={setIsSidebarCollapsed}
+            blockViewTab={blockViewTab}
+            setBlockViewTab={setBlockViewTab}
+            completedBlocks={completedBlocks}
+            descriptionBlockKey={descriptionBlockKey}
+            setDescriptionBlockKey={setDescriptionBlockKey}
+            onBlockClick={handleBlockClick}
+            onContinue={handleContinue}
+            onShowDeleteBlock={() => setShowDeleteBlockConfirm(true)}
+            onPersistBlockContent={async (blockId, payload) => {
+              if (!documentId || !blockId) return;
+              const saved = await updateDocumentBlock(documentId, blockId, payload);
+              setDetail((prev) => (prev ? applyBlockSaveToDetail(prev, blockId, saved) : prev));
+            }}
+            editor={{
+              isDark,
+              isEditorFullscreen,
+              setIsEditorFullscreen,
+              onFullscreenChange: handleEditorFullscreenChange,
+              onContentChange: handleDocumentContentChange,
+              onFlush: handleEditorFlush,
+              editorFlushRef,
+              saveStatus,
+              blockSaveError,
+              isSaving,
+            }}
+            viewMode={{
+              mode: blocksViewMode,
+              setMode: setBlocksViewMode,
+              isContinuousFullscreen,
+              setIsContinuousFullscreen,
+            }}
+            comments={{
+              reviewComments,
+              showPanel: showDocumentCommentPanel,
+              setShowPanel: setShowDocumentCommentPanel,
+              loading: documentCommentLoading,
+              error: documentCommentSubmitError,
+              onSend: handleDocumentCommentSend,
+              onEdit: handleDocumentCommentEdit,
+              onDelete: handleDocumentCommentDelete,
+              onMarkAsRead: handleDocumentCommentMarkAsRead,
+              onMarkAllBlockAsRead: handleDocumentCommentMarkAllBlockAsRead,
+              canAdd: canCommentOnDocument(detail?.status),
+              canDeleteAny: canDeleteBlockComment(hasPermission),
+              currentUserId,
+            }}
+          />
+        )}
 
-      {step === 'summary' && detail && (
-        <DocumentSummaryStep
-          detail={detail}
-          isValidateMode={isValidateMode}
-          transferError={transferError}
-          visibilityRule={visibilityRule}
-          reviewerListKind={reviewerListKind}
-          documentReviewers={documentReviewers}
-          summaryError={summaryError}
-          sortedBlocks={sortedBlocks}
-          summaryBlockKey={summaryBlockKey}
-          onSelectSummaryBlock={setSummaryBlockKey}
-          saveStatus={saveStatus}
-          summaryBlockTab={summaryBlockTab}
-          onSelectSummaryTab={setSummaryBlockTab}
-          selectedSummaryBlock={selectedSummaryBlock}
-          onPreview={() =>
-            navigate(`/documents/${documentId}`, {
-              state: {
-                returnToStep: isValidateMode || !!documentId ? 'summary' : undefined,
-                returnToValidate: isValidateMode,
-                backTo: processBackTo,
-                forceBackTo: !documentId && !isValidateMode,
-              },
-            })
+        {step === 'summary' && detail && (
+          <DocumentSummaryStep
+            detail={detail}
+            isValidateMode={isValidateMode}
+            transferError={transferError}
+            visibilityRule={visibilityRule}
+            reviewerListKind={reviewerListKind}
+            documentReviewers={documentReviewers}
+            summaryError={summaryError}
+            sortedBlocks={sortedBlocks}
+            summaryBlockKey={summaryBlockKey}
+            onSelectSummaryBlock={setSummaryBlockKey}
+            saveStatus={saveStatus}
+            summaryBlockTab={summaryBlockTab}
+            onSelectSummaryTab={setSummaryBlockTab}
+            selectedSummaryBlock={selectedSummaryBlock}
+            onPreview={() =>
+              navigate(`/documents/${documentId}`, {
+                state: {
+                  returnToStep: isValidateMode || documentId ? 'summary' : undefined,
+                  returnToValidate: isValidateMode,
+                  backTo: processBackTo,
+                  forceBackTo: !documentId && !isValidateMode,
+                },
+              })
+            }
+          />
+        )}
+      </WizardShell>
+      <DocumentWizardModals
+        emptyEditableBlocks={emptyEditableBlocksModal}
+        onCloseEmptyEditable={() => setEmptyEditableBlocksModal(null)}
+        pendingMigrationBlocks={pendingMigrationBlocks}
+        onClosePendingMigration={() => setPendingMigrationBlocks(null)}
+        showDeleteBlock={showDeleteBlockConfirm}
+        onCancelDeleteBlock={() => setShowDeleteBlockConfirm(false)}
+        onConfirmDeleteBlock={async () => {
+          setShowDeleteBlockConfirm(false);
+          const blockId = activeBlock?.document_block_id;
+          if (!documentId || !blockId) return;
+          try {
+            await deleteDocumentBlock(documentId, blockId);
+            await refreshDetail();
+          } catch (e) {
+            setBlockSaveError(e instanceof Error ? e.message : 'No se pudo eliminar el bloque.');
           }
-        />
-      )}
-      </>
-    </WizardShell>
-    <DocumentWizardModals
-      emptyEditableBlocks={emptyEditableBlocksModal}
-      onCloseEmptyEditable={() => setEmptyEditableBlocksModal(null)}
-      pendingMigrationBlocks={pendingMigrationBlocks}
-      onClosePendingMigration={() => setPendingMigrationBlocks(null)}
-      showDeleteBlock={showDeleteBlockConfirm}
-      onCancelDeleteBlock={() => setShowDeleteBlockConfirm(false)}
-      onConfirmDeleteBlock={async () => {
-        setShowDeleteBlockConfirm(false);
-        const blockId = activeBlock?.document_block_id;
-        if (!documentId || !blockId) return;
-        try {
-          await deleteDocumentBlock(documentId, blockId);
-          await refreshDetail();
-        } catch (e) {
-          setBlockSaveError(e instanceof Error ? e.message : 'No se pudo eliminar el bloque.');
-        }
-      }}
-      validateConfirm={validateConfirm}
-      validatorHasCommented={validatorHasCommented}
-      validationModalError={validationModalError}
-      validationActionLoading={validationActionLoading}
-      onCancelValidate={() => {
-        setValidateConfirm(null);
-        setValidationModalError(null);
-      }}
-      onApprove={() => void handleApproveValidation()}
-      onReject={() => void handleRejectValidation()}
-      summaryConfirmSave={summaryConfirmAction === 'save'}
-      onCancelSummarySave={() => setSummaryConfirmAction(null)}
-      onConfirmSummarySave={() => void handleConfirmSummaryAction()}
-      changelog={{
-        open: showChangelogModal,
-        willSubmit: willSubmitDocumentToReview,
-        intro: documentChangelogIntro,
-        initialValue: detail?.submission_changelog,
-        submitting: submittingForReview,
-        error: changelogModalError,
-        onCancel: () => {
-          setShowChangelogModal(false);
-          setChangelogModalError(null);
-        },
-        onConfirm: handleSubmitForReview,
-      }}
-      noValidatorsOpen={showNoValidatorsDocModal}
-      onCancelNoValidators={() => setShowNoValidatorsDocModal(false)}
-      onConfirmNoValidators={() => {
-        setShowNoValidatorsDocModal(false);
-        if (!detail) {
-          setFormError(t('errors.stillLoading'));
-          return;
-        }
-        const unresolvedEditable = listUnresolvedEditableBlockTitles(detail.blocks);
-        if (unresolvedEditable.length > 0) {
-          setEmptyEditableBlocksModal(unresolvedEditable);
-          return;
-        }
-        setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'blocks'] as Step[])));
-        setStep('summary');
-      }}
-    />
+        }}
+        validateConfirm={validateConfirm}
+        validatorHasCommented={validatorHasCommented}
+        validationModalError={validationModalError}
+        validationActionLoading={validationActionLoading}
+        onCancelValidate={() => {
+          setValidateConfirm(null);
+          setValidationModalError(null);
+        }}
+        onApprove={() => void handleApproveValidation()}
+        onReject={() => void handleRejectValidation()}
+        summaryConfirmSave={summaryConfirmAction === 'save'}
+        onCancelSummarySave={() => setSummaryConfirmAction(null)}
+        onConfirmSummarySave={() => void handleConfirmSummaryAction()}
+        changelog={{
+          open: showChangelogModal,
+          willSubmit: willSubmitDocumentToReview,
+          intro: documentChangelogIntro,
+          initialValue: detail?.submission_changelog,
+          submitting: submittingForReview,
+          error: changelogModalError,
+          onCancel: () => {
+            setShowChangelogModal(false);
+            setChangelogModalError(null);
+          },
+          onConfirm: handleSubmitForReview,
+        }}
+        noValidatorsOpen={showNoValidatorsDocModal}
+        onCancelNoValidators={() => setShowNoValidatorsDocModal(false)}
+        onConfirmNoValidators={() => {
+          setShowNoValidatorsDocModal(false);
+          if (!detail) {
+            setFormError(t('errors.stillLoading'));
+            return;
+          }
+          const unresolvedEditable = listUnresolvedEditableBlockTitles(detail.blocks);
+          if (unresolvedEditable.length > 0) {
+            setEmptyEditableBlocksModal(unresolvedEditable);
+            return;
+          }
+          setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'blocks'] as Step[])));
+          setStep('summary');
+        }}
+      />
     </>
   );
 }
