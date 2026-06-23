@@ -1,1290 +1,741 @@
-import React, { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, Suspense, lazy } from 'react';
-import { useTranslation } from 'react-i18next';
+import { buildMayaEditorExtensions, htmlToTiptapDoc } from '@ceedcv-maya/shared-editor-react';
 import { useDarkMode } from '@ceedcv-maya/shared-layout-react';
+import { Button, ConfirmDialog } from '@ceedcv-maya/shared-ui-react';
 import {
-  DndContext,
-  closestCenter,
+  type DragEndEvent,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
-  type DragEndEvent,
 } from '@dnd-kit/core';
+import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import React, { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-  useSortable,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-
-import { Button, ConfirmDialog, FieldLabel, Select, Spinner, TextInput } from '@ceedcv-maya/shared-ui-react';
-import { ErrorBoundaryWrapper } from '../../../components/ErrorBoundaryWrapper';
-import { BlockListItem } from '../../blocks-ui/BlockListItem';
-import type { TemplateBlock, BlockType } from '../../../types/blocks';
-import { BLOCK_TYPE_LABELS } from '../../../types/blocks';
-import type { Template } from '../../../types/templates';
-import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
-import { usePublishedThemes } from '../../themes/hooks/usePublishedThemes';
-import { CoverDesignEditor } from '../cover/CoverDesignEditor';
-import { parseCoverContent } from '../cover/coverModel';
-import { IndexBlockEditor, parseIndexConfig } from './IndexBlockEditor';
+  canCommentOnDocument,
+  canCreateBlockComment,
+  canDeleteBlockComment,
+} from '../../../permissions';
+import type { BlockType } from '../../../types/blocks';
+import { countUnreadCommentsForBlock, getCommentsForBlock } from '../../../utils/blockComments';
 import { useCompletedBlocks } from '../../documents/hooks/useCompletedBlocks';
-import { useTemplateCommentsQuery } from '../hooks/useTemplateComments';
-import { type BlockUiState, BLOCK_UI_STATE_CONFIG, blockToUiState } from '../blockUiState';
-import { htmlToTiptapDoc, buildMayaEditorExtensions } from '@ceedcv-maya/shared-editor-react';
-import { DocxBlockSplitter } from './DocxBlockSplitter';
-import { AddBlockMenu } from './AddBlockMenu';
-import { useAutoSave, useFlushOnPageLeave } from '@ceedcv-maya/shared-hooks-react';
-import { apiFetchJson } from '../../../api/http';
-import { uploadMedia } from '../../../api/media';
-import { BlockCommentsCard, type BlockComment } from './BlockCommentsCard';
-import {
-  countUnreadCommentsForBlock,
-  getCommentsForBlock,
-  resolveCommentBlockableId,
-} from '../../../utils/blockComments';
-import { appendCommentToTemplateCache, patchTemplateCommentCache, markCommentAsReadInTemplateCache, markCommentDeletedInTemplateCache, markBlockCommentsAsReadInTemplateCache } from '../../comments/commentCache';
+import { usePublishedThemes } from '../../themes/hooks/usePublishedThemes';
 import { useUserProfile } from '../../user-profile';
-import { canCommentOnDocument, canCreateBlockComment, canDeleteBlockComment } from '../../../permissions';
-import {
-  hasMeaningfulTiptapNode,
-  safeJsonParse,
-  tiptapContentHasMeaning,
-  validateBlockName,
-  type TiptapNode,
-} from '../lib/blockValidation';
-import { useQueryClient } from '@tanstack/react-query';
-
-const BlockNoteEditorPanel = lazy(() =>
-  import('./BlockNoteEditorPanel').then(m => ({
-    default: m.BlockNoteEditorPanel
-  }))
-);
-
-type PanelMode = 'empty' | 'create' | 'edit' | 'multi';
-type TabId = 'properties' | 'content' | 'description' | 'comments';
-
-// ── Icons ────────────────────────────────────────────────────────────────────
-
-// ── Sub-components ───────────────────────────────────────────────────────────
-
-function BlockUiStateToggle({
-  value,
-  onChange,
-  disabled,
-}: {
-  value: BlockUiState;
-  onChange: (s: BlockUiState) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {(['editable', 'modifiable', 'locked', 'optional'] as BlockUiState[]).map((s) => (
-        <button
-          key={s}
-          type="button"
-          disabled={disabled}
-          onClick={() => onChange(s)}
-          className={[
-            'px-2.5 py-1 rounded text-xs font-bold uppercase tracking-widest transition-all border',
-            value === s
-              ? 'border-odoo-purple bg-odoo-purple text-text-inverse'
-              : 'border-ui-border dark:border-ui-dark-border text-text-secondary hover:border-odoo-purple/50',
-            'disabled:opacity-50 disabled:pointer-events-none',
-          ].join(' ')}
-        >
-          {BLOCK_UI_STATE_CONFIG[s].label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function SortableBlockItem({
-  block,
-  itemState,
-  onClick,
-  hasUnreadComments,
-  isCompleted,
-}: {
-  block: TemplateBlock;
-  itemState: 'default' | 'selected' | 'multi-queued' | 'multi-current' | 'multi-saved';
-  onClick: () => void;
-  hasUnreadComments?: boolean;
-  isCompleted?: boolean;
-}) {
-  const { t } = useTranslation('documents');
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
-
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 20 : 1,
-    position: 'relative',
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  const isLocked = blockToUiState(block) === 'locked';
-  const ui = blockToUiState(block);
-
-  return (
-    <div ref={setNodeRef} style={style}>
-      <BlockListItem
-        title={block.title || ''}
-        variant={itemState}
-        locked={isLocked}
-        hasUnreadComments={hasUnreadComments}
-        isCompleted={isCompleted}
-        stateLabel={BLOCK_UI_STATE_CONFIG[ui].label}
-        onClick={onClick}
-        dragHandle={
-          <button
-            type="button"
-            {...attributes}
-            {...listeners}
-            className="shrink-0 w-5 h-5 flex items-center justify-center cursor-grab active:cursor-grabbing text-text-muted hover:text-text-primary focus:outline-none"
-            onClick={(e) => e.stopPropagation()}
-            aria-label={t('documents:blocks.reorderAria')}
-          >
-            ⠿
-          </button>
-        }
-      />
-    </div>
-  );
-}
+import { BLOCK_UI_STATE_CONFIG, blockToUiState } from '../blockUiState';
+import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
+import { useTemplateCommentsQuery } from '../hooks/useTemplateComments';
+import { validateBlockName } from '../lib/blockValidation';
+import { type BlockComment, BlockCommentsCard } from './BlockCommentsCard';
+import { DocxBlockSplitter } from './DocxBlockSplitter';
+import { useWizardBlockComments } from './useWizardBlockComments';
+import { useWizardBlockForm } from './useWizardBlockForm';
+import type {
+  PanelMode,
+  TabId,
+  WizardStep2BlocksHandle,
+  WizardStep2BlocksProps,
+} from './WizardStep2Blocks.types';
+import { WizardStep2EditorTabs } from './WizardStep2EditorTabs';
+import { WizardStep2PropertiesPanel } from './WizardStep2PropertiesPanel';
+import { WizardStep2Sidebar } from './WizardStep2Sidebar';
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
-interface WizardStep2BlocksProps {
-  template: Template;
-  isDark?: boolean;
-  onBlocksCountChange?: (count: number) => void;
-  onBlocksLoadingChange?: (loading: boolean) => void;
-  onBlocksChange?: (blocks: TemplateBlock[]) => void;
-  onContinue?: () => void;
-  onInvalidBlocksChange?: (hasInvalid: boolean) => void;
-}
+export type { WizardStep2BlocksHandle } from './WizardStep2Blocks.types';
 
-export type WizardStep2BlocksHandle = {
-  saveIfPending: () => Promise<void>;
-  discardInvalidBlocks: () => Promise<TemplateBlock[]>;
-};
+export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, WizardStep2BlocksProps>(
+  (
+    {
+      template,
+      isDark = false,
+      onBlocksCountChange,
+      onBlocksLoadingChange,
+      onBlocksChange,
+      onContinue,
+      onInvalidBlocksChange,
+    },
+    ref,
+  ) => {
+    const { t } = useTranslation(['documents', 'common']);
+    const commentsQuery = useTemplateCommentsQuery(template.id);
+    const reviewComments = commentsQuery.data?.data ?? [];
+    const { profile, hasPermission } = useUserProfile();
+    const mayComment = canCreateBlockComment(hasPermission);
 
-export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, WizardStep2BlocksProps>(({
-  template,
-  isDark = false,
-  onBlocksCountChange,
-  onBlocksLoadingChange,
-  onBlocksChange,
-  onContinue,
-  onInvalidBlocksChange,
-}, ref) => {
-  const { t } = useTranslation(['documents', 'common']);
-  const commentsQuery = useTemplateCommentsQuery(template.id);
-  const reviewComments = commentsQuery.data?.data ?? [];
-  const { profile, hasPermission } = useUserProfile();
-  const queryClient = useQueryClient();
-  const mayComment = canCreateBlockComment(hasPermission);
+    const { blocks, loading, createBlock, updateBlock, deleteBlock, reorderBlocks } =
+      useTemplateBlocks(template.id, {
+        created_by: template.created_by,
+        status: template.status,
+      });
 
-  const {
-    blocks,
-    loading,
-    createBlock,
-    updateBlock,
-    deleteBlock,
-    reorderBlocks
-  } = useTemplateBlocks(template.id, {
-    created_by: template.created_by,
-    status: template.status,
-  });
+    // Visual-only "finalizado" marker, persisted in localStorage and namespaced
+    // by template id so it survives reloads and doesn't bleed across templates.
+    // Mirrors the documents wizard UX — does not affect server-side validations.
+    const completedBlocks = useCompletedBlocks(`tpl-${template.id}`);
 
-  // Visual-only "finalizado" marker, persisted in localStorage and namespaced
-  // by template id so it survives reloads and doesn't bleed across templates.
-  // Mirrors the documents wizard UX — does not affect server-side validations.
-  const completedBlocks = useCompletedBlocks(`tpl-${template.id}`);
+    const { isDark: globalIsDark } = useDarkMode();
+    const effectiveIsDark = isDark || globalIsDark;
 
-  const { isDark: globalIsDark } = useDarkMode();
-  const effectiveIsDark = isDark || globalIsDark;
+    useEffect(() => {
+      onBlocksLoadingChange?.(loading);
+    }, [loading, onBlocksLoadingChange]);
 
-  useEffect(() => {
-    onBlocksLoadingChange?.(loading);
-  }, [loading, onBlocksLoadingChange]);
+    useEffect(() => {
+      if (!loading) {
+        onBlocksCountChange?.(blocks.length);
+        onBlocksChange?.(blocks);
+      }
+    }, [blocks, loading, onBlocksCountChange, onBlocksChange]);
 
-  useEffect(() => {
-    if (!loading) {
-      onBlocksCountChange?.(blocks.length);
-      onBlocksChange?.(blocks);
-    }
-  }, [blocks, loading, onBlocksCountChange, onBlocksChange]);
+    const hasInvalidBlocks = !loading && blocks.some((b) => !b.title?.trim());
 
-  const hasInvalidBlocks = !loading && blocks.some(b => !b.title?.trim());
+    useEffect(() => {
+      onInvalidBlocksChange?.(hasInvalidBlocks);
+    }, [hasInvalidBlocks, onInvalidBlocksChange]);
 
-  useEffect(() => {
-    onInvalidBlocksChange?.(hasInvalidBlocks);
-  }, [hasInvalidBlocks, onInvalidBlocksChange]);
+    useEffect(() => {
+      const handler = (e: BeforeUnloadEvent) => {
+        if (hasInvalidBlocks) e.preventDefault();
+      };
+      window.addEventListener('beforeunload', handler);
+      return () => window.removeEventListener('beforeunload', handler);
+    }, [hasInvalidBlocks]);
 
-  useEffect(() => {
-    const handler = (e: BeforeUnloadEvent) => { if (hasInvalidBlocks) e.preventDefault(); };
-    window.addEventListener('beforeunload', handler);
-    return () => window.removeEventListener('beforeunload', handler);
-  }, [hasInvalidBlocks]);
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+    const [isEditorFullscreen, setIsEditorFullscreen] = useState(false);
 
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isEditorFullscreen, setIsEditorFullscreen] = useState(false);
+    const handleEditorFullscreenChange = useCallback((v: boolean) => {
+      setIsEditorFullscreen(v);
+      document.documentElement.classList.toggle('editor-fullscreen', v);
+    }, []);
 
-  const handleEditorFullscreenChange = useCallback((v: boolean) => {
-    setIsEditorFullscreen(v);
-    document.documentElement.classList.toggle('editor-fullscreen', v);
-  }, []);
+    useEffect(() => {
+      return () => document.documentElement.classList.remove('editor-fullscreen');
+    }, []);
 
-  useEffect(() => {
-    return () => document.documentElement.classList.remove('editor-fullscreen');
-  }, []);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  const [selectedBlockIds, setSelectedBlockIds] = useState<string[]>([]);
-  const [panelMode, setPanelMode] = useState<PanelMode>('empty');
-  const [activeSingleId, setActiveSingleId] = useState<string | null>(null);
-  const [showCommentPanel, setShowCommentPanel] = useState(false);
-  const [commentSubmitLoading, setCommentSubmitLoading] = useState(false);
-  const [commentSubmitError, setCommentSubmitError] = useState<string | null>(null);
-
-  // const [multiIndex, setMultiIndex] = useState(0);
-  const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const [formName, setFormName] = useState('');
-  const [formDesc, setFormDesc] = useState('');
-  const [formContent, setFormContent] = useState('');
-  // DMS-F02: derivado PURO del contenido del formulario. Antes era estado React
-  // mutado con side-effects dentro del validador recursivo del autosave (valor
-  // según el último nodo visitado y siempre false hasta el primer guardado).
-  const meaningfulContent = useMemo(
-    () => tiptapContentHasMeaning(safeJsonParse(formContent)),
-    [formContent],
-  );
-  const [formUiState, setFormUiState] = useState<BlockUiState>('editable');
-  const [formBlockType, setFormBlockType] = useState<BlockType>('content');
-  const [formPageBreakAfter, setFormPageBreakAfter] = useState(false);
-  const [formThemeId, setFormThemeId] = useState<string | null>(null);
-  const [formApplyTheme, setFormApplyTheme] = useState(true);
-  const { data: publishedThemes = [] } = usePublishedThemes();
-  // Tamaño de página físico para el editor de portada: del tema asignado al
-  // bloque (override) o, en su defecto, del tema de la plantilla. El render PDF
-  // usa exactamente este tamaño (pageSizes.ts es la única fuente de verdad).
-  const coverPageSize = useMemo(() => {
-    const themeId = formThemeId ?? template.theme_id ?? null;
-    const th = themeId ? publishedThemes.find((t) => t.id === themeId) : null;
-    return th?.layout?.page?.size ?? 'A4';
-  }, [formThemeId, template.theme_id, publishedThemes]);
-  const [nameError, setNameError] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [deleteModal, setDeleteModal] = useState(false);
-  const [docxSplitterOpen, setDocxSplitterOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabId>('properties');
-  const [tabIsDirty, setTabIsDirty] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-
-  useEffect(() => {
-    if (activeSingleId && !formName.trim()) {
-      setShowCommentPanel(false);
-    }
-  }, [activeSingleId, formName]);
-  // Reply state is managed inside BlockCommentsCard; we only keep the API handler here.
-  // Ref to always have latest activeSingleId in the autosave closure
-  const activeSingleIdRef = useRef<string | null>(null);
-  activeSingleIdRef.current = activeSingleId;
-
-  const selectedBlock = activeSingleId ? (blocks.find((b) => b.id === activeSingleId) ?? null) : null;
-  const selectedBlockIndex = selectedBlock ? blocks.findIndex((b) => b.id === selectedBlock.id) : -1;
-
-  const blockComments: BlockComment[] = activeSingleId
-    ? getCommentsForBlock(activeSingleId, reviewComments)
-    : [];
-
-  useEffect(() => {
-    if (activeTab === 'comments') setActiveTab('properties');
-  }, [activeTab]);
-
-  const loadFormFromBlock = (block: TemplateBlock) => {
-    setFormName(block.title ?? '');
-    setNameError('');
-    setFormDesc(block.description ? (typeof block.description === 'string' ? block.description : JSON.stringify(block.description)) : '');
-    // Hoja en blanco: sin contenido y siempre bloqueada. Índice: siempre
-    // modificable (el redactor elige qué secciones entran).
-    const loadedType = block.block_type ?? 'content';
-    setFormContent(loadedType === 'blank' ? '' : (block.default_content ? (typeof block.default_content === 'string' ? block.default_content : JSON.stringify(block.default_content)) : ''));
-    setFormUiState(
-      loadedType === 'blank' ? 'locked'
-        : loadedType === 'index' ? 'modifiable'
-        : blockToUiState(block),
+    const sensors = useSensors(
+      useSensor(PointerSensor),
+      useSensor(KeyboardSensor, {
+        coordinateGetter: sortableKeyboardCoordinates,
+      }),
     );
-    setFormBlockType(loadedType);
-    setFormPageBreakAfter(Boolean(block.page_break_after));
-    setFormThemeId(block.theme_id ?? null);
-    setFormApplyTheme(block.apply_theme ?? true);
-    setTabIsDirty(false);
-  };
 
-  // ── useAutoSave (debounce 1500ms) — compartido en edit y multi ───────────────
-  // validateBlockName importado de ../lib/blockValidation (antes copia inline idéntica).
+    const [selectedBlockIds, setSelectedBlockIds] = useState<string[]>([]);
+    const [panelMode, setPanelMode] = useState<PanelMode>('empty');
+    const [activeSingleId, setActiveSingleId] = useState<string | null>(null);
+    const [showCommentPanel, setShowCommentPanel] = useState(false);
 
-  const doSave = useCallback(async () => {
-    const blockId = activeSingleIdRef.current;
-    if (!blockId) return;
-    const nameErr = validateBlockName(formName);
-    if (nameErr) {
-      setNameError(nameErr);
-      return;
-    }
-    setNameError('');
-    const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState].payload;
-    let parsedContent: unknown = safeJsonParse(formContent);
-    const parsedDesc: unknown = safeJsonParse(formDesc);
+    // const [multiIndex, setMultiIndex] = useState(0);
+    const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    // DMS-F02: validador puro (lib/blockValidation). Igual que antes, un array
-    // pelado sin contenido con sustancia se persiste como null.
-    if (
-      Array.isArray(parsedContent) &&
-      !parsedContent.some((node) => hasMeaningfulTiptapNode(node as TiptapNode))
-    ) {
-      parsedContent = null;
-    }
-    await updateBlock(blockId, {
-      title: formName.trim(),
-      description: parsedDesc,
-      default_content: parsedContent,
-      block_state,
-      mandatory,
-      block_type: formBlockType,
-      page_break_after: formPageBreakAfter,
-      // apply_theme=false ⇒ el bloque no lleva tema; limpiamos el override.
-      apply_theme: formApplyTheme,
-      theme_id: formApplyTheme ? formThemeId : null,
+    const [busy, setBusy] = useState(false);
+    const [deleteModal, setDeleteModal] = useState(false);
+    const [docxSplitterOpen, setDocxSplitterOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState<TabId>('properties');
+    const [isSaving, setIsSaving] = useState(false);
+    const { data: publishedThemes = [] } = usePublishedThemes();
+
+    const form = useWizardBlockForm({
+      template,
+      publishedThemes,
+      activeSingleId,
+      panelMode,
+      updateBlock,
     });
-    setTabIsDirty(false);
-  }, [formName, formDesc, formContent, formUiState, formBlockType, formPageBreakAfter, formThemeId, formApplyTheme, updateBlock]);
+    const { formName, setNameError, tabIsDirty, loadFormFromBlock, saveStatus, saveCurrentTab } =
+      form;
 
-  const { saveStatus, triggerSave, forceSave } = useAutoSave(doSave, 1500);
+    useEffect(() => {
+      if (activeSingleId && !formName.trim()) {
+        setShowCommentPanel(false);
+      }
+    }, [activeSingleId, formName]);
 
-  // Trigger autosave whenever form changes and there are dirty changes in edit or multi
-  useEffect(() => {
-    if ((panelMode !== 'edit' && panelMode !== 'multi') || !activeSingleId || !tabIsDirty) return;
-    triggerSave();
-  }, [formName, formDesc, formContent, formUiState, formBlockType, formPageBreakAfter, formThemeId, formApplyTheme, tabIsDirty, panelMode, activeSingleId]); // eslint-disable-line react-hooks/exhaustive-deps
+    const selectedBlock = activeSingleId
+      ? (blocks.find((b) => b.id === activeSingleId) ?? null)
+      : null;
+    const selectedBlockIndex = selectedBlock
+      ? blocks.findIndex((b) => b.id === selectedBlock.id)
+      : -1;
 
-  // Convenience wrapper used by saveIfPending and manual saves
-  const saveCurrentTab = useCallback(async () => {
-    if (!tabIsDirty || !activeSingleId) return;
-    try {
-      await forceSave();
-      return true;
-    } catch {
-      return false;
-    }
-  }, [tabIsDirty, activeSingleId, forceSave]);
+    const blockComments: BlockComment[] = activeSingleId
+      ? getCommentsForBlock(activeSingleId, reviewComments)
+      : [];
 
-  const flushTemplateBlockSave = useCallback(() => {
-    if (tabIsDirty && activeSingleId) {
-      void forceSave();
-    }
-  }, [tabIsDirty, activeSingleId, forceSave]);
+    const {
+      commentSubmitLoading,
+      commentSubmitError,
+      commentsById,
+      handleSendMessage,
+      handleCreateAnchoredComment,
+      handleEditComment,
+      handleDeleteComment,
+      handleMarkCommentAsRead,
+      handleMarkAllBlockCommentsAsRead,
+    } = useWizardBlockComments({
+      templateId: template.id,
+      activeSingleId,
+      reviewComments,
+      profileName: profile?.name,
+    });
 
-  useFlushOnPageLeave(
-    flushTemplateBlockSave,
-    (panelMode === 'edit' || panelMode === 'multi') && !!activeSingleId,
-  );
+    useEffect(() => {
+      if (activeTab === 'comments') setActiveTab('properties');
+    }, [activeTab]);
 
-  const handleBlockClick = (blockId: string) => {
-    if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
-    clickTimerRef.current = setTimeout(async () => {
-      // Abort navigation if the current block has an invalid name.
-      if (activeSingleId && blockId !== activeSingleId) {
+    const handleBlockClick = (blockId: string) => {
+      if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = setTimeout(async () => {
+        // Abort navigation if the current block has an invalid name.
+        if (activeSingleId && blockId !== activeSingleId) {
+          const nameErr = validateBlockName(formName);
+          if (nameErr) {
+            setNameError(nameErr);
+            setActiveTab('properties');
+            return;
+          }
+        }
+        if (tabIsDirty && activeSingleId) {
+          setIsSaving(true);
+
+          try {
+            const success = await saveCurrentTab();
+
+            if (!success) return;
+          } finally {
+            setIsSaving(false);
+          }
+        }
+        const block = blocks.find((b) => b.id === blockId);
+        if (!block) return;
+        setSelectedBlockIds([blockId]);
+        setActiveSingleId(blockId);
+        setPanelMode('edit');
+        // Comment panel stays in whatever state the user left it; the badge
+        // on the toggle button signals new activity without grabbing space.
+        loadFormFromBlock(block);
+        setActiveTab('properties');
+      }, 200);
+    };
+
+    const handleToggleSelectAll = () => {
+      if (selectedBlockIds.length === blocks.length && blocks.length > 0) {
+        setSelectedBlockIds([]);
+        setActiveSingleId(null);
+        setPanelMode('empty');
+      } else {
+        setSelectedBlockIds(blocks.map((b) => b.id));
+        // setMultiIndex(0);
+        setPanelMode('multi');
+        if (blocks[0]) {
+          setActiveSingleId(blocks[0].id);
+          loadFormFromBlock(blocks[0]);
+        }
+      }
+    };
+
+    const handleDragEnd = (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (over && active.id !== over.id) {
+        const newIndex = blocks.findIndex((i) => i.id === over.id);
+        void reorderBlocks(active.id as string, newIndex);
+      }
+    };
+
+    useImperativeHandle(ref, () => ({
+      saveIfPending: async () => {
+        if (tabIsDirty) {
+          setIsSaving(true);
+          try {
+            const success = await saveCurrentTab();
+            if (!success) return;
+          } catch {
+            return;
+          } finally {
+            setIsSaving(false);
+          }
+        }
+      },
+      discardInvalidBlocks: async () => {
+        const invalidIds = blocks.filter((b) => !b.title?.trim()).map((b) => b.id);
+        for (const id of invalidIds) await deleteBlock(id);
+        if (activeSingleId && invalidIds.includes(activeSingleId)) {
+          setActiveSingleId(null);
+          setSelectedBlockIds([]);
+          setPanelMode('empty');
+        }
+        return blocks.filter((b) => !!b.title?.trim());
+      },
+    }));
+
+    const handleAddBlock = async (
+      block?: Partial<{ name: string; description: string; content: any; block_type: BlockType }>,
+    ) => {
+      // Block creation if the current block still has an invalid name.
+      if (activeSingleId) {
         const nameErr = validateBlockName(formName);
         if (nameErr) {
           setNameError(nameErr);
           setActiveTab('properties');
           return;
         }
-      }
-      if (tabIsDirty && activeSingleId) {
-        setIsSaving(true);
+        if (tabIsDirty) {
+          setIsSaving(true);
 
-        try {
-          const success = await saveCurrentTab();
+          try {
+            const success = await saveCurrentTab();
 
-          if (!success) return;
-        } finally {
-          setIsSaving(false);
-        }
-      } 
-      const block = blocks.find((b) => b.id === blockId);
-      if (!block) return;
-      setSelectedBlockIds([blockId]);
-      setActiveSingleId(blockId);
-      setPanelMode('edit');
-      // Comment panel stays in whatever state the user left it; the badge
-      // on the toggle button signals new activity without grabbing space.
-      loadFormFromBlock(block);
-      setActiveTab('properties');
-    }, 200);
-  };
-
-  const handleToggleSelectAll = () => {
-    if (selectedBlockIds.length === blocks.length && blocks.length > 0) {
-      setSelectedBlockIds([]);
-      setActiveSingleId(null);
-      setPanelMode('empty');
-    } else {
-      setSelectedBlockIds(blocks.map(b => b.id));
-      // setMultiIndex(0);
-      setPanelMode('multi');
-      if (blocks[0]) {
-        setActiveSingleId(blocks[0].id);
-        loadFormFromBlock(blocks[0]);
-      }
-    }
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (over && active.id !== over.id) {
-      const newIndex = blocks.findIndex((i) => i.id === over.id);
-      void reorderBlocks(active.id as string, newIndex);
-    }
-  };
-
-  useImperativeHandle(ref, () => ({
-    saveIfPending: async () => {
-      if (tabIsDirty) {
-        setIsSaving(true);
-        try {
-          const success = await saveCurrentTab();
-          if (!success) return;
-        }catch{
-          return;
-        } finally {
-          setIsSaving(false);
+            if (!success) return;
+          } finally {
+            setIsSaving(false);
+          }
         }
       }
-    },
-    discardInvalidBlocks: async () => {
-      const invalidIds = blocks.filter(b => !b.title?.trim()).map(b => b.id);
-      for (const id of invalidIds) await deleteBlock(id);
-      if (activeSingleId && invalidIds.includes(activeSingleId)) {
-        setActiveSingleId(null);
-        setSelectedBlockIds([]);
-        setPanelMode('empty');
-      }
-      return blocks.filter(b => !!b.title?.trim());
-    },
-  }));
-
-  const handleAddBlock = async (block?: Partial<{ name: string; description: string; content: any; block_type: BlockType }>) => {
-    // Block creation if the current block still has an invalid name.
-    if (activeSingleId) {
-      const nameErr = validateBlockName(formName);
-      if (nameErr) {
-        setNameError(nameErr);
-        setActiveTab('properties');
-        return;
-      }
-      if (tabIsDirty) {
-        setIsSaving(true);
-
-        try {
-          const success = await saveCurrentTab();
-
-          if (!success) return;
-        } finally {
-          setIsSaving(false);
-        }
-      }
-    }
-    setBusy(true);
-    try {
-      const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG['editable'].payload;
-      const newBlock = await createBlock({
-        title: block?.name ?? null,
-        description: block?.description ?? null,
-        type: 'paragraph',
-        block_type: block?.block_type ?? 'content',
-        block_state,
-        mandatory,
-        default_content: block?.content ?? null,
-      });
-      setSelectedBlockIds([newBlock.id]);
-      setActiveSingleId(newBlock.id);
-      setPanelMode('edit');
-      loadFormFromBlock(newBlock);
-      setActiveTab('properties');
-      setShowCommentPanel(false);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleImportDocx = async (
-    imported: Array<{ name: string; html: string }>,
-  ): Promise<{ createdCount: number }> => {
-    const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG['editable'].payload;
-    let firstBlock: Awaited<ReturnType<typeof createBlock>> | null = null;
-    let createdCount = 0;
-    for (const { name, html } of imported) {
+      setBusy(true);
       try {
-        const doc = htmlToTiptapDoc(html, buildMayaEditorExtensions('full'));
-        const created = await createBlock({
-          title: name,
+        const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG['editable'].payload;
+        const newBlock = await createBlock({
+          title: block?.name ?? null,
+          description: block?.description ?? null,
           type: 'paragraph',
+          block_type: block?.block_type ?? 'content',
           block_state,
           mandatory,
-          default_content: doc.content,
+          default_content: block?.content ?? null,
         });
-        if (!firstBlock) firstBlock = created;
-        createdCount++;
-      } catch (e) {
-        // Para en el primer fallo: el modal deja el resto para reintentar.
-        console.error('[WizardStep2Blocks] createBlock failed during import', e);
-        break;
+        setSelectedBlockIds([newBlock.id]);
+        setActiveSingleId(newBlock.id);
+        setPanelMode('edit');
+        loadFormFromBlock(newBlock);
+        setActiveTab('properties');
+        setShowCommentPanel(false);
+      } finally {
+        setBusy(false);
       }
-    }
-    if (firstBlock) {
-      setSelectedBlockIds([firstBlock.id]);
-      setActiveSingleId(firstBlock.id);
-      setPanelMode('edit');
-      loadFormFromBlock(firstBlock);
-      setActiveTab('properties');
-      setShowCommentPanel(false);
-    }
-    if (createdCount >= imported.length) setDocxSplitterOpen(false);
-    return { createdCount };
-  };
+    };
 
-  const handleDelete = async () => {
-    setBusy(true);
-    try {
-      if (panelMode === 'multi' && selectedBlockIds.length > 0) {
-        // Delete all selected blocks
-        for (const id of selectedBlockIds) {
-          await deleteBlock(id);
+    const handleImportDocx = async (
+      imported: Array<{ name: string; html: string }>,
+    ): Promise<{ createdCount: number }> => {
+      const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG['editable'].payload;
+      let firstBlock: Awaited<ReturnType<typeof createBlock>> | null = null;
+      let createdCount = 0;
+      for (const { name, html } of imported) {
+        try {
+          const doc = htmlToTiptapDoc(html, buildMayaEditorExtensions('full'));
+          const created = await createBlock({
+            title: name,
+            type: 'paragraph',
+            block_state,
+            mandatory,
+            default_content: doc.content,
+          });
+          if (!firstBlock) firstBlock = created;
+          createdCount++;
+        } catch (e) {
+          // Para en el primer fallo: el modal deja el resto para reintentar.
+          console.error('[WizardStep2Blocks] createBlock failed during import', e);
+          break;
         }
-        setSelectedBlockIds([]);
-        setActiveSingleId(null);
-        // setMultiIndex(0);
-      } else if (activeSingleId) {
-        await deleteBlock(activeSingleId);
-        setActiveSingleId(null);
-        setSelectedBlockIds([]);
+      }
+      if (firstBlock) {
+        setSelectedBlockIds([firstBlock.id]);
+        setActiveSingleId(firstBlock.id);
+        setPanelMode('edit');
+        loadFormFromBlock(firstBlock);
+        setActiveTab('properties');
+        setShowCommentPanel(false);
+      }
+      if (createdCount >= imported.length) setDocxSplitterOpen(false);
+      return { createdCount };
+    };
+
+    const handleDelete = async () => {
+      setBusy(true);
+      try {
+        if (panelMode === 'multi' && selectedBlockIds.length > 0) {
+          // Delete all selected blocks
+          for (const id of selectedBlockIds) {
+            await deleteBlock(id);
+          }
+          setSelectedBlockIds([]);
+          setActiveSingleId(null);
+          // setMultiIndex(0);
+        } else if (activeSingleId) {
+          await deleteBlock(activeSingleId);
+          setActiveSingleId(null);
+          setSelectedBlockIds([]);
+        }
+        setPanelMode('empty');
+        setDeleteModal(false);
+      } finally {
+        setBusy(false);
+      }
+    };
+
+    const handleDuplicate = async () => {
+      setBusy(true);
+      try {
+        const ids =
+          panelMode === 'multi' ? selectedBlockIds : activeSingleId ? [activeSingleId] : [];
+        for (const id of ids) {
+          const source = blocks.find((b) => b.id === id);
+          if (!source) continue;
+          const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[blockToUiState(source)].payload;
+          await createBlock({
+            title: `${source.title ?? 'Bloque'} (copia)`,
+            type: source.type,
+            block_state,
+            mandatory,
+            default_content: source.default_content,
+            description: source.description,
+          });
+        }
+      } finally {
+        setBusy(false);
+      }
+    };
+
+    const handleCancel = async () => {
+      if (tabIsDirty && activeSingleId) {
+        const original = blocks.find((b) => b.id === activeSingleId);
+        if (original) loadFormFromBlock(original);
       }
       setPanelMode('empty');
-      setDeleteModal(false);
-    } finally {
-      setBusy(false);
-    }
-  };
+      setActiveSingleId(null);
+      setSelectedBlockIds([]);
+      // setMultiIndex(0);
+    };
 
-  const handleDuplicate = async () => {
-    setBusy(true);
-    try {
-      const ids = panelMode === 'multi' ? selectedBlockIds : (activeSingleId ? [activeSingleId] : []);
-      for (const id of ids) {
-        const source = blocks.find((b) => b.id === id);
-        if (!source) continue;
-        const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[blockToUiState(source)].payload;
-        await createBlock({
-          title: `${source.title ?? 'Bloque'} (copia)`,
-          type: source.type,
-          block_state,
-          mandatory,
-          default_content: source.default_content,
-          description: source.description,
-        });
-      }
-    } finally {
-      setBusy(false);
-    }
-  };
+    const renderSaveStatus = () => {
+      if (saveStatus === 'saving')
+        return <span className="text-xs text-text-muted italic">{t('common:saving')}</span>;
+      if (saveStatus === 'saved')
+        return (
+          <span className="text-xs text-success-dark flex items-center gap-1">
+            ✓ {t('common:status.saved')}
+          </span>
+        );
+      if (saveStatus === 'error')
+        return <span className="text-xs text-danger-dark">{t('common:errors.saveFailed')}</span>;
+      return null;
+    };
 
-  const handleCancel = async () => {
-    if (tabIsDirty && activeSingleId) {
-      const original = blocks.find((b) => b.id === activeSingleId);
-      if (original) loadFormFromBlock(original);
-    }
-    setPanelMode('empty');
-    setActiveSingleId(null);
-    setSelectedBlockIds([]);
-    // setMultiIndex(0);
-  };
-
-  // Comments dict keyed by id, fed to MayaEditor so hovering over a
-  // CommentMark span shows the author + body in a portal popover.
-  const commentsById = useMemo(() => {
-    const out: Record<string, { author?: string; createdAt?: string; body: string }> = {};
-    for (const c of reviewComments) {
-      out[c.id] = {
-        author: c.author?.name ?? undefined,
-        createdAt: c.created_at
-          ? new Date(c.created_at).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })
-          : undefined,
-        body: c.body
-          .replace(/<br\s*\/?\s*>/gi, '\n')
-          .replace(/<\/p>\s*<p[^>]*>/gi, '\n\n')
-          .replace(/<\/?p[^>]*>/gi, '')
-          .replace(/<[^>]+>/g, '')
-          .replace(/&lt;/g, '<')
-          .replace(/&gt;/g, '>')
-          .replace(/&amp;/g, '&')
-          .trim(),
-      };
-    }
-    return out;
-  }, [reviewComments]);
-
-  const handleSendMessage = useCallback(async (parentId: string | null, body: string) => {
-    if (!activeSingleId) return;
-    setCommentSubmitError(null);
-    setCommentSubmitLoading(true);
-    try {
-      const blockableId = resolveCommentBlockableId(parentId, reviewComments, activeSingleId);
-      const res = await apiFetchJson<{ data: BlockComment }>(`templates/${template.id}/comments`, {
-        method: 'POST',
-        body: { body, parent_id: parentId, blockable_id: blockableId },
-      });
-      appendCommentToTemplateCache(queryClient, template.id, res.data);
-    } catch {
-      setCommentSubmitError('No se pudo guardar el comentario.');
-      throw new Error('comment-send-failed');
-    } finally {
-      setCommentSubmitLoading(false);
-    }
-  }, [activeSingleId, queryClient, reviewComments, template.id]);
-
-  /**
-   * Anchored comment on a text selection from inside the editor.
-   *
-   * Two-step flow:
-   *   1. POST templates/{id}/comments  → creates the comment row used as
-   *      the right-rail entry (visible in BLOQUE #N comments).
-   *   2. POST template/{id}/anchored-comments → records the position
-   *      range so the editor's CommentMark can survive concurrent edits.
-   *
-   * Returns the comment id so MayaEditor applies the mark to the
-   * selected range.
-   */
-  const handleCreateAnchoredComment = useCallback(
-    async (range: { from: number; to: number; text: string }): Promise<string | null> => {
-      if (!activeSingleId) return null;
-      const body = window.prompt(
-        `Comentario sobre la selección "${range.text.slice(0, 80)}${range.text.length > 80 ? '…' : ''}"`,
-        '',
-      );
-      if (!body || !body.trim()) return null;
+    const handleSaveAndContinue = async () => {
+      setIsSaving(true);
       try {
-        const res = await apiFetchJson<{ data: BlockComment }>(`templates/${template.id}/comments`, {
-          method: 'POST',
-          body: { body: body.trim(), parent_id: null, blockable_id: activeSingleId },
-        });
-        const commentId = res.data.id;
-        // Anchor record — failures here don't roll back the comment; the
-        // anchor can be re-attached later if needed.
-        try {
-          await apiFetchJson(`template/${template.id}/anchored-comments`, {
-            method: 'POST',
-            body: {
-              comment_id: commentId,
-              anchor_from: range.from,
-              anchor_to: range.to,
-              anchor_text_snapshot: range.text.slice(0, 1000),
-            },
-          });
-        } catch (e) {
-          console.warn('[WizardStep2Blocks] anchor save failed', e);
-        }
-        appendCommentToTemplateCache(queryClient, template.id, res.data);
-        return commentId;
-      } catch (e) {
-        console.error('[WizardStep2Blocks] comment create failed', e);
-        return null;
+        const success = await saveCurrentTab();
+        if (!success) return;
+      } finally {
+        setIsSaving(false);
+        onContinue?.();
       }
-    },
-    [activeSingleId, queryClient, template.id],
-  );
+    };
 
-  const handleEditComment = useCallback(async (commentId: string, newBody: string) => {
-    const res = await apiFetchJson<{ data: BlockComment }>(`comments/${commentId}`, {
-      method: 'PATCH',
-      body: { body: newBody },
-    });
-    patchTemplateCommentCache(queryClient, template.id, (comments) =>
-      comments.map((c) => (c.id === commentId ? res.data : c)),
-    );
-  }, [queryClient, template.id]);
-
-  const handleDeleteComment = useCallback(async (commentId: string) => {
-    await apiFetchJson(`comments/${commentId}`, { method: 'DELETE' });
-    markCommentDeletedInTemplateCache(queryClient, template.id, commentId, profile?.name);
-  }, [queryClient, template.id, profile?.name]);
-
-  const handleMarkCommentAsRead = useCallback(async (commentId: string) => {
-    await markCommentAsReadInTemplateCache(queryClient, template.id, commentId);
-  }, [queryClient, template.id]);
-
-  const handleMarkAllBlockCommentsAsRead = useCallback(async () => {
-    if (!activeSingleId) return;
-    await markBlockCommentsAsReadInTemplateCache(queryClient, template.id, activeSingleId);
-  }, [activeSingleId, queryClient, template.id]);
-
-  const renderSaveStatus = () => {
-    if (saveStatus === 'saving') return <span className="text-xs text-text-muted italic">{t('common:saving')}</span>;
-    if (saveStatus === 'saved') return <span className="text-xs text-success-dark flex items-center gap-1">✓ {t('common:status.saved')}</span>;
-    if (saveStatus === 'error') return <span className="text-xs text-danger-dark">{t('common:errors.saveFailed')}</span>;
-    return null;
-  };
-
-  const handleSaveAndContinue = async () => {
-  setIsSaving(true);
-    try {
-      const success = await saveCurrentTab();
-      if (!success) return;
-    } finally {
-      setIsSaving(false);
-      onContinue?.();
-    }
-  };
-
-  return (
-    <div className={[
-      isEditorFullscreen ? 'fixed inset-0 z-[100] bg-white dark:bg-ui-dark-card flex flex-col' : 'flex-1 min-h-0 flex flex-col md:flex-row relative overflow-visible',
-      'transition-all duration-300'
-    ].join(' ')}>
-      {!isEditorFullscreen && (
-        <div className="relative shrink-0 z-30 flex flex-col overflow-visible">
-          <div className={[
-            'h-full flex flex-col border-r border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card transition-all duration-300 overflow-hidden',
-            isSidebarCollapsed ? 'w-0' : 'w-64 md:w-72'
-          ].join(' ')}>
-            {!isSidebarCollapsed && (
-              <div className="flex flex-col h-full overflow-hidden animate-in fade-in duration-300">
-                <div className="px-4 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between shrink-0">
-                  <span className="text-xs font-black uppercase text-text-secondary tracking-widest truncate">Bloques ({blocks.length})</span>
-                  <Button variant="ghost" size="xs" onClick={handleToggleSelectAll} className="shrink-0 ml-2">
-                    {selectedBlockIds.length === blocks.length && blocks.length > 0 ? 'Deseleccionar' : 'Todos'}
-                  </Button>
-                </div>
-                <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                  {loading ? (
-                    <div className="text-xs text-text-muted p-4">Cargando bloques...</div>
-                  ) : (
-                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                      <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
-                        {blocks.map((block) => (
-                          <SortableBlockItem
-                            key={block.id}
-                            block={block}
-                            itemState={activeSingleId === block.id ? 'selected' : (selectedBlockIds.includes(block.id) ? 'multi-queued' : 'default')}
-                            onClick={() => handleBlockClick(block.id)}
-                            hasUnreadComments={countUnreadCommentsForBlock(block.id, reviewComments) > 0}
-                            isCompleted={completedBlocks.isCompleted(block.id)}
-                          />
-                        ))}
-                      </SortableContext>
-                    </DndContext>
-                  )}
-                </div>
-                <div className="p-4 border-t border-ui-border dark:border-ui-dark-border shrink-0">
-                  <AddBlockMenu
-                    disabled={busy}
-                    ctx={{
-                      templateId: template.id,
-                      createBlock: (block) => void handleAddBlock(block),
-                      openDocxSplitter: () => setDocxSplitterOpen(true),
-                      setActiveDialog: (id) => {
-                        if (id === 'docx-splitter') setDocxSplitterOpen(true);
-                        else if (id === null) setDocxSplitterOpen(false);
-                      },
-                      hasPermission,
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-          <button
-            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            className={[
-              'absolute top-4 -right-3 z-50 w-6 h-6 rounded-full border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card flex items-center justify-center text-text-muted hover:text-odoo-purple transition-all shadow-sm',
-              isSidebarCollapsed ? 'rotate-180' : ''
-            ].join(' ')}
-            title={isSidebarCollapsed ? 'Expandir' : 'Colapsar'}
-          >
-            <svg className="w-3.5 h-3.5 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-        </div>
-      )}
-
-      {/* Main Panel */}
-
-      {/* Main Panel */}
-      <div className="flex-1 min-w-0 min-h-0 flex flex-col bg-ui-body/30 dark:bg-ui-dark-bg overflow-visible">
-        {panelMode === 'empty' && (
-          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center opacity-40">
-            <p className="text-sm font-bold uppercase tracking-widest">{t('templates:wizard.selectBlock')}</p>
-          </div>
+    return (
+      <div
+        className={[
+          isEditorFullscreen
+            ? 'fixed inset-0 z-[100] bg-white dark:bg-ui-dark-card flex flex-col'
+            : 'flex-1 min-h-0 flex flex-col md:flex-row relative overflow-visible',
+          'transition-all duration-300',
+        ].join(' ')}
+      >
+        {!isEditorFullscreen && (
+          <WizardStep2Sidebar
+            isSidebarCollapsed={isSidebarCollapsed}
+            onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            blocks={blocks}
+            loading={loading}
+            selectedBlockIds={selectedBlockIds}
+            activeSingleId={activeSingleId}
+            reviewComments={reviewComments}
+            completedBlocks={completedBlocks}
+            sensors={sensors}
+            busy={busy}
+            templateId={template.id}
+            hasPermission={hasPermission}
+            onToggleSelectAll={handleToggleSelectAll}
+            onDragEnd={handleDragEnd}
+            onBlockClick={handleBlockClick}
+            onAddBlock={(block) => void handleAddBlock(block)}
+            onSetDocxSplitter={setDocxSplitterOpen}
+          />
         )}
 
-        {(panelMode === 'edit' || panelMode === 'multi') && selectedBlock && (
-          <div className="flex-1 flex flex-col overflow-hidden animate-in fade-in">
-            {/* Compact fullscreen header — replaces regular header + tabs when fullscreen */}
-            {isEditorFullscreen && (
-              <div className="shrink-0 h-11 px-4 flex items-center gap-3 border-b border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card">
-                <h3 className="flex-1 text-sm font-bold truncate uppercase tracking-widest">
-                  Bloque {blocks.indexOf(selectedBlock) + 1}: {selectedBlock.title}
-                </h3>
-                {renderSaveStatus()}
-                {onContinue && (
-                  <Button variant="primary" size="xs" onClick={() => {setIsEditorFullscreen(false); void handleSaveAndContinue()}} className="shrink-0">
-                    Guardar y continuar →
-                  </Button>
-                )}
-              </div>
-            )}
+        {/* Main Panel */}
 
-            {/* Regular header — hidden in fullscreen.
+        {/* Main Panel */}
+        <div className="flex-1 min-w-0 min-h-0 flex flex-col bg-ui-body/30 dark:bg-ui-dark-bg overflow-visible">
+          {panelMode === 'empty' && (
+            <div className="flex-1 flex flex-col items-center justify-center p-6 text-center opacity-40">
+              <p className="text-sm font-bold uppercase tracking-widest">
+                {t('templates:wizard.selectBlock')}
+              </p>
+            </div>
+          )}
+
+          {(panelMode === 'edit' || panelMode === 'multi') && selectedBlock && (
+            <div className="flex-1 flex flex-col overflow-hidden animate-in fade-in">
+              {/* Compact fullscreen header — replaces regular header + tabs when fullscreen */}
+              {isEditorFullscreen && (
+                <div className="shrink-0 h-11 px-4 flex items-center gap-3 border-b border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card">
+                  <h3 className="flex-1 text-sm font-bold truncate uppercase tracking-widest">
+                    Bloque {blocks.indexOf(selectedBlock) + 1}: {selectedBlock.title}
+                  </h3>
+                  {renderSaveStatus()}
+                  {onContinue && (
+                    <Button
+                      variant="primary"
+                      size="xs"
+                      onClick={() => {
+                        setIsEditorFullscreen(false);
+                        void handleSaveAndContinue();
+                      }}
+                      className="shrink-0"
+                    >
+                      Guardar y continuar →
+                    </Button>
+                  )}
+                </div>
+              )}
+
+              {/* Regular header — hidden in fullscreen.
                 Responsive: row on >=sm, stacked column on mobile. Action
                 buttons wrap (flex-wrap) so they drop to a second row when
                 the title is long. Destructive/secondary actions collapse
                 to icon-only on small screens to keep the row compact. */}
-            {!isEditorFullscreen && (
-              <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 shrink-0 bg-white dark:bg-ui-dark-card">
-                <div className="flex items-center gap-3 min-w-0">
-                  <h3 className="text-sm font-bold truncate uppercase tracking-widest">
-                    Bloque {blocks.indexOf(selectedBlock) + 1}: {selectedBlock.title}
-                  </h3>
-                  {renderSaveStatus()}
-                </div>
-                <div className="flex items-center flex-wrap gap-2 sm:shrink-0">
-                  {!showCommentPanel && selectedBlock?.title && (() => {
-                    const blockCommentsCount = countUnreadCommentsForBlock(activeSingleId, reviewComments);
-                    return (
-                      <Button
-                        variant="outline"
-                        size="xs"
-                        onClick={() => setShowCommentPanel(true)}
-                        className="relative text-odoo-purple border-odoo-purple/40 hover:bg-odoo-purple/5"
-                        title={t('templates:reviewComments')}
-                      >
-                        <span className="hidden sm:inline">{t('common:comments.label')}</span>
-                        <span className="sm:hidden" aria-hidden>💬</span>
-                        {blockCommentsCount > 0 && (
-                          <span
-                            aria-label={`${blockCommentsCount} comentarios`}
-                            className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-odoo-purple text-white text-[10px] font-bold leading-none"
+              {!isEditorFullscreen && (
+                <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 shrink-0 bg-white dark:bg-ui-dark-card">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <h3 className="text-sm font-bold truncate uppercase tracking-widest">
+                      Bloque {blocks.indexOf(selectedBlock) + 1}: {selectedBlock.title}
+                    </h3>
+                    {renderSaveStatus()}
+                  </div>
+                  <div className="flex items-center flex-wrap gap-2 sm:shrink-0">
+                    {!showCommentPanel &&
+                      selectedBlock?.title &&
+                      (() => {
+                        const blockCommentsCount = countUnreadCommentsForBlock(
+                          activeSingleId,
+                          reviewComments,
+                        );
+                        return (
+                          <Button
+                            variant="outline"
+                            size="xs"
+                            onClick={() => setShowCommentPanel(true)}
+                            className="relative text-odoo-purple border-odoo-purple/40 hover:bg-odoo-purple/5"
+                            title={t('templates:reviewComments')}
                           >
-                            {blockCommentsCount > 99 ? '99+' : blockCommentsCount}
-                          </span>
-                        )}
-                      </Button>
-                    );
-                  })()}
-                  {activeSingleId && (() => {
-                    const isDone = completedBlocks.isCompleted(activeSingleId);
-                    return (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="xs"
-                        className={isDone
-                          ? 'text-success-dark border-success/60 bg-success/10 hover:bg-success/15'
-                          : 'text-text-secondary border-ui-border hover:text-success-dark hover:border-success/60'}
-                        onClick={() => completedBlocks.toggle(activeSingleId)}
-                        aria-pressed={isDone}
-                        title={isDone ? 'Marcar como pendiente' : 'Marcar bloque como finalizado'}
-                      >
-                        <span className="inline-flex items-center gap-1">
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                            <polyline points="20 6 9 17 4 12" />
-                          </svg>
-                          <span className="hidden sm:inline">{isDone ? 'Finalizado' : 'Finalizar'}</span>
-                        </span>
-                      </Button>
-                    );
-                  })()}
-                  <Button variant="outline" size="xs" onClick={handleDuplicate} disabled={busy} title="Duplicar">
-                    <span className="hidden sm:inline">Duplicar</span>
-                    <span className="sm:hidden" aria-hidden>⎘</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    className="text-danger hover:bg-danger/5 hover:border-danger/40"
-                    onClick={() => setDeleteModal(true)}
-                    title={t('common:actions.delete')}
-                  >
-                    <span className="hidden sm:inline">{t('common:actions.delete')}</span>
-                    <span className="sm:hidden" aria-hidden>🗑</span>
-                  </Button>
+                            <span className="hidden sm:inline">{t('common:comments.label')}</span>
+                            <span className="sm:hidden" aria-hidden>
+                              💬
+                            </span>
+                            {blockCommentsCount > 0 && (
+                              <span
+                                aria-label={`${blockCommentsCount} comentarios`}
+                                className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-odoo-purple text-white text-[10px] font-bold leading-none"
+                              >
+                                {blockCommentsCount > 99 ? '99+' : blockCommentsCount}
+                              </span>
+                            )}
+                          </Button>
+                        );
+                      })()}
+                    {activeSingleId &&
+                      (() => {
+                        const isDone = completedBlocks.isCompleted(activeSingleId);
+                        return (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="xs"
+                            className={
+                              isDone
+                                ? 'text-success-dark border-success/60 bg-success/10 hover:bg-success/15'
+                                : 'text-text-secondary border-ui-border hover:text-success-dark hover:border-success/60'
+                            }
+                            onClick={() => completedBlocks.toggle(activeSingleId)}
+                            aria-pressed={isDone}
+                            title={
+                              isDone ? 'Marcar como pendiente' : 'Marcar bloque como finalizado'
+                            }
+                          >
+                            <span className="inline-flex items-center gap-1">
+                              <svg
+                                width="11"
+                                height="11"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="3"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                aria-hidden="true"
+                              >
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                              <span className="hidden sm:inline">
+                                {isDone ? 'Finalizado' : 'Finalizar'}
+                              </span>
+                            </span>
+                          </Button>
+                        );
+                      })()}
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      onClick={handleDuplicate}
+                      disabled={busy}
+                      title="Duplicar"
+                    >
+                      <span className="hidden sm:inline">Duplicar</span>
+                      <span className="sm:hidden" aria-hidden>
+                        ⎘
+                      </span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      className="text-danger hover:bg-danger/5 hover:border-danger/40"
+                      onClick={() => setDeleteModal(true)}
+                      title={t('common:actions.delete')}
+                    >
+                      <span className="hidden sm:inline">{t('common:actions.delete')}</span>
+                      <span className="sm:hidden" aria-hidden>
+                        🗑
+                      </span>
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Tabs — hidden in fullscreen. "Cancelar" lives at the right
+              {/* Tabs — hidden in fullscreen. "Cancelar" lives at the right
                 edge of the tab strip so the header row above has more
                 breathing room on narrow viewports. */}
-            {!isEditorFullscreen && (
-              <div className="flex items-stretch border-b border-ui-border dark:border-ui-dark-border shrink-0 bg-white dark:bg-ui-dark-card">
-                {(['properties', 'content', 'description'] as TabId[]).map(tab => {
-                  const isTabDisabled = (tab === 'content' || tab === 'description') && validateBlockName(formName) !== '';
+              {!isEditorFullscreen && (
+                <div className="flex items-stretch border-b border-ui-border dark:border-ui-dark-border shrink-0 bg-white dark:bg-ui-dark-card">
+                  {(['properties', 'content', 'description'] as TabId[]).map((tab) => {
+                    const isTabDisabled =
+                      (tab === 'content' || tab === 'description') &&
+                      validateBlockName(formName) !== '';
 
-                  return (
-                    <button
-                      key={tab}
-                      onClick={() => {
-                      if (!isTabDisabled) {
-                        setActiveTab(tab);
-                      }
-                    }}
-                      disabled={isTabDisabled}
-                      title={isTabDisabled ? (validateBlockName(formName) || 'Asigna un nombre válido al bloque para habilitar esta pestaña') : ''}
-                      className={`px-4 py-2 text-xs font-bold uppercase tracking-widest border-b-2 transition-colors flex items-center gap-1.5 ${
-                        activeTab === tab ? 'border-odoo-purple text-odoo-purple' : 'border-transparent text-text-muted hover:text-text-primary'
-                      } ${isTabDisabled ? 'opacity-30 cursor-not-allowed' : ''}`}
+                    return (
+                      <button
+                        key={tab}
+                        onClick={() => {
+                          if (!isTabDisabled) {
+                            setActiveTab(tab);
+                          }
+                        }}
+                        disabled={isTabDisabled}
+                        title={
+                          isTabDisabled
+                            ? validateBlockName(formName) ||
+                              'Asigna un nombre válido al bloque para habilitar esta pestaña'
+                            : ''
+                        }
+                        className={`px-4 py-2 text-xs font-bold uppercase tracking-widest border-b-2 transition-colors flex items-center gap-1.5 ${
+                          activeTab === tab
+                            ? 'border-odoo-purple text-odoo-purple'
+                            : 'border-transparent text-text-muted hover:text-text-primary'
+                        } ${isTabDisabled ? 'opacity-30 cursor-not-allowed' : ''}`}
+                      >
+                        {tab === 'properties'
+                          ? 'Propiedades'
+                          : tab === 'content'
+                            ? 'Contenido'
+                            : 'Descripción'}
+                      </button>
+                    );
+                  })}
+                  <div className="ml-auto flex items-center pr-3">
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      className="hover:text-text-primary"
+                      onClick={() => void handleCancel()}
                     >
-                      {tab === 'properties' ? 'Propiedades' : tab === 'content' ? 'Contenido' : 'Descripción'}
-                    </button>
-                  );
-                })}
-                <div className="ml-auto flex items-center pr-3">
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    className="hover:text-text-primary"
-                    onClick={() => void handleCancel()}
-                  >
-                    {t('common:actions.cancel')}
-                  </Button>
+                      {t('common:actions.cancel')}
+                    </Button>
+                  </div>
                 </div>
+              )}
+
+              <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                {activeTab === 'properties' && !isEditorFullscreen && (
+                  <WizardStep2PropertiesPanel form={form} publishedThemes={publishedThemes} />
+                )}
+                <WizardStep2EditorTabs
+                  form={form}
+                  activeTab={activeTab}
+                  template={template}
+                  blocks={blocks}
+                  activeSingleId={activeSingleId}
+                  isSaving={isSaving}
+                  effectiveIsDark={effectiveIsDark}
+                  onEditorFullscreenChange={handleEditorFullscreenChange}
+                  onCreateComment={handleCreateAnchoredComment}
+                  commentsById={commentsById}
+                />
               </div>
-            )}
-
-            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-              {activeTab === 'properties' && !isEditorFullscreen && (
-                <div className="flex-1 overflow-y-auto p-6">
-                  <div className="w-full bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
-                    <div className="p-6 space-y-4">
-                      <div>
-                        <FieldLabel required>{t('templates:wizard.blockName')}</FieldLabel>
-                        <TextInput
-                          value={formName}
-                          placeholder={t('documents:blocks.newBlockPlaceholder')}
-                          error={!!nameError}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                            setFormName(e.target.value);
-                            setNameError(validateBlockName(e.target.value));
-                            setTabIsDirty(true);
-                          }}
-                          onBlur={() => setNameError(validateBlockName(formName))}
-                        />
-                        {nameError && <p className="mt-1 text-xs text-danger">{nameError}</p>}
-                      </div>
-                      <div>
-                        <FieldLabel>{t('common:fields.status')}</FieldLabel>
-                        <BlockUiStateToggle
-                          value={formUiState}
-                          disabled={formBlockType === 'blank' || formBlockType === 'index'}
-                          onChange={s => { setFormUiState(s); setTabIsDirty(true); }}
-                        />
-                        {formBlockType === 'blank' && (
-                          <p className="mt-1 text-xs text-text-muted">
-                            Una hoja en blanco siempre está bloqueada y no admite contenido.
-                          </p>
-                        )}
-                        {formBlockType === 'index' && (
-                          <p className="mt-1 text-xs text-text-muted">
-                            El índice siempre es modificable: el redactor elige qué secciones incluir.
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <FieldLabel>{t('templates:wizard.blockType')}</FieldLabel>
-                        <Select
-                          value={formBlockType}
-                          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                            const next = e.target.value as BlockType;
-                            setFormBlockType(next);
-                            // Hoja en blanco: sin contenido y bloqueada por definición.
-                            if (next === 'blank') {
-                              setFormUiState('locked');
-                              setFormContent('');
-                            }
-                            // Índice: siempre modificable (el redactor elige secciones).
-                            if (next === 'index') {
-                              setFormUiState('modifiable');
-                            }
-                            setTabIsDirty(true);
-                          }}
-                        >
-                          {(Object.keys(BLOCK_TYPE_LABELS) as BlockType[]).map((bt) => (
-                            <option key={bt} value={bt}>{BLOCK_TYPE_LABELS[bt]}</option>
-                          ))}
-                        </Select>
-                      </div>
-                      <div>
-                        <label className="flex items-center gap-2 text-sm text-text-primary dark:text-text-dark-primary cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={formPageBreakAfter}
-                            onChange={(e) => { setFormPageBreakAfter(e.target.checked); setTabIsDirty(true); }}
-                            className="h-4 w-4 rounded border-ui-border"
-                          />
-                          Salto de página tras este bloque
-                        </label>
-                        <p className="mt-1 text-xs text-text-muted">
-                          El siguiente bloque empezará en una página nueva al exportar a PDF.
-                        </p>
-                      </div>
-                      <div className="pt-2 border-t border-ui-border dark:border-ui-dark-border">
-                        <label className="flex items-center gap-2 text-sm text-text-primary dark:text-text-dark-primary cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={formApplyTheme}
-                            onChange={(e) => { setFormApplyTheme(e.target.checked); setTabIsDirty(true); }}
-                            className="h-4 w-4 rounded border-ui-border"
-                          />
-                          Aplicar tema a este bloque
-                        </label>
-                        <p className="mt-1 text-xs text-text-muted">
-                          Si lo desactivas, el bloque no llevará ningún tema (ni estilo ni cabecera/pie) y ocupará su propia página.
-                        </p>
-                      </div>
-                      <div>
-                        <FieldLabel>{t('templates:wizard.blockTheme')}</FieldLabel>
-                        <Select
-                          value={formThemeId ?? ''}
-                          disabled={!formApplyTheme}
-                          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                            setFormThemeId(e.target.value === '' ? null : e.target.value);
-                            setTabIsDirty(true);
-                          }}
-                        >
-                          <option value="">{t('templates:wizard.defaultTheme')}</option>
-                          {publishedThemes.map((th) => (
-                            <option key={th.id} value={th.id}>{th.name}</option>
-                          ))}
-                        </Select>
-                        <p className="mt-1 text-xs text-text-muted">
-                          Por defecto hereda el tema de la plantilla. Puedes asignar un tema distinto solo a este bloque.
-                        </p>
-                      </div>
-                      <p className="text-xs text-text-muted italic">
-                        Se guarda automáticamente tras 1500 ms de inactividad o al cambiar de pestaña.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-              {activeTab === 'content' && formBlockType === 'cover' && (
-                <ErrorBoundaryWrapper>
-                  <div className="flex-1 min-h-0 flex flex-col">
-                    {!formName.trim() ? (
-                      <div className="flex-1 flex flex-col items-center justify-center p-12 text-center opacity-60">
-                        <div className="text-4xl mb-4">🖼</div>
-                        <p className="text-sm font-bold uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
-                          Asigna un nombre al bloque en "Propiedades" para diseñar la portada.
-                        </p>
-                      </div>
-                    ) : (
-                      <CoverDesignEditor
-                        value={parseCoverContent(safeJsonParse(formContent), coverPageSize)}
-                        pageSize={coverPageSize}
-                        templateId={template.id}
-                        onChange={(next) => { setFormContent(JSON.stringify(next)); setTabIsDirty(true); }}
-                      />
-                    )}
-                  </div>
-                </ErrorBoundaryWrapper>
-              )}
-              {activeTab === 'content' && formBlockType === 'index' && (
-                <ErrorBoundaryWrapper>
-                  <div className="flex-1 min-h-0 flex flex-col">
-                    {!formName.trim() ? (
-                      <div className="flex-1 flex flex-col items-center justify-center p-12 text-center opacity-60">
-                        <div className="text-4xl mb-4">📑</div>
-                        <p className="text-sm font-bold uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
-                          Asigna un nombre al bloque en "Propiedades" para configurar el índice.
-                        </p>
-                      </div>
-                    ) : (
-                      <IndexBlockEditor
-                        blocks={blocks}
-                        currentBlockId={activeSingleId}
-                        value={parseIndexConfig(safeJsonParse(formContent))}
-                        onChange={(next) => { setFormContent(JSON.stringify(next)); setTabIsDirty(true); }}
-                      />
-                    )}
-                  </div>
-                </ErrorBoundaryWrapper>
-              )}
-              {activeTab === 'content' && formBlockType === 'blank' && (
-                <div className="flex-1 min-h-0 flex flex-col items-center justify-center p-12 text-center opacity-70">
-                  <div className="text-4xl mb-4">📄</div>
-                  <p className="text-sm font-bold uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
-                    Hoja en blanco
-                  </p>
-                  <p className="mt-2 text-xs text-text-muted max-w-sm">
-                    Este bloque inserta una página vacía en el documento. No tiene contenido editable y permanece bloqueado.
-                  </p>
-                </div>
-              )}
-              {activeTab === 'content' && formBlockType !== 'cover' && formBlockType !== 'index' && formBlockType !== 'blank' && (
-                <ErrorBoundaryWrapper>
-                  <div className="flex-1 min-h-0 p-6 flex flex-col">
-                    {!formName.trim() ? (
-                      <div className="flex-1 flex flex-col items-center justify-center p-12 text-center bg-white dark:bg-ui-dark-card rounded-xl border border-dashed border-ui-border dark:border-ui-dark-border opacity-60">
-                        <div className="text-4xl mb-4">📝</div>
-                        <p className="text-sm font-bold uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
-                          Asigna un nombre al bloque en "Propiedades" para habilitar el editor de contenido.
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="flex-1 min-h-0 flex flex-col gap-2">
-                        {/* DMS-F02: eliminado el `<p>{boolean}</p>` que renderizaba
-                            un párrafo vacío cuando había contenido válido. */}
-                        {formUiState === 'modifiable'  && !meaningfulContent && (
-                          <p className="bg-warning/10 text-warning-dark rounded px-3 py-1.5 dark:bg-warning-dark/30 dark:text-warning-light">
-                            Los bloques tipo modificable deben tener contenido predeterminado (obligatorio).
-                          </p>
-                        )}
-                        {formUiState === 'locked' && !meaningfulContent && (
-                          <p className="bg-warning/10 text-warning-dark rounded px-3 py-1.5 dark:bg-warning-dark/30 dark:text-warning-light">
-                            Los bloques tipo bloqueado deben tener contenido predeterminado (obligatorio).
-                          </p>
-                        )}
-                        {formUiState === 'editable' && !meaningfulContent && (
-                          <p className="bg-info/10 text-info-dark rounded px-3 py-1.5 dark:bg-info-dark/30 dark:text-info-light">
-                            Se recomienda añadir contenido predeterminado para los bloques editables.
-                          </p>
-                        )}
-                        <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
-                          {isSaving && (
-                            <div className="p-4 flex items-center justify-center min-h-[100px]">
-                              <div className="flex items-center gap-2">
-                                <Spinner size="md" />
-                                <span>{t('common:savingChanges')}</span>
-                              </div>
-                            </div>
-                          )}
-                          {!isSaving && (
-                          <Suspense fallback={<div className="p-4 flex justify-center"><Spinner /></div>}>
-                            <BlockNoteEditorPanel
-                              key={`content-${activeSingleId ?? 'none'}`}
-                              initialContent={safeJsonParse(formContent) ?? undefined}
-                              onChange={json => {
-                                setFormContent(JSON.stringify(json));
-                                setTabIsDirty(true);
-                              }}
-                              onFlush={flushTemplateBlockSave}
-                              editable={true}
-                              isDark={effectiveIsDark}
-                              onFullscreenChange={handleEditorFullscreenChange}
-                              uploadFile={(file: File) => uploadMedia(file, activeSingleId ? { type: 'block', id: activeSingleId } : undefined)}
-                              onCreateComment={handleCreateAnchoredComment}
-                              commentsById={commentsById}
-                            />
-                          </Suspense>
-                        )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </ErrorBoundaryWrapper>
-              )}
-              {activeTab === 'description' && (
-                <ErrorBoundaryWrapper>
-                  <div className="flex-1 min-h-0 p-6 flex flex-col">
-                    {!formName.trim() ? (
-                      <div className="flex-1 flex flex-col items-center justify-center p-12 text-center bg-white dark:bg-ui-dark-card rounded-xl border border-dashed border-ui-border dark:border-ui-dark-border opacity-60">
-                        <div className="text-4xl mb-4">📝</div>
-                        <p className="text-sm font-bold uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
-                          Asigna un nombre al bloque en "Propiedades" para habilitar el editor de descripción.
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
-                        <Suspense fallback={<div className="p-4 flex justify-center"><Spinner /></div>}>
-                          <BlockNoteEditorPanel
-                            key={`description-${activeSingleId ?? 'none'}`}
-                            initialContent={safeJsonParse(formDesc) ?? undefined}
-                            onChange={json => { setFormDesc(JSON.stringify(json)); setTabIsDirty(true); }}
-                            onFlush={flushTemplateBlockSave}
-                            editable={true}
-                            isDark={effectiveIsDark}
-                            onFullscreenChange={handleEditorFullscreenChange}
-                            uploadFile={(file: File) => uploadMedia(file, activeSingleId ? { type: 'block', id: activeSingleId } : undefined)}
-                            onCreateComment={handleCreateAnchoredComment}
-                            commentsById={commentsById}
-                          />
-                        </Suspense>
-                      </div>
-                    )}
-                  </div>
-                </ErrorBoundaryWrapper>
-              )}
             </div>
-          </div>
-        )}
-      </div>
-
-      {/* Right: comment panel — creator-edit mode, available even if no comments */}
-      {showCommentPanel && !isEditorFullscreen && panelMode === 'edit' && selectedBlock && formName.trim() && (
-        <div className="hidden md:flex md:w-[35%] shrink-0 border-l border-ui-border dark:border-ui-dark-border flex-col p-4 h-full min-h-0">
-          <BlockCommentsCard
-            mode="creator-edit"
-            blockSortOrder={selectedBlockIndex >= 0 ? selectedBlockIndex + 1 : '?'}
-            blockComments={blockComments}
-            allComments={reviewComments}
-            onSendMessage={handleSendMessage}
-            commentLoading={commentSubmitLoading}
-            submitError={commentSubmitError}
-            onClose={() => setShowCommentPanel(false)}
-            canAddComments={canCommentOnDocument(template.status) && mayComment}
-            currentUserId={profile?.id}
-            canDeleteAnyComment={canDeleteBlockComment(hasPermission)}
-            onEditComment={handleEditComment}
-            onDeleteComment={handleDeleteComment}
-            onMarkAsRead={handleMarkCommentAsRead}
-            onMarkAllBlockAsRead={handleMarkAllBlockCommentsAsRead}
-          />
+          )}
         </div>
-      )}
 
-      <ConfirmDialog
-        open={deleteModal}
-        title={t('common:confirm.deleteBlock')}
-        description={panelMode === 'multi' ? t('templates:wizard.deleteBlocksConfirm', { count: selectedBlockIds.length }) : t('common:confirm.actionIrreversible')}
-        confirmLabel={t('common:actions.delete')}
-        variant="danger"
-        onConfirm={handleDelete}
-        onCancel={() => setDeleteModal(false)}
-        loading={busy}
-      />
+        {/* Right: comment panel — creator-edit mode, available even if no comments */}
+        {showCommentPanel &&
+          !isEditorFullscreen &&
+          panelMode === 'edit' &&
+          selectedBlock &&
+          formName.trim() && (
+            <div className="hidden md:flex md:w-[35%] shrink-0 border-l border-ui-border dark:border-ui-dark-border flex-col p-4 h-full min-h-0">
+              <BlockCommentsCard
+                mode="creator-edit"
+                blockSortOrder={selectedBlockIndex >= 0 ? selectedBlockIndex + 1 : '?'}
+                blockComments={blockComments}
+                allComments={reviewComments}
+                onSendMessage={handleSendMessage}
+                commentLoading={commentSubmitLoading}
+                submitError={commentSubmitError}
+                onClose={() => setShowCommentPanel(false)}
+                canAddComments={canCommentOnDocument(template.status) && mayComment}
+                currentUserId={profile?.id}
+                canDeleteAnyComment={canDeleteBlockComment(hasPermission)}
+                onEditComment={handleEditComment}
+                onDeleteComment={handleDeleteComment}
+                onMarkAsRead={handleMarkCommentAsRead}
+                onMarkAllBlockAsRead={handleMarkAllBlockCommentsAsRead}
+              />
+            </div>
+          )}
 
-      <DocxBlockSplitter
-        open={docxSplitterOpen}
-        onCancel={() => setDocxSplitterOpen(false)}
-        onConfirm={handleImportDocx}
-        isDark={effectiveIsDark}
-      />
-    </div>
-  );
-});
+        <ConfirmDialog
+          open={deleteModal}
+          title={t('common:confirm.deleteBlock')}
+          description={
+            panelMode === 'multi'
+              ? t('templates:wizard.deleteBlocksConfirm', { count: selectedBlockIds.length })
+              : t('common:confirm.actionIrreversible')
+          }
+          confirmLabel={t('common:actions.delete')}
+          variant="danger"
+          onConfirm={handleDelete}
+          onCancel={() => setDeleteModal(false)}
+          loading={busy}
+        />
+
+        <DocxBlockSplitter
+          open={docxSplitterOpen}
+          onCancel={() => setDocxSplitterOpen(false)}
+          onConfirm={handleImportDocx}
+          isDark={effectiveIsDark}
+        />
+      </div>
+    );
+  },
+);
 
 WizardStep2Blocks.displayName = 'WizardStep2Blocks';
