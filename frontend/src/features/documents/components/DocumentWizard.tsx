@@ -131,6 +131,8 @@ import {
   effectiveDocumentReviewMode,
   pickActionableDocumentReview,
   isUuidLike,
+  visibleDocumentBlocks,
+  resolveActiveBlockKey,
 } from './documentWizardUtils';
 import { DocumentBlockDescriptionView, DocSummaryRow } from './DocumentWizardSubviews';
 
@@ -430,12 +432,10 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
       setStudyId(data.study_id ?? '');
       setModuleId(data.module_id ?? '');
       setTeamId(data.team_id ?? '');
-      setActiveBlockKey((prev: string | null) => {
-        if (prev) return prev;
-        if (data.blocks.length === 0) return null;
-        const first = data.blocks[0];
-        return first.document_block_id ?? first.template_block_id;
-      });
+      const visibleSorted = [...visibleDocumentBlocks(data.blocks)].sort(
+        (a, b) => a.sort_order - b.sort_order,
+      );
+      setActiveBlockKey((prev) => resolveActiveBlockKey(prev, visibleSorted));
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : 'No se pudo cargar el documento.');
       setDetail(null);
@@ -511,14 +511,10 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
       setStudyId(data.study_id ?? '');
       setModuleId(data.module_id ?? '');
       setTeamId(data.team_id ?? '');
-      setActiveBlockKey((prev: string | null) => {
-        if (prev && data.blocks.some((b) => (b.document_block_id ?? b.template_block_id) === prev)) {
-          return prev;
-        }
-        if (data.blocks.length === 0) return null;
-        const first = data.blocks[0];
-        return first.document_block_id ?? first.template_block_id;
-      });
+      const visibleSorted = [...visibleDocumentBlocks(data.blocks)].sort(
+        (a, b) => a.sort_order - b.sort_order,
+      );
+      setActiveBlockKey((prev) => resolveActiveBlockKey(prev, visibleSorted));
     } catch (e) {
       setBlockSaveError(e instanceof Error ? e.message : 'No se pudo actualizar el documento.');
     }
@@ -686,7 +682,10 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
   }, [documentId, hierarchy, studyId, moduleId]);
 
   const sortedBlocks = useMemo(
-    () => [...(detail?.blocks ?? [])].sort((a: DocumentDisplayBlock, b: DocumentDisplayBlock) => a.sort_order - b.sort_order),
+    () =>
+      [...visibleDocumentBlocks(detail?.blocks ?? [])].sort(
+        (a: DocumentDisplayBlock, b: DocumentDisplayBlock) => a.sort_order - b.sort_order,
+      ),
     [detail?.blocks],
   );
 
@@ -2768,6 +2767,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
           if (!documentId || !blockId) return;
           try {
             await deleteDocumentBlock(documentId, blockId);
+            setBlockSaveError(null);
+            setShowDocumentCommentPanel(false);
             await refreshDetail();
           } catch (e) {
             setBlockSaveError(e instanceof Error ? e.message : 'No se pudo eliminar el bloque.');

@@ -1,4 +1,4 @@
-import type { DocumentStatus } from '../../../types/documents';
+import type { DocumentDisplayBlock, DocumentStatus } from '../../../types/documents';
 import type { DocumentReview } from '../../../api/documents';
 import type { Template } from '../../../types/templates';
 
@@ -19,6 +19,32 @@ export type ReviewerView = {
   name: string;
   resolved: boolean;
 };
+
+/** Clave estable de un bloque en listas del wizard (document_block_id o template_block_id). */
+export function blockDisplayKey(
+  block: Pick<DocumentDisplayBlock, 'document_block_id' | 'template_block_id'>,
+): string {
+  return block.document_block_id ?? block.template_block_id;
+}
+
+/** Bloques que el redactor puede ver/editar (excluye opcionales eliminados con `is_deleted`). */
+export function visibleDocumentBlocks(blocks: DocumentDisplayBlock[]): DocumentDisplayBlock[] {
+  return blocks.filter((b) => !b.is_deleted);
+}
+
+/** Mantiene la selección si sigue visible; si no, el primero de la lista (ya filtrada/ordenada). */
+export function resolveActiveBlockKey(
+  prev: string | null,
+  visibleSortedBlocks: DocumentDisplayBlock[],
+): string | null {
+  if (prev && visibleSortedBlocks.some((b) => blockDisplayKey(b) === prev)) {
+    return prev;
+  }
+  if (visibleSortedBlocks.length === 0) {
+    return null;
+  }
+  return blockDisplayKey(visibleSortedBlocks[0]);
+}
 
 /**
  * Etiqueta i18n del estado de un documento (keys `documents:table.status.*`,
