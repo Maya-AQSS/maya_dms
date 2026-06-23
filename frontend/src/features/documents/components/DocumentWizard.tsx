@@ -43,8 +43,7 @@ import {
   listUnresolvedEditableBlockTitles,
   planDocumentBlockSave,
 } from '../lib/blockContentEquals';
-import { Button, ConfirmDialog } from '@ceedcv-maya/shared-ui-react';
-import { VersionChangelogModal } from '../../../components/VersionChangelogModal';
+import { Button } from '@ceedcv-maya/shared-ui-react';
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
 import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
 
@@ -81,6 +80,7 @@ import { useDocumentStep1Form } from './useDocumentStep1Form';
 import { DocumentPropertiesStep } from './DocumentPropertiesStep';
 import { DocumentBlocksStep } from './DocumentBlocksStep';
 import { DocumentSummaryStep } from './DocumentSummaryStep';
+import { DocumentWizardModals } from './DocumentWizardModals';
 
 type Props = {
   documentId?: string | null;
@@ -1627,155 +1627,67 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
       )}
       </>
     </WizardShell>
-    <ConfirmDialog
-        open={emptyEditableBlocksModal !== null}
-        title={t('documents:wizard.unfilledBlocksTitle')}
-        description={
-          <div className="space-y-2">
-            <p>{t('wizard.fillBlocksFirst')}</p>
-            <ul className="space-y-1">
-              {(emptyEditableBlocksModal ?? []).map((name, i) => (
-                <li key={i} className="font-medium">• {name}</li>
-              ))}
-            </ul>
-          </div>
+    <DocumentWizardModals
+      emptyEditableBlocks={emptyEditableBlocksModal}
+      onCloseEmptyEditable={() => setEmptyEditableBlocksModal(null)}
+      pendingMigrationBlocks={pendingMigrationBlocks}
+      onClosePendingMigration={() => setPendingMigrationBlocks(null)}
+      showDeleteBlock={showDeleteBlockConfirm}
+      onCancelDeleteBlock={() => setShowDeleteBlockConfirm(false)}
+      onConfirmDeleteBlock={async () => {
+        setShowDeleteBlockConfirm(false);
+        const blockId = activeBlock?.document_block_id;
+        if (!documentId || !blockId) return;
+        try {
+          await deleteDocumentBlock(documentId, blockId);
+          await refreshDetail();
+        } catch (e) {
+          setBlockSaveError(e instanceof Error ? e.message : 'No se pudo eliminar el bloque.');
         }
-        confirmLabel={t('common:actions.understood')}
-        onConfirm={() => setEmptyEditableBlocksModal(null)}
-        onCancel={() => setEmptyEditableBlocksModal(null)}
-      />
-    <ConfirmDialog
-        open={pendingMigrationBlocks !== null}
-        title={t('documents:migration.pendingTitle')}
-        description={
-          <div className="space-y-2">
-            <p>{t('documents:migration.pendingDescription')}</p>
-            <ul className="space-y-1">
-              {(pendingMigrationBlocks ?? []).map((name, i) => (
-                <li key={i} className="font-medium">• {name}</li>
-              ))}
-            </ul>
-          </div>
-        }
-        confirmLabel={t('common:actions.understood')}
-        onConfirm={() => setPendingMigrationBlocks(null)}
-        onCancel={() => setPendingMigrationBlocks(null)}
-      />
-    <ConfirmDialog
-        open={showDeleteBlockConfirm}
-        variant="danger"
-        title={t('common:confirm.deleteBlock')}
-        description={t('wizard.deleteBlockConfirm')}
-        confirmLabel={t('common:actions.delete')}
-        cancelLabel={t('common:actions.cancel')}
-        onCancel={() => setShowDeleteBlockConfirm(false)}
-        onConfirm={async () => {
-          setShowDeleteBlockConfirm(false);
-          const blockId = activeBlock?.document_block_id;
-          if (!documentId || !blockId) return;
-          try {
-            await deleteDocumentBlock(documentId, blockId);
-            await refreshDetail();
-          } catch (e) {
-            setBlockSaveError(e instanceof Error ? e.message : 'No se pudo eliminar el bloque.');
-          }
-        }}
-      />
-      <ConfirmDialog
-        open={validateConfirm === 'approve'}
-        title={t('documents:approveTitle')}
-        description={t('approve.description')}
-        confirmLabel={t('common:actions.approve')}
-        error={validationModalError}
-        loading={validationActionLoading}
-        onCancel={() => {
-          setValidateConfirm(null);
-          setValidationModalError(null);
-        }}
-        onConfirm={() => void handleApproveValidation()}
-      />
-      <ConfirmDialog
-        open={validateConfirm === 'reject'}
-        title={validatorHasCommented ? 'Confirmar rechazo' : 'Comentario requerido'}
-        description={
-          validatorHasCommented ? (
-            <p className="text-sm text-text-secondary dark:text-text-dark-secondary">
-              El documento volverá a borrador para que el titular pueda corregirlo. El resto de validadores dejarán
-              de tener esta revisión asignada. Tus comentarios en los bloques quedarán registrados como motivo.
-            </p>
-          ) : (
-            <p className="text-sm text-text-secondary dark:text-text-dark-secondary">
-              Para rechazar la validación debes dejar al menos un comentario en un bloque del documento explicando
-              el motivo del rechazo. El comentario queda registrado para el titular.
-            </p>
-          )
-        }
-        confirmLabel={validatorHasCommented ? 'Rechazar' : 'Entendido'}
-        variant={validatorHasCommented ? 'danger' : 'primary'}
-        error={validationModalError}
-        loading={validationActionLoading}
-        onCancel={() => {
-          setValidateConfirm(null);
-          setValidationModalError(null);
-        }}
-        onConfirm={validatorHasCommented
-          ? () => void handleRejectValidation()
-          : () => { setValidateConfirm(null); setValidationModalError(null); }}
-      />
-      <ConfirmDialog
-        open={summaryConfirmAction === 'save'}
-        title={t('wizard.confirmSave')}
-        description={t('wizard.saveExitDescription')}
-        confirmLabel={t('wizard.saveExitConfirm')}
-        cancelLabel={t('common:actions.cancel')}
-        variant="teal"
-        onCancel={() => setSummaryConfirmAction(null)}
-        onConfirm={() => void handleConfirmSummaryAction()}
-      />
-      <VersionChangelogModal
-        open={showChangelogModal}
-        title={willSubmitDocumentToReview ? t('wizard.changelogSubmitTitle') : t('wizard.changelogPublishTitle')}
-        intro={documentChangelogIntro}
-        initialValue={detail?.submission_changelog}
-        confirmLabel={
-          submittingForReview
-            ? willSubmitDocumentToReview
-              ? t('wizard.sending')
-              : t('wizard.publishing')
-            : willSubmitDocumentToReview
-              ? t('wizard.submitConfirm')
-              : t('wizard.publishConfirm')
-        }
-        loading={submittingForReview}
-        error={changelogModalError}
-        onCancel={() => {
+      }}
+      validateConfirm={validateConfirm}
+      validatorHasCommented={validatorHasCommented}
+      validationModalError={validationModalError}
+      validationActionLoading={validationActionLoading}
+      onCancelValidate={() => {
+        setValidateConfirm(null);
+        setValidationModalError(null);
+      }}
+      onApprove={() => void handleApproveValidation()}
+      onReject={() => void handleRejectValidation()}
+      summaryConfirmSave={summaryConfirmAction === 'save'}
+      onCancelSummarySave={() => setSummaryConfirmAction(null)}
+      onConfirmSummarySave={() => void handleConfirmSummaryAction()}
+      changelog={{
+        open: showChangelogModal,
+        willSubmit: willSubmitDocumentToReview,
+        intro: documentChangelogIntro,
+        initialValue: detail?.submission_changelog,
+        submitting: submittingForReview,
+        error: changelogModalError,
+        onCancel: () => {
           setShowChangelogModal(false);
           setChangelogModalError(null);
-        }}
-        onConfirm={handleSubmitForReview}
-      />
-      <ConfirmDialog
-        open={showNoValidatorsDocModal}
-        title={t('wizard.noValidators')}
-        description={t('wizard.noValidatorsDescription')}
-        confirmLabel={t('wizard.continueAnyway')}
-        cancelLabel={t('common:actions.cancel')}
-        onConfirm={() => {
-          setShowNoValidatorsDocModal(false);
-          if (!detail) {
-            setFormError(t('errors.stillLoading'));
-            return;
-          }
-          const unresolvedEditable = listUnresolvedEditableBlockTitles(detail.blocks);
-          if (unresolvedEditable.length > 0) {
-            setEmptyEditableBlocksModal(unresolvedEditable);
-            return;
-          }
-          setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'blocks'] as Step[])));
-          setStep('summary');
-        }}
-        onCancel={() => setShowNoValidatorsDocModal(false)}
-      />
+        },
+        onConfirm: handleSubmitForReview,
+      }}
+      noValidatorsOpen={showNoValidatorsDocModal}
+      onCancelNoValidators={() => setShowNoValidatorsDocModal(false)}
+      onConfirmNoValidators={() => {
+        setShowNoValidatorsDocModal(false);
+        if (!detail) {
+          setFormError(t('errors.stillLoading'));
+          return;
+        }
+        const unresolvedEditable = listUnresolvedEditableBlockTitles(detail.blocks);
+        if (unresolvedEditable.length > 0) {
+          setEmptyEditableBlocksModal(unresolvedEditable);
+          return;
+        }
+        setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'blocks'] as Step[])));
+        setStep('summary');
+      }}
+    />
     </>
   );
 }
