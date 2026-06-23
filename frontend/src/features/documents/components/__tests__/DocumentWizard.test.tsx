@@ -268,4 +268,19 @@ describe('DocumentWizard', () => {
       expect(screen.getByText('Boom al cargar')).toBeTruthy();
     });
   });
+
+  it('renders the summary step in validate mode for an in-review document', async () => {
+    (fetchDocument as any).mockResolvedValue(makeDetail({ status: 'in_review' }));
+    (fetchDocumentReviews as any).mockResolvedValue([
+      { id: 'rev1', status: 'pending', reviewer_id: 'usr_doc_wizard', stage: 1 },
+    ]);
+
+    await renderWizard({ documentId: 'd1', mode: 'validate' });
+
+    await waitFor(() => {
+      // Texto del encabezado del resumen en modo validación + acción de previsualizar.
+      expect(screen.getByText(/Revisa el resumen del documento/i)).toBeTruthy();
+    });
+    expect(screen.getByRole('button', { name: 'PREVISUALIZAR' })).toBeTruthy();
+  });
 });
