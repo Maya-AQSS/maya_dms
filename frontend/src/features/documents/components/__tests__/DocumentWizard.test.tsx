@@ -177,6 +177,9 @@ describe('DocumentWizard', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // El modo de vista del paso Bloques se persiste en localStorage scoped por
+    // documentId; limpiar evita que un test contamine el siguiente.
+    window.localStorage.clear();
     (fetchTemplate as any).mockResolvedValue(makeTemplate());
     (fetchDocument as any).mockResolvedValue(makeDetail());
     (fetchDocumentReviewers as any).mockResolvedValue({
@@ -273,6 +276,29 @@ describe('DocumentWizard', () => {
     // Tras seleccionarlo aparece también como cabecera del bloque activo (2).
     await waitFor(() => {
       expect(screen.getAllByText('Bloque Dos').length).toBe(2);
+    });
+  });
+
+  it('renders the per-block editor for an editable content block', async () => {
+    (fetchDocument as any).mockResolvedValue(makeDetail({ blocks: [makeBlock()] }));
+
+    await renderWizard({ documentId: 'd1' });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('bn-editor-panel')).toBeTruthy();
+    });
+  });
+
+  it('switches to the continuous view mode', async () => {
+    (fetchDocument as any).mockResolvedValue(makeDetail({ blocks: [makeBlock()] }));
+
+    await renderWizard({ documentId: 'd1' });
+    await waitFor(() => expect(screen.getByText(/Bloques \(1\)/)).toBeTruthy());
+
+    fireEvent.click(screen.getByText('Continuo'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('continuous-editor')).toBeTruthy();
     });
   });
 
