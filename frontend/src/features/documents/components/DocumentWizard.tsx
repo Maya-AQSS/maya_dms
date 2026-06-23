@@ -291,7 +291,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
     } finally {
       setLoading(false);
     }
-  }, [documentId]);
+  }, [documentId, setTitle, setDeliveryDeadline, setStudyTypeId, setStudyId, setModuleId, setTeamId]);
 
   const {
     reviewComments,
@@ -331,7 +331,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
     } catch (e) {
       setBlockSaveError(e instanceof Error ? e.message : 'No se pudo actualizar el documento.');
     }
-  }, [documentId]);
+  }, [documentId, setTitle, setDeliveryDeadline, setStudyTypeId, setStudyId, setModuleId, setTeamId]);
 
   useEffect(() => {
     if (!templateId || documentId) {
@@ -365,6 +365,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
     void reload();
   }, [reload]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: documentId intentionally re-runs the reset on document switch; body reads `mode`.
   useEffect(() => {
     setFormError(null);
     setBlockSaveError(null);
@@ -381,6 +382,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
     }
   }, [documentId, mode]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: keyed on specific detail fields (id/status/deadline) on purpose — re-running on every detail mutation would re-route steps mid-edit; setModuleId is stable and location.state is read on create only.
   useEffect(() => {
     if (mode === 'validate') return;
     if (!detail) {
@@ -424,6 +426,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
     setStep('summary');
   }, [detail, returnToSummary, mode]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: keyed on detail.id/status on purpose — loads validation data once per document/status; broader detail deps would re-fetch on every detail mutation.
   useEffect(() => {
     if (!isValidateMode) {
       setValidationReviewLoading(false);
@@ -481,14 +484,14 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
   useEffect(() => {
     if (documentId || hierarchyLoading || hierarchy.length === 0 || studyTypeId) return;
     if (hierarchy.length === 1) setStudyTypeId(String(hierarchy[0].id));
-  }, [documentId, hierarchy, hierarchyLoading, studyTypeId]);
+  }, [documentId, hierarchy, hierarchyLoading, studyTypeId, setStudyTypeId]);
 
   useEffect(() => {
     if (documentId || !studyTypeId || studyId) return;
     const typeNode = hierarchy.find((t) => String(t.id) === studyTypeId);
     if (!typeNode) return;
     if ((typeNode.studies ?? []).length === 1) setStudyId(String(typeNode.studies[0].id));
-  }, [documentId, hierarchy, studyTypeId, studyId]);
+  }, [documentId, hierarchy, studyTypeId, studyId, setStudyId]);
 
   useEffect(() => {
     if (documentId || !studyId || moduleId) return;
@@ -496,7 +499,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
     const studyNode = allStudiesFlat.find((s) => String(s.id) === studyId);
     if (!studyNode) return;
     if ((studyNode.course_modules ?? []).length === 1) setModuleId(String(studyNode.course_modules[0].id));
-  }, [documentId, hierarchy, studyId, moduleId]);
+  }, [documentId, hierarchy, studyId, moduleId, setModuleId]);
 
   const sortedBlocks = useMemo(
     () => [...(detail?.blocks ?? [])].sort((a: DocumentDisplayBlock, b: DocumentDisplayBlock) => a.sort_order - b.sort_order),
@@ -610,6 +613,10 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
     studyId,
     moduleId,
     selectedStudyNode,
+    setStudyTypeId,
+    setStudyId,
+    setModuleId,
+    setTeamId,
   ]);
 
   const selectedSummaryBlock = useMemo(
@@ -633,10 +640,12 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
     });
   }, [step, sortedBlocks]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: summaryBlockKey is the intentional trigger to reset the tab when the selected block changes.
   useEffect(() => {
     setSummaryBlockTab('content');
   }, [summaryBlockKey]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: keyed on detail id/status/template_version_id intentionally — reloads reviewers when any of those change.
   useEffect(() => {
     const docId = detail?.id;
     if (!docId) {
@@ -736,6 +745,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
   const canEditBlocks = isDraft && activeBlock !== null && activeBlockUiState !== 'locked';
   const canDeleteOptionalBlock = isDraft && activeBlock !== null && activeBlockUiState === 'optional';
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: activeBlockKey is the intentional trigger to reset the tab when the active block changes.
   useEffect(() => {
     setBlockViewTab('content');
   }, [activeBlockKey]);
@@ -844,6 +854,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
   // muestra la descripción del bloque indicado en lugar de los comentarios.
   const [descriptionBlockKey, setDescriptionBlockKey] = useState<string | null>(null);
   // Si cambia el documento o el modo, resetear panel de descripción.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: documentId/blocksViewMode are intentional triggers to reset the description panel on document or view-mode change.
   useEffect(() => {
     setDescriptionBlockKey(null);
   }, [documentId, blocksViewMode]);
@@ -876,6 +887,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
   }, [activeBlock]);
 
   // Solo al cambiar de bloque o al cargar otro documento; no rehidratar tras cada autoguardado.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: detail?.id is an intentional trigger to rehydrate when a different document loads; the body reads detailRef.current to avoid re-running on every autosave.
   useEffect(() => {
     if (!activeBlockKey || !documentId) return;
     const currentDetail = detailRef.current;
