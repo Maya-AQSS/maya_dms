@@ -8,9 +8,9 @@ import {
   useFlushOnPageLeave,
 } from '@ceedcv-maya/shared-hooks-react';
 import { useDarkMode } from '@ceedcv-maya/shared-layout-react';
-import { Button } from '@ceedcv-maya/shared-ui-react';
+import { Button, Spinner } from '@ceedcv-maya/shared-ui-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -65,9 +65,7 @@ function readStoredViewMode(id: string | null | undefined): BlocksViewMode {
   return raw === 'continuous' ? 'continuous' : 'per-block';
 }
 
-import { DocumentBlocksStep } from './DocumentBlocksStep';
 import { DocumentPropertiesStep } from './DocumentPropertiesStep';
-import { DocumentSummaryStep } from './DocumentSummaryStep';
 import { DocumentWizardModals } from './DocumentWizardModals';
 import {
   type BlockViewTab,
@@ -85,6 +83,16 @@ import {
 import { useDocumentCommentHandlers } from './useDocumentCommentHandlers';
 import { useDocumentMigration } from './useDocumentMigration';
 import { useDocumentStep1Form } from './useDocumentStep1Form';
+
+// DMS-F08: pasos tardíos en code-split. El paso Propiedades (inicial) se carga
+// eager; Bloques y Resumen sólo al navegar a ellos. Las fronteras <Suspense>
+// están en cada use-site del render.
+const DocumentBlocksStep = lazy(() =>
+  import('./DocumentBlocksStep').then((m) => ({ default: m.DocumentBlocksStep })),
+);
+const DocumentSummaryStep = lazy(() =>
+  import('./DocumentSummaryStep').then((m) => ({ default: m.DocumentSummaryStep })),
+);
 
 type Props = {
   documentId?: string | null;
@@ -1670,93 +1678,109 @@ export function DocumentWizard({
         )}
 
         {!isValidateMode && step === 'blocks' && (
-          <DocumentBlocksStep
-            documentId={documentId}
-            detail={detail}
-            sortedBlocks={sortedBlocks}
-            activeBlock={activeBlock}
-            activeBlockKey={activeBlockKey}
-            isDraft={isDraft}
-            canEditBlocks={canEditBlocks}
-            canDeleteOptionalBlock={canDeleteOptionalBlock}
-            isSidebarCollapsed={isSidebarCollapsed}
-            setIsSidebarCollapsed={setIsSidebarCollapsed}
-            blockViewTab={blockViewTab}
-            setBlockViewTab={setBlockViewTab}
-            completedBlocks={completedBlocks}
-            descriptionBlockKey={descriptionBlockKey}
-            setDescriptionBlockKey={setDescriptionBlockKey}
-            onBlockClick={handleBlockClick}
-            onContinue={handleContinue}
-            onShowDeleteBlock={() => setShowDeleteBlockConfirm(true)}
-            onPersistBlockContent={async (blockId, payload) => {
-              if (!documentId || !blockId) return;
-              const saved = await updateDocumentBlock(documentId, blockId, payload);
-              setDetail((prev) => (prev ? applyBlockSaveToDetail(prev, blockId, saved) : prev));
-            }}
-            editor={{
-              isDark,
-              isEditorFullscreen,
-              setIsEditorFullscreen,
-              onFullscreenChange: handleEditorFullscreenChange,
-              onContentChange: handleDocumentContentChange,
-              onFlush: handleEditorFlush,
-              editorFlushRef,
-              saveStatus,
-              blockSaveError,
-              isSaving,
-            }}
-            viewMode={{
-              mode: blocksViewMode,
-              setMode: setBlocksViewMode,
-              isContinuousFullscreen,
-              setIsContinuousFullscreen,
-            }}
-            comments={{
-              reviewComments,
-              showPanel: showDocumentCommentPanel,
-              setShowPanel: setShowDocumentCommentPanel,
-              loading: documentCommentLoading,
-              error: documentCommentSubmitError,
-              onSend: handleDocumentCommentSend,
-              onEdit: handleDocumentCommentEdit,
-              onDelete: handleDocumentCommentDelete,
-              onMarkAsRead: handleDocumentCommentMarkAsRead,
-              onMarkAllBlockAsRead: handleDocumentCommentMarkAllBlockAsRead,
-              canAdd: canCommentOnDocument(detail?.status),
-              canDeleteAny: canDeleteBlockComment(hasPermission),
-              currentUserId,
-            }}
-          />
+          <Suspense
+            fallback={
+              <div className="flex-1 flex items-center justify-center">
+                <Spinner />
+              </div>
+            }
+          >
+            <DocumentBlocksStep
+              documentId={documentId}
+              detail={detail}
+              sortedBlocks={sortedBlocks}
+              activeBlock={activeBlock}
+              activeBlockKey={activeBlockKey}
+              isDraft={isDraft}
+              canEditBlocks={canEditBlocks}
+              canDeleteOptionalBlock={canDeleteOptionalBlock}
+              isSidebarCollapsed={isSidebarCollapsed}
+              setIsSidebarCollapsed={setIsSidebarCollapsed}
+              blockViewTab={blockViewTab}
+              setBlockViewTab={setBlockViewTab}
+              completedBlocks={completedBlocks}
+              descriptionBlockKey={descriptionBlockKey}
+              setDescriptionBlockKey={setDescriptionBlockKey}
+              onBlockClick={handleBlockClick}
+              onContinue={handleContinue}
+              onShowDeleteBlock={() => setShowDeleteBlockConfirm(true)}
+              onPersistBlockContent={async (blockId, payload) => {
+                if (!documentId || !blockId) return;
+                const saved = await updateDocumentBlock(documentId, blockId, payload);
+                setDetail((prev) => (prev ? applyBlockSaveToDetail(prev, blockId, saved) : prev));
+              }}
+              editor={{
+                isDark,
+                isEditorFullscreen,
+                setIsEditorFullscreen,
+                onFullscreenChange: handleEditorFullscreenChange,
+                onContentChange: handleDocumentContentChange,
+                onFlush: handleEditorFlush,
+                editorFlushRef,
+                saveStatus,
+                blockSaveError,
+                isSaving,
+              }}
+              viewMode={{
+                mode: blocksViewMode,
+                setMode: setBlocksViewMode,
+                isContinuousFullscreen,
+                setIsContinuousFullscreen,
+              }}
+              comments={{
+                reviewComments,
+                showPanel: showDocumentCommentPanel,
+                setShowPanel: setShowDocumentCommentPanel,
+                loading: documentCommentLoading,
+                error: documentCommentSubmitError,
+                onSend: handleDocumentCommentSend,
+                onEdit: handleDocumentCommentEdit,
+                onDelete: handleDocumentCommentDelete,
+                onMarkAsRead: handleDocumentCommentMarkAsRead,
+                onMarkAllBlockAsRead: handleDocumentCommentMarkAllBlockAsRead,
+                canAdd: canCommentOnDocument(detail?.status),
+                canDeleteAny: canDeleteBlockComment(hasPermission),
+                currentUserId,
+              }}
+            />
+          </Suspense>
         )}
 
         {step === 'summary' && detail && (
-          <DocumentSummaryStep
-            detail={detail}
-            isValidateMode={isValidateMode}
-            transferError={transferError}
-            visibilityRule={visibilityRule}
-            reviewerListKind={reviewerListKind}
-            documentReviewers={documentReviewers}
-            summaryError={summaryError}
-            sortedBlocks={sortedBlocks}
-            summaryBlockKey={summaryBlockKey}
-            onSelectSummaryBlock={setSummaryBlockKey}
-            saveStatus={saveStatus}
-            summaryBlockTab={summaryBlockTab}
-            onSelectSummaryTab={setSummaryBlockTab}
-            selectedSummaryBlock={selectedSummaryBlock}
-            onPreview={() =>
-              navigate(`/documents/${documentId}`, {
-                state: {
-                  returnToStep: isValidateMode || documentId ? 'summary' : undefined,
-                  returnToValidate: isValidateMode,
-                  backTo: processBackTo,
-                  forceBackTo: !documentId && !isValidateMode,
-                },
-              })
+          <Suspense
+            fallback={
+              <div className="flex-1 flex items-center justify-center">
+                <Spinner />
+              </div>
             }
-          />
+          >
+            <DocumentSummaryStep
+              detail={detail}
+              isValidateMode={isValidateMode}
+              transferError={transferError}
+              visibilityRule={visibilityRule}
+              reviewerListKind={reviewerListKind}
+              documentReviewers={documentReviewers}
+              summaryError={summaryError}
+              sortedBlocks={sortedBlocks}
+              summaryBlockKey={summaryBlockKey}
+              onSelectSummaryBlock={setSummaryBlockKey}
+              saveStatus={saveStatus}
+              summaryBlockTab={summaryBlockTab}
+              onSelectSummaryTab={setSummaryBlockTab}
+              selectedSummaryBlock={selectedSummaryBlock}
+              onPreview={() =>
+                navigate(`/documents/${documentId}`, {
+                  state: {
+                    returnToStep: isValidateMode || documentId ? 'summary' : undefined,
+                    returnToValidate: isValidateMode,
+                    backTo: processBackTo,
+                    forceBackTo: !documentId && !isValidateMode,
+                  },
+                })
+              }
+            />
+          </Suspense>
         )}
       </WizardShell>
       <DocumentWizardModals
