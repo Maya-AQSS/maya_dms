@@ -234,6 +234,48 @@ describe('DocumentWizard', () => {
     expect(createDocument).not.toHaveBeenCalled();
   });
 
+  it('creates the document when step 1 is valid (happy path)', async () => {
+    const { container } = await renderWizard({ templateId: 't1' });
+    await waitFor(() => expect(screen.getByText('Plantilla base')).toBeTruthy());
+
+    const titleInput = container.querySelector('#doc-title-input') as HTMLInputElement;
+    fireEvent.change(titleInput, { target: { value: 'Mi nuevo documento' } });
+    const dateInput = container.querySelector('input[type="date"]') as HTMLInputElement;
+    fireEvent.change(dateInput, { target: { value: '2099-12-31' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
+
+    await waitFor(() => {
+      expect(createDocument).toHaveBeenCalled();
+    });
+    expect((createDocument as any).mock.calls[0][0]).toEqual(
+      expect.objectContaining({ title: 'Mi nuevo documento', template_id: 't1' }),
+    );
+  });
+
+  it('selects a block when clicked in the blocks-step sidebar', async () => {
+    (fetchDocument as any).mockResolvedValue(
+      makeDetail({
+        blocks: [
+          makeBlock(),
+          makeBlock({ document_block_id: 'db2', template_block_id: 'tb2', title: 'Bloque Dos', sort_order: 1 }),
+        ],
+      }),
+    );
+
+    await renderWizard({ documentId: 'd1' });
+    await waitFor(() => expect(screen.getByText(/Bloques \(2\)/)).toBeTruthy());
+
+    // Bloque Uno está activo al cargar (cabecera + lista = 2). "Bloque Dos" solo en la lista (1).
+    expect(screen.getAllByText('Bloque Dos').length).toBe(1);
+    fireEvent.click(screen.getByText('Bloque Dos'));
+
+    // Tras seleccionarlo aparece también como cabecera del bloque activo (2).
+    await waitFor(() => {
+      expect(screen.getAllByText('Bloque Dos').length).toBe(2);
+    });
+  });
+
   it('loads an existing draft and shows the blocks step with its block list', async () => {
     (fetchDocument as any).mockResolvedValue(
       makeDetail({ blocks: [makeBlock(), makeBlock({ document_block_id: 'db2', template_block_id: 'tb2', title: 'Bloque Dos', sort_order: 1 })] }),
