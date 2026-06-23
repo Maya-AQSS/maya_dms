@@ -866,6 +866,11 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
   }, [detail?.id, detail?.status, detail?.template_version_id]);
 
   useEffect(() => {
+    // DMS-F12: el flujo de documento NUEVO (templateId sin documentId) lo gestiona
+    // el efecto de arriba. Este efecto solo resuelve la plantilla de un documento
+    // YA cargado; así ambos efectos son mutuamente excluyentes y no compiten por
+    // escribir `template` (evita la carrera/doble-fetch bajo render concurrente).
+    if (!documentId) return;
     const tId = detail?.template_id || templateId;
     if (!tId) {
       setTemplate(null);
@@ -890,7 +895,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
     return () => {
       cancelled = true;
     };
-  }, [detail?.template_id, templateId]);
+  }, [documentId, detail?.template_id, templateId]);
 
   // Catálogo cacheado de procesos (TanStack Query, staleTime 60s) en lugar de fetch manual.
   const wizardProcessId = template?.process_id ?? locationProcessId ?? null;
