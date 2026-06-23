@@ -22,7 +22,6 @@ import {
   createDocument,
   deleteDocumentBlock,
   fetchDocument,
-  fetchDocumentMigrationPayload,
   fetchDocumentReviewers,
   fetchDocumentReviews,
   rejectDocumentReview,
@@ -32,24 +31,15 @@ import {
   delegateDocument,
 } from '../../../api/documents';
 import { DocumentMigrationStep } from './DocumentMigrationStep';
-import { concatTiptapContent } from '../lib/tiptapContentConcat';
-import { pendingMigrationBlockLabels } from '../lib/migrationGate';
-import type {
-  DocumentMigrationPayload,
-  MigrationChoice,
-  RemovedBlockChoice,
-} from '../schemas/migrationPayload';
 import { useQueryClient } from '@tanstack/react-query';
 import { refreshDmsDashboardQuery } from '../../dashboard/hooks/useDmsDashboard';
-import { ApiHttpError, apiFetchJson } from '../../../api/http';
+import { ApiHttpError } from '../../../api/http';
 import { useUserProfile } from '../../user-profile';
 import { canCommentOnDocument, canDeleteBlockComment } from '../../../permissions';
 import { useProcessesQuery } from '../../../hooks/useProcesses';
 import { fetchTemplate } from '../../../api/templates';
-import { useDocumentCommentsQuery } from '../hooks/useDocumentComments';
 import { useCompletedBlocks } from '../hooks/useCompletedBlocks';
 import { BlockCommentsCard } from '../../templates/components/BlockCommentsCard';
-import type { BlockComment } from '../../templates/components/BlockCommentsCard';
 import { searchOwnerCandidates } from '../../../api/users';
 import { useAutoSave, useBackNavigation, useFlushOnPageLeave } from '@ceedcv-maya/shared-hooks-react';
 import {
@@ -87,8 +77,7 @@ import { ErrorBoundaryWrapper as ErrorBoundary } from '../../../components/Error
 import { SubmissionChangelogReadonly, VersionChangelogModal } from '../../../components/VersionChangelogModal';
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
 import { BlockListItem } from '../../blocks-ui/BlockListItem';
-import { getCommentsForBlock, countUnreadCommentsForBlock, resolveCommentBlockableId } from '../../../utils/blockComments';
-import { addCommentToCache, documentCommentsKey, patchDocumentCommentCache, markCommentAsReadInDocumentCache, markCommentDeletedInDocumentCache, markBlockCommentsAsReadInDocumentCache } from '../../comments/commentCache';
+import { getCommentsForBlock, countUnreadCommentsForBlock } from '../../../utils/blockComments';
 import { uploadMedia } from '../../../api/media';
 import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
 
@@ -133,6 +122,8 @@ import {
   isUuidLike,
 } from './documentWizardUtils';
 import { DocumentBlockDescriptionView, DocSummaryRow } from './DocumentWizardSubviews';
+import { useDocumentMigration } from './useDocumentMigration';
+import { useDocumentCommentHandlers } from './useDocumentCommentHandlers';
 
 type Props = {
   documentId?: string | null;
@@ -166,108 +157,20 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
   // - clone (creación): al continuar un documento origen cuya plantilla tiene versión nueva.
   // - upgrade (versionado): al iniciar nueva versión de ESTE documento con plantilla nueva.
   const isUpgradeMigration = migrationMode === 'upgrade' && !!documentId;
-  const [migrationPayload, setMigrationPayload] = useState<DocumentMigrationPayload | null>(null);
-  const [migrationChoices, setMigrationChoices] = useState<Record<string, MigrationChoice>>({});
-  const [removedBlockChoices, setRemovedBlockChoices] = useState<Record<string, RemovedBlockChoice>>({});
-  const [pendingMigrationBlocks, setPendingMigrationBlocks] = useState<string[] | null>(null);
-
-  useEffect(() => {
-    const fetchFor = isUpgradeMigration ? documentId : (!documentId ? sourceDocumentId : null);
-    if (!fetchFor) {
-      setMigrationPayload(null);
-      return;
-    }
-    let cancelled = false;
-    void fetchDocumentMigrationPayload(fetchFor)
-      .then((payload) => {
-        if (!cancelled) setMigrationPayload(payload);
-      })
-      .catch(() => {
-        // Sin versión nueva (422) u otro error → no se muestra el paso de migración.
-        if (!cancelled) setMigrationPayload(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [documentId, sourceDocumentId, isUpgradeMigration]);
-
-  const migratableBlocks = useMemo(
-    () => migrationPayload?.blocks.filter((b) => b.old_content != null) ?? [],
-    [migrationPayload],
-  );
-  // Decisiones reales del usuario en upgrade: bloques accionables (replace/append) o eliminados (delete/keep).
-  const upgradeHasDecisions = useMemo(() => {
-    if (!migrationPayload) return false;
-    return migrationPayload.blocks.some(
-      (b) =>
-        (!b.locked && !b.new_block && !b.removed_block && b.old_content != null) || b.removed_block,
-    );
-  }, [migrationPayload]);
-  // Upgrade pendiente: hay versión nueva a la que actualizar (aunque no haya nada que elegir).
-  const upgradePending = isUpgradeMigration && !!migrationPayload;
-  // El paso de migración se muestra solo si hay algo que decidir; si no, se aplica directo (mejora UX).
-  const showMigrationStep = isUpgradeMigration
-    ? upgradePending && upgradeHasDecisions
-    : !documentId && migratableBlocks.length > 0;
-
-  const setMigrationChoice = useCallback(
-    (templateBlockId: string, choice: MigrationChoice | undefined) => {
-      setMigrationChoices((prev) => {
-        if (!choice) {
-          const { [templateBlockId]: _removed, ...rest } = prev;
-          return rest;
-        }
-        return { ...prev, [templateBlockId]: choice };
-      });
-    },
-    [],
-  );
-
-  const setRemovedBlockChoice = useCallback(
-    (templateBlockId: string, choice: RemovedBlockChoice | undefined) => {
-      setRemovedBlockChoices((prev) => {
-        if (!choice) {
-          const { [templateBlockId]: _removed, ...rest } = prev;
-          return rest;
-        }
-        return { ...prev, [templateBlockId]: choice };
-      });
-    },
-    [],
-  );
-
-  const buildMigratedBlocks = useCallback((): Record<string, unknown> => {
-    if (!migrationPayload) return {};
-    const out: Record<string, unknown> = {};
-    for (const block of migrationPayload.blocks) {
-      if (block.locked || block.new_block || block.removed_block) continue;
-      const choice = migrationChoices[block.template_block_id];
-      if (!choice || block.old_content == null) continue;
-      out[block.template_block_id] =
-        choice === 'append'
-          ? concatTiptapContent(block.new_default_content, block.old_content)
-          : block.old_content;
-    }
-    return out;
-  }, [migrationPayload, migrationChoices]);
-
-  const buildRemovedBlockActions = useCallback((): Record<string, RemovedBlockChoice> => {
-    if (!migrationPayload) return {};
-    const out: Record<string, RemovedBlockChoice> = {};
-    for (const block of migrationPayload.blocks) {
-      if (!block.removed_block) continue;
-      const choice = removedBlockChoices[block.template_block_id];
-      if (choice) out[block.template_block_id] = choice;
-    }
-    return out;
-  }, [migrationPayload, removedBlockChoices]);
-
-  // Bloques con elección pendiente: accionables (replace/append) y, en upgrade, eliminados (delete/keep).
-  const computePendingMigrationBlocks = useCallback(
-    (): string[] =>
-      pendingMigrationBlockLabels(migrationPayload, migrationChoices, removedBlockChoices, isUpgradeMigration),
-    [migrationPayload, migrationChoices, removedBlockChoices, isUpgradeMigration],
-  );
+  const {
+    migrationPayload,
+    migrationChoices,
+    removedBlockChoices,
+    pendingMigrationBlocks,
+    setPendingMigrationBlocks,
+    upgradePending,
+    showMigrationStep,
+    setMigrationChoice,
+    setRemovedBlockChoice,
+    buildMigratedBlocks,
+    buildRemovedBlockActions,
+    computePendingMigrationBlocks,
+  } = useDocumentMigration({ documentId, sourceDocumentId, isUpgradeMigration });
 
   const [detail, setDetail] = useState<DocumentDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -371,8 +274,6 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
   // Sourced from the shared TanStack Query cache (useDocumentCommentsQuery) so the
   // DocumentPreviewPage and the wizard reuse the same in-memory comments.
   const [showDocumentCommentPanel, setShowDocumentCommentPanel] = useState(false);
-  const [documentCommentLoading, setDocumentCommentLoading] = useState(false);
-  const [documentCommentSubmitError, setDocumentCommentSubmitError] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const lastSavedContentRef = useRef<unknown>(null);
@@ -444,61 +345,21 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
     }
   }, [documentId]);
 
-  const documentCommentsQuery = useDocumentCommentsQuery(documentId ?? '', {
-    enabled: !!documentId && !!detail,
+  const {
+    reviewComments,
+    documentCommentLoading,
+    documentCommentSubmitError,
+    handleDocumentCommentSend,
+    handleDocumentCommentEdit,
+    handleDocumentCommentDelete,
+    handleDocumentCommentMarkAsRead,
+    handleDocumentCommentMarkAllBlockAsRead,
+  } = useDocumentCommentHandlers({
+    documentId,
+    hasDetail: !!detail,
+    activeBlockRef,
+    profileName: profile?.name,
   });
-  const reviewComments: BlockComment[] = documentCommentsQuery.data?.data ?? [];
-
-  const handleDocumentCommentSend = useCallback(async (parentId: string | null, body: string) => {
-    if (!documentId) return;
-    setDocumentCommentSubmitError(null);
-    setDocumentCommentLoading(true);
-    try {
-      const blockableId = resolveCommentBlockableId(
-        parentId,
-        reviewComments,
-        activeBlockRef.current?.document_block_id ?? null,
-      );
-      const res = await apiFetchJson<{ data: BlockComment }>(`documents/${documentId}/comments`, {
-        method: 'POST',
-        body: { body, parent_id: parentId, blockable_id: blockableId },
-      });
-      addCommentToCache(queryClient, documentCommentsKey(documentId), res.data);
-    } catch {
-      setDocumentCommentSubmitError('No se pudo guardar el comentario.');
-      throw new Error('comment-send-failed');
-    } finally {
-      setDocumentCommentLoading(false);
-    }
-  }, [documentId, reviewComments, queryClient]);
-
-  const handleDocumentCommentEdit = useCallback(async (commentId: string, newBody: string) => {
-    if (!documentId) return;
-    const res = await apiFetchJson<{ data: BlockComment }>(`comments/${commentId}`, {
-      method: 'PATCH',
-      body: { body: newBody },
-    });
-    patchDocumentCommentCache(queryClient, documentId, (comments) =>
-      comments.map(c => c.id === commentId ? res.data : c));
-  }, [documentId, queryClient]);
-
-  const handleDocumentCommentDelete = useCallback(async (commentId: string) => {
-    if (!documentId) return;
-    await apiFetchJson(`comments/${commentId}`, { method: 'DELETE' });
-    markCommentDeletedInDocumentCache(queryClient, documentId, commentId, profile?.name);
-  }, [documentId, queryClient, profile?.name]);
-
-  const handleDocumentCommentMarkAsRead = useCallback(async (commentId: string) => {
-    if (!documentId) return;
-    await markCommentAsReadInDocumentCache(queryClient, documentId, commentId);
-  }, [documentId, queryClient]);
-
-  const handleDocumentCommentMarkAllBlockAsRead = useCallback(async () => {
-    if (!documentId) return;
-    const blockId = activeBlockRef.current?.document_block_id;
-    if (!blockId) return;
-    await markBlockCommentsAsReadInDocumentCache(queryClient, documentId, blockId);
-  }, [documentId, queryClient]);
 
   const refreshDetail = useCallback(async () => {
     if (!documentId) return;
