@@ -133,7 +133,6 @@ class DocumentServiceOwnershipTransferTest extends TestCase
             Mockery::mock(TeamReadRepositoryInterface::class),
             $notificationPublisher ?? Mockery::mock(NotificationPublisher::class),
             new DocumentReviewModeResolver($entityVersionRepo),
-            new DocumentMigrationPayloadResolver($docRepo, $entityVersionRepo, $blockSvc, new DocumentMigrationBlockDiffer),
             $userDirectory,
             Mockery::mock(CommentRepositoryInterface::class),
             new EntityVersionDestroyService($entityVersionRepo),

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\DTOs\Documents;
 
 use App\Models\Document;
-use App\Services\DocumentService;
 use App\Services\DocumentTemplateVersionNumberResolver;
 use App\Support\IsoTimestamp;
 use App\Support\VersionSubmissionChangelog;
@@ -153,9 +152,9 @@ final readonly class DocumentDerivedAttributes
     /**
      * Número de versión de la plantilla con la que se creó el documento.
      *
-     * Prioridad: atributo precargado `template_version_number` (que el Service
-     * adjunta en lote vía {@see DocumentService::attachTemplateVersionNumbers})
-     * → relación `templateVersion` ya cargada en todos los caminos de lectura
+     * Prioridad: portador de presentación `presentation()->templateVersionNumber`
+     * (que `DocumentPresentationService::attachTemplateVersionNumbers` adjunta en
+     * lote) → relación `templateVersion` ya cargada en todos los caminos de lectura
      * (sin N+1). El mapper NO accede a la BD: si ninguno está disponible devuelve
      * null; la resolución contra el resolver es responsabilidad del Service antes
      * de construir el DTO.

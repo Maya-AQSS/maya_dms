@@ -78,7 +78,6 @@ class DocumentService implements DocumentServiceInterface
         private readonly TeamReadRepositoryInterface $teamReadRepository,
         private readonly NotificationPublisher $notificationPublisher,
         private readonly DocumentReviewModeResolver $documentReviewModeResolver,
-        private readonly DocumentMigrationPayloadResolver $migrationPayloadResolver,
         private readonly UserDirectoryRepositoryInterface $userDirectoryRepository,
         private readonly CommentRepositoryInterface $commentRepository,
         private readonly EntityVersionDestroyService $entityVersionDestroyService,
