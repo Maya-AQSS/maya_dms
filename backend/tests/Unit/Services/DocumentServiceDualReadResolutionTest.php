@@ -19,6 +19,7 @@ use App\Services\Contracts\SnapshotServiceInterface;
 use App\Services\DocumentBlockService;
 use App\Services\DocumentMigrationBlockDiffer;
 use App\Services\DocumentMigrationPayloadResolver;
+use App\Services\DocumentReviewerResolutionService;
 use App\Services\DocumentReviewService;
 use App\Services\DocumentService;
 use App\Services\DocumentShareService;
@@ -81,6 +82,7 @@ class DocumentServiceDualReadResolutionTest extends TestCase
             Mockery::mock(UserDirectoryRepositoryInterface::class),
             Mockery::mock(CommentRepositoryInterface::class),
             new EntityVersionDestroyService($entityVersionRepo),
+            new DocumentReviewerResolutionService($entityVersionRepo, $tplRepo, new DocumentReviewModeResolver($entityVersionRepo), Mockery::mock(UserDirectoryRepositoryInterface::class)),
         );
 
         $document = new Document;
@@ -129,37 +131,21 @@ class DocumentServiceDualReadResolutionTest extends TestCase
             ->with('entity-anchor-uuid', Template::class, 'template-uuid')
             ->andReturn($entityVersion);
 
-        $service = new DocumentService(
-            $docRepo,
-            $tplRepo,
-            $snap,
-            $blockSvc,
-            $verSvc,
-            $shareSvc,
-            $stateSvc,
-            $reviewSvc,
-            $entityVersionRepo,
-            Mockery::mock(DocumentBlockRepositoryInterface::class),
-            Mockery::mock(TemplateContextResolver::class),
-            Mockery::mock(AcademicHierarchyRepositoryInterface::class),
-            Mockery::mock(TeamReadRepositoryInterface::class),
-            Mockery::mock(NotificationPublisher::class),
-            new DocumentReviewModeResolver($entityVersionRepo),
-            new DocumentMigrationPayloadResolver($docRepo, $entityVersionRepo, $blockSvc, new DocumentMigrationBlockDiffer),
-            Mockery::mock(UserDirectoryRepositoryInterface::class),
-            Mockery::mock(CommentRepositoryInterface::class),
-            new EntityVersionDestroyService($entityVersionRepo),
-        );
-
         $document = new Document;
         $document->forceFill([
             'template_version_id' => 'entity-anchor-uuid',
             'template_id' => 'template-uuid',
         ]);
 
-        $method = new ReflectionMethod(DocumentService::class, 'resolveReviewCandidatesFromTemplateVersion');
-        $method->setAccessible(true);
-        $candidates = $method->invoke($service, $document);
+        // DMS-B07: la resolución de candidatos vive ahora en DocumentReviewerResolutionService
+        // (método público); se prueba directamente, sin reflexión sobre DocumentService.
+        $reviewerResolver = new DocumentReviewerResolutionService(
+            $entityVersionRepo,
+            $tplRepo,
+            new DocumentReviewModeResolver($entityVersionRepo),
+            Mockery::mock(UserDirectoryRepositoryInterface::class),
+        );
+        $candidates = $reviewerResolver->resolveReviewCandidatesFromTemplateVersion($document);
 
         $this->assertSame([
             ['reviewer_id' => 'reviewer-a', 'stage' => 1],

@@ -20,6 +20,7 @@ use App\Services\Contracts\SnapshotServiceInterface;
 use App\Services\DocumentBlockService;
 use App\Services\DocumentMigrationBlockDiffer;
 use App\Services\DocumentMigrationPayloadResolver;
+use App\Services\DocumentReviewerResolutionService;
 use App\Services\DocumentReviewService;
 use App\Services\DocumentService;
 use App\Services\DocumentShareService;
@@ -134,6 +135,7 @@ class DocumentServiceOwnershipTransferTest extends TestCase
             $userDirectory,
             Mockery::mock(CommentRepositoryInterface::class),
             new EntityVersionDestroyService($entityVersionRepo),
+            new DocumentReviewerResolutionService($entityVersionRepo, Mockery::mock(TemplateRepositoryInterface::class), new DocumentReviewModeResolver($entityVersionRepo), $userDirectory),
         );
     }
 }
