@@ -103,7 +103,7 @@ final readonly class DocumentDto
             latestPublishedVersionId: $d->latestPublishedVersionId,
             latestPublishedVersionNumber: $d->latestPublishedVersionNumber,
             latestPublishedTitle: $d->latestPublishedTitle,
-            reviewMode: $m->review_mode !== null ? (string) $m->review_mode : null,
+            reviewMode: $m->presentation()->reviewMode !== null ? (string) $m->presentation()->reviewMode : null,
             isAssignedReviewer: $d->isAssignedReviewer,
             reviewHistory: $d->reviewHistory,
             submissionChangelog: $d->submissionChangelog,

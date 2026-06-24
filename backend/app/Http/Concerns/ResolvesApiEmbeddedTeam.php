@@ -10,7 +10,6 @@ use App\Models\Document;
 use App\Models\Template;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
-use App\Support\ApiEmbeddedTeamResponse;
 
 /**
  * Adjunta el equipo visible resuelto al atributo de presentación transitorio
@@ -36,7 +35,7 @@ trait ResolvesApiEmbeddedTeam
             $viewerUserId,
         );
 
-        $template->setAttribute(ApiEmbeddedTeamResponse::ATTRIBUTE_KEY, $team?->toArray());
+        $template->presentation()->team = $team?->toArray();
     }
 
     /**
@@ -65,7 +64,7 @@ trait ResolvesApiEmbeddedTeam
             $viewerUserId,
         );
 
-        $document->setAttribute(ApiEmbeddedTeamResponse::ATTRIBUTE_KEY, $team?->toArray());
+        $document->presentation()->team = $team?->toArray();
     }
 
     /**

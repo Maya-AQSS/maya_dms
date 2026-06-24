@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Models\Concerns\HasAcademicOverlapScope;
 use App\Models\Concerns\HasCommentingStatus;
 use App\Models\Concerns\HasEntityVersionHead;
+use App\Models\Concerns\HasPresentationAttributes;
 use App\Observers\DocumentObserver;
 use App\Policies\DocumentPolicy;
 use App\Support\DocumentHeadSnapshot;
@@ -30,7 +31,7 @@ use Illuminate\Support\Facades\DB;
 #[ObservedBy(DocumentObserver::class)]
 class Document extends Model
 {
-    use HasAcademicOverlapScope, HasCommentingStatus, HasEntityVersionHead, HasUuids, SoftDeletes;
+    use HasAcademicOverlapScope, HasCommentingStatus, HasEntityVersionHead, HasPresentationAttributes, HasUuids, SoftDeletes;
 
     /**
      * Visibilidad efectiva (SQL):

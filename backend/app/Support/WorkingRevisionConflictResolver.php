@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace App\Support;
 
 use App\DTOs\Versioning\WorkingRevisionConflictDto;
+use App\Models\Document;
 use App\Models\EntityVersion;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\Template;
 use Illuminate\Support\Carbon;
 
 /**
@@ -35,14 +36,12 @@ final class WorkingRevisionConflictResolver
         );
     }
 
-    public static function attachToModel(Model $model, WorkingRevisionConflictDto $conflict): void
+    public static function attachToModel(Document|Template $model, WorkingRevisionConflictDto $conflict): void
     {
-        $model->setAttribute('working_revision_in_progress', $conflict->inProgress);
-        $model->setAttribute('working_revision_editor_name', $conflict->inProgress ? $conflict->editorName : null);
-        $model->setAttribute(
-            'working_revision_started_at',
-            $conflict->inProgress ? $conflict->startedAt : null,
-        );
+        $presentation = $model->presentation();
+        $presentation->workingRevisionInProgress = $conflict->inProgress;
+        $presentation->workingRevisionEditorName = $conflict->inProgress ? $conflict->editorName : null;
+        $presentation->workingRevisionStartedAt = $conflict->inProgress ? $conflict->startedAt : null;
     }
 
     /**

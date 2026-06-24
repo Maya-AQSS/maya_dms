@@ -31,7 +31,7 @@ trait AttachesDocumentCanCloneMeta
         $this->attachCanCloneAttribute($documents, $request);
 
         $attachReviewMode = function (Document $document): void {
-            $document->setAttribute('review_mode', $this->documentReviewService->resolveReviewMode($document));
+            $document->presentation()->reviewMode = $this->documentReviewService->resolveReviewMode($document);
         };
 
         if ($documents instanceof Document) {

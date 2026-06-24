@@ -8,6 +8,7 @@ use App\Enums\TemplateVisibilityLevel;
 use App\Models\Concerns\HasAcademicOverlapScope;
 use App\Models\Concerns\HasCommentingStatus;
 use App\Models\Concerns\HasEntityVersionHead;
+use App\Models\Concerns\HasPresentationAttributes;
 use App\Observers\TemplateObserver;
 use App\Policies\TemplatePolicy;
 use App\Support\TemplateHeadSnapshot;
@@ -28,7 +29,7 @@ use Illuminate\Support\Facades\DB;
 #[ObservedBy(TemplateObserver::class)]
 class Template extends Model
 {
-    use HasAcademicOverlapScope, HasCommentingStatus, HasEntityVersionHead, HasUuids, SoftDeletes;
+    use HasAcademicOverlapScope, HasCommentingStatus, HasEntityVersionHead, HasPresentationAttributes, HasUuids, SoftDeletes;
 
     /**
      * Visibilidad efectiva (solo SQL; la lectura API exige además `templates.read` en {@see TemplatePolicy}):

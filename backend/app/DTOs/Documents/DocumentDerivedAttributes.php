@@ -7,7 +7,6 @@ namespace App\DTOs\Documents;
 use App\Models\Document;
 use App\Services\DocumentService;
 use App\Services\DocumentTemplateVersionNumberResolver;
-use App\Support\ApiEmbeddedTeamResponse;
 use App\Support\IsoTimestamp;
 use App\Support\VersionSubmissionChangelog;
 
@@ -58,7 +57,7 @@ final readonly class DocumentDerivedAttributes
      */
     public static function fromModel(Document $m): self
     {
-        $team = $m->getAttribute(ApiEmbeddedTeamResponse::ATTRIBUTE_KEY);
+        $team = $m->presentation()->team;
 
         $latestPublishedVersionNumber = $m->getAttribute('latest_published_version_number');
 
@@ -73,9 +72,9 @@ final readonly class DocumentDerivedAttributes
                 : null,
             isSharedWithMe: (bool) ($m->getAttribute('is_shared_with_me') ?? false),
             sharePermission: $m->getAttribute('viewer_share_permission'),
-            canClone: (bool) ($m->getAttribute('can_clone') ?? false),
-            canViewHistory: (bool) ($m->getAttribute('can_view_history') ?? false),
-            canCreateNewVersion: (bool) ($m->getAttribute('can_create_new_version') ?? false),
+            canClone: (bool) ($m->presentation()->canClone ?? false),
+            canViewHistory: (bool) ($m->presentation()->canViewHistory ?? false),
+            canCreateNewVersion: (bool) ($m->presentation()->canCreateNewVersion ?? false),
             latestPublishedVersionId: $m->getAttribute('latest_published_version_id'),
             latestPublishedVersionNumber: $latestPublishedVersionNumber !== null
                 ? (int) $latestPublishedVersionNumber
@@ -84,9 +83,9 @@ final readonly class DocumentDerivedAttributes
             isAssignedReviewer: (bool) ($m->getAttribute('is_assigned_reviewer') ?? false),
             reviewHistory: self::resolveReviewHistory($m),
             submissionChangelog: self::submissionChangelogFrom($m),
-            workingRevisionInProgress: (bool) ($m->getAttribute('working_revision_in_progress') ?? false),
-            workingRevisionEditorName: $m->getAttribute('working_revision_editor_name'),
-            workingRevisionStartedAt: IsoTimestamp::formatOptional($m->getAttribute('working_revision_started_at')),
+            workingRevisionInProgress: (bool) ($m->presentation()->workingRevisionInProgress ?? false),
+            workingRevisionEditorName: $m->presentation()->workingRevisionEditorName,
+            workingRevisionStartedAt: IsoTimestamp::formatOptional($m->presentation()->workingRevisionStartedAt),
         );
     }
 

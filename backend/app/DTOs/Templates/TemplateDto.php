@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\DTOs\Templates;
 
 use App\Models\Template;
-use App\Support\ApiEmbeddedTeamResponse;
 use App\Support\IsoTimestamp;
 use App\Support\TemplateHeadSnapshot;
 use App\Support\VersionSubmissionChangelog;
@@ -67,7 +66,7 @@ final readonly class TemplateDto
 
     public static function fromModel(Template $m): self
     {
-        $team = $m->getAttribute(ApiEmbeddedTeamResponse::ATTRIBUTE_KEY);
+        $team = $m->presentation()->team;
         $authorName = $m->getAttribute('author_name')
             ?? ($m->relationLoaded('creator') ? $m->creator?->name : null);
 
@@ -169,9 +168,9 @@ final readonly class TemplateDto
             latestPublishedVersionNumber: $m->getAttribute('latest_published_version_number') !== null
                 ? (int) $m->getAttribute('latest_published_version_number')
                 : null,
-            canClone: (bool) ($m->getAttribute('can_clone') ?? false),
-            canViewHistory: (bool) ($m->getAttribute('can_view_history') ?? false),
-            canCreateNewVersion: (bool) ($m->getAttribute('can_create_new_version') ?? false),
+            canClone: (bool) ($m->presentation()->canClone ?? false),
+            canViewHistory: (bool) ($m->presentation()->canViewHistory ?? false),
+            canCreateNewVersion: (bool) ($m->presentation()->canCreateNewVersion ?? false),
             workingVersionId: $m->head_entity_version_id !== null ? (string) $m->head_entity_version_id : null,
             latestPublishedName: $m->getAttribute('latest_published_name'),
             latestPublishedAt: IsoTimestamp::formatOptional($m->getAttribute('latest_published_at')),
@@ -181,9 +180,9 @@ final readonly class TemplateDto
             themeMini: $themeMini,
             documentReviewMode: self::storedDocumentReviewModeFrom($m),
             submissionChangelog: self::submissionChangelogFrom($m),
-            workingRevisionInProgress: (bool) ($m->getAttribute('working_revision_in_progress') ?? false),
-            workingRevisionEditorName: $m->getAttribute('working_revision_editor_name'),
-            workingRevisionStartedAt: IsoTimestamp::formatOptional($m->getAttribute('working_revision_started_at')),
+            workingRevisionInProgress: (bool) ($m->presentation()->workingRevisionInProgress ?? false),
+            workingRevisionEditorName: $m->presentation()->workingRevisionEditorName,
+            workingRevisionStartedAt: IsoTimestamp::formatOptional($m->presentation()->workingRevisionStartedAt),
         );
     }
 

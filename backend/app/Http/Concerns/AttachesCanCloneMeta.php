@@ -30,14 +30,12 @@ trait AttachesCanCloneMeta
 
         $attach = function (Document|Template $resource) use ($user): void {
             $gate = Gate::forUser($user);
-            $resource->setAttribute('can_clone', $gate->allows('clone', $resource));
-            $resource->setAttribute('can_view_history', $gate->allows('viewHistory', $resource));
-            $resource->setAttribute(
-                'can_create_new_version',
+            $resource->presentation()->canClone = $gate->allows('clone', $resource);
+            $resource->presentation()->canViewHistory = $gate->allows('viewHistory', $resource);
+            $resource->presentation()->canCreateNewVersion =
                 $this->resourceHasPublishedSnapshot($resource)
                     && $gate->allows('attemptStartRevision', $resource)
-                    && ! $gate->allows('discard', $resource),
-            );
+                    && ! $gate->allows('discard', $resource);
         };
 
         if ($resources instanceof Document || $resources instanceof Template) {
