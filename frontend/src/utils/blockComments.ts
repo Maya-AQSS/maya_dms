@@ -1,28 +1,41 @@
-import type { BlockComment } from '../features/templates/components/BlockCommentsCard';
+/**
+ * Algoritmo de árbol de comentarios por bloque — genérico, SIN acoplar al tipo
+ * `BlockComment` de DMS (DMS-PLT-01). Cualquier comentario con esta forma mínima
+ * sirve; el tipo concreto se preserva en el retorno (genéricos), así que los
+ * llamadores que pasan `BlockComment[]` reciben `BlockComment[]`.
+ *
+ * Implementación canónica única — reemplazó 4 duplicados inline (DocumentPreviewPage,
+ * TemplatePreviewPage, TemplateReviewView, WizardStep2Blocks; algunos `any`, otros
+ * de 1 nivel). Listo para extraer a un paquete compartido genericizando sobre
+ * {@link CommentTreeNode}.
+ */
+export interface CommentTreeNode {
+  id: string;
+  blockable_id: string | null;
+  parent_id?: string | null;
+}
+
+export interface CommentReadState {
+  is_deleted?: boolean;
+  is_read_by_me?: boolean;
+}
 
 /**
  * Returns root comments anchored to a block plus all recursive replies.
  * Used by review/preview UIs to count and render the full thread tree.
- *
- * Single canonical implementation — replaces 4 inline duplicates that lived
- * in DocumentPreviewPage, TemplatePreviewPage, TemplateReviewView and
- * WizardStep2Blocks (some `any`-typed, some only 1-level deep). All callers
- * now share the recursive variant.
  */
-export function getCommentsForBlock(
+export function getCommentsForBlock<T extends CommentTreeNode>(
   blockId: string | null,
-  allComments: BlockComment[],
-): BlockComment[] {
+  allComments: T[],
+): T[] {
   if (!blockId) return [];
 
-  const collectReplies = (parentId: string): BlockComment[] => {
+  const collectReplies = (parentId: string): T[] => {
     const direct = allComments.filter((c) => c.parent_id === parentId);
     return [...direct, ...direct.flatMap((r) => collectReplies(r.id))];
   };
 
-  const roots = allComments.filter(
-    (c) => c.blockable_id === blockId && !c.parent_id,
-  );
+  const roots = allComments.filter((c) => c.blockable_id === blockId && !c.parent_id);
 
   const allForBlock = [...roots, ...roots.flatMap((r) => collectReplies(r.id))];
 
@@ -35,9 +48,9 @@ export function getCommentsForBlock(
 }
 
 /** blockable_id del bloque activo o, en respuestas, el del comentario padre. */
-export function resolveCommentBlockableId(
+export function resolveCommentBlockableId<T extends CommentTreeNode>(
   parentId: string | null,
-  allComments: BlockComment[],
+  allComments: T[],
   activeBlockId: string | null,
 ): string | null {
   if (parentId) {
@@ -47,9 +60,9 @@ export function resolveCommentBlockableId(
 }
 
 /** Active comments in a block thread that the current user has not read yet. */
-export function countUnreadCommentsForBlock(
+export function countUnreadCommentsForBlock<T extends CommentTreeNode & CommentReadState>(
   blockId: string | null,
-  allComments: BlockComment[],
+  allComments: T[],
 ): number {
   return getCommentsForBlock(blockId, allComments).filter(
     (c) => !c.is_deleted && c.is_read_by_me !== true,
