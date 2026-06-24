@@ -7,29 +7,23 @@ namespace Tests\Unit\Services;
 use App\Models\Document;
 use App\Models\EntityVersion;
 use App\Models\Template;
-use App\Repositories\Contracts\AcademicHierarchyRepositoryInterface;
-use App\Repositories\Contracts\CommentRepositoryInterface;
 use App\Repositories\Contracts\DocumentBlockRepositoryInterface;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
-use App\Repositories\Contracts\TeamReadRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
 use App\Services\DocumentBlockService;
 use App\Services\DocumentMigrationBlockDiffer;
 use App\Services\DocumentMigrationPayloadResolver;
-use App\Services\DocumentPresentationService;
+use App\Services\DocumentMigrationService;
 use App\Services\DocumentReviewerResolutionService;
 use App\Services\DocumentReviewService;
 use App\Services\DocumentService;
 use App\Services\DocumentShareService;
 use App\Services\DocumentStateService;
 use App\Services\DocumentVersionService;
-use App\Services\EntityVersionDestroyService;
-use App\Services\TemplateContextResolver;
 use App\Support\DocumentReviewModeResolver;
-use Maya\Messaging\Publishers\NotificationPublisher;
 use Mockery;
 use ReflectionMethod;
 use Tests\TestCase;
@@ -63,27 +57,14 @@ class DocumentServiceDualReadResolutionTest extends TestCase
                 'changelog' => 'desde entity',
             ]);
 
-        $service = new DocumentService(
+        // DMS-B07 (cluster B): la resolución de la versión publicada anclada vive ahora
+        // en DocumentMigrationService; se prueba el método privado directamente sobre él.
+        $migration = new DocumentMigrationService(
             $docRepo,
-            $tplRepo,
-            $snap,
-            $blockSvc,
-            $verSvc,
-            $shareSvc,
-            $stateSvc,
-            $reviewSvc,
             $entityVersionRepo,
             Mockery::mock(DocumentBlockRepositoryInterface::class),
-            Mockery::mock(TemplateContextResolver::class),
-            Mockery::mock(AcademicHierarchyRepositoryInterface::class),
-            Mockery::mock(TeamReadRepositoryInterface::class),
-            Mockery::mock(NotificationPublisher::class),
-            new DocumentReviewModeResolver($entityVersionRepo),
+            $blockSvc,
             new DocumentMigrationPayloadResolver($docRepo, $entityVersionRepo, $blockSvc, new DocumentMigrationBlockDiffer),
-            Mockery::mock(UserDirectoryRepositoryInterface::class),
-            Mockery::mock(CommentRepositoryInterface::class),
-            new EntityVersionDestroyService($entityVersionRepo),
-            new DocumentReviewerResolutionService($entityVersionRepo, $tplRepo, new DocumentReviewModeResolver($entityVersionRepo), Mockery::mock(UserDirectoryRepositoryInterface::class)), new DocumentPresentationService($docRepo, $entityVersionRepo, Mockery::mock(UserDirectoryRepositoryInterface::class), Mockery::mock(CommentRepositoryInterface::class)),
         );
 
         $document = new Document;
@@ -92,9 +73,9 @@ class DocumentServiceDualReadResolutionTest extends TestCase
             'template_id' => 'template-uuid',
         ]);
 
-        $method = new ReflectionMethod(DocumentService::class, 'resolveCurrentPublishedTemplateVersionMeta');
+        $method = new ReflectionMethod(DocumentMigrationService::class, 'resolveCurrentPublishedTemplateVersionMeta');
         $method->setAccessible(true);
-        $meta = $method->invoke($service, $document);
+        $meta = $method->invoke($migration, $document);
 
         $this->assertSame([
             'id' => 'entity-anchor-uuid',
