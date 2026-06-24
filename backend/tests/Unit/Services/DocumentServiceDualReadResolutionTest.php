@@ -19,6 +19,7 @@ use App\Services\Contracts\SnapshotServiceInterface;
 use App\Services\DocumentBlockService;
 use App\Services\DocumentMigrationBlockDiffer;
 use App\Services\DocumentMigrationPayloadResolver;
+use App\Services\DocumentPresentationService;
 use App\Services\DocumentReviewerResolutionService;
 use App\Services\DocumentReviewService;
 use App\Services\DocumentService;
@@ -82,7 +83,7 @@ class DocumentServiceDualReadResolutionTest extends TestCase
             Mockery::mock(UserDirectoryRepositoryInterface::class),
             Mockery::mock(CommentRepositoryInterface::class),
             new EntityVersionDestroyService($entityVersionRepo),
-            new DocumentReviewerResolutionService($entityVersionRepo, $tplRepo, new DocumentReviewModeResolver($entityVersionRepo), Mockery::mock(UserDirectoryRepositoryInterface::class)),
+            new DocumentReviewerResolutionService($entityVersionRepo, $tplRepo, new DocumentReviewModeResolver($entityVersionRepo), Mockery::mock(UserDirectoryRepositoryInterface::class)), new DocumentPresentationService($docRepo, $entityVersionRepo, Mockery::mock(UserDirectoryRepositoryInterface::class), Mockery::mock(CommentRepositoryInterface::class)),
         );
 
         $document = new Document;
