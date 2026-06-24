@@ -402,12 +402,13 @@ class TemplateRepository extends AbstractVersionableEntityRepository implements 
 
         foreach ($templates as $template) {
             $meta = $latestByTemplate[(string) $template->id] ?? null;
-            $template->setAttribute('latest_published_version_id', $meta !== null ? (string) $meta->id : null);
-            $template->setAttribute('latest_published_version_number', $meta !== null ? (int) $meta->version_number : null);
-            $template->setAttribute('latest_published_name', $meta !== null
+            $presentation = $template->presentation();
+            $presentation->latestPublishedVersionId = $meta !== null ? (string) $meta->id : null;
+            $presentation->latestPublishedVersionNumber = $meta !== null ? (int) $meta->version_number : null;
+            $presentation->latestPublishedName = $meta !== null
                 ? $this->extractPublishedTemplateNameFromSnapshotRow($meta->snapshot_data)
-                : null);
-            $template->setAttribute('latest_published_at', $meta->published_at ?? null);
+                : null;
+            $presentation->latestPublishedAt = $meta->published_at ?? null;
         }
     }
 

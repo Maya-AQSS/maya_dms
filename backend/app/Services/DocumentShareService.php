@@ -80,8 +80,9 @@ class DocumentShareService
 
         foreach ($documents as $document) {
             $permission = $byDoc[(string) $document->getKey()] ?? null;
-            $document->setAttribute('viewer_share_permission', $permission);
-            $document->setAttribute('is_shared_with_me', $permission !== null);
+            $presentation = $document->presentation();
+            $presentation->sharePermission = $permission;
+            $presentation->isSharedWithMe = $permission !== null;
         }
     }
 }

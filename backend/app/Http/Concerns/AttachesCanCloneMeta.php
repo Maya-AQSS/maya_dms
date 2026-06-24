@@ -51,7 +51,7 @@ trait AttachesCanCloneMeta
 
     private function resourceHasPublishedSnapshot(Document|Template $resource): bool
     {
-        $publishedId = $resource->getAttribute('latest_published_version_id');
+        $publishedId = $resource->presentation()->latestPublishedVersionId;
         if (is_string($publishedId) && $publishedId !== '') {
             return true;
         }

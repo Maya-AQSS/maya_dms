@@ -56,12 +56,12 @@ class DocumentPresentationService
 
         foreach ($documents as $document) {
             $meta = $latestByDocument[(string) $document->id] ?? null;
-            $document->setAttribute('latest_published_version_id', $meta['id'] ?? null);
-            $document->setAttribute('latest_published_version_number', $meta['version_number'] ?? null);
-            $document->setAttribute(
-                'latest_published_title',
-                $meta !== null ? $this->extractPublishedTitleFromSnapshot($meta['snapshot_data']) : null,
-            );
+            $presentation = $document->presentation();
+            $presentation->latestPublishedVersionId = $meta['id'] ?? null;
+            $presentation->latestPublishedVersionNumber = $meta['version_number'] ?? null;
+            $presentation->latestPublishedTitle = $meta !== null
+                ? $this->extractPublishedTitleFromSnapshot($meta['snapshot_data'])
+                : null;
         }
     }
 
@@ -89,7 +89,7 @@ class DocumentPresentationService
                 continue;
             }
             if (array_key_exists($templateVersionId, $versionNumberById)) {
-                $document->setAttribute('template_version_number', $versionNumberById[$templateVersionId]);
+                $document->presentation()->templateVersionNumber = $versionNumberById[$templateVersionId];
             }
         }
     }
@@ -110,7 +110,7 @@ class DocumentPresentationService
         );
 
         foreach ($documents as $document) {
-            $document->setAttribute('is_assigned_reviewer', array_key_exists((string) $document->id, $assignedDocIds));
+            $document->presentation()->isAssignedReviewer = array_key_exists((string) $document->id, $assignedDocIds);
         }
     }
 
@@ -258,7 +258,7 @@ class DocumentPresentationService
         $document->setAttribute('has_review_comments', $hasReviewComments);
 
         // Establecer si es revisor asignado
-        $document->setAttribute('is_assigned_reviewer', $isAssignedReviewer);
+        $document->presentation()->isAssignedReviewer = $isAssignedReviewer;
     }
 
     private function findLatestPublishedVersion(string $documentId): ?EntityVersion

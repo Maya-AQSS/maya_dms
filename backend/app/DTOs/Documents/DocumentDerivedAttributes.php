@@ -59,7 +59,7 @@ final readonly class DocumentDerivedAttributes
     {
         $team = $m->presentation()->team;
 
-        $latestPublishedVersionNumber = $m->getAttribute('latest_published_version_number');
+        $latestPublishedVersionNumber = $m->presentation()->latestPublishedVersionNumber;
 
         return new self(
             team: is_array($team) ? $team : null,
@@ -70,17 +70,17 @@ final readonly class DocumentDerivedAttributes
             visibilityLevel: $m->relationLoaded('template') && $m->template !== null
                 ? $m->template->visibility_level->value
                 : null,
-            isSharedWithMe: (bool) ($m->getAttribute('is_shared_with_me') ?? false),
-            sharePermission: $m->getAttribute('viewer_share_permission'),
+            isSharedWithMe: (bool) ($m->presentation()->isSharedWithMe ?? false),
+            sharePermission: $m->presentation()->sharePermission,
             canClone: (bool) ($m->presentation()->canClone ?? false),
             canViewHistory: (bool) ($m->presentation()->canViewHistory ?? false),
             canCreateNewVersion: (bool) ($m->presentation()->canCreateNewVersion ?? false),
-            latestPublishedVersionId: $m->getAttribute('latest_published_version_id'),
+            latestPublishedVersionId: $m->presentation()->latestPublishedVersionId,
             latestPublishedVersionNumber: $latestPublishedVersionNumber !== null
                 ? (int) $latestPublishedVersionNumber
                 : null,
-            latestPublishedTitle: $m->getAttribute('latest_published_title'),
-            isAssignedReviewer: (bool) ($m->getAttribute('is_assigned_reviewer') ?? false),
+            latestPublishedTitle: $m->presentation()->latestPublishedTitle,
+            isAssignedReviewer: (bool) ($m->presentation()->isAssignedReviewer ?? false),
             reviewHistory: self::resolveReviewHistory($m),
             submissionChangelog: self::submissionChangelogFrom($m),
             workingRevisionInProgress: (bool) ($m->presentation()->workingRevisionInProgress ?? false),
@@ -162,7 +162,7 @@ final readonly class DocumentDerivedAttributes
      */
     private static function resolveTemplateVersionNumber(Document $m): ?int
     {
-        $preloaded = $m->getAttribute('template_version_number');
+        $preloaded = $m->presentation()->templateVersionNumber;
         if (is_numeric($preloaded)) {
             return (int) $preloaded;
         }
