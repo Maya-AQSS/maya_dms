@@ -186,6 +186,7 @@ return (static function (): array {
     $demoThemeId = DemoThemesSeeder::DEMO_THEME_ID;
 
     $deadline = '2026-09-15 14:00:00';
+    $documentDeadline = '2026-09-30 14:00:00';
 
     $templates = [
         [
@@ -200,6 +201,7 @@ return (static function (): array {
             'team_id' => null,
             'theme_id' => $defaultThemeId,
             'delivery_deadline' => $deadline,
+            'document_delivery_deadline' => $documentDeadline,
             'created_by' => $uDir,
             'status' => 'published',
             'review_stages' => 2,
@@ -217,6 +219,7 @@ return (static function (): array {
             'team_id' => null,
             'theme_id' => $defaultThemeId,
             'delivery_deadline' => $deadline,
+            'document_delivery_deadline' => $documentDeadline,
             'created_by' => $uDir,
             'status' => 'published',
             'review_stages' => 2,
@@ -234,6 +237,7 @@ return (static function (): array {
             'team_id' => null,
             'theme_id' => $defaultThemeId,
             'delivery_deadline' => $deadline,
+            'document_delivery_deadline' => $documentDeadline,
             'created_by' => $uDir,
             'status' => 'published',
             'review_stages' => 2,
@@ -252,6 +256,7 @@ return (static function (): array {
             'team_id' => null,
             'theme_id' => $defaultThemeId,
             'delivery_deadline' => $deadline,
+            'document_delivery_deadline' => $documentDeadline,
             'created_by' => $uDir,
             'status' => 'published',
             'review_stages' => 2,
@@ -271,6 +276,7 @@ return (static function (): array {
             'team_id' => null,
             'theme_id' => $defaultThemeId,
             'delivery_deadline' => $deadline,
+            'document_delivery_deadline' => $documentDeadline,
             'created_by' => $uDir,
             'status' => 'published',
             'review_stages' => 2,
