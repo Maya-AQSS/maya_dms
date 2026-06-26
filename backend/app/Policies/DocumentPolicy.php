@@ -7,6 +7,7 @@ namespace App\Policies;
 use App\Models\Document;
 use App\Models\JwtUser;
 use App\Services\Contracts\DocumentServiceInterface;
+use App\Support\DocumentAcademicContextMatcher;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -32,8 +33,10 @@ use Illuminate\Support\Facades\DB;
  * `document_shares`.
  *
  * VERSIONADO Y HISTORIAL (catálogo):
- * - `document.version`: abrir ciclo de nueva versión sobre publicada (no titular).
- * - `document.clone`: clonar publicada (no titular); además `document.update` o ser titular.
+ * - `document.version`: abrir ciclo de nueva versión sobre publicada (no titular);
+ *   exige contexto académico ({@see DocumentAcademicContextMatcher}).
+ * - `document.clone`: clonar publicada (no titular); además `document.update` o ser titular
+ *   y contexto académico para no titulares.
  * - `document.history.view`: listar/ver snapshots publicados (`GET …/versions`).
  */
 class DocumentPolicy
@@ -277,12 +280,17 @@ class DocumentPolicy
     /**
      * Clonar documento publicado en un expediente nuevo.
      *
-     * Requiere ver el origen, `document.create` y (titular o `document.clone`).
-     * Quien no es titular necesita además `document.update` (misma línea que editar ajenos).
+     * Requiere visibilidad de catálogo ({@see self::view()}), snapshot publicado,
+     * `document.create` y (titular o `document.clone` + `document.update`).
+     * No titular: además contexto académico del perfil ({@see DocumentAcademicContextMatcher}).
      */
     public function clone(JwtUser $user, Document $document): bool
     {
-        if (! $this->viewScoped($user, $document)) {
+        if ($user->canReadAll()) {
+            return false;
+        }
+
+        if (! $this->view($user, $document)) {
             return false;
         }
 
@@ -301,6 +309,10 @@ class DocumentPolicy
 
         if ($this->isTitular($user, $document)) {
             return true;
+        }
+
+        if (! DocumentAcademicContextMatcher::matches($user, $document)) {
+            return false;
         }
 
         if (! $user->hasPermission('document.clone')) {
@@ -347,16 +359,28 @@ class DocumentPolicy
     /**
      * Puede solicitar una nueva versión (permiso de entrada al endpoint).
      * La disponibilidad concreta (p. ej. borrador en curso) la resuelve el controller con 409.
+     *
+     * Titular sin slug; no titular exige `document.version` y contexto académico.
      */
     public function attemptStartRevision(JwtUser $user, Document $document): bool
     {
-        // Acción de escritura (abre un ciclo de nueva versión): usa la visibilidad acotada,
-        // de modo que `dms.admin.read` no habilite iniciar revisiones de documentos ajenos.
-        if (! $this->viewScoped($user, $document)) {
+        if ($user->canReadAll()) {
             return false;
         }
 
-        return $this->isTitular($user, $document) || $user->hasPermission('document.version');
+        if (! $this->view($user, $document)) {
+            return false;
+        }
+
+        if ($this->isTitular($user, $document)) {
+            return true;
+        }
+
+        if (! $user->hasPermission('document.version')) {
+            return false;
+        }
+
+        return DocumentAcademicContextMatcher::matches($user, $document);
     }
 
     /**

@@ -387,12 +387,13 @@ class DocumentPolicyTest extends TestCase
     {
         $ownerId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
         $strangerId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+        $studyTypeId = (string) Str::uuid();
         $user = $this->makeJwtUser($strangerId, [
             'document.show',
             'document.create',
             'document.clone',
             'document.update',
-        ]);
+        ], studyTypeIds: [$studyTypeId]);
         auth()->setUser($user);
         $doc = $this->makeDocument(
             createdBy: $ownerId,
@@ -400,8 +401,8 @@ class DocumentPolicyTest extends TestCase
             status: 'published',
             visibilityLevel: TemplateVisibilityLevel::Global->value,
         );
-        $studyTypeId = (string) Str::uuid();
         $this->seedPublishedDocumentSnapshot($doc, $ownerId, $studyTypeId);
+        $this->setDocumentHeadStudyTypeId($doc, $studyTypeId);
         $this->enrollUserInStudyType($strangerId, $studyTypeId);
 
         $this->assertTrue($this->policy->clone($user, $doc));
@@ -467,7 +468,8 @@ class DocumentPolicyTest extends TestCase
 
     public function test_start_revision_allows_document_version_for_non_titular(): void
     {
-        $user = $this->makeJwtUser('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', ['document.show', 'document.version']);
+        $studyTypeId = (string) Str::uuid();
+        $user = $this->makeJwtUser('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', ['document.show', 'document.version'], studyTypeIds: [$studyTypeId]);
         auth()->setUser($user);
         $doc = $this->makeDocument(
             createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
@@ -475,8 +477,8 @@ class DocumentPolicyTest extends TestCase
             status: 'published',
             visibilityLevel: TemplateVisibilityLevel::Global->value,
         );
-        $studyTypeId = (string) Str::uuid();
         $this->seedPublishedDocumentSnapshot($doc, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', $studyTypeId);
+        $this->setDocumentHeadStudyTypeId($doc, $studyTypeId);
         $this->enrollUserInStudyType('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', $studyTypeId);
 
         $this->assertTrue($this->policy->startRevision($user, $doc));
@@ -545,9 +547,17 @@ class DocumentPolicyTest extends TestCase
 
     /**
      * @param  list<string>  $permissions
+     * @param  list<string>  $studyTypeIds
+     * @param  list<string>  $studyIds
+     * @param  list<string>  $moduleIds
      */
-    private function makeJwtUser(string $id, array $permissions = []): JwtUser
-    {
+    private function makeJwtUser(
+        string $id,
+        array $permissions = [],
+        array $studyTypeIds = [],
+        array $studyIds = [],
+        array $moduleIds = [],
+    ): JwtUser {
         return new JwtUser([
             'id' => $id,
             'email' => null,
@@ -555,6 +565,9 @@ class DocumentPolicyTest extends TestCase
             'department' => null,
             'permissions' => $permissions,
             'scope' => '',
+            'study_type_ids' => $studyTypeIds,
+            'study_ids' => $studyIds,
+            'module_ids' => $moduleIds,
         ]);
     }
 
@@ -637,5 +650,28 @@ class DocumentPolicyTest extends TestCase
             'user_id' => $userId,
             'study_type_id' => $studyTypeId,
         ]);
+    }
+
+    private function setDocumentHeadStudyTypeId(Document $document, string $studyTypeId): void
+    {
+        $head = DB::table('entity_versions')
+            ->where('versionable_type', Document::class)
+            ->where('versionable_id', $document->id)
+            ->where('version_number', 0)
+            ->first();
+
+        if ($head === null) {
+            return;
+        }
+
+        /** @var array<string, mixed> $snapshot */
+        $snapshot = json_decode((string) $head->snapshot_data, true, 512, JSON_THROW_ON_ERROR);
+        $snapshot['document']['study_type_id'] = $studyTypeId;
+
+        DB::table('entity_versions')
+            ->where('id', $head->id)
+            ->update(['snapshot_data' => json_encode($snapshot, JSON_THROW_ON_ERROR)]);
+
+        $document->refresh();
     }
 }
