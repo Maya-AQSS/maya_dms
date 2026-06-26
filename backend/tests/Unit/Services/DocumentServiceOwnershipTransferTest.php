@@ -30,6 +30,7 @@ use App\Services\DocumentStateService;
 use App\Services\DocumentVersionService;
 use App\Services\EntityVersionDestroyService;
 use App\Services\TemplateContextResolver;
+use App\Support\DocumentAcademicListFilterResolver;
 use App\Support\DocumentReviewModeResolver;
 use Illuminate\Support\Facades\Event;
 use Maya\Messaging\Publishers\NotificationPublisher;
@@ -138,6 +139,7 @@ class DocumentServiceOwnershipTransferTest extends TestCase
             new EntityVersionDestroyService($entityVersionRepo),
             new DocumentReviewerResolutionService($entityVersionRepo, Mockery::mock(TemplateRepositoryInterface::class), new DocumentReviewModeResolver($entityVersionRepo), $userDirectory),
             new DocumentPresentationService($docRepo, $entityVersionRepo, Mockery::mock(UserDirectoryRepositoryInterface::class), Mockery::mock(CommentRepositoryInterface::class)), new DocumentMigrationService($docRepo, $entityVersionRepo, Mockery::mock(DocumentBlockRepositoryInterface::class), $blockSvc, new DocumentMigrationPayloadResolver($docRepo, $entityVersionRepo, $blockSvc, new DocumentMigrationBlockDiffer)),
+            new DocumentAcademicListFilterResolver(Mockery::mock(\App\Services\Contracts\UserProfileServiceInterface::class)),
         );
     }
 }

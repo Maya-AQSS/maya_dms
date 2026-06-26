@@ -58,6 +58,7 @@ final class TemplateServiceOwnershipTransferNotificationTest extends TestCase
                     'created_by' => $previousOwner,
                     'visibility_level' => 'personal',
                     'delivery_deadline' => $now->copy()->addWeek()->toIso8601String(),
+                    'document_delivery_deadline' => $now->copy()->addWeeks(2)->toIso8601String(),
                 ],
             ],
             'created_by' => $previousOwner,
@@ -70,6 +71,7 @@ final class TemplateServiceOwnershipTransferNotificationTest extends TestCase
             'name' => 'Plantilla FP',
             'visibility_level' => 'personal',
             'delivery_deadline' => $now->copy()->addWeek(),
+            'document_delivery_deadline' => $now->copy()->addWeeks(2),
             'created_by' => $previousOwner,
         ]);
         $template->setRelation('headVersion', $headVersion);
@@ -85,6 +87,7 @@ final class TemplateServiceOwnershipTransferNotificationTest extends TestCase
                     'created_by' => $newOwner,
                     'visibility_level' => 'personal',
                     'delivery_deadline' => $now->copy()->addWeek()->toIso8601String(),
+                    'document_delivery_deadline' => $now->copy()->addWeeks(2)->toIso8601String(),
                 ],
             ],
             'created_by' => $newOwner,

@@ -54,6 +54,7 @@ function seedPublishedGlobalTemplate(string $creatorId): string
         'description' => null,
         'visibility_level' => TemplateVisibilityLevel::Global->value,
         'delivery_deadline' => now()->addWeek(),
+        'document_delivery_deadline' => now()->addWeeks(2),
         'study_type_id' => null,
         'study_id' => null,
         'module_id' => null,
