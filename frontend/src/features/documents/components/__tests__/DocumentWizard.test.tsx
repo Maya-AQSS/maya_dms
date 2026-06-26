@@ -131,6 +131,7 @@ const makeTemplate = (overrides: Record<string, unknown> = {}) =>
     team: null,
     review_mode: 'parallel',
     document_review_mode: null,
+    document_delivery_deadline: '2099-06-01T00:00:00Z',
     ...overrides,
   }) as any;
 

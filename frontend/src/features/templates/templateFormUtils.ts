@@ -76,6 +76,7 @@ export type TemplateEditFields = {
   description: string;
   visibilityLevel: TemplateVisibilityLevel;
   deliveryDeadline: string;
+  documentDeliveryDeadline: string;
   studyTypeId: string;
   studyId: string;
   moduleId: string;
@@ -92,6 +93,10 @@ export function templateEditIsDirty(t: Template, fields: TemplateEditFields): bo
   if (fields.name.trim() !== t.name) return true;
   if (fields.visibilityLevel !== t.visibility_level) return true;
   if (fields.deliveryDeadline !== isoToDatetimeLocal(t.delivery_deadline)) return true;
+  const docDeadlineIso = t.document_delivery_deadline
+    ? t.document_delivery_deadline.split('T')[0]
+    : '';
+  if (fields.documentDeliveryDeadline !== docDeadlineIso) return true;
   if (fields.studyTypeId.trim() !== (t.study_type_id ?? '')) return true;
   if (fields.studyId.trim() !== (t.study_id ?? '')) return true;
   if (fields.moduleId.trim() !== (t.module_id ?? '')) return true;

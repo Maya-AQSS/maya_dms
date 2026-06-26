@@ -127,14 +127,11 @@ export function DocumentPropertiesStep({
             </FieldLabel>
             <DatePicker
               value={deliveryDeadline || null}
-              onChange={(d: string | null) => setDeliveryDeadline(d ?? '')}
-              disabled={!isDraft}
+              onChange={() => {}}
+              disabled
               placeholder={t('documents:wizard.selectDate')}
               ariaLabel={t('documents:fields.deadline')}
             />
-            {errors.deliveryDeadline && (
-              <p className="text-xs text-danger-dark dark:text-danger">{errors.deliveryDeadline}</p>
-            )}
           </div>
         </div>
 

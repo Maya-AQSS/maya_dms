@@ -112,6 +112,10 @@ export function WizardStep4Summary({
               label={t('templates:summary.deliveryDeadline')}
               value={template.delivery_deadline ? new Date(template.delivery_deadline).toLocaleDateString() : null}
             />
+            <SummaryRow
+              label={t('templates:fields.documentDeadline')}
+              value={template.document_delivery_deadline ? new Date(template.document_delivery_deadline).toLocaleDateString() : null}
+            />
             <div className="col-span-2">
               <SummaryRow label={t('common:fields.description')} value={template.description} />
             </div>

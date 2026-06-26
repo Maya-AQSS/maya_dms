@@ -232,6 +232,33 @@ export function WizardStep1Properties({ errors, templateStatus, isCreator, curre
               </p>
             )}
           </div>
+
+          <div>
+            <FieldLabel htmlFor="document-delivery-deadline" required>{t('fields.documentDeadline')}</FieldLabel>
+            <Controller
+              control={control}
+              name="documentDeliveryDeadline"
+              render={({ field }) => (
+                <DatePicker
+                  value={field.value || null}
+                  onChange={(d: string | null) => field.onChange(d ?? '')}
+                  disabled={deadlineLocked}
+                  placeholder={t('wizard.selectDatePlaceholder')}
+                  ariaLabel={t('fields.documentDeadline')}
+                />
+              )}
+            />
+            {formErrors.documentDeliveryDeadline?.message && (
+              <p className="mt-1 text-xs text-danger-dark dark:text-danger">
+                {formErrors.documentDeliveryDeadline.message}
+              </p>
+            )}
+            {deadlineLocked && (
+              <p className="mt-1 text-xs text-text-muted italic">
+                {t('notEditableInState')}
+              </p>
+            )}
+          </div>
         </div>
 
         {showAcademicBlock && cascadeState && (

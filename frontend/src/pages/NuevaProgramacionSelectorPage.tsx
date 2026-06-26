@@ -145,12 +145,12 @@ export function NuevaProgramacionSelectorPage() {
         ),
       },
       {
-        id: 'latest_published_at',
-        header: 'Fecha de publicación',
+        id: 'document_delivery_deadline',
+        header: 'Fecha límite de validación',
         sortable: true,
         cell: (template) => (
           <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
-            {formatCalendarDateForBrowser(template.latest_published_at)}
+            {formatCalendarDateForBrowser(template.document_delivery_deadline)}
           </span>
         ),
       },

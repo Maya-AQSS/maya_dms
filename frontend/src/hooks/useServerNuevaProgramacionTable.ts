@@ -4,8 +4,8 @@ import { fetchTemplatesPage, type TemplateListFilters } from '../api/templates';
 import { DEFAULT_TABLE_PAGE_SIZE, dropInvalidStoredPageSize } from '../lib/dataTablePageSize';
 import type { Template } from '../types/templates';
 
-/** Columnas ordenables server-side. */
-const SORTABLE_NUEVA_PROGRAMACION_COLUMNS = ['name', 'latest_published_at'] as const;
+/** Columnas ordenables server-side (espejo de ListTemplatesRequest::allowedSortFields). */
+const SORTABLE_NUEVA_PROGRAMACION_COLUMNS = ['name', 'document_delivery_deadline'] as const;
 
 /** Filtros de dominio sincronizados a URL. */
 const NUEVA_PROGRAMACION_FILTER_DEFAULTS = {
@@ -39,7 +39,7 @@ export function useServerNuevaProgramacionTable(opts?: {
     defaults: { ...NUEVA_PROGRAMACION_FILTER_DEFAULTS },
     sortableColumns: SORTABLE_NUEVA_PROGRAMACION_COLUMNS,
     storageKey: 'maya:dms:nueva-programacion-selector',
-    defaultSort: { columnId: 'latest_published_at', direction: 'desc' },
+    defaultSort: { columnId: 'document_delivery_deadline', direction: 'asc' },
     defaultPageSize: DEFAULT_TABLE_PAGE_SIZE,
   });
 

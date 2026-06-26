@@ -79,6 +79,9 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       description: initial?.description || '',
       visibility: initial?.visibility_level || 'personal',
       deliveryDeadline: initial?.delivery_deadline ? initial.delivery_deadline.split('T')[0] : '',
+      documentDeliveryDeadline: initial?.document_delivery_deadline
+        ? initial.document_delivery_deadline.split('T')[0]
+        : '',
       studyTypeId: initialTemplateAcademicField(initial?.visibility_level, initial?.study_type_id),
       studyId: initialTemplateAcademicField(initial?.visibility_level, initial?.study_id),
       moduleId: initialTemplateAcademicField(initial?.visibility_level, initial?.module_id),
@@ -250,6 +253,9 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
         description: values.description.trim() || null,
         ...(visibilityChanged ? { visibility_level: values.visibility } : {}),
         delivery_deadline: values.deliveryDeadline ? `${values.deliveryDeadline}T00:00:00Z` : null,
+        document_delivery_deadline: values.documentDeliveryDeadline
+          ? `${values.documentDeliveryDeadline}T00:00:00Z`
+          : null,
         ...templateAcademicPayload(values.visibility, {
           studyTypeId: values.studyTypeId,
           studyId: values.studyId,

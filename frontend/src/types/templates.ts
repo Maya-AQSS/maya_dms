@@ -46,6 +46,8 @@ export type Template = {
   description: string | null;
   visibility_level: TemplateVisibilityLevel;
   delivery_deadline: string | null;
+  /** Fecha límite de validación de documentos creados a partir de esta plantilla. */
+  document_delivery_deadline?: string | null;
   study_type_id: string | null;
   study_id: string | null;
   module_id: string | null;
@@ -147,7 +149,7 @@ export type TemplateListFilters = {
   author_name?: string;
   /** Búsqueda server-side por nombre de plantilla o nombre del autor. */
   search?: string;
-  /** Columna de ordenación server-side (whitelist backend: name, delivery_deadline, created_at, updated_at). */
+  /** Columna de ordenación server-side (whitelist backend: name, delivery_deadline, document_delivery_deadline, created_at, updated_at). */
   sort_by?: string;
   /** Dirección de ordenación server-side. */
   sort_dir?: 'asc' | 'desc';

@@ -60,6 +60,7 @@ export type CreateTemplatePayload = {
   description?: string | null;
   visibility_level?: TemplateVisibilityLevel;
   delivery_deadline?: string | null;
+  document_delivery_deadline?: string | null;
   study_type_id?: string | null;
   study_id?: string | null;
   module_id?: string | null;
@@ -74,6 +75,7 @@ export type UpdateTemplatePayload = {
   description?: string | null;
   visibility_level?: TemplateVisibilityLevel;
   delivery_deadline?: string | null;
+  document_delivery_deadline?: string | null;
   study_type_id?: string | null;
   study_id?: string | null;
   module_id?: string | null;
