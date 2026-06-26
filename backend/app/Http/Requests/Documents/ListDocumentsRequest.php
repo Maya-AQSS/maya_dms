@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Documents;
 
 use App\DTOs\Documents\DocumentFilterDto;
+use App\Http\Requests\Concerns\ParsesCsvIds;
 use App\Http\Requests\Concerns\ParsesFavoriteIds;
 use App\Models\Document;
 use App\Repositories\Eloquent\DocumentRepository;
@@ -19,6 +20,7 @@ use Maya\Http\Http\Requests\PaginatedFilterRequest;
  */
 class ListDocumentsRequest extends PaginatedFilterRequest
 {
+    use ParsesCsvIds;
     use ParsesFavoriteIds;
 
     public function authorize(): bool
@@ -48,6 +50,10 @@ class ListDocumentsRequest extends PaginatedFilterRequest
             'study_type_id' => ['nullable', 'string', 'max:255'],
             'study_id' => ['nullable', 'string', 'max:255'],
             'module_id' => ['nullable', 'string', 'max:255'],
+            'study_type_ids' => ['nullable', 'string', 'max:4000'],
+            'study_ids' => ['nullable', 'string', 'max:4000'],
+            'module_ids' => ['nullable', 'string', 'max:4000'],
+            'profile_academic_default' => ['nullable', 'boolean'],
             // Sin exists:teams,id: es un filtro de listado, no una escritura; la ausencia de fila
             // simplemente devuelve 0 resultados sin riesgo de integridad.
             'team_id' => ['nullable', 'uuid'],
@@ -84,6 +90,10 @@ class ListDocumentsRequest extends PaginatedFilterRequest
             studyTypeId: $validated['study_type_id'] ?? null,
             studyId: $validated['study_id'] ?? null,
             moduleId: $validated['module_id'] ?? null,
+            studyTypeIds: $this->parseCsvIds('study_type_ids'),
+            studyIds: $this->parseCsvIds('study_ids'),
+            moduleIds: $this->parseCsvIds('module_ids'),
+            profileAcademicDefault: filter_var($validated['profile_academic_default'] ?? false, FILTER_VALIDATE_BOOLEAN),
             teamId: $validated['team_id'] ?? null,
             page: $this->getPage(),
             perPage: $this->getPerPage(),

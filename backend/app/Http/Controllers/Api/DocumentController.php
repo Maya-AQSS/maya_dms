@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\DTOs\Documents\DocumentDto;
+use App\DTOs\Users\JwtProfileDto;
 use App\Http\Concerns\AttachesDocumentCanCloneMeta;
 use App\Http\Concerns\ResolvesApiEmbeddedTeam;
 use App\Http\Concerns\ValidatesOptionalProcessContext;
@@ -49,6 +50,9 @@ class DocumentController extends Controller
     public function index(ListDocumentsRequest $request): JsonResponse
     {
         $viewerId = (string) $request->user()->getAuthIdentifier();
+        $jwtProfile = JwtProfileDto::fromArray(
+            $request->attributes->get('jwt_user') ?? ['id' => $viewerId],
+        );
         $page = $this->documentService->paginate(
             $request->toFilterDto(),
             $viewerId,
@@ -56,6 +60,7 @@ class DocumentController extends Controller
                 $this->attachCanCloneMeta($documents, $request);
                 $this->applyEmbeddedTeamToDocuments($documents, $viewerId);
             },
+            $jwtProfile,
         );
 
         return $this->paginated($page, DocumentResource::class, $request);

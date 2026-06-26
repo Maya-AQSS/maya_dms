@@ -23,10 +23,18 @@ final readonly class DocumentFilterDto extends FilterDto
         public readonly ?string $to = null,
         /** @var list<string>|null Ids de documentos marcados como favoritos por el usuario. */
         public readonly ?array $favoriteIds = null,
-        // Contexto académico (snapshot del cabezal): filtro estructurado en cascada.
+        // Contexto académico (snapshot del cabezal): filtro estructurado en cascada o unión.
         public readonly ?string $studyTypeId = null,
         public readonly ?string $studyId = null,
         public readonly ?string $moduleId = null,
+        /** @var list<string>|null */
+        public readonly ?array $studyTypeIds = null,
+        /** @var list<string>|null */
+        public readonly ?array $studyIds = null,
+        /** @var list<string>|null */
+        public readonly ?array $moduleIds = null,
+        /** Preselección server-side desde el perfil académico del usuario (/me). */
+        public readonly bool $profileAcademicDefault = false,
         public readonly ?string $teamId = null,
         int $page = 1,
         int $perPage = 15,

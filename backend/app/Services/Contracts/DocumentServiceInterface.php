@@ -12,6 +12,7 @@ use App\DTOs\Documents\CreationOptionDto;
 use App\DTOs\Documents\DeleteDocumentBlockDto;
 use App\DTOs\Documents\DocumentDto;
 use App\DTOs\Documents\DocumentFilterDto;
+use App\DTOs\Users\JwtProfileDto;
 use App\DTOs\Documents\DocumentMigrationPayloadDto;
 use App\DTOs\Documents\DocumentReviewDto;
 use App\DTOs\Documents\DocumentShareResultDto;
@@ -224,6 +225,7 @@ interface DocumentServiceInterface
         DocumentFilterDto $filter,
         string $viewerId,
         ?callable $beforeMap = null,
+        ?JwtProfileDto $jwtProfile = null,
     ): PaginatedDto;
 
     /**

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repositories\Eloquent;
 
 use App\DTOs\Documents\DocumentBlockPayloadDto;
+use App\DTOs\Documents\DocumentAcademicListFilter;
 use App\DTOs\Documents\DocumentFilterDto;
 use App\DTOs\Notifications\ApproachingDeadlineDocumentDto;
 use App\DTOs\Notifications\PendingReviewerLoadDto;
@@ -464,7 +465,7 @@ class DocumentRepository extends AbstractVersionableEntityRepository implements 
      *
      * @return LengthAwarePaginator<Document>
      */
-    public function paginate(DocumentFilterDto $filter): LengthAwarePaginator
+    public function paginate(DocumentFilterDto $filter, ?DocumentAcademicListFilter $academicFilter = null): LengthAwarePaginator
     {
         $query = Document::withoutGlobalScopes(['join_head_document_entity_version'])
             ->join('entity_versions as document_head_ev', 'document_head_ev.id', '=', 'documents.head_entity_version_id')
@@ -504,29 +505,8 @@ class DocumentRepository extends AbstractVersionableEntityRepository implements 
             $query->whereIn('documents.id', $filter->favoriteIds);
         }
 
-        // Contexto académico (snapshot del cabezal): filtro estructurado en cascada.
-        // Se aplican como AND independientes; el selector en cascada garantiza
-        // que los valores padres acompañan siempre al hijo más específico.
-        if ($filter->studyTypeId !== null) {
-            $query->whereRaw(
-                DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'study_type_id').' = ?',
-                [$filter->studyTypeId]
-            );
-        }
-
-        if ($filter->studyId !== null) {
-            $query->whereRaw(
-                DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'study_id').' = ?',
-                [$filter->studyId]
-            );
-        }
-
-        if ($filter->moduleId !== null) {
-            $query->whereRaw(
-                DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'module_id').' = ?',
-                [$filter->moduleId]
-            );
-        }
+        // Contexto académico (snapshot del cabezal): cascada AND o unión OR según filtro resuelto.
+        $this->applyAcademicListFilter($query, $academicFilter);
 
         if ($filter->from !== null) {
             $query->whereDate('documents.created_at', '>=', $filter->from);
@@ -546,6 +526,74 @@ class DocumentRepository extends AbstractVersionableEntityRepository implements 
         $this->applyDocumentSort($query, $filter->sortBy, $filter->sortDir);
 
         return $query->paginate($filter->perPage, ['*'], 'page', $filter->page);
+    }
+
+    /**
+     * Aplica filtro académico sobre el snapshot del cabezal del documento.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Document>  $query
+     */
+    private function applyAcademicListFilter($query, ?DocumentAcademicListFilter $filter): void
+    {
+        if ($filter === null || $filter->isEmpty()) {
+            return;
+        }
+
+        if ($filter->mode === DocumentAcademicListFilter::MODE_UNION) {
+            $query->where(function ($outer) use ($filter) {
+                $this->applyAcademicDimensionOr($outer, 'study_type_id', $filter->studyTypeIds);
+                $this->applyAcademicDimensionOr($outer, 'study_id', $filter->studyIds);
+                $this->applyAcademicDimensionOr($outer, 'module_id', $filter->moduleIds);
+            });
+
+            return;
+        }
+
+        $this->applyAcademicDimensionAnd($query, 'study_type_id', $filter->studyTypeIds);
+        $this->applyAcademicDimensionAnd($query, 'study_id', $filter->studyIds);
+        $this->applyAcademicDimensionAnd($query, 'module_id', $filter->moduleIds);
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Builder<Document>|\Illuminate\Database\Query\Builder  $query
+     * @param  list<string>  $ids
+     */
+    private function applyAcademicDimensionAnd($query, string $field, array $ids): void
+    {
+        if ($ids === []) {
+            return;
+        }
+
+        $expr = DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', $field);
+
+        if (count($ids) === 1) {
+            $query->whereRaw("{$expr} = ?", [$ids[0]]);
+
+            return;
+        }
+
+        $query->whereIn(DB::raw($expr), $ids);
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Builder<Document>|\Illuminate\Database\Query\Builder  $query
+     * @param  list<string>  $ids
+     */
+    private function applyAcademicDimensionOr($query, string $field, array $ids): void
+    {
+        if ($ids === []) {
+            return;
+        }
+
+        $expr = DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', $field);
+
+        if (count($ids) === 1) {
+            $query->orWhereRaw("{$expr} = ?", [$ids[0]]);
+
+            return;
+        }
+
+        $query->orWhereIn(DB::raw($expr), $ids);
     }
 
     /**

@@ -12,7 +12,9 @@ use App\DTOs\Documents\CreateDocumentSnapshotDto;
 use App\DTOs\Documents\CreationOptionDto;
 use App\DTOs\Documents\DeleteDocumentBlockDto;
 use App\DTOs\Documents\DocumentDto;
+use App\DTOs\Documents\DocumentAcademicListFilter;
 use App\DTOs\Documents\DocumentFilterDto;
+use App\DTOs\Users\JwtProfileDto;
 use App\DTOs\Documents\DocumentMigrationPayloadDto;
 use App\DTOs\Documents\DocumentReviewDto;
 use App\DTOs\Documents\DocumentShareResultDto;
@@ -42,9 +44,11 @@ use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Services\Concerns\NotifiesOwner;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
+use App\Services\Contracts\UserProfileServiceInterface;
 use App\Support\AcademicScopeContext;
 use App\Support\AcademicScopeNormalizer;
 use App\Support\CloneDeadlinePolicy;
+use App\Support\DocumentAcademicListFilterResolver;
 use App\Support\DocumentReviewModeResolver;
 use App\Support\ReviewValidationNotificationRecipients;
 use App\Support\VersionSubmissionChangelog;
@@ -84,6 +88,7 @@ class DocumentService implements DocumentServiceInterface
         private readonly DocumentReviewerResolutionService $reviewerResolution,
         private readonly DocumentPresentationService $presentation,
         private readonly DocumentMigrationService $migration,
+        private readonly DocumentAcademicListFilterResolver $academicListFilterResolver,
     ) {}
 
     /**
@@ -660,8 +665,14 @@ class DocumentService implements DocumentServiceInterface
         DocumentFilterDto $filter,
         string $viewerId,
         ?callable $beforeMap = null,
+        ?JwtProfileDto $jwtProfile = null,
     ): PaginatedDto {
-        $paginator = $this->documentRepository->paginate($filter);
+        $academicFilter = $this->academicListFilterResolver->resolve(
+            $filter,
+            $viewerId,
+            $jwtProfile ?? JwtProfileDto::fromArray(['id' => $viewerId]),
+        );
+        $paginator = $this->documentRepository->paginate($filter, $academicFilter);
         /** @var Collection<int, Document> $documents */
         $documents = collect($paginator->items());
 
