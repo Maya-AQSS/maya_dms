@@ -64,6 +64,7 @@ function seedDocumentForMutation(string $ownerId): string
         'description' => null,
         'visibility_level' => TemplateVisibilityLevel::Global->value,
         'delivery_deadline' => now()->addWeek(),
+        'document_delivery_deadline' => now()->addWeeks(2),
         'created_by' => $ownerId,
         'status' => 'published',
         'review_stages' => 0,
@@ -108,7 +109,6 @@ it('denies document store without document.create', function () {
     $this->postJson('/api/v1/documents', [
         'title' => 'Nueva programación',
         'process_id' => '00000000-0000-0000-0000-000000000001',
-        'delivery_deadline' => now()->addWeek()->toDateString(),
         'template_version_id' => (string) Str::uuid(),
     ])->assertForbidden();
 });

@@ -42,7 +42,7 @@ export function ProcesosPage() {
   const activeTab: Tab =
     urlTab === 'documents' || urlTab === 'templates'
       ? urlTab
-      : (locationState?.tab ?? 'templates');
+      : (locationState?.tab ?? 'documents');
   const setActiveTab = (tab: Tab) => {
     setSearchParams(
       (prev) => {
@@ -122,11 +122,11 @@ export function ProcesosPage() {
         }
         meta={
           <div className="flex gap-1 border-b border-ui-border dark:border-ui-dark-border">
-            <button type="button" onClick={() => setActiveTab('templates')} className={TAB_CLASS(activeTab === 'templates')}>
-              Plantillas
-            </button>
             <button type="button" onClick={() => setActiveTab('documents')} className={TAB_CLASS(activeTab === 'documents')}>
               Documentos
+            </button>
+            <button type="button" onClick={() => setActiveTab('templates')} className={TAB_CLASS(activeTab === 'templates')}>
+              Plantillas
             </button>
           </div>
         }

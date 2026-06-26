@@ -18,6 +18,8 @@ readonly class UpdateTemplateDto
         public bool $setVisibilityLevel = false,
         public ?string $deliveryDeadline = null,
         public bool $setDeliveryDeadline = false,
+        public ?string $documentDeliveryDeadline = null,
+        public bool $setDocumentDeliveryDeadline = false,
         public ?string $studyTypeId = null,
         public bool $setStudyTypeId = false,
         public ?string $studyId = null,

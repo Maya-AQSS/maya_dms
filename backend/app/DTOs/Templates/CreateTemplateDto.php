@@ -11,6 +11,7 @@ readonly class CreateTemplateDto
         public ?string $description,
         public string $visibilityLevel,
         public ?string $deliveryDeadline,
+        public ?string $documentDeliveryDeadline,
         public ?string $studyTypeId,
         public ?string $studyId,
         public ?string $moduleId,

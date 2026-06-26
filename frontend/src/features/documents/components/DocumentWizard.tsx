@@ -372,6 +372,11 @@ export function DocumentWizard({
   }, [templateId, documentId]);
 
   useEffect(() => {
+    if (documentId || !template?.document_delivery_deadline) return;
+    setDeliveryDeadline(dateIsoToInput(template.document_delivery_deadline));
+  }, [documentId, template?.document_delivery_deadline, setDeliveryDeadline]);
+
+  useEffect(() => {
     void reload();
   }, [reload]);
 
@@ -419,7 +424,7 @@ export function DocumentWizard({
       setCompletedSteps([]);
       return;
     }
-    // Si es borrador pero le falta la fecha límite, forzamos paso de propiedades
+    // Si es borrador pero le falta la fecha límite (heredada de plantilla), forzamos paso de propiedades
     if (!detail.delivery_deadline) {
       setStep('properties');
       setCompletedSteps([]);
@@ -1115,7 +1120,6 @@ export function DocumentWizard({
             study_id: studyId || undefined,
             module_id: moduleId || undefined,
             team_id: teamId || undefined,
-            delivery_deadline: deliveryDeadline || null,
           });
 
           // Navigate to the editor route with the new ID
@@ -1135,7 +1139,6 @@ export function DocumentWizard({
           // Edit Mode: Update existing document
           const updated = await updateDocument(documentId, {
             title: title.trim(),
-            delivery_deadline: deliveryDeadline || null,
             study_type_id: studyTypeId || undefined,
             study_id: studyId || undefined,
             module_id: moduleId || undefined,
@@ -1195,7 +1198,6 @@ export function DocumentWizard({
             study_id: studyId || undefined,
             module_id: moduleId || undefined,
             team_id: teamId || undefined,
-            delivery_deadline: deliveryDeadline || null,
             migrated_blocks: buildMigratedBlocks(),
           });
 

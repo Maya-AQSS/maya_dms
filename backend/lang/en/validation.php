@@ -161,6 +161,8 @@ return [
         'new_version_state' => 'Only a published template can move to draft for a new version.',
         'name_required' => 'The template name is required.',
         'deadline_required' => 'The template deadline is required.',
+        'document_deadline_required' => 'The document validation deadline is required on the template.',
+        'document_deadline_before_template' => 'The document deadline cannot be earlier than the template validation deadline.',
         'visibility_required' => 'The template visibility is required.',
     ],
 

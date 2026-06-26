@@ -250,7 +250,6 @@ interface DocumentServiceInterface
         string $creatorId,
         string $processId,
         ?string $templateVersionId = null,
-        ?string $deliveryDeadline = null,
         ?callable $beforeMap = null,
     ): DocumentDto;
 

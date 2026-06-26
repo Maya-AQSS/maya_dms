@@ -61,7 +61,7 @@ class ListTemplatesRequest extends PaginatedFilterRequest
      */
     protected function allowedSortFields(): array
     {
-        return ['updated_at', 'created_at', 'name', 'delivery_deadline'];
+        return ['updated_at', 'created_at', 'name', 'delivery_deadline', 'document_delivery_deadline'];
     }
 
     /**

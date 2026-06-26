@@ -31,7 +31,7 @@ class UpdateDocumentRequest extends FormRequest
     {
         return [
             'title' => ['sometimes', 'filled', 'string', 'max:255'],
-            'delivery_deadline' => ['sometimes', 'date', 'after_or_equal:today'],
+            'delivery_deadline' => ['prohibited'],
             'study_type_id' => [
                 'sometimes', 'nullable', 'string', 'max:255',
                 function (string $attribute, mixed $value, \Closure $fail): void {

@@ -119,6 +119,7 @@
   "fields": {
     "visibility": "Visibilitat",
     "deadline": "Termini d'entrega",
+    "documentDeadline": "Data límit de validació del document",
     "theme": "Theme aplicat",
     "linking": "Vinculació",
     "module": "Mòdul",

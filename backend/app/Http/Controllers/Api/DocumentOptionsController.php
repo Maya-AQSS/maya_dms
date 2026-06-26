@@ -74,7 +74,6 @@ class DocumentOptionsController extends Controller
             $userId,
             $request->validated('process_id'),
             $request->validated('template_version_id') ?? null,
-            $request->validated('delivery_deadline'),
             function (Document $model) use ($request, $userId): void {
                 $this->attachCanCloneMeta($model, $request);
                 $this->applyEmbeddedTeamToDocument($model, $userId);

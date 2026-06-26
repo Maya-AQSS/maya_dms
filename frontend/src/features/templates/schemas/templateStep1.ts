@@ -3,6 +3,26 @@ import type { TemplateVisibilityLevel } from '../../../types/templates'
 
 const VISIBILITY_VALUES = ['personal', 'global', 'study_type', 'study', 'module', 'team'] as const
 
+function validateFutureDeadline(value: string, path: string, ctx: z.RefinementCtx, messageRequired: string) {
+  if (!value) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: [path],
+      message: messageRequired,
+    })
+    return
+  }
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  if (new Date(value) < today) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: [path],
+      message: 'La fecha no puede ser anterior a hoy.',
+    })
+  }
+}
+
 export const templateStep1Schema = z
   .object({
     name: z
@@ -12,6 +32,7 @@ export const templateStep1Schema = z
     description: z.string(),
     visibility: z.enum(VISIBILITY_VALUES),
     deliveryDeadline: z.string(),
+    documentDeliveryDeadline: z.string(),
     studyTypeId: z.string(),
     studyId: z.string(),
     moduleId: z.string(),
@@ -36,21 +57,23 @@ export const templateStep1Schema = z
     if (data.visibility === 'team' && !data.teamId) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['teamId'], message: 'Este campo es obligatorio' })
     }
-    if (!data.deliveryDeadline) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['deliveryDeadline'],
-        message: 'El plazo de entrega es obligatorio.',
-      })
-    } else {
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      const selected = new Date(data.deliveryDeadline)
-      if (selected < today) {
+    validateFutureDeadline(data.deliveryDeadline, 'deliveryDeadline', ctx, 'El plazo de validación de la plantilla es obligatorio.')
+    validateFutureDeadline(
+      data.documentDeliveryDeadline,
+      'documentDeliveryDeadline',
+      ctx,
+      'La fecha límite de validación del documento es obligatoria.',
+    )
+    if (data.deliveryDeadline && data.documentDeliveryDeadline) {
+      const templateDate = new Date(data.deliveryDeadline)
+      const documentDate = new Date(data.documentDeliveryDeadline)
+      templateDate.setHours(0, 0, 0, 0)
+      documentDate.setHours(0, 0, 0, 0)
+      if (documentDate < templateDate) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ['deliveryDeadline'],
-          message: 'La fecha no puede ser anterior a hoy.',
+          path: ['documentDeliveryDeadline'],
+          message: 'La fecha del documento no puede ser anterior a la de validación de la plantilla.',
         })
       }
     }
@@ -61,6 +84,7 @@ export type TemplateStep1Input = {
   description: string
   visibility: TemplateVisibilityLevel
   deliveryDeadline: string
+  documentDeliveryDeadline: string
   studyTypeId: string
   studyId: string
   moduleId: string
@@ -75,6 +99,7 @@ export const emptyTemplateStep1: TemplateStep1Input = {
   description: '',
   visibility: 'personal',
   deliveryDeadline: '',
+  documentDeliveryDeadline: '',
   studyTypeId: '',
   studyId: '',
   moduleId: '',

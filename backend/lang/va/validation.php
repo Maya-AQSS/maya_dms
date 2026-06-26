@@ -161,6 +161,8 @@ return [
         'new_version_state' => 'Només una plantilla publicada pot passar a esborrany per a una nova versió.',
         'name_required' => 'El nom de la plantilla és obligatori.',
         'deadline_required' => 'La data d\'entrega de la plantilla és obligatòria.',
+        'document_deadline_required' => 'La data límit de validació del document és obligatòria a la plantilla.',
+        'document_deadline_before_template' => 'La data límit del document no pot ser anterior a la de validació de la plantilla.',
         'visibility_required' => 'La visibilitat de la plantilla és obligatòria.',
     ],
 

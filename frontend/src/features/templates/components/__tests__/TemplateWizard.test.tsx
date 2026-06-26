@@ -153,6 +153,7 @@ describe('TemplateWizard Integration', () => {
     description: null,
     visibility_level: 'personal',
     delivery_deadline: '2099-01-01T00:00:00Z',
+    document_delivery_deadline: '2099-06-01T00:00:00Z',
     study_type_id: null,
     study_id: null,
     module_id: null,
@@ -227,8 +228,12 @@ describe('TemplateWizard Integration', () => {
     const deadlineInput = screen.getByLabelText(/Plazo de entrega/i);
     fireEvent.change(deadlineInput, { target: { value: '2099-01-01' } });
 
+    const documentDeadlineInput = screen.getByLabelText(/Fecha límite de validación del documento/i);
+    fireEvent.change(documentDeadlineInput, { target: { value: '2099-06-01' } });
+
     await waitFor(() => {
       expect((deadlineInput as HTMLInputElement).value).toBe('2099-01-01');
+      expect((documentDeadlineInput as HTMLInputElement).value).toBe('2099-06-01');
     });
 
     const continueBtn = screen.getByRole('button', { name: /Guardar y continuar →/ });

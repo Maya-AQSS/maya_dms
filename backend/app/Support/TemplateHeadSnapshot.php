@@ -29,6 +29,7 @@ final class TemplateHeadSnapshot
         'description',
         'visibility_level',
         'delivery_deadline',
+        'document_delivery_deadline',
         'study_type_id',
         'study_id',
         'module_id',
@@ -51,14 +52,8 @@ final class TemplateHeadSnapshot
         if ($visibility instanceof TemplateVisibilityLevel) {
             $visibility = $visibility->value;
         }
-        $deadline = $r['delivery_deadline'] ?? null;
-        if ($deadline instanceof \DateTimeInterface) {
-            $deadline = $deadline->format('Y-m-d H:i:s');
-        } elseif (is_string($deadline)) {
-            $deadline = $deadline;
-        } else {
-            $deadline = null;
-        }
+        $deadline = self::normalizeDeadlineForSnapshot($r['delivery_deadline'] ?? null);
+        $documentDeadline = self::normalizeDeadlineForSnapshot($r['document_delivery_deadline'] ?? null);
 
         return [
             self::JSON_TEMPLATE_KEY => [
@@ -68,6 +63,7 @@ final class TemplateHeadSnapshot
                 'description' => $r['description'] ?? null,
                 'visibility_level' => (string) $visibility,
                 'delivery_deadline' => $deadline,
+                'document_delivery_deadline' => $documentDeadline,
                 'study_type_id' => $r['study_type_id'] ?? null,
                 'study_id' => $r['study_id'] ?? null,
                 'module_id' => $r['module_id'] ?? null,
@@ -171,7 +167,7 @@ final class TemplateHeadSnapshot
             $template = [];
         }
         foreach ($updates as $k => $v) {
-            if ($v === null && ! in_array($k, ['description', 'delivery_deadline', 'study_type_id', 'study_id', 'module_id', 'team_id'], true)) {
+            if ($v === null && ! in_array($k, ['description', 'delivery_deadline', 'document_delivery_deadline', 'study_type_id', 'study_id', 'module_id', 'team_id'], true)) {
                 continue;
             }
             $template[$k] = $v;

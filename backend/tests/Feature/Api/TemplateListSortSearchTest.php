@@ -109,6 +109,18 @@ it('sorts by delivery_deadline ascending with nulls last', function () {
     expect($ids)->toBe([$soon, $late, $noDeadline]);
 });
 
+it('sorts by document_delivery_deadline ascending with nulls last', function () {
+    $noDeadline = makeOwnTemplate('Sin plazo doc', ['document_delivery_deadline' => null]);
+    $late = makeOwnTemplate('Tarde doc', ['document_delivery_deadline' => now()->addDays(20)]);
+    $soon = makeOwnTemplate('Pronto doc', ['document_delivery_deadline' => now()->addDays(2)]);
+
+    $ids = $this->getJson('/api/v1/templates?sort_by=document_delivery_deadline&sort_dir=asc')
+        ->assertOk()
+        ->json('data.*.id');
+
+    expect($ids)->toBe([$soon, $late, $noDeadline]);
+});
+
 it('searches templates by template name (accent/case insensitive)', function () {
     $match = makeOwnTemplate('Programación Didáctica');
     makeOwnTemplate('Memoria Final');

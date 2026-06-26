@@ -258,7 +258,6 @@ export async function createDocumentFromModule(payload: {
   module_id: string;
   process_id: string;
   template_version_id?: string;
-  delivery_deadline?: string | null;
 }): Promise<Document> {
   const body = await apiFetchJson<CreateFromModuleResponse>('documents/create-from-module', {
     method: 'POST',
@@ -282,7 +281,6 @@ export async function createDocument(payload: {
   module_id?: string | null;
   team_id?: string | null;
   template_version_id?: string | null;
-  delivery_deadline?: string | null;
   /** Paso de migración: contenido a precargar por template_block_id. */
   migrated_blocks?: Record<string, unknown>;
 }): Promise<Document> {
@@ -364,7 +362,6 @@ type DocumentReviewsApiResponse = { data: DocumentReview[] };
  */
 export async function updateDocument(documentId: string, payload: {
   title: string;
-  delivery_deadline?: string | null;
   study_type_id?: string | null;
   study_id?: string | null;
   module_id?: string | null;

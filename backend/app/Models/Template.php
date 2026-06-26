@@ -269,7 +269,7 @@ class Template extends Model
             'visibility_level' => $raw !== null && $raw !== ''
                 ? TemplateVisibilityLevel::from((string) $raw)
                 : TemplateVisibilityLevel::Personal,
-            'delivery_deadline' => $raw !== null && $raw !== ''
+            'delivery_deadline', 'document_delivery_deadline' => $raw !== null && $raw !== ''
                 ? Date::parse((string) $raw)
                 : null,
             'review_stages' => (int) ($raw ?? 0),

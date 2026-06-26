@@ -119,6 +119,7 @@
   "fields": {
     "visibility": "Visibilidad",
     "deadline": "Plazo de entrega",
+    "documentDeadline": "Fecha límite de validación del documento",
     "theme": "Theme aplicado",
     "linking": "Vinculación",
     "module": "Módulo",
