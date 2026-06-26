@@ -546,7 +546,7 @@ class TemplateRepository extends AbstractVersionableEntityRepository implements 
         foreach ($updates as $k => $v) {
             $out[$k] = match ($k) {
                 'visibility_level' => TemplateHeadSnapshot::normalizeVisibilityForSnapshot($v),
-                'delivery_deadline' => TemplateHeadSnapshot::normalizeDeadlineForSnapshot(
+                'delivery_deadline', 'document_delivery_deadline' => TemplateHeadSnapshot::normalizeDeadlineForSnapshot(
                     $v instanceof Carbon ? $v : $v
                 ),
                 'review_stages' => (int) $v,
