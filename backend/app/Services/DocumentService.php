@@ -540,7 +540,6 @@ class DocumentService implements DocumentServiceInterface
         string $creatorId,
         string $processId,
         ?string $templateVersionId = null,
-        ?string $deliveryDeadline = null,
         ?callable $beforeMap = null,
     ): DocumentDto {
         $options = $this->creationOptionsForModule($moduleId);
@@ -594,7 +593,7 @@ class DocumentService implements DocumentServiceInterface
             studyTypeId: $moduleContext['study_type_id'],
             studyId: $moduleContext['study_id'],
             moduleId: $moduleContext['module_id'],
-            deliveryDeadline: $deliveryDeadline,
+            deliveryDeadline: null,
             templateVersionId: $selected->templateVersionId,
         ), $beforeMap);
     }
