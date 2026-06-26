@@ -43,6 +43,7 @@ it('allows personal template create without template.create', function () {
         'name' => 'Plantilla personal',
         'visibility_level' => 'personal',
         'delivery_deadline' => now()->addWeek()->toDateString(),
+        'document_delivery_deadline' => now()->addWeeks(2)->toDateString(),
         'process_id' => '00000000-0000-0000-0000-000000000001',
     ]);
 
@@ -54,6 +55,7 @@ it('denies shared template create without template.create', function () {
         'name' => 'Plantilla global',
         'visibility_level' => 'global',
         'delivery_deadline' => now()->addWeek()->toDateString(),
+        'document_delivery_deadline' => now()->addWeeks(2)->toDateString(),
         'process_id' => '00000000-0000-0000-0000-000000000001',
     ]);
 
@@ -67,6 +69,7 @@ it('allows shared template create with template.create', function () {
         'name' => 'Plantilla global',
         'visibility_level' => 'global',
         'delivery_deadline' => now()->addWeek()->toDateString(),
+        'document_delivery_deadline' => now()->addWeeks(2)->toDateString(),
         'process_id' => '00000000-0000-0000-0000-000000000001',
     ]);
 

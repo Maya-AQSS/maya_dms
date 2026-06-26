@@ -94,7 +94,7 @@ class StoreDocumentRequest extends FormRequest
                     }
                 },
             ],
-            'delivery_deadline' => ['required', 'date', 'after_or_equal:today'],
+            'delivery_deadline' => ['prohibited'],
             'process_id' => ['required', 'uuid', 'exists:processes,id'],
             'template_version_id' => [
                 'required_without:template_id',
@@ -192,7 +192,7 @@ class StoreDocumentRequest extends FormRequest
             studyId: $this->validated('study_id') ?? null,
             moduleId: $this->validated('module_id') ?? null,
             teamId: $this->validated('team_id') ?? null,
-            deliveryDeadline: $this->validated('delivery_deadline'),
+            deliveryDeadline: null,
             templateVersionId: $templateVersionId ?? null,
             migratedBlockContent: is_array($migratedBlocks) && $migratedBlocks !== [] ? $migratedBlocks : null,
         );

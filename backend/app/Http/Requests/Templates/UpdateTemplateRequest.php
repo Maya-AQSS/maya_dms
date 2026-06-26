@@ -10,7 +10,9 @@ use App\Http\Requests\Templates\Concerns\ResolvesTemplateForAuthorization;
 use App\Http\Requests\Templates\Concerns\ValidatesTemplateAcademicScope;
 use App\Repositories\Contracts\TeamReadRepositoryInterface;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class UpdateTemplateRequest extends FormRequest
 {
@@ -56,6 +58,7 @@ class UpdateTemplateRequest extends FormRequest
             'description' => ['sometimes', 'nullable', 'string'],
             'visibility_level' => ['sometimes', Rule::enum(TemplateVisibilityLevel::class)],
             'delivery_deadline' => ['sometimes', 'required', 'date', 'after_or_equal:today'],
+            'document_delivery_deadline' => ['sometimes', 'required', 'date', 'after_or_equal:today'],
             'study_type_id' => [
                 'sometimes', 'nullable', 'string', 'max:255',
                 'required_if:visibility_level,study_type',
@@ -105,6 +108,34 @@ class UpdateTemplateRequest extends FormRequest
         ];
     }
 
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $v): void {
+            if ($v->errors()->isNotEmpty()) {
+                return;
+            }
+
+            $template = $this->resolveTemplate();
+            $templateDeadline = $this->has('delivery_deadline')
+                ? $this->input('delivery_deadline')
+                : $template->delivery_deadline;
+            $documentDeadline = $this->has('document_delivery_deadline')
+                ? $this->input('document_delivery_deadline')
+                : $template->document_delivery_deadline;
+
+            if ($templateDeadline === null || $documentDeadline === null) {
+                return;
+            }
+
+            if (Carbon::parse((string) $documentDeadline)->lt(Carbon::parse((string) $templateDeadline))) {
+                $v->errors()->add(
+                    'document_delivery_deadline',
+                    __('validation.template.document_deadline_before_template'),
+                );
+            }
+        });
+    }
+
     /**
      * Convierte los datos validados en un DTO de actualización de plantilla.
      */
@@ -121,6 +152,10 @@ class UpdateTemplateRequest extends FormRequest
                 ? ($this->input('delivery_deadline') !== null ? (string) $this->input('delivery_deadline') : null)
                 : null,
             setDeliveryDeadline: $this->has('delivery_deadline'),
+            documentDeliveryDeadline: $this->has('document_delivery_deadline')
+                ? ($this->input('document_delivery_deadline') !== null ? (string) $this->input('document_delivery_deadline') : null)
+                : null,
+            setDocumentDeliveryDeadline: $this->has('document_delivery_deadline'),
             studyTypeId: $this->input('study_type_id'),
             setStudyTypeId: $this->has('study_type_id'),
             studyId: $this->input('study_id'),

@@ -245,6 +245,13 @@ class TemplateRepository extends AbstractVersionableEntityRepository implements 
                     ->orderBy('sort_deadline_nulls', 'asc')
                     ->orderBy('sort_deadline', $dir);
                 break;
+            case 'document_delivery_deadline':
+                $expr = TemplateHeadSnapshot::jsonTemplateFieldExpression('template_head_ev', 'document_delivery_deadline');
+                $query->addSelect(DB::raw("{$expr} as sort_document_deadline"))
+                    ->addSelect(DB::raw("(CASE WHEN {$expr} IS NULL THEN 1 ELSE 0 END) as sort_document_deadline_nulls"))
+                    ->orderBy('sort_document_deadline_nulls', 'asc')
+                    ->orderBy('sort_document_deadline', $dir);
+                break;
             case 'updated_at':
             default:
                 $query->orderBy('templates.updated_at', $dir);

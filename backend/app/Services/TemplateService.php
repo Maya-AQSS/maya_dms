@@ -34,6 +34,7 @@ use App\Support\AcademicScopeNormalizer;
 use App\Support\TemplateHeadSnapshot;
 use App\Support\TemplateVersionSnapshotParser;
 use App\Support\WorkingRevisionConflictResolver;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -451,6 +452,7 @@ class TemplateService implements TemplateServiceInterface
             $dto->name,
             $dto->deliveryDeadline,
             $dto->visibilityLevel,
+            $dto->documentDeliveryDeadline,
         );
 
         return $this->toDto($this->templateRepository->create([
@@ -459,6 +461,7 @@ class TemplateService implements TemplateServiceInterface
             'description' => $dto->description,
             'visibility_level' => $dto->visibilityLevel,
             'delivery_deadline' => $dto->deliveryDeadline,
+            'document_delivery_deadline' => $dto->documentDeliveryDeadline,
             'study_type_id' => $dto->studyTypeId,
             'study_id' => $dto->studyId,
             'module_id' => $dto->moduleId,
@@ -494,6 +497,9 @@ class TemplateService implements TemplateServiceInterface
         }
         if ($dto->setDeliveryDeadline) {
             $attributes['delivery_deadline'] = $dto->deliveryDeadline;
+        }
+        if ($dto->setDocumentDeliveryDeadline) {
+            $attributes['document_delivery_deadline'] = $dto->documentDeliveryDeadline;
         }
         if ($dto->setStudyTypeId) {
             $attributes['study_type_id'] = $dto->studyTypeId;
@@ -548,6 +554,7 @@ class TemplateService implements TemplateServiceInterface
             (string) ($attributes['name'] ?? $template->name),
             $attributes['delivery_deadline'] ?? $template->delivery_deadline,
             $attributes['visibility_level'] ?? $template->visibility_level,
+            $attributes['document_delivery_deadline'] ?? $template->document_delivery_deadline,
         );
 
         $updated = $this->templateRepository->update($template, $attributes);
@@ -657,6 +664,7 @@ class TemplateService implements TemplateServiceInterface
             (string) $source->name,
             $source->delivery_deadline,
             $source->visibility_level,
+            $source->document_delivery_deadline,
         );
 
         $published = $this->resolveLatestPublishedTemplateSnapshotForClone((string) $source->id);
@@ -867,11 +875,13 @@ class TemplateService implements TemplateServiceInterface
             $nameBase = $this->cloneTemplateNameBase($kind, $templateMeta, $source);
             $cloneVisibility = $this->normalizeTemplateVisibilityLevelForClone($kind, $templateMeta, $source);
             $cloneDeliveryDeadline = $this->cloneTemplateDeliveryDeadline($kind, $templateMeta, $source);
+            $cloneDocumentDeliveryDeadline = $this->cloneTemplateDocumentDeliveryDeadline($kind, $templateMeta, $source);
             $cloneName = $nameBase.' (copia)';
             $this->assertTemplateMetadataInvariants(
                 $cloneName,
                 $cloneDeliveryDeadline,
                 $cloneVisibility,
+                $cloneDocumentDeliveryDeadline,
             );
 
             $target = $this->templateRepository->create([
@@ -880,6 +890,7 @@ class TemplateService implements TemplateServiceInterface
                 'description' => $this->cloneTemplateDescription($kind, $templateMeta, $source),
                 'visibility_level' => $cloneVisibility,
                 'delivery_deadline' => $cloneDeliveryDeadline,
+                'document_delivery_deadline' => $cloneDocumentDeliveryDeadline,
                 'study_type_id' => $this->cloneTemplateNullableFk($kind, $templateMeta, $source, 'study_type_id'),
                 'study_id' => $this->cloneTemplateNullableFk($kind, $templateMeta, $source, 'study_id'),
                 'module_id' => $this->cloneTemplateNullableFk($kind, $templateMeta, $source, 'module_id'),
@@ -941,6 +952,7 @@ class TemplateService implements TemplateServiceInterface
                 $cloneName,
                 $source->delivery_deadline,
                 $cloneVisibility,
+                $source->document_delivery_deadline,
             );
 
             $target = $this->templateRepository->create([
@@ -949,6 +961,7 @@ class TemplateService implements TemplateServiceInterface
                 'description' => $source->description,
                 'visibility_level' => $cloneVisibility,
                 'delivery_deadline' => $source->delivery_deadline,
+                'document_delivery_deadline' => $source->document_delivery_deadline,
                 'study_type_id' => $source->study_type_id,
                 'study_id' => $source->study_id,
                 'module_id' => $source->module_id,
@@ -1110,6 +1123,18 @@ class TemplateService implements TemplateServiceInterface
     }
 
     /**
+     * @param  array<string, mixed>  $templateMeta
+     */
+    private function cloneTemplateDocumentDeliveryDeadline(string $kind, array $templateMeta, Template $source): mixed
+    {
+        if ($kind === 'entity' && array_key_exists('document_delivery_deadline', $templateMeta)) {
+            return $templateMeta['document_delivery_deadline'];
+        }
+
+        return $source->document_delivery_deadline;
+    }
+
+    /**
      * Clona el valor de un FK de la plantilla.
      *
      * @param  array<string, mixed>  $templateMeta
@@ -1223,7 +1248,12 @@ class TemplateService implements TemplateServiceInterface
      * @param  Carbon|string|null  $deliveryDeadline
      * @param  TemplateVisibilityLevel|string  $visibilityLevel
      */
-    private function assertTemplateMetadataInvariants(string $name, mixed $deliveryDeadline, mixed $visibilityLevel): void
+    private function assertTemplateMetadataInvariants(
+        string $name,
+        mixed $deliveryDeadline,
+        mixed $visibilityLevel,
+        mixed $documentDeliveryDeadline,
+    ): void
     {
         if (trim($name) === '') {
             throw ValidationException::withMessages([
@@ -1234,6 +1264,20 @@ class TemplateService implements TemplateServiceInterface
         if ($deliveryDeadline === null || (is_string($deliveryDeadline) && trim($deliveryDeadline) === '')) {
             throw ValidationException::withMessages([
                 'delivery_deadline' => [__('validation.template.deadline_required')],
+            ]);
+        }
+
+        if ($documentDeliveryDeadline === null || (is_string($documentDeliveryDeadline) && trim($documentDeliveryDeadline) === '')) {
+            throw ValidationException::withMessages([
+                'document_delivery_deadline' => [__('validation.template.document_deadline_required')],
+            ]);
+        }
+
+        $templateDeadlineAt = Carbon::parse((string) $deliveryDeadline);
+        $documentDeadlineAt = Carbon::parse((string) $documentDeliveryDeadline);
+        if ($documentDeadlineAt->lt($templateDeadlineAt)) {
+            throw ValidationException::withMessages([
+                'document_delivery_deadline' => [__('validation.template.document_deadline_before_template')],
             ]);
         }
 

@@ -173,6 +173,7 @@ class TemplatePublishingService
                     'description' => $template->description,
                     'visibility_level' => TemplateHeadSnapshot::normalizeVisibilityForSnapshot($template->visibility_level),
                     'delivery_deadline' => TemplateHeadSnapshot::normalizeDeadlineForSnapshot($template->delivery_deadline),
+                    'document_delivery_deadline' => TemplateHeadSnapshot::normalizeDeadlineForSnapshot($template->document_delivery_deadline),
                     'study_type_id' => $template->study_type_id,
                     'study_id' => $template->study_id,
                     'module_id' => $template->module_id,

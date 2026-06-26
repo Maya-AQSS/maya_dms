@@ -27,6 +27,7 @@ class TemplateResource extends JsonResource
             'description' => $dto->description,
             'visibility_level' => $dto->visibilityLevel,
             'delivery_deadline' => $dto->deliveryDeadline,
+            'document_delivery_deadline' => $dto->documentDeliveryDeadline,
             'study_type_id' => $dto->studyTypeId,
             'study_id' => $dto->studyId,
             'module_id' => $dto->moduleId,

@@ -214,6 +214,12 @@ class DocumentService implements DocumentServiceInterface
         $templateMeta = is_array($ev->snapshot_data ?? null) ? ($ev->snapshot_data['template'] ?? null) : null;
         $ctx = $this->contextResolver->resolve($dto, is_array($templateMeta) ? $templateMeta : null);
 
+        $documentDeadline = $this->resolveDocumentDeliveryDeadlineForCreate(
+            is_array($templateMeta) ? $templateMeta : null,
+            $dto->templateId,
+        );
+        $this->assertDocumentMetadataInvariantsForMutation($dto->title, $documentDeadline);
+
         return $this->toDto($this->documentRepository->createDocumentWithBlocks([
             'process_id' => $dto->processId,
             'template_id' => $dto->templateId,
@@ -223,7 +229,7 @@ class DocumentService implements DocumentServiceInterface
             'study_id' => $ctx->studyId,
             'module_id' => $ctx->moduleId,
             'team_id' => $ctx->teamId,
-            'delivery_deadline' => $dto->deliveryDeadline,
+            'delivery_deadline' => $documentDeadline,
             'created_by' => $dto->createdBy,
             'owner_id' => $dto->ownerId,
             'status' => 'draft',
@@ -429,6 +435,8 @@ class DocumentService implements DocumentServiceInterface
                 'status' => [__('validation.document.edit_state')],
             ]);
         }
+
+        unset($attributes['delivery_deadline']);
 
         $merged = $this->normalizeUpdateAttributesAgainstDocumentAndTemplate($document, $attributes);
         $this->assertDocumentMetadataInvariantsForMutation(
@@ -831,6 +839,46 @@ class DocumentService implements DocumentServiceInterface
         $templateMeta = $latestPublished->snapshot_data['template'] ?? null;
 
         return is_array($templateMeta) ? $templateMeta : null;
+    }
+
+    /**
+     * Fecha límite de validación del documento: se define en la plantilla y se copia al crear.
+     *
+     * @param  array<string, mixed>|null  $publishedTemplateMeta
+     */
+    private function resolveDocumentDeliveryDeadlineForCreate(?array $publishedTemplateMeta, string $templateId): ?string
+    {
+        $raw = is_array($publishedTemplateMeta)
+            ? ($publishedTemplateMeta['document_delivery_deadline'] ?? null)
+            : null;
+
+        if ($raw === null || $raw === '') {
+            $template = $this->templateRepository->findOrFail($templateId);
+            $raw = $template->document_delivery_deadline;
+        }
+
+        $normalized = \App\Support\TemplateHeadSnapshot::normalizeDeadlineForSnapshot($raw);
+        if ($normalized === null || trim($normalized) === '') {
+            throw ValidationException::withMessages([
+                'template_id' => [__('validation.template.document_deadline_required')],
+            ]);
+        }
+
+        $templateValidationRaw = is_array($publishedTemplateMeta)
+            ? ($publishedTemplateMeta['delivery_deadline'] ?? null)
+            : null;
+        if ($templateValidationRaw === null || $templateValidationRaw === '') {
+            $template = $this->templateRepository->findOrFail($templateId);
+            $templateValidationRaw = $template->delivery_deadline;
+        }
+        $templateValidationAt = \App\Support\TemplateHeadSnapshot::normalizeDeadlineForSnapshot($templateValidationRaw);
+        if ($templateValidationAt !== null && $normalized < $templateValidationAt) {
+            throw ValidationException::withMessages([
+                'template_id' => [__('validation.template.document_deadline_before_template')],
+            ]);
+        }
+
+        return $normalized;
     }
 
     private function clearPastDeliveryDeadline(mixed $deadline): mixed

@@ -48,6 +48,7 @@ function seedPublishedTemplateWithEditableAndLocked(string $ownerId): array
         'description' => null,
         'visibility_level' => TemplateVisibilityLevel::Global->value,
         'delivery_deadline' => now()->addWeek(),
+        'document_delivery_deadline' => now()->addWeeks(2),
         'created_by' => $ownerId,
         'status' => 'published',
         'review_stages' => 0,
@@ -101,7 +102,6 @@ it('applies migrated content to editable blocks and ignores locked blocks', func
         'template_version_id' => $s['template_version_id'],
         'process_id' => '00000000-0000-0000-0000-000000000001',
         'title' => 'Nueva programación',
-        'delivery_deadline' => now()->addWeek()->toDateString(),
         'migrated_blocks' => [
             $s['block_editable'] => $migrated,
             $s['block_locked'] => $lockedAttempt,
@@ -133,7 +133,6 @@ it('creates editable block empty when no migrated content is provided', function
         'template_version_id' => $s['template_version_id'],
         'process_id' => '00000000-0000-0000-0000-000000000001',
         'title' => 'Nueva programación',
-        'delivery_deadline' => now()->addWeek()->toDateString(),
     ])->assertCreated();
 
     $documentId = $res->json('data.id') ?? $res->json('data.document.id');

@@ -161,6 +161,8 @@ return [
         'new_version_state' => 'Solo una plantilla publicada puede pasar a borrador para una nueva versión.',
         'name_required' => 'El nombre de la plantilla es obligatorio.',
         'deadline_required' => 'La fecha de entrega de la plantilla es obligatoria.',
+        'document_deadline_required' => 'La fecha límite de validación del documento es obligatoria en la plantilla.',
+        'document_deadline_before_template' => 'La fecha límite del documento no puede ser anterior a la de validación de la plantilla.',
         'visibility_required' => 'La visibilidad de la plantilla es obligatoria.',
     ],
 
