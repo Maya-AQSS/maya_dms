@@ -30,6 +30,8 @@ export type DocumentListFilters = {
   study_type_id?: string;
   study_id?: string;
   module_id?: string;
+  /** Usa el contexto académico del perfil (unión OR si hay varios scopes). */
+  profile_academic_default?: string | boolean;
   /** Columna de ordenación server-side (whitelist backend: title, status, delivery_deadline, created_at, updated_at). */
   sort_by?: string;
   sort_dir?: 'asc' | 'desc';
@@ -64,6 +66,9 @@ function buildDocumentsListQuery(filters: DocumentListFilters): string {
   if (filters.study_type_id) q.set('study_type_id', filters.study_type_id);
   if (filters.study_id) q.set('study_id', filters.study_id);
   if (filters.module_id) q.set('module_id', filters.module_id);
+  if (filters.profile_academic_default === true || filters.profile_academic_default === '1') {
+    q.set('profile_academic_default', '1');
+  }
   if (filters.sort_by) q.set('sort_by', filters.sort_by);
   if (filters.sort_dir) q.set('sort_dir', filters.sort_dir);
   if (filters.favorite_ids) q.set('favorite_ids', filters.favorite_ids);

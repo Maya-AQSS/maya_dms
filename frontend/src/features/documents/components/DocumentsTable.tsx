@@ -18,6 +18,7 @@ import type { Document, DocumentStatus } from '../../../types/documents';
 import type { TemplateVisibilityLevel } from '../../../types/templates';
 import { useFavoritesIds } from '../../../hooks/useFavoritesIds';
 import { FavoriteInlineMark } from '../../../components/FavoriteInlineMark';
+import { CascadeFilters } from '../../../components/CascadeFilters';
 import { useUserProfile } from '../../../features/user-profile';
 import { canOpenDocument as canOpenDocumentShared } from '../../../permissions';
 import { useHierarchy } from '../../../features/hierarchy';
@@ -63,6 +64,9 @@ export function DocumentsTable({ processId }: Props = {}) {
     filters,
     setFilter,
     resetFilters,
+    cascadeFilters,
+    setCascadeFilters,
+    activeAcademicFilterLabels,
     filtersActiveCount,
     page,
     onPageChange,
@@ -335,6 +339,26 @@ export function DocumentsTable({ processId }: Props = {}) {
                 <option value="favorites">{t('documents:table.favoritesFilter.onlyFavorites')}</option>
               </Select>
             </FilterField>
+            <div className="col-span-full pt-2 border-t border-ui-border/50 dark:border-ui-dark-border/50">
+              {activeAcademicFilterLabels.length > 0 && (
+                <FilterField label={t('documents:table.filters.academicContext', { defaultValue: 'Contexto académico activo' })}>
+                  <div className="flex flex-wrap gap-2">
+                    {activeAcademicFilterLabels.map((label) => (
+                      <span
+                        key={label}
+                        className="inline-flex items-center rounded-full bg-odoo-purple/10 px-2.5 py-1 text-xs font-medium text-odoo-purple dark:text-odoo-dark-purple"
+                      >
+                        {label}
+                      </span>
+                    ))}
+                  </div>
+                </FilterField>
+              )}
+              <CascadeFilters
+                value={cascadeFilters}
+                onFilterChange={setCascadeFilters}
+              />
+            </div>
           </>
         }
       />

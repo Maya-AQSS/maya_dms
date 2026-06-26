@@ -76,8 +76,9 @@ export function DocumentsContent() {
   const table = useServerDocumentsTable();
   const {
     filters,
-    setFilters,
     resetFilters,
+    cascadeFilters,
+    setCascadeFilters,
     filtersActiveCount,
     sortBy,
     onSortChange,
@@ -94,11 +95,7 @@ export function DocumentsContent() {
   } = table;
 
   // Puente entre el filtro en cascada (camelCase) y los params del backend (snake_case).
-  const activeFilters: CascadeDocumentFilters = {
-    studyTypeId: filters.study_type_id,
-    studyId: filters.study_id,
-    moduleId: filters.module_id,
-  };
+  const activeFilters = cascadeFilters;
   const selectedModuleId = activeFilters.moduleId;
 
   const [creationOptions, setCreationOptions] = useState<DocumentCreationOption[]>([]);
@@ -255,12 +252,7 @@ export function DocumentsContent() {
 
   const handleClear = () => resetFilters();
 
-  const handleChange = (next: CascadeDocumentFilters) =>
-    setFilters({
-      study_type_id: next.studyTypeId,
-      study_id: next.studyId,
-      module_id: next.moduleId,
-    });
+  const handleChange = (next: CascadeDocumentFilters) => setCascadeFilters(next);
 
   const handleCreateFromModule = async (templateVersionId?: string, processId?: string) => {
     if (!selectedModuleId) return;
