@@ -17,9 +17,10 @@ use Illuminate\Support\Facades\DB;
  * plantilla y materializados al enviar a revisión; no hay asignación manual en documento).
  *
  * LISTADO Y DETALLE (catálogo):
- * - `document.index`: listar documentos; el global scope `user_access` acota filas visibles.
+ * - `document.index`: listar documentos; el global scope `user_access` aplica
+ *   {@see Document::applyCatalogAccessFilter()} (publicados no personales cross-context).
  * - `document.show`: ver detalle; creador y titular no requieren este slug; revisores
- *   asignados en `in_review` tampoco.
+ *   asignados en `in_review` tampoco. El resto usa el filtro de catálogo en {@see self::view()}.
  *
  * MUTACIONES (catálogo):
  * - `document.create`: crear programaciones (y anclar a plantilla visible).
@@ -42,7 +43,7 @@ class DocumentPolicy
     ) {}
 
     /**
-     * Listar documentos: requiere `document.index`; el scope `user_access` acota filas visibles.
+     * Listar documentos: requiere `document.index`; el scope `user_access` aplica visibilidad de catálogo.
      */
     public function viewAny(JwtUser $user): bool
     {
@@ -53,20 +54,43 @@ class DocumentPolicy
      * Ver detalle de un documento.
      *
      * Creador, titular y revisor asignado en `in_review` no requieren `document.show`.
-     * El resto necesita `document.show` y visibilidad vía scope académico (o snapshot publicado).
+     * El resto necesita `document.show` y visibilidad de catálogo
+     * ({@see Document::applyCatalogAccessFilter()}).
      * `document.delete` no amplía la vista: solo autoriza borrar en {@see self::delete}.
      *
      * Los controladores que resuelven sin scope deben delegar aquí tras comprobar snapshot.
      */
     public function view(JwtUser $user, Document $document): bool
     {
-        // Admin de SOLO LECTURA: ve el detalle de cualquier documento. Este atajo vive
-        // únicamente en la ruta de lectura; las acciones de escritura usan viewScoped().
         if ($user->canReadAll()) {
             return true;
         }
 
-        return $this->viewScoped($user, $document);
+        $userId = (string) $user->getAuthIdentifier();
+
+        if ($this->isTitular($user, $document)) {
+            return true;
+        }
+
+        $documentId = $document->getKey();
+        if ($documentId !== null && $documentId !== ''
+            && $document->status === 'in_review'
+            && DB::table('document_reviews')
+                ->where('document_id', $documentId)
+                ->where('reviewer_id', $userId)
+                ->exists()) {
+            return true;
+        }
+
+        if (! $user->hasPermission('document.show')) {
+            return false;
+        }
+
+        return Document::query()
+            ->withoutGlobalScope('user_access')
+            ->where(fn ($q) => Document::applyCatalogAccessFilter($q, $userId))
+            ->whereKey($documentId)
+            ->exists();
     }
 
     /**
@@ -101,9 +125,9 @@ class DocumentPolicy
             return false;
         }
 
-        // Catálogo visible (scope user_access): compartidos en contexto académico; excluye
-        // documentos personales ajenos. Se reaplica el filtro real con el scope global
-        // desactivado para que el bypass de admin-lectura no amplíe la visibilidad de escritura.
+        // Escritura: compartidos y publicados con solapamiento académico. Reaplica el filtro
+        // acotado con el scope global desactivado para que el bypass de admin-lectura no
+        // amplíe la visibilidad de mutación.
         return Document::query()
             ->withoutGlobalScope('user_access')
             ->where(fn ($q) => Document::applyUserAccessFilter($q, $userId))

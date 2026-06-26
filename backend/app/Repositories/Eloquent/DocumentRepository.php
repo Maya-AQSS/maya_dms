@@ -460,8 +460,7 @@ class DocumentRepository extends AbstractVersionableEntityRepository implements 
     /**
      * Listado paginado de documentos visibles para el usuario actual con filtros de dominio.
      *
-     * El scope global `user_access` del modelo garantiza que solo se devuelven
-     * documentos accesibles para el usuario autenticado.
+     * El scope global `user_access` aplica {@see Document::applyCatalogAccessFilter()}.
      *
      * @return LengthAwarePaginator<Document>
      */

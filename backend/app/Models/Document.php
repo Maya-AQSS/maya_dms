@@ -11,6 +11,7 @@ use App\Models\Concerns\HasPresentationAttributes;
 use App\Observers\DocumentObserver;
 use App\Policies\DocumentPolicy;
 use App\Support\DocumentHeadSnapshot;
+use App\Support\TemplateHeadSnapshot;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -39,7 +40,7 @@ class Document extends Model
      * - Compartidos en document_shares.
      * - Revisor asignado mientras el documento esté en ciclo activo (status = 'in_review'
      *   y existe fila en document_reviews para ese usuario, en cualquier estado).
-     * - Documentos publicados visibles en el mismo ámbito académico del usuario en BD.
+     * - Documentos publicados con plantilla no personal (catálogo cross-context).
      *
      * Requiere JOIN `entity_versions` alias {@code document_head_ev} vía {@see static::scopeJoinHeadDocumentEntityVersion}.
      */
@@ -71,14 +72,50 @@ class Document extends Model
                 return;
             }
 
-            self::applyUserAccessFilter($builder, $userId);
+            self::applyCatalogAccessFilter($builder, $userId);
         });
 
         static::registerEntityVersionHeadHook();
     }
 
     /**
-     * Filtro real de visibilidad por usuario (owner/creador/share/revisor/publicado).
+     * Visibilidad de catálogo (listado y lectura): titular, compartidos, revisor en
+     * revisión y publicados con plantilla no personal (sin solapamiento académico).
+     *
+     * Requiere JOIN `entity_versions` alias {@code document_head_ev}.
+     */
+    public static function applyCatalogAccessFilter(Builder $builder, string $userId): void
+    {
+        $builder->where(function (Builder $outer) use ($userId) {
+            $outer->where('document_head_ev.snapshot_data->document->owner_id', $userId)
+                ->orWhere(function (Builder $author) use ($userId) {
+                    // Titular operativo sin owner_id persistido (legacy): creador mientras owner vacío.
+                    $author->where('document_head_ev.snapshot_data->document->created_by', $userId)
+                        ->where('document_head_ev.snapshot_data->document->owner_id', '');
+                })
+                ->orWhereExists(function ($subQuery) use ($userId) {
+                    $subQuery->select(DB::raw(1))
+                        ->from('document_shares')
+                        ->whereColumn('document_shares.document_id', 'documents.id')
+                        ->where('user_id', $userId);
+                })
+                ->orWhere(function ($q) use ($userId) {
+                    $q->where('document_head_ev.snapshot_data->document->status', 'in_review')
+                        ->whereExists(function ($subQuery) use ($userId) {
+                            $subQuery->select(DB::raw(1))
+                                ->from('document_reviews as dr_scope')
+                                ->whereColumn('dr_scope.document_id', 'documents.id')
+                                ->where('dr_scope.reviewer_id', $userId);
+                        });
+                })
+                ->orWhere(function (Builder $pub) {
+                    self::wherePublishedNonPersonalCatalogExists($pub);
+                });
+        });
+    }
+
+    /**
+     * Filtro acotado de visibilidad (escritura): incluye solapamiento académico en publicados.
      *
      * Centralizado para que {@see DocumentPolicy::viewScoped()} pueda
      * reaplicarlo con el scope global `user_access` desactivado, garantizando que el
@@ -113,10 +150,7 @@ class Document extends Model
                         });
                 })
                 ->orWhere(function (Builder $pub) use ($userId) {
-                    // Catálogo publicado: visible aunque el head esté en draft/in_review.
-                    // El contexto se evalúa sobre el snapshot publicado (pub_snap), no
-                    // sobre el head en curso, para no ocultar la versión publicada cuando
-                    // alguien está editando una nueva versión.
+                    // Publicado ajeno: exige solapamiento académico sobre el snapshot publicado.
                     $pub->whereExists(function ($sub) use ($userId) {
                         $sub->select(DB::raw(1))
                             ->from('entity_versions as pub_snap')
@@ -129,6 +163,34 @@ class Document extends Model
                             });
                     });
                 });
+        });
+    }
+
+    /**
+     * Existe versión publicada y la plantilla asociada no es de visibilidad personal.
+     */
+    private static function wherePublishedNonPersonalCatalogExists(Builder $query): void
+    {
+        $visibilityExpr = TemplateHeadSnapshot::jsonTemplateFieldExpression('catalog_tpl_head_ev', 'visibility_level');
+
+        $query->whereExists(function ($sub) {
+            $sub->select(DB::raw(1))
+                ->from('entity_versions as pub_snap')
+                ->whereColumn('pub_snap.versionable_id', 'documents.id')
+                ->where('pub_snap.versionable_type', self::class)
+                ->where('pub_snap.version_number', '>', 0)
+                ->where('pub_snap.status', 'published');
+        })->whereExists(function ($sub) use ($visibilityExpr) {
+            $sub->select(DB::raw(1))
+                ->from('templates as catalog_tpl')
+                ->join(
+                    'entity_versions as catalog_tpl_head_ev',
+                    'catalog_tpl_head_ev.id',
+                    '=',
+                    'catalog_tpl.head_entity_version_id'
+                )
+                ->whereColumn('catalog_tpl.id', 'documents.template_id')
+                ->whereRaw("{$visibilityExpr} != 'personal'");
         });
     }
 

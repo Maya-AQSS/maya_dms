@@ -64,19 +64,22 @@ class DocumentPolicyTest extends TestCase
         $this->assertFalse($this->policy->view($user, $doc));
     }
 
-    public function test_view_denied_for_document_delete_outside_academic_context_even_with_show(): void
+    public function test_view_allows_global_published_without_academic_overlap_when_show(): void
     {
         $user = $this->makeJwtUser(
             '22222222-2222-2222-2222-222222222222',
             ['document.delete', 'document.show'],
         );
+        auth()->setUser($user);
         $doc = $this->makeDocument(
             createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
             ownerId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
             status: 'published',
+            visibilityLevel: TemplateVisibilityLevel::Global->value,
         );
+        $this->seedPublishedDocumentSnapshot($doc, 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', (string) Str::uuid());
 
-        $this->assertFalse($this->policy->view($user, $doc));
+        $this->assertTrue($this->policy->view($user, $doc));
     }
 
     public function test_view_denied_for_foreign_personal_document_with_published_snapshot(): void
