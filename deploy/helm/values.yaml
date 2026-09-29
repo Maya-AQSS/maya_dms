@@ -1,346 +1,160 @@
-# Maya DMS — values de PRODUCCIÓN (placeholders, sin credenciales reales).
+# maya-dms — values de producción sobre el library chart maya-common (0.2.0).
+# Solo lo que difiere de los defaults de maya-common (charts/maya-common/values.yaml).
 #
-# El chart se sobreescribe en deploy con: --set image.tag=<sha> y --set-file/--set
-# para los secrets desde un archivo fuera de git (o con Sealed Secrets).
-
-# Nombres y release.
-nameOverride: ""
-fullnameOverride: "maya-dms"
-serviceName: "dms"          # usado en hosts e identificadores
-namespace: "maya-dms"
+# Secretos: Vault, ruta secret/data/maya-dms con las claves de vault.keys
+# (REDIS_PASSWORD = SESSION_PASS de secret/data/redis; FDW_*_PASSWORD = contraseña
+# del rol lector maya_fdw_reader). image.tag lo fija helmfile (misma versión que el chart).
+# Hosts: dms.ceedcv.es (SPA) y api.dms.ceedcv.es (API y WebSocket en /app).
 
 image:
-  # Registry de producción según IaC (rama helm): ingress registry.ceedcv.es →
-  # backend 172.29.71.240:5000. Los nodos k3s lo resuelven vía registries.yaml.
-  registry: "registry.ceedcv.es"
-  repository: "maya"          # imagenes: <registry>/<repository>/maya-dms-{backend,frontend}
-  # Tag por defecto vacío: el deploy DEBE pasar `--set image.tag=$(git rev-parse --short HEAD)`.
-  # `latest` con IfNotPresent provoca split-brain entre nodos (algunos cachean
-  # versiones obsoletas mientras otros pullean la nueva).
-  tag: ""
-  pullPolicy: IfNotPresent
-  # Secret para pull desde el registry. Creado fuera del chart:
-  #   kubectl -n maya-dms create secret docker-registry regcred \
-  #     --docker-server=registry.ceedcv.es --docker-username=<u> --docker-password=<t>
-  pullSecret: "regcred"
-
-# ─── Vault (inyección de secretos según IaC) ──────────────────────────────
-# El Vault Agent Injector (namespace vault-system) renderiza secret/data/maya-dms
-# en /vault/secrets/config y el entrypoint hace `source`. Requisitos operativos:
-#   1. `vault kv put secret/maya-dms APP_KEY=... DB_PASSWORD=... ...`
-#   2. El rol `vault-k8s-role` debe autorizar la SA `default` del namespace maya-dms.
-# Con vault.enabled=false se vuelve al Secret k8s clásico (secret.* de abajo).
+  registry: 10.224.237.240:5000
+  repository: maya/maya-dms
+  tag: ''
+  pullSecrets:
+  - name: regcred
 vault:
-  enabled: true
-  role: vault-k8s-role
-  secretPath: secret/data/maya-dms
-  # Claves leídas desde Vault (deben existir en secret/data/maya-dms).
   keys:
-    - APP_KEY
-    - DB_USERNAME
-    - DB_PASSWORD
-    - REDIS_PASSWORD
-    - RABBITMQ_PASSWORD
-    - KEYCLOAK_CLIENT_SECRET
-    - REVERB_APP_KEY
-    - REVERB_APP_SECRET
-    - FDW_USERS_PASSWORD
-    - FDW_USER_PERMISSIONS_PASSWORD
-
-# ─── Backend (API + WeasyPrint) ───────────────────────────────────────────────
-backend:
-  enabled: true
-  replicas: 2                  # multinodo con PVC RWX → escalable
-  containerName: maya-dms-backend
-  port: 9000                   # php-fpm fastcgi (sidecar nginx en el pod sirve HTTP)
-  resources:
-    requests:
-      # 512Mi: WeasyPrint puede consumir 400-600MB renderizando PDFs con fuentes.
-      cpu: 200m
-      memory: 512Mi
-    limits:
-      cpu: 1000m
-      memory: 768Mi
-  env:
-    CONTAINER_ROLE: "api"
-  probes:
-    liveness:
-      path: /api/v1/health/live
-      initialDelaySeconds: 10
-      periodSeconds: 15
-    readiness:
-      path: /api/v1/health/ready
-      initialDelaySeconds: 5
-      periodSeconds: 10
-  # nginx sidecar — convierte HTTP/8000 → FastCGI/9000 (php-fpm).
-  nginx:
-    image: "nginx:1.29-alpine"
-    resources:
-      requests:
-        cpu: 50m
-        memory: 32Mi
-      limits:
-        cpu: 200m
-        memory: 64Mi
-
-# ─── Frontend (React + nginx) ─────────────────────────────────────────────────
+  - APP_KEY
+  - DB_PASSWORD
+  - REDIS_PASSWORD
+  - RABBITMQ_PASSWORD
+  - REVERB_APP_KEY
+  - REVERB_APP_SECRET
+  - FDW_ODOO_PASSWORD
+  - FDW_USER_PERMISSIONS_PASSWORD
+  - FDW_NOTIFICATION_RULES_PASSWORD
+  - FDW_PERMISSIONS_PASSWORD
+config:
+  APP_NAME: Maya DMS
+  APP_URL: https://api.dms.ceedcv.es
+  BROADCAST_CONNECTION: reverb
+  CACHE_STORE: redis
+  CORS_ADDITIONAL_ORIGINS: ''
+  CORS_REGEX_DOMAIN: ceedcv.es
+  DB_CONNECTION: pgsql
+  DB_DATABASE: maya_dms_db
+  DB_HOST: 10.224.237.252
+  DB_PORT: '5432'
+  DB_USERNAME: maya_dms_user
+  EDITOR_BACKEND: tiptap
+  FDW_NOTIFICATION_RULES_DATABASE: maya_dashboard
+  FDW_NOTIFICATION_RULES_HOST: 10.224.237.252
+  FDW_NOTIFICATION_RULES_PORT: '5432'
+  FDW_NOTIFICATION_RULES_SCHEMA: public
+  FDW_NOTIFICATION_RULES_TABLE: v_notification_rules
+  FDW_NOTIFICATION_RULES_USERNAME: maya_fdw_reader
+  FDW_ODOO_DATABASE: maya_erp
+  FDW_ODOO_HOST: 10.224.237.252
+  FDW_ODOO_PORT: '5432'
+  FDW_ODOO_USERNAME: maya_fdw_reader
+  FDW_PERMISSIONS_DATABASE: maya_auth
+  FDW_PERMISSIONS_HOST: 10.224.237.252
+  FDW_PERMISSIONS_PORT: '5432'
+  FDW_PERMISSIONS_SCHEMA: public
+  FDW_PERMISSIONS_TABLE: v_dms_permissions
+  FDW_PERMISSIONS_USERNAME: maya_fdw_reader
+  FDW_USERS_CACHE_TTL: '900'
+  FDW_USERS_DATABASE: maya_erp
+  FDW_USERS_HOST: 10.224.237.252
+  FDW_USERS_PORT: '5432'
+  FDW_USERS_SCHEMA: public
+  FDW_USERS_TABLE: v_app_users
+  FDW_USERS_USERNAME: maya_fdw_reader
+  FDW_USER_PERMISSIONS_DATABASE: maya_auth
+  FDW_USER_PERMISSIONS_HOST: 10.224.237.252
+  FDW_USER_PERMISSIONS_PORT: '5432'
+  FDW_USER_PERMISSIONS_REMOTE_VIEW: v_dms_user_permissions
+  FDW_USER_PERMISSIONS_SCHEMA: public
+  FDW_USER_PERMISSIONS_USERNAME: maya_fdw_reader
+  JWKS_CACHE_TTL: '3600'
+  JWKS_URL: http://keycloak-maya-app.maya-iam.svc.cluster.local:8080/realms/CEED/protocol/openid-connect/certs
+  JWT_AUDIENCE: maya-dms
+  JWT_ISSUER: https://keycloak.ceedcv.es/realms/CEED
+  LOG_CHANNEL: stack
+  LOG_LEVEL: info
+  LOG_RABBIT_LEVEL: warning
+  LOG_STACK: stderr,rabbit
+  MAIL_MAILER: log
+  MAYA_MESSAGING_APP: maya-dms
+  QUEUE_CONNECTION: redis
+  RABBITMQ_HOST: rabbitmq-maya-app.maya-sync.svc.cluster.local
+  RABBITMQ_PORT: '5672'
+  RABBITMQ_USER: maya_dms
+  RABBITMQ_VHOST: /maya
+  REDIS_CACHE_DB: '5'
+  REDIS_CLIENT: phpredis
+  REDIS_DB: '4'
+  REDIS_HOST: redis-session-maya-app.maya-infra.svc.cluster.local
+  REDIS_PORT: '6379'
+  REVERB_APP_ID: maya-dms
+  REVERB_HOST: maya-dms-reverb
+  REVERB_PORT: '8080'
+  REVERB_SCHEME: http
+  REVERB_SERVER_HOST: 0.0.0.0
+  REVERB_SERVER_PORT: '8080'
+  SESSION_DRIVER: redis
+  SESSION_LIFETIME: '120'
+  SESSION_SAME_SITE: lax
+  TEAM_MANAGEMENT_ROLES: manager,super-admin,admin
 frontend:
-  enabled: true
-  replicas: 2
-  containerName: maya-dms-frontend
-  port: 8080                    # nginx non-root (uid 101) — no puede bind <1024
-  resources:
-    requests:
-      cpu: 50m
-      memory: 64Mi
-    limits:
-      cpu: 250m
-      memory: 128Mi
-  probes:
-    liveness:
-      path: /healthz
-      initialDelaySeconds: 5
-      periodSeconds: 15
-    readiness:
-      path: /healthz
-      initialDelaySeconds: 2
-      periodSeconds: 5
-
-# ─── Worker (queue:work RabbitMQ) ─────────────────────────────────────────────
-worker:
-  enabled: true
-  replicas: 1                  # singleton; escalar requiere idempotencia probada
-  command: "queue:work"        # informativo: el rol lo decide CONTAINER_ROLE en el entrypoint
-  resources:
-    requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: 500m
-      memory: 512Mi
   env:
-    CONTAINER_ROLE: "worker"
-
-# ─── Reverb (WebSocket) ───────────────────────────────────────────────────────
-reverb:
-  enabled: true
-  replicas: 1                  # singleton salvo scaling con Redis (no soportado aquí)
-  port: 8080
-  # 60s para drenar conexiones WS abiertas en rollout.
-  terminationGracePeriodSeconds: 60
-  resources:
-    requests:
-      cpu: 100m
-      memory: 128Mi
-    limits:
-      cpu: 500m
-      memory: 256Mi
-  env:
-    CONTAINER_ROLE: "reverb"
-
-# ─── Scheduler (deshabilitado en DMS) ────────────────────────────────────────
+    MAYA_PUBLIC_APP_NAME: Maya DMS
+    MAYA_PUBLIC_API_URL: https://api.dms.ceedcv.es/api/v1
+    MAYA_PUBLIC_KEYCLOAK_URL: https://keycloak.ceedcv.es
+    MAYA_PUBLIC_KEYCLOAK_REALM: CEED
+    MAYA_PUBLIC_KEYCLOAK_CLIENT_ID: maya-dms
+    MAYA_PUBLIC_DASHBOARD_URL: https://dashboard.ceedcv.es
+    MAYA_PUBLIC_DASHBOARD_API_URL: https://api.dashboard.ceedcv.es
+    MAYA_PUBLIC_PEER_HOST_PATTERN: subdomain-api
+    MAYA_PUBLIC_REVERB_HOST: api.dms.ceedcv.es
+    MAYA_PUBLIC_REVERB_PORT: '443'
+    MAYA_PUBLIC_REVERB_SCHEME: https
+    MAYA_PUBLIC_REVERB_AUTH_ENDPOINT: https://api.dms.ceedcv.es/api/v1/broadcasting/auth
+    MAYA_PUBLIC_REVERB_APP_KEY: CHANGE-ME
+    MAYA_CSP: 'default-src ''self''; script-src ''self''; style-src ''self'' ''unsafe-inline''; img-src ''self'' data: blob:;
+      font-src ''self'' data:; connect-src ''self'' https://api.dms.ceedcv.es https://api.dashboard.ceedcv.es https://keycloak.ceedcv.es
+      wss://api.dms.ceedcv.es; frame-src https://keycloak.ceedcv.es; frame-ancestors ''none''; base-uri ''self''; form-action
+      ''self'''
+    MAYA_PUBLIC_EDITOR_BACKEND: tiptap
 scheduler:
-  enabled: false
-
-# ─── Migración (Job helm hook pre-upgrade) ────────────────────────────────────
-migrate:
   enabled: true
-  # 3 reintentos absorben failovers transitorios de Patroni durante el upgrade.
-  backoffLimit: 3
-  resources:
-    requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: 500m
-      memory: 512Mi
-
-# ─── Almacenamiento (PVC RWX en StorageClass maya-nfs) ────────────────────────
-# Solo DMS necesita media persistente. Montado por subPath SOLO en
-# storage/app/media (backend y worker). No montar storage/framework ni
-# bootstrap/cache (cada pod escribe a su emptyDir local).
+ingress:
+  host: dms.ceedcv.es
+  apiHost: api.dms.ceedcv.es
+networkPolicy:
+  egress:
+    cidrs:
+    - cidr: 10.224.237.252/32
+      ports:
+      - 5432
+    namespaces:
+    - name: maya-infra
+      ports:
+      - 6379
+    - name: maya-sync
+      ports:
+      - 5672
+    - name: maya-iam
+      ports:
+      - 8080
+    internet: true
 storage:
   enabled: true
-  storageClass: "maya-nfs"
-  accessModes:
-    - ReadWriteMany
+  subPath: dms
   size: 20Gi
-  mountPath: /var/www/html/storage/app/media
-  # subPath aísla los uploads de DMS dentro del PVC compartido por NFS;
-  # evita colisiones si dos releases (staging/prod) acabasen apuntando al
-  # mismo export por error.
-  subPath: "dms"
-
-# ─── Ingress (Traefik + MetalLB + CA interna) ─────────────────────────────────
-ingress:
-  enabled: true
-  className: traefik
-  host: dms.ceedcv.es
-  apiHost: dms-api.ceedcv.es
-  reverbHost: dms-reverb.ceedcv.es
-  tls:
-    enabled: true
-    secretName: maya-dms-tls   # cert de la CA interna, gestionado por cert-manager o manual
-  annotations:
-    # CA interna del clúster (ClusterIssuer definido en IaC cert-manager-ca.yaml).
-    cert-manager.io/cluster-issuer: maya-internal-ca
-
-# ─── ConfigMap (no sensible) ──────────────────────────────────────────────────
-# Endpoints reales de la infra interna; los secretos van aparte.
-config:
-  APP_ENV: "production"
-  APP_DEBUG: "false"
-  APP_URL: "https://dms-api.ceedcv.es"
-  LOG_CHANNEL: "stack"
-  LOG_STACK: "daily,rabbit"
-  LOG_LEVEL: "info"
-  LOG_RABBIT_LEVEL: "warning"
-  MAYA_MESSAGING_APP: "maya-dms"
-
-  # DB (Patroni VIP) — los secretos (user/pass) los carga el Secret.
-  DB_CONNECTION: "pgsql"
-  DB_HOST: "172.29.71.252"
-  DB_PORT: "5432"
-  DB_DATABASE: "maya_dms_db"
-
-  # Redis
-  REDIS_CLIENT: "phpredis"
-  REDIS_HOST: "redis-cache-maya-app.maya-infra.svc.cluster.local"
-  REDIS_PORT: "6379"
-  REDIS_DB: "0"
-
-  # Sessions / Cache / Queue
-  CACHE_STORE: "redis"
-  QUEUE_CONNECTION: "rabbitmq"
-  SESSION_DRIVER: "redis"
-  SESSION_LIFETIME: "120"
-  SESSION_SECURE_COOKIE: "true"
-  SESSION_SAME_SITE: "lax"
-
-  # JWT / JWKS — Keycloak realm maya
-  JWKS_URL: "http://keycloak-maya-app.maya-iam.svc.cluster.local:8080/realms/maya/protocol/openid-connect/certs"
-  JWT_AUDIENCE: "maya-dms"
-  JWT_ISSUER: "https://keycloak.ceedcv.es/realms/maya"
-  JWKS_CACHE_TTL: "3600"
-
-  # RabbitMQ
-  RABBITMQ_HOST: "rabbitmq-maya-app.maya-sync.svc.cluster.local"
-  RABBITMQ_PORT: "5672"
-  RABBITMQ_USER: "maya_dms"
-  RABBITMQ_VHOST: "/maya_dms"
-
-  # Reverb (websocket público vía Ingress)
-  REVERB_APP_ID: "maya-dms"
-  REVERB_HOST: "dms-reverb.ceedcv.es"
-  REVERB_PORT: "443"
-  REVERB_SCHEME: "https"
-  REVERB_SERVER_HOST: "0.0.0.0"
-  REVERB_SERVER_PORT: "8080"
-  BROADCAST_CONNECTION: "reverb"
-
-  # Editor
-  EDITOR_BACKEND: "tiptap"
-
-  # CORS — explícito y forzando https (el ConfigMap manda sobre .env.example).
-  CORS_ALLOWED_ORIGINS: "https://dms.ceedcv.es"
-
-  # Mail (placeholder; ajustar al SMTP interno).
-  MAIL_MAILER: "log"
-
-  # FDW: usuarios (Odoo maya_erp vía Patroni)
-  FDW_USERS_HOST: "172.29.71.252"
-  FDW_USERS_PORT: "5432"
-  FDW_USERS_DATABASE: "maya_erp"
-  FDW_USERS_USERNAME: "maya"
-  FDW_USERS_SCHEMA: "public"
-  FDW_USERS_TABLE: "v_app_users"
-  FDW_USERS_CACHE_TTL: "900"
-
-  # FDW: permisos resueltos (federados desde maya_authorization)
-  FDW_USER_PERMISSIONS_HOST: "172.29.71.252"
-  FDW_USER_PERMISSIONS_PORT: "5432"
-  FDW_USER_PERMISSIONS_DATABASE: "maya_auth"
-  FDW_USER_PERMISSIONS_USERNAME: "maya"
-  FDW_USER_PERMISSIONS_SCHEMA: "public"
-  FDW_USER_PERMISSIONS_REMOTE_VIEW: "v_dms_user_permissions"
-
-  # Roles de gestión de equipos.
-  TEAM_MANAGEMENT_ROLES: "manager,super-admin,admin"
-
-  # Acceso este-oeste a maya_authorization (servicio interno).
-  AUTH_EXTERNAL_URL: "http://maya-auth-backend.maya-authorization.svc.cluster.local:8000"
-
-# ─── Secret (placeholders — sustituir en deploy desde fichero local o SealedSecret) ──
-# IMPORTANTE: NO commitear los valores reales. Estos son placeholders documentales
-# que el chart escribe al Secret si secret.create=true; en producción se carga el
-# Secret aparte con `kubectl create secret` o un SealedSecret.
-secret:
-  create: false                # poner true SOLO si se pasa --set-file con valores reales
-  name: "maya-dms-secret"
-  data:
-    APP_KEY: "REPLACE_ME_BASE64"
-    DB_USERNAME: "REPLACE_ME"
-    DB_PASSWORD: "REPLACE_ME"
-    REDIS_PASSWORD: "REPLACE_ME"
-    RABBITMQ_PASSWORD: "REPLACE_ME"
-    KEYCLOAK_CLIENT_SECRET: "REPLACE_ME"
-    REVERB_APP_KEY: "REPLACE_ME"
-    REVERB_APP_SECRET: "REPLACE_ME"
-    FDW_USERS_PASSWORD: "REPLACE_ME"
-    FDW_USER_PERMISSIONS_PASSWORD: "REPLACE_ME"
-
-# ─── securityContext (W4) ─────────────────────────────────────────────────────
-securityContext:
-  podSecurityContext:
-    runAsNonRoot: true
-    runAsUser: 33               # www-data en alpine
-    runAsGroup: 33
-    fsGroup: 33                  # alinear con la share NFS
-    seccompProfile:
-      type: RuntimeDefault
-  containerSecurityContext:
-    allowPrivilegeEscalation: false
-    readOnlyRootFilesystem: true
-    capabilities:
-      drop:
-        - ALL
-
-# ─── NetworkPolicy (W5) — deny-all + permitir el este-oeste necesario ─────────
-networkPolicy:
-  enabled: true
-  # CIDR de Traefik (ajustar si MetalLB usa otro pool).
-  traefikNamespace: "kube-system"
-  # Namespaces autorizados para EGRESS pod-to-pod (in-cluster east-west). Limita
-  # el blast radius si un pod en maya-dms queda comprometido: solo podrá hablar
-  # con estos NS, no con kube-system u otros tenants.
-  egressNamespaces:
-    - maya-infra            # Redis (release redis-cache del maya-app chart)
-    - maya-sync             # RabbitMQ (release rabbitmq-maya-app)
-    - maya-iam              # Keycloak (release keycloak-maya-app)
-    - maya-authorization    # east-west API authz (maya_authorization)
-  # CIDRs externos permitidos como destino (Patroni VIP, NFS).
-  egressCidrs:
-    - "172.29.71.0/24"
-    - "172.29.70.7/32"
-
-# ─── PodDisruptionBudget — protege la disponibilidad durante drenajes de nodo ──
-pdb:
-  enabled: true
-  backend:
-    minAvailable: 1
-  frontend:
-    minAvailable: 1
-
-# Termination y rollout.
-rollout:
-  terminationGracePeriodSeconds: 30
-  preStopSleep: 5
-  maxSurge: 1
-  maxUnavailable: 0
-
-# ─── Trust proxies (W1) — pasado al backend vía env ────────────────────────────
-# CIDR de la pod-network de K3s (Traefik corre como pod en kube-system). Ajustar
-# tras el primer despliegue si MetalLB/Calico usan otro CIDR. Evitar el patrón
-# `10/8,172.16/12,192.168/16` porque cualquier pod del clúster podría falsificar
-# X-Forwarded-For y contaminar el audit log.
-trustProxies: "10.42.0.0/16"
+api:
+  resources:
+    requests:
+      cpu: 200m
+      memory: 384Mi
+    limits:
+      cpu: 1500m
+      memory: 768Mi
+worker:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: '1'
+      memory: 768Mi
