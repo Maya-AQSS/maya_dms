@@ -52,7 +52,7 @@ C4Container
         Container(ws_server, "WebSocket Server", "Laravel Reverb + Echo", "Gestiona canales de presencia y locks de bloques en tiempo real. Heartbeat 5 min.")
         Container(worker, "Queue Worker (Laravel)", "Laravel Horizon + RabbitMQ driver", "Procesa Jobs asíncronos: generación PDF, emisión de eventos de dominio.")
         Container(pdf_engine, "Motor PDF", "Puppeteer + Chromium headless", "Renderiza HTML a PDF con metadatos (autor, fecha, versión). Proceso aislado.")
-        ContainerDb(db_local, "PostgreSQL (Local)", "PostgreSQL 16 con extensiones JSONB, FDW, uuid-ossp", "Almacena plantillas, documentos (JSONB), snapshots, grupos, audit_log. Append-Only en versiones publicadas.")
+        ContainerDb(db_local, "PostgreSQL (Local)", "PostgreSQL 17 con extensiones JSONB, FDW, uuid-ossp", "Almacena plantillas, documentos (JSONB), snapshots, grupos, audit_log. Append-Only en versiones publicadas.")
         ContainerDb(cache, "Cache / Session", "Redis", "Caché de jerarquía académica, payload JWT de sesión activa, PDFs generados.")
     }
 

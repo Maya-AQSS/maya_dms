@@ -4,9 +4,12 @@
 Sistema de gestión documental (Document Management System) del ecosistema Maya (CEEDCV).
 - **Backend**: Laravel 13 / PHP 8.4
 - **Frontend**: React 19 + Vite + TypeScript
-- **IdP**: Keycloak 24 (realm `maya`)
+- **IdP**: Keycloak 24 (realm `maya` en desarrollo; realm `CEED` en producción)
 - **BD**: PostgreSQL 17
 - **Colas**: RabbitMQ (Laravel Horizon)
+
+> **Nota:** Este documento describe el entorno de **desarrollo local** (realm `maya` en keycloak.maya.test).
+> En **producción**, se utiliza el realm `CEED` con issuer `https://keycloak.ceedcv.es/realms/CEED`.
 
 ## Infraestructura
 - Reverse proxy: **Traefik latest**
