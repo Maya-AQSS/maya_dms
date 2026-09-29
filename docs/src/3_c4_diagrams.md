@@ -46,7 +46,7 @@ C4Component
         Component(scopes, "Global Scopes", "Eloquent Scopes (app/Scopes/)", "Filtrado IDOR automático aplicado a todas las queries de cada Model. Garantizan aislamiento de datos.")
     }
 
-    System_Ext(db, "PostgreSQL 16", "BD principal con JSONB, FDW, uuid-ossp")
+    System_Ext(db, "PostgreSQL 17", "BD principal con JSONB, FDW, uuid-ossp")
     System_Ext(redis, "Redis", "Caché de jerarquía, JWT payload, PDF status")
     System_Ext(rabbitmq, "RabbitMQ", "Broker de mensajería AMQP")
 
@@ -148,7 +148,7 @@ C4Component
     System_Ext(rabbitmq_w, "RabbitMQ", "Cola 'maya.jobs' + exchange de eventos")
     System_Ext(chromium, "Chromium headless", "Contenedor Docker aislado sin red interna")
     System_Ext(s3, "Object Storage (S3)", "Almacén privado de PDFs")
-    System_Ext(db_w, "PostgreSQL 16", "BD local: actualiza pdf_status, audit_log")
+    System_Ext(db_w, "PostgreSQL 17", "BD local: actualiza pdf_status, audit_log")
     System_Ext(notif, "Servicio de Notificaciones Externo", "Consume exchange de eventos y envía emails/push")
 
     Rel(horizon, pdf_job, "Despacha")

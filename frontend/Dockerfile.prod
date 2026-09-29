@@ -1,95 +1,62 @@
-# Maya DMS — frontend de PRODUCCIÓN (React+Vite → nginx static).
+# syntax=docker/dockerfile:1
 #
-# Build:
-#   docker buildx build -f frontend/Dockerfile.prod \
-#     --build-arg VITE_API_URL=https://dms-api.ceedcv.es/api/v1 \
-#     --build-arg VITE_KEYCLOAK_URL=https://keycloak.ceedcv.es \
-#     --build-arg VITE_KEYCLOAK_REALM=maya \
-#     --build-arg VITE_KEYCLOAK_CLIENT_ID=maya-dms \
-#     --build-arg VITE_REVERB_HOST=dms-reverb.ceedcv.es \
-#     --build-arg VITE_REVERB_KEY=<reverb-app-key> \
-#     -t <registry>/maya/maya-dms-frontend:<sha> frontend
+# maya_dms — frontend de producción (React + Vite → nginx estático).
 #
-# Nota: los VITE_* se hornean en el bundle. Como solo hay un entorno interno
-# (`ceedcv.es`), es aceptable. Si en el futuro hace falta staging, migrar a
-# `config.js` runtime (servir desde nginx + inyectar en build de pod).
+# Este fichero es IDÉNTICO en todas las apps Maya salvo el bloque "Parámetros
+# de la app". nginx, cabeceras, /healthz y la configuración en ejecución
+# (/config.js a partir de MAYA_PUBLIC_*) viven en la base maya/web-base.
+#
+# Build local:
+#   docker build -f frontend/Dockerfile.prod -t maya/maya-dms-frontend:dev frontend
+#
+# TRANSITORIO: mientras la SPA lea import.meta.env en vez de window.__MAYA_CONFIG__,
+# los VITE_* siguen horneándose en el build (--build-arg). Cuando las apps pasen a
+# la configuración en ejecución, este bloque desaparece y la misma imagen sirve
+# para cualquier entorno.
 
-############################
-# Stage 1 — Build          #
-############################
-FROM node:24-alpine AS builder
+# ─── Parámetros de la app ─────────────────────────────────────────────────────
+ARG MAYA_WEB_BASE=maya/web-base:1.29
+ARG MAYA_APP=maya-dms
+# ──────────────────────────────────────────────────────────────────────────────
 
-# Vite lee estas envs en build-time. DEBEN declararse como ARG en esta stage
-# o `docker buildx --build-arg` se ignora silenciosamente.
-ARG VITE_API_URL
-ARG VITE_KEYCLOAK_URL
-ARG VITE_KEYCLOAK_REALM=maya
-ARG VITE_KEYCLOAK_CLIENT_ID=maya-dms
-ARG VITE_REVERB_HOST
-ARG VITE_REVERB_KEY
-ARG VITE_REVERB_PORT=443
-ARG VITE_REVERB_SCHEME=https
-
-ENV VITE_API_URL=${VITE_API_URL} \
-    VITE_KEYCLOAK_URL=${VITE_KEYCLOAK_URL} \
-    VITE_KEYCLOAK_REALM=${VITE_KEYCLOAK_REALM} \
-    VITE_KEYCLOAK_CLIENT_ID=${VITE_KEYCLOAK_CLIENT_ID} \
-    VITE_REVERB_HOST=${VITE_REVERB_HOST} \
-    VITE_REVERB_KEY=${VITE_REVERB_KEY} \
-    VITE_REVERB_PORT=${VITE_REVERB_PORT} \
-    VITE_REVERB_SCHEME=${VITE_REVERB_SCHEME} \
-    NODE_ENV=production
+# ─── 1. build: npm ci + vite build ───────────────────────────────────────────
+FROM node:24-alpine AS build
 
 WORKDIR /app
+ENV CI=true
 
-COPY package*.json ./
-RUN npm ci
+COPY package.json package-lock.json .npmrc ./
+# --include=dev: vite y typescript son devDependencies y hacen falta para compilar.
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --include=dev --no-audit --no-fund
 
 COPY . .
-RUN npm run build
 
+# Transitorio (ver cabecera): variables horneadas por Vite.
+ARG VITE_API_URL
+ARG VITE_KEYCLOAK_URL
+ARG VITE_KEYCLOAK_REALM=CEED
+ARG VITE_KEYCLOAK_CLIENT_ID=maya-dms
+ARG VITE_DASHBOARD_URL
+ARG VITE_DASHBOARD_API_URL
+ARG VITE_REVERB_HOST
+ARG VITE_REVERB_PORT=443
+ARG VITE_REVERB_SCHEME=https
+ARG VITE_REVERB_APP_KEY
+ARG VITE_APP_NAME
+ARG VITE_EDITOR_BACKEND
 
-############################
-# Stage 2 — nginx           #
-############################
-FROM nginx:1.29-alpine AS runtime
+# Solo el bundle (esbuild). La comprobación de tipos (`tsc -b`, que incluye los
+# tests) es un paso del CI, no de la imagen: un error de tipos en un test no debe
+# impedir publicar, y un bundle no debe depender de que el checker esté verde.
+ENV NODE_ENV=production
+RUN npx vite build \
+    && test -f dist/index.html
 
-# Permitir que un proceso no-root use el puerto 8080 (en lugar de 80) cuando se
-# ejecute con runAsNonRoot en K8s. Sólo afecta a futuras configs; aquí seguimos
-# escuchando en 80 dentro del contenedor (sin privilegios extra al ser <1024
-# bajo el usuario nginx del propio image).
-COPY --from=builder /app/dist /usr/share/nginx/html
+# ─── 2. runtime: nginx sin privilegios (maya/web-base) ───────────────────────
+FROM ${MAYA_WEB_BASE}
 
-RUN printf 'server {\n\
-    listen 80;\n\
-    server_name _;\n\
-    root /usr/share/nginx/html;\n\
-    index index.html;\n\
-    # SPA fallback.\n\
-    location / {\n\
-        try_files $uri $uri/ /index.html;\n\
-    }\n\
-    # Endpoint de salud para liveness/readiness del Deployment.\n\
-    location = /healthz {\n\
-        access_log off;\n\
-        return 200 "ok";\n\
-        add_header Content-Type text/plain;\n\
-    }\n\
-    # Cache agresiva para assets con hash.\n\
-    location ~* \\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {\n\
-        expires max;\n\
-        add_header Cache-Control "public, immutable";\n\
-    }\n\
-    # Cabeceras de seguridad básicas.\n\
-    add_header X-Frame-Options "SAMEORIGIN" always;\n\
-    add_header X-Content-Type-Options "nosniff" always;\n\
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;\n\
-}\n' > /etc/nginx/conf.d/default.conf
+ARG MAYA_APP
+LABEL org.opencontainers.image.title="${MAYA_APP}-frontend"
 
-EXPOSE 80
-
-# Healthcheck embebido (Docker; en K8s lo gestiona el probe del Deployment).
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget -qO- http://127.0.0.1/healthz || exit 1
-
-CMD ["nginx", "-g", "daemon off;"]
+COPY --from=build --chown=root:root /app/dist /usr/share/nginx/html

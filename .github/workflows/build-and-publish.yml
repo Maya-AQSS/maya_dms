@@ -1,0 +1,39 @@
+name: build-and-publish
+# Publica las 4 imágenes (maya-dms-api|worker|reverb|frontend) y el chart OCI en el
+# registry local con cada tag vX.Y.Z (o a mano). Toda la lógica está en el workflow
+# reutilizable de maya_platform; aquí solo van los parámetros de esta app.
+#
+# Disparo manual:  gh workflow run build-and-publish.yml -f version=1.0.0
+# Secrets (org Maya-AQSS): REGISTRY_USERNAME, REGISTRY_PASSWORD, VITE_REVERB_APP_KEY.
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versión semver (sin 'v'), p. ej. 1.0.0"
+        required: true
+
+jobs:
+  publish:
+    uses: Maya-AQSS/maya_platform/.github/workflows/build-app.yml@main
+    with:
+      app: maya-dms
+      version: ${{ inputs.version }}
+      php_base: maya/php-base:8.4-pdf
+      # TRANSITORIO: variables horneadas en el bundle mientras la SPA no lea /config.js
+      # (window.__MAYA_CONFIG__). Cuando lo haga, este bloque desaparece y la misma
+      # imagen sirve para cualquier entorno.
+      vite_args: |
+        VITE_API_URL=https://api.dms.ceedcv.es/api/v1
+        VITE_KEYCLOAK_URL=https://keycloak.ceedcv.es
+        VITE_KEYCLOAK_REALM=CEED
+        VITE_KEYCLOAK_CLIENT_ID=maya-dms
+        VITE_REVERB_HOST=api.dms.ceedcv.es
+        VITE_REVERB_APP_KEY=${{ secrets.VITE_REVERB_APP_KEY }}
+        VITE_DASHBOARD_URL=https://dashboard.ceedcv.es
+        VITE_DASHBOARD_API_URL=https://api.dashboard.ceedcv.es
+        VITE_EDITOR_BACKEND=tiptap
+    secrets: inherit

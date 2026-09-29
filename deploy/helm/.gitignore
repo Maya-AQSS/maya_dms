@@ -1,0 +1,2 @@
+# maya-common se descarga con `helm dependency update` (CI); no se versiona.
+charts/
