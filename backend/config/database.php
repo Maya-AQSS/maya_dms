@@ -5,6 +5,20 @@ declare(strict_types=1);
 use Illuminate\Support\Str;
 use Pdo\Mysql;
 
+// ─── Conexión FDW a Odoo (maya_erp) ──────────────────────────────────────────
+// Compartida por los catálogos federados (usuarios, equipos, estudios...) que
+// crean las migraciones de ceedcv-maya/shared-profile-laravel. En desarrollo
+// apunta al Postgres de maya_infra con el superusuario; en producción FDW_ODOO_*
+// apunta a la VIP de Patroni con el rol lector maya_fdw_reader.
+$odooFdw = [
+    'host'     => env('FDW_ODOO_HOST', env('DB_HOST', 'maya_infra_postgres')),
+    'port'     => env('FDW_ODOO_PORT', '5432'),
+    'database' => env('FDW_ODOO_DATABASE', 'odoo'),
+    'username' => env('FDW_ODOO_USERNAME', 'maya'),
+    'password' => env('FDW_ODOO_PASSWORD', 'secret'),
+    'schema'   => env('FDW_ODOO_SCHEMA', 'public'),
+];
+
 return [
 
     /*
@@ -143,6 +157,11 @@ return [
     */
 
     'fdw' => [
+        // ─── Fuente Odoo (maya_erp): catálogos académicos (migraciones FDW compartidas) ───
+        'studies'        => $odooFdw,
+        'study_types'    => $odooFdw,
+        'course_modules' => $odooFdw,
+        'languages'      => $odooFdw,
 
         // Reglas de notificación programadas — FDW read-only sobre la vista
         // contrato maya_dashboard.public.v_notification_rules (level B). El cron
@@ -161,11 +180,11 @@ return [
         // Migración centralizada en `maya-shared-profile-laravel`. Estos defaults
         // funcionan en local; en staging/prod los env vars sobreescriben.
         'users' => [
-            'host' => env('FDW_USERS_HOST', env('DB_HOST', 'maya_infra_postgres')),
-            'port' => env('FDW_USERS_PORT', '5432'),
-            'database' => env('FDW_USERS_DATABASE', 'odoo'),
-            'username' => env('FDW_USERS_USERNAME', 'maya'),
-            'password' => env('FDW_USERS_PASSWORD', 'secret'),
+            'host' => env('FDW_USERS_HOST', $odooFdw['host']),
+            'port' => env('FDW_USERS_PORT', $odooFdw['port']),
+            'database' => env('FDW_USERS_DATABASE', $odooFdw['database']),
+            'username' => env('FDW_USERS_USERNAME', $odooFdw['username']),
+            'password' => env('FDW_USERS_PASSWORD', $odooFdw['password']),
             'schema' => env('FDW_USERS_SCHEMA', 'public'),
             'table' => env('FDW_USERS_TABLE', 'v_app_users'),
             'cache_ttl' => (int) env('FDW_USERS_CACHE_TTL', 900),
@@ -173,22 +192,22 @@ return [
 
         // Catálogo de equipos — FDW read-only sobre odoo.public.v_dms_teams.
         'teams' => [
-            'host' => env('FDW_TEAMS_HOST', env('DB_HOST', 'maya_infra_postgres')),
-            'port' => env('FDW_TEAMS_PORT', '5432'),
-            'database' => env('FDW_TEAMS_DATABASE', 'odoo'),
-            'username' => env('FDW_TEAMS_USERNAME', 'maya'),
-            'password' => env('FDW_TEAMS_PASSWORD', 'secret'),
+            'host' => env('FDW_TEAMS_HOST', $odooFdw['host']),
+            'port' => env('FDW_TEAMS_PORT', $odooFdw['port']),
+            'database' => env('FDW_TEAMS_DATABASE', $odooFdw['database']),
+            'username' => env('FDW_TEAMS_USERNAME', $odooFdw['username']),
+            'password' => env('FDW_TEAMS_PASSWORD', $odooFdw['password']),
             'schema' => env('FDW_TEAMS_SCHEMA', 'public'),
             'table' => env('FDW_TEAMS_TABLE', 'v_dms_teams'),
         ],
 
         // Membresías de equipo — FDW read-only sobre odoo.public.v_dms_team_members.
         'team_members' => [
-            'host' => env('FDW_TEAM_MEMBERS_HOST', env('DB_HOST', 'maya_infra_postgres')),
-            'port' => env('FDW_TEAM_MEMBERS_PORT', '5432'),
-            'database' => env('FDW_TEAM_MEMBERS_DATABASE', 'odoo'),
-            'username' => env('FDW_TEAM_MEMBERS_USERNAME', 'maya'),
-            'password' => env('FDW_TEAM_MEMBERS_PASSWORD', 'secret'),
+            'host' => env('FDW_TEAM_MEMBERS_HOST', $odooFdw['host']),
+            'port' => env('FDW_TEAM_MEMBERS_PORT', $odooFdw['port']),
+            'database' => env('FDW_TEAM_MEMBERS_DATABASE', $odooFdw['database']),
+            'username' => env('FDW_TEAM_MEMBERS_USERNAME', $odooFdw['username']),
+            'password' => env('FDW_TEAM_MEMBERS_PASSWORD', $odooFdw['password']),
             'schema' => env('FDW_TEAM_MEMBERS_SCHEMA', 'public'),
             'table' => env('FDW_TEAM_MEMBERS_TABLE', 'v_dms_team_members'),
         ],
