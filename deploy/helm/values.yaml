@@ -1,4 +1,4 @@
-# maya-dms — values de producción sobre el library chart maya-common (0.2.0).
+# maya-dms — values de producción sobre el library chart maya-common (0.2.1).
 # Solo lo que difiere de los defaults de maya-common (charts/maya-common/values.yaml).
 #
 # Secretos: Vault, ruta secret/data/maya-dms con las claves de vault.keys
