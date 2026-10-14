@@ -10,8 +10,8 @@ interface ResolvedPermissionReaderInterface
      * Slugs de permiso resueltos para el usuario (vista `user_resolved_permissions`).
      *
      * Lee la vista FDW federada con maya_authorization
-     * (`v_dms_user_permissions`), que expande la jerarquía de roles + overrides
-     * con la columna `permission_slug`.
+     * (`v_portal_user_permissions`, común a todas las apps), que expande la
+     * jerarquía de roles + overrides con la columna `permission_slug`.
      *
      * @return list<string>
      */

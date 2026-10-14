@@ -185,8 +185,8 @@ class AppServiceProvider extends ServiceProvider
         // Bloque de bootstrap compartido entre las 5 apps Maya (paquete
         // `ceedcv-maya/shared-platform-laravel`): Broadcast::routes bajo
         // /api/v1 con middleware ['api','jwt'], migraciones de shared-profile
-        // (dms consume la vista resuelta de permisos vía FDW
-        // `v_dms_user_permissions` — eliminada la tabla local), teardown FDW
+        // (dms consume la vista común de permisos resueltos vía FDW
+        // `v_portal_user_permissions` — eliminada la tabla local), teardown FDW
         // antes de migrate:fresh/db:wipe, y guard `jwt-token`.
         //
         // El resolver del guard es propio de dms: enriquece el perfil JWT con
