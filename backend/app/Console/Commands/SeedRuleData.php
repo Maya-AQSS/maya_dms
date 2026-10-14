@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
  */
 class SeedRuleData extends Command
 {
-    protected $signature = 'notifications:seed-rule-data {--recipient= : Keycloak id of the reviewer}';
+    protected $signature = 'notifications:seed-rule-data {--recipient= : sub del revisor (= res_users.oauth_uid)}';
 
     protected $description = 'Siembra revisiones pendientes para disparar la regla de validaciones (solo no-producción)';
 
@@ -35,7 +35,7 @@ class SeedRuleData extends Command
             $recipient = (string) (User::query()->where('is_active', true)->value('id') ?? '');
         }
         if ($recipient === '') {
-            $this->error('Indica --recipient=<keycloak_id>.');
+            $this->error('Indica --recipient=<sub>.');
 
             return self::FAILURE;
         }
