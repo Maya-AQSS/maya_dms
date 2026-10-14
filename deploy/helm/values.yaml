@@ -111,9 +111,15 @@ frontend:
     MAYA_PUBLIC_REVERB_SCHEME: https
     MAYA_PUBLIC_REVERB_AUTH_ENDPOINT: https://api.dms.ceedcv/api/v1/broadcasting/auth
     MAYA_PUBLIC_REVERB_APP_KEY: CHANGE-ME
+    # D37: la barra lateral escucha el Reverb del dashboard, que es quien emite las notificaciones
+    # (la clave pública la pone el entorno, como MAYA_PUBLIC_REVERB_APP_KEY).
+    MAYA_PUBLIC_DASHBOARD_REVERB_HOST: api.dashboard.ceedcv
+    MAYA_PUBLIC_DASHBOARD_REVERB_PORT: '443'
+    MAYA_PUBLIC_DASHBOARD_REVERB_SCHEME: https
+    MAYA_PUBLIC_DASHBOARD_REVERB_APP_KEY: CHANGE-ME
     MAYA_CSP: 'default-src ''self''; script-src ''self''; style-src ''self'' ''unsafe-inline''; img-src ''self'' data: blob:;
       font-src ''self'' data:; connect-src ''self'' https://api.dms.ceedcv https://api.dashboard.ceedcv https://keycloak.ceedcv
-      wss://api.dms.ceedcv; frame-src https://keycloak.ceedcv; frame-ancestors ''none''; base-uri ''self''; form-action
+      wss://api.dms.ceedcv wss://api.dashboard.ceedcv; frame-src https://keycloak.ceedcv; frame-ancestors ''none''; base-uri ''self''; form-action
       ''self'''
     MAYA_PUBLIC_EDITOR_BACKEND: tiptap
 scheduler:
