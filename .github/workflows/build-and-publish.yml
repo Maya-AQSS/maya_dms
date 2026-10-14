@@ -35,7 +35,7 @@ concurrency:
 jobs:
   publish:
     # TRANSITORIO (plan-dev-k3s): @main cuando build-app.yml esté fusionado en main de maya_platform.
-    uses: Maya-AQSS/maya_platform/.github/workflows/build-app.yml@plan-dev-k3s
+    uses: Maya-AQSS/maya_platform/.github/workflows/build-app.yml@v0.22.0
     permissions:
       contents: read
       packages: write
@@ -43,6 +43,8 @@ jobs:
       app: maya-dms
       version: ${{ inputs.version || '' }}
       php_base: php-base:8.4-pdf
+      # D26 R6: una sola imagen de frontend; su configuración llega en /config.js (MAYA_PUBLIC_* del chart).
+      runtime_config: true
       vite_args_extra: |
         VITE_EDITOR_BACKEND=tiptap
     # Explícitos (no `inherit`): el reutilizable solo recibe lo que necesita. Los MAYA_DISPATCH_* solo existen en el
