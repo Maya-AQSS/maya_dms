@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <!-- Shim de `process` para react-draggable (ver public/process-shim.js). -->
     <script src="/process-shim.js"></script>
+    <!-- Configuración en ejecución (window.__MAYA_CONFIG__): la genera la imagen
+         del frontend (maya/web-base) a partir de MAYA_PUBLIC_*. Antes del bundle. -->
+    <script src="/config.js"></script>
         <link rel="icon" type="image/png+xml" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>DocuCEED</title>

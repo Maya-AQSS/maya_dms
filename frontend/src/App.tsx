@@ -3,7 +3,7 @@ import { Spinner } from '@ceedcv-maya/shared-ui-react';
 import { useTranslation } from 'react-i18next';
 import { Route, Routes, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { MayaAppShell } from '@ceedcv-maya/shared-layout-react';
-import { resolveServiceUrl, useOidcSession } from '@ceedcv-maya/shared-auth-react';
+import { publicConfig, resolveServiceUrl, useOidcSession } from '@ceedcv-maya/shared-auth-react';
 import { ProcessesDrawer } from './components/layout/ProcessesDrawer';
 import { HierarchyProvider } from './features/hierarchy/context/HierarchyContext';
 import { useNavItems } from './components/layout/navItems';
@@ -29,14 +29,9 @@ const ProcessesManagePage = lazy(() => import('./features/processes/pages/Proces
 const ProcessShowPage = lazy(() => import('./features/processes/pages/ProcessShowPage').then(m => ({ default: m.ProcessShowPage })));
 const PlaceholderPage = lazy(() => import('./pages/PlaceholderPage').then(m => ({ default: m.PlaceholderPage })));
 
-const DASHBOARD_API_URL = resolveServiceUrl(
-  import.meta.env.VITE_DASHBOARD_API_URL as string | undefined,
-  'dashboard-api',
-);
-const DASHBOARD_URL = resolveServiceUrl(
-  import.meta.env.VITE_DASHBOARD_URL as string | undefined,
-  'dashboard',
-);
+// Configuración en ejecución (`/config.js`, MAYA_PUBLIC_DASHBOARD_*) o VITE_* en desarrollo.
+const DASHBOARD_API_URL = resolveServiceUrl(publicConfig('DASHBOARD_API_URL'), 'dashboard-api');
+const DASHBOARD_URL = resolveServiceUrl(publicConfig('DASHBOARD_URL'), 'dashboard');
 
 /** Redirige las rutas antiguas en español a sus equivalentes en inglés. */
 function LegacyProcesoRedirect() {

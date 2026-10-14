@@ -111,6 +111,19 @@ export function createOidcAdapter(_config: unknown) {
   };
 }
 
+/** Copia fiel de `publicConfig` (runtimeConfig.ts): `window.__MAYA_CONFIG__` y después `VITE_<clave>`. */
+export function publicConfig(key: string): string | undefined {
+  const runtime = (window as { __MAYA_CONFIG__?: Record<string, string | undefined> }).__MAYA_CONFIG__?.[key];
+  if (typeof runtime === 'string' && runtime.trim() !== '') return runtime.trim();
+  const fromEnv = (import.meta.env as Record<string, string | undefined>)[`VITE_${key}`];
+  return typeof fromEnv === 'string' && fromEnv.trim() !== '' ? fromEnv.trim() : undefined;
+}
+
+export function hasRuntimeConfig(): boolean {
+  const config = (window as { __MAYA_CONFIG__?: unknown }).__MAYA_CONFIG__;
+  return typeof config === 'object' && config !== null;
+}
+
 export function peerOrigin(targetService: string): string {
   return `https://${targetService}.vitest.local`;
 }
