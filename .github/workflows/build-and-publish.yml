@@ -45,7 +45,11 @@ jobs:
       php_base: php-base:8.4-pdf
       vite_args_extra: |
         VITE_EDITOR_BACKEND=tiptap
-    # Explícitos (no `inherit`): el reutilizable solo recibe lo que necesita.
+    # Explícitos (no `inherit`): el reutilizable solo recibe lo que necesita. Los MAYA_DISPATCH_* solo existen en el
+    # environment maya-dev-dispatch (main, plan-dev-k3s y etiquetas v*): hay que pasarlos por nombre igualmente, o en
+    # el job deploy-dev (que declara ese environment) llegan vacíos.
     secrets:
       VITE_REVERB_APP_KEY: ${{ secrets.VITE_REVERB_APP_KEY }}
       COMPOSER_AUTH: ${{ secrets.COMPOSER_AUTH }}
+      MAYA_DISPATCH_APP_ID: ${{ secrets.MAYA_DISPATCH_APP_ID }}
+      MAYA_DISPATCH_APP_KEY: ${{ secrets.MAYA_DISPATCH_APP_KEY }}
