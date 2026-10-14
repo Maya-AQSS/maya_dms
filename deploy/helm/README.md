@@ -9,7 +9,7 @@ valores de esta app (`values.yaml`).
 - Publicación: el workflow `build-and-publish.yml` (reutilizable `build-app.yml` de
   maya_platform) empaqueta este chart con la versión de la release y lo sube a GHCR
   (`oci://ghcr.io/maya-aqss/charts/maya-dms`); IaC lo copia a la registry interna
-  (`oci://registry.ceedcv.es/charts`) junto con las imágenes.
+  (`oci://registry.ceedcv/charts`) junto con las imágenes.
 - Desarrollo: `IaC/.github/workflows/dev-deploy.yml` (K3s de desarrollo, `IaC/dev/PLAN.md`).
 - Despliegue: `helmfile` en IaC (`prod/02-layer-sw`), con `MAYA_DMS_VERSION`.
 

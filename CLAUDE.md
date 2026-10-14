@@ -9,7 +9,7 @@ Sistema de gestión documental (Document Management System) del ecosistema Maya 
 - **Colas**: RabbitMQ (Laravel Horizon)
 
 > **Nota:** Este documento describe el entorno de **desarrollo local** (realm `maya` en keycloak.maya.test).
-> En **producción**, se utiliza el realm `CEED` con issuer `https://keycloak.ceedcv.es/realms/CEED`.
+> En **producción**, se utiliza el realm `CEED` con issuer `https://keycloak.ceedcv/realms/CEED`.
 
 ## Infraestructura
 - Reverse proxy: **Traefik latest**
