@@ -142,7 +142,7 @@
         },
         {
             "name": "ceedcv-maya/shared-auth-laravel",
-            "version": "v0.22.0",
+            "version": "v0.22.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Maya-AQSS/shared-auth-laravel.git",
@@ -214,7 +214,7 @@
         },
         {
             "name": "ceedcv-maya/shared-editor-laravel",
-            "version": "v0.22.0",
+            "version": "v0.22.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Maya-AQSS/shared-editor-laravel.git",
@@ -295,16 +295,16 @@
         },
         {
             "name": "ceedcv-maya/shared-http-laravel",
-            "version": "v0.22.0",
+            "version": "v0.22.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Maya-AQSS/shared-http-laravel.git",
-                "reference": "d9d08a8b9ac3c91c52b906b7108d12a16e708f05"
+                "reference": "bf426795b0c68651535ee50ffcacbe676f70f6e4"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Maya-AQSS/shared-http-laravel/zipball/d9d08a8b9ac3c91c52b906b7108d12a16e708f05",
-                "reference": "d9d08a8b9ac3c91c52b906b7108d12a16e708f05",
+                "url": "https://api.github.com/repos/Maya-AQSS/shared-http-laravel/zipball/bf426795b0c68651535ee50ffcacbe676f70f6e4",
+                "reference": "bf426795b0c68651535ee50ffcacbe676f70f6e4",
                 "shasum": ""
             },
             "require": {
@@ -356,11 +356,11 @@
                 "issues": "https://github.com/Maya-AQSS/maya_platform/issues",
                 "source": "https://github.com/Maya-AQSS/shared-http-laravel"
             },
-            "time": "2026-10-14T19:18:49+00:00"
+            "time": "2026-10-14T20:25:01+00:00"
         },
         {
             "name": "ceedcv-maya/shared-messaging-laravel",
-            "version": "v0.22.0",
+            "version": "v0.22.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Maya-AQSS/shared-messaging-laravel.git",
@@ -433,7 +433,7 @@
         },
         {
             "name": "ceedcv-maya/shared-platform-laravel",
-            "version": "v0.22.0",
+            "version": "v0.22.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Maya-AQSS/shared-platform-laravel.git",
@@ -506,7 +506,7 @@
         },
         {
             "name": "ceedcv-maya/shared-profile-laravel",
-            "version": "v0.22.0",
+            "version": "v0.22.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Maya-AQSS/shared-profile-laravel.git",
