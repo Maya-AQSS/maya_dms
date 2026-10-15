@@ -20,3 +20,14 @@ o el chart maya-common copiado en `charts/`):
 helm dependency update deploy/helm
 helm template maya-dms deploy/helm -n maya-dms --set image.tag=1.0.0 | kubeconform -strict
 ```
+
+## Comandos a mano en producción
+
+Los datos de referencia no se cargan en el despliegue (el Job de migración solo migra).
+Se lanzan a mano, una vez, con [`deploy/jobs/artisan-job.yaml`](../jobs/artisan-job.yaml):
+un Job con la imagen *-worker de la versión desplegada, el ConfigMap y los secretos de Vault
+de la app y el mismo `securityContext` que el Job de migración. Las instrucciones están en la
+cabecera del fichero.
+
+- `db:seed --class=ProductionSeeder --force`: mapa de procesos del CEEDCV y tema por defecto, sin
+  usuarios de desarrollo. Idempotente: no pisa lo que se haya editado.

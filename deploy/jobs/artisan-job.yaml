@@ -1,0 +1,122 @@
+# Job para lanzar a mano un comando artisan en producción: el ProductionSeeder (plan de
+# las apps, § 4.5: procesos y tema por defecto) u otro.
+# Es el mismo pod que el Job de migración de maya-common (imagen worker de la versión
+# desplegada, ConfigMap, secretos de Vault, ServiceAccount y securityContext), pero fuera de
+# Helm: nunca corre en un despliegue.
+#
+# Uso, desde un puesto con kubectl contra el clúster (envsubst: paquete gettext-base):
+#
+#   NS=maya-dms
+#   export IMAGE=$(kubectl -n $NS get deploy maya-dms-worker \
+#       -o jsonpath='{.spec.template.spec.containers[0].image}')
+#   export JOB=maya-dms-seed   # nombre libre, distinto en cada ejecución
+#   export ARGS='"db:seed", "--class=ProductionSeeder", "--force"'
+#   envsubst '$IMAGE $JOB $ARGS' < deploy/jobs/artisan-job.yaml | kubectl -n $NS apply -f -
+#   kubectl -n $NS wait --for=condition=complete job/$JOB --timeout=10m
+#   kubectl -n $NS logs job/$JOB -c artisan
+#   kubectl -n $NS delete job $JOB               # si no, se borra solo a las 24 h
+#
+# En seco antes: `kubectl apply --dry-run=server` en lugar de `apply` comprueba el manifiesto
+# sin crear nada.
+#
+# Si falla (`wait` no termina), `kubectl -n $NS describe job/$JOB` y los logs del contenedor
+# `vault-agent-init` (secretos) o `artisan`. El Job no se reintenta (backoffLimit: 0).
+#
+# Las claves de Vault son las de `vault.keys` en deploy/helm/values.yaml, salvo la del Job
+# `views` (MAYA_APPS_VIEWS_PASSWORD, D17), que maya-common solo da a ese Job: si se añade una
+# allí, añadirla también en la plantilla de abajo.
+#
+# K3s de desarrollo (sin Vault): quitar las anotaciones vault.hashicorp.com/* y descomentar
+# el `secretRef` de envFrom (Secret maya-dms-secrets).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ${JOB}
+  labels:
+    app.kubernetes.io/name: maya-dms
+    app.kubernetes.io/instance: maya-dms
+    app.kubernetes.io/component: artisan
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 900
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: maya-dms
+        app.kubernetes.io/instance: maya-dms
+        app.kubernetes.io/component: artisan
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/agent-pre-populate-only: "true"
+        vault.hashicorp.com/agent-init-first: "true"
+        vault.hashicorp.com/role: "maya-dms"
+        vault.hashicorp.com/agent-inject-secret-config: "secret/data/maya-dms"
+        vault.hashicorp.com/agent-run-as-user: "82"
+        vault.hashicorp.com/agent-run-as-group: "82"
+        vault.hashicorp.com/agent-requests-cpu: "25m"
+        vault.hashicorp.com/agent-requests-mem: "32Mi"
+        vault.hashicorp.com/agent-limits-cpu: "200m"
+        vault.hashicorp.com/agent-limits-mem: "128Mi"
+        vault.hashicorp.com/agent-inject-template-config: |
+          {{- with secret "secret/data/maya-dms" -}}
+          export APP_KEY="{{ .Data.data.APP_KEY }}"
+          export DB_PASSWORD="{{ .Data.data.DB_PASSWORD }}"
+          export REDIS_PASSWORD="{{ .Data.data.REDIS_PASSWORD }}"
+          export RABBITMQ_PASSWORD="{{ .Data.data.RABBITMQ_PASSWORD }}"
+          export REVERB_APP_KEY="{{ .Data.data.REVERB_APP_KEY }}"
+          export REVERB_APP_SECRET="{{ .Data.data.REVERB_APP_SECRET }}"
+          export FDW_ODOO_PASSWORD="{{ .Data.data.FDW_ODOO_PASSWORD }}"
+          export FDW_USER_PERMISSIONS_PASSWORD="{{ .Data.data.FDW_USER_PERMISSIONS_PASSWORD }}"
+          export FDW_NOTIFICATION_RULES_PASSWORD="{{ .Data.data.FDW_NOTIFICATION_RULES_PASSWORD }}"
+          export FDW_PERMISSIONS_PASSWORD="{{ .Data.data.FDW_PERMISSIONS_PASSWORD }}"
+          {{- end -}}
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+        - name: regcred
+      serviceAccountName: maya-dms
+      automountServiceAccountToken: true
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 82
+        runAsGroup: 82
+        fsGroup: 82
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: artisan
+          image: ${IMAGE}
+          imagePullPolicy: IfNotPresent
+          args: ["artisan", ${ARGS}, "--no-interaction"]
+          env:
+            - name: MAYA_WAIT_FOR_DB
+              value: "1"
+          envFrom:
+            - configMapRef:
+                name: maya-dms-config
+            # - secretRef:
+            #     name: maya-dms-secrets
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: storage
+              mountPath: /var/www/html/storage
+            - name: bootstrap-cache
+              mountPath: /var/www/html/bootstrap/cache
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: storage
+          emptyDir: {}
+        - name: bootstrap-cache
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
