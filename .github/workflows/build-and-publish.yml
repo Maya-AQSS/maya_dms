@@ -17,8 +17,6 @@ on:
   push:
     branches:
       - main
-      # TRANSITORIO (plan-dev-k3s): quitar al fusionar en main.
-      - plan-dev-k3s
     tags:
       - "v*.*.*"
   workflow_dispatch:
@@ -34,7 +32,6 @@ concurrency:
 
 jobs:
   publish:
-    # TRANSITORIO (plan-dev-k3s): @main cuando build-app.yml esté fusionado en main de maya_platform.
     uses: Maya-AQSS/maya_platform/.github/workflows/build-app.yml@v0.22.1
     permissions:
       contents: read
