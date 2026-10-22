@@ -1,7 +1,8 @@
 /**
  * Cliente HTTP autenticado — delegado al factory compartido
  * `createServiceApiClient` de @ceedcv-maya/shared-auth-react (0.16): resuelve
- * la baseUrl vía `peerOrigin('dms-api')/api/v1` o el override `VITE_API_URL`,
+ * la baseUrl vía `peerOrigin('dms-api')/api/v1` o el override `API_URL`
+ * (`MAYA_PUBLIC_API_URL` en `/config.js`, o `VITE_API_URL` en desarrollo),
  * y delega en `createApiClient`. El Bearer lo añade la instancia Keycloak de
  * {@link ../auth/oidcAdapter}.
  *
@@ -12,6 +13,7 @@
 import {
   ApiHttpError,
   createServiceApiClient,
+  publicConfig,
   type ApiFetchOptions,
 } from '@ceedcv-maya/shared-auth-react'
 import { oidcAuthService } from '../auth/oidcAdapter'
@@ -19,7 +21,7 @@ import { oidcAuthService } from '../auth/oidcAdapter'
 const client = createServiceApiClient(
   'dms-api',
   oidcAuthService.keycloak,
-  (import.meta.env.VITE_API_URL as string | undefined)?.trim(),
+  publicConfig('API_URL'),
 )
 
 export { ApiHttpError, type ApiFetchOptions }

@@ -19,7 +19,8 @@ use Illuminate\Support\Facades\Broadcast;
 /**
  * Canal privado de notificaciones por usuario.
  *
- * El {userId} es el Keycloak UUID del destinatario. Solo se autoriza cuando
+ * El {userId} es el `sub` del token del destinatario (= `res_users.oauth_uid`
+ * de Odoo e `id` de la vista `users`). Solo se autoriza cuando
  * el usuario autenticado (guardado en `id` por el guard jwt-token) coincide
  * con el userId del canal, evitando que un usuario pueda escuchar las
  * notificaciones de otro.

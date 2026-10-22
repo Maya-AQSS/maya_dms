@@ -1,15 +1,6 @@
-# Patterns to ignore when building Helm packages.
 .DS_Store
-.git/
-.gitignore
-.bzr/
-.hg/
-.svn/
-*.tgz
-.helmignore
-.idea/
-.vscode/
 *.swp
 *.bak
-*.tmp
 *.orig
+.idea/
+.vscode/

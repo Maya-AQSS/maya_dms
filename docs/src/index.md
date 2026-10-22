@@ -4,7 +4,7 @@ layout: home
 hero:
   name: "Maya PD"
   text: "Sistema Avanzado de Gestión de Programaciones Didácticas"
-  tagline: "React 19 · Laravel 13 · PostgreSQL 16 · ISO 9001 — Backlog técnico generado automáticamente por agente de requisitos."
+  tagline: "React 19 · Laravel 13 · PostgreSQL 17 · ISO 9001 — Backlog técnico generado automáticamente por agente de requisitos."
   actions:
     - theme: brand
       text: Épicas y Features
@@ -39,5 +39,5 @@ features:
 
   - icon: 🏗️
     title: Arquitectura Limpia
-    details: Laravel 13 con capas Controller → DTO → Service → Repository → API Resource. PostgreSQL 16 con JSONB y patrón Snapshot. RabbitMQ para desacoplamiento total de notificaciones.
+    details: Laravel 13 con capas Controller → DTO → Service → Repository → API Resource. PostgreSQL 17 con JSONB y patrón Snapshot. RabbitMQ para desacoplamiento total de notificaciones.
 ---

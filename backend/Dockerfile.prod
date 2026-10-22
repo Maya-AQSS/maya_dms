@@ -1,150 +1,123 @@
-# syntax=docker/dockerfile:1.7-labs
+# syntax=docker/dockerfile:1
 #
-# Maya DMS — backend de PRODUCCIÓN (php-fpm 8.4 alpine).
+# maya_dms — backend de producción. Tres imágenes desde la misma base:
 #
-# Multi-stage:
-#   1. composer-deps  → vendor/ aislado, sin dev, sin scripts. Usa BuildKit
-#                       --secret id=composer_auth para el repo VCS privado de
-#                       ceedcv-maya/shared-editor-laravel.
-#   2. runtime        → php-fpm + extensiones + WeasyPrint + fuentes; copia el
-#                       código + vendor/ ya resuelto. Sin pcov.
+#   --target worker  → consumidor / colas         (Deployment worker, scheduler y Job migrate)
+#   --target reverb  → WebSocket Laravel Reverb   (Deployment reverb, puerto 8080)
+#   --target api     → nginx + php-fpm            (Deployment backend, puerto 8080; target por defecto)
 #
-# Variables runtime soportadas por entrypoint.prod.sh:
-#   CONTAINER_ROLE = api | worker | scheduler | reverb (default: api)
+# Este fichero es IDÉNTICO en todas las apps Maya salvo el bloque "Parámetros
+# de la app". Todo lo de sistema (PHP, extensiones, nginx, supervisord,
+# entrypoint y roles) vive en la base maya/php-base de maya_platform.
 #
-# Build:
-#   DOCKER_BUILDKIT=1 docker buildx build -f backend/Dockerfile.prod \
-#     --secret id=composer_auth,src=$HOME/.composer/auth.json \
-#     -t <registry>/maya/maya-dms-backend:<sha> backend
+# Build local (con la base construida en local):
+#   docker build -f backend/Dockerfile.prod --target api    -t maya/maya-dms-api:dev    backend
+#   docker build -f backend/Dockerfile.prod --target worker -t maya/maya-dms-worker:dev backend
+#   docker build -f backend/Dockerfile.prod --target reverb -t maya/maya-dms-reverb:dev backend
+# En CI se pasa --build-arg MAYA_PHP_BASE=<registry>/maya/php-base:8.4-<fecha>.
 
-############################
-# Stage 1 — Composer deps  #
-############################
-FROM composer:2.9 AS composer-deps
+# ─── Parámetros de la app ─────────────────────────────────────────────────────
+ARG MAYA_PHP_BASE=maya/php-base:8.4-pdf
+ARG MAYA_APP=maya-dms
+ARG MAYA_WORKER_CMD="queue:work --tries=3 --backoff=10 --max-time=3600 --sleep=1"
+ARG PHP_MEMORY_LIMIT=512M
+ARG PHP_UPLOAD_MAX=20M
+ARG PHP_FPM_MAX_CHILDREN=8
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ─── 1. vendor: composer sin dev ni scripts (no hay artisan en esta etapa) ────
+FROM composer:2.9 AS vendor
 
 WORKDIR /build
 
-# Extensiones nativas que las dependencias declaran como requeridas.
-# Estamos en la imagen oficial de composer (alpine + php-cli), pero falta pgsql
-# para que --no-platform-check pueda omitirse si se quiere; lo dejamos opcional
-# vía --ignore-platform-reqs porque la imagen runtime sí tiene las extensiones.
-
-# Copiamos solo los archivos necesarios para resolver dependencias — maximiza
-# cache hit cuando solo cambia el código fuente.
 COPY composer.json composer.lock ./
 
-# Acceso al VCS privado vía BuildKit secret (NO ARG, no se filtra al historial
-# de la imagen). El secret debe ser un auth.json válido de composer.
-RUN --mount=type=secret,id=composer_auth,target=/root/.composer/auth.json \
+# --ignore-platform-reqs: la imagen de composer no tiene las extensiones del
+# runtime (pgsql, redis...); la etapa `app` valida que la app arranca de verdad.
+# El secreto composer_auth es opcional (repos VCS privados): en CI se pasa con
+# --secret id=composer_auth,env=COMPOSER_AUTH.
+RUN --mount=type=cache,target=/tmp/cache \
+    --mount=type=secret,id=composer_auth,env=COMPOSER_AUTH \
     composer install \
         --no-dev \
-        --optimize-autoloader \
         --no-scripts \
         --no-interaction \
         --no-progress \
         --prefer-dist \
         --ignore-platform-reqs
 
-# Copiar el resto del código y regenerar el autoloader optimizado con todas las
-# clases ya disponibles (necesario para autoload classmap).
 COPY . .
-RUN composer dump-autoload --optimize --classmap-authoritative --no-dev
 
+# Autoloader optimizado con todo el código ya presente.
+RUN composer dump-autoload --optimize --no-dev --no-scripts --no-interaction \
+    && rm -f composer.local.json
 
-############################
-# Stage 2 — Runtime        #
-############################
-FROM php:8.4-fpm-alpine AS runtime
+# ─── 2. app: código + vendor sobre la base común ─────────────────────────────
+FROM ${MAYA_PHP_BASE} AS app
 
-# Extensiones PHP nativas — mismo set que dev menos pcov (solo para coverage).
-# procps: provee `pgrep` que usa el livenessProbe del Deployment del worker.
-RUN apk add --no-cache \
-        bash git curl libpng-dev libxml2-dev libzip-dev zip unzip \
-        postgresql-dev oniguruma-dev linux-headers tini procps \
- && docker-php-ext-install \
-        pdo pdo_pgsql pgsql mbstring exif pcntl bcmath gd sockets zip
+ARG MAYA_APP
+ARG PHP_MEMORY_LIMIT
+ARG PHP_UPLOAD_MAX
+ARG PHP_FPM_MAX_CHILDREN
 
-# WeasyPrint (Python) — necesario para PDF/UA accesible en producción.
-RUN apk add --no-cache \
-        python3 py3-pip \
-        pango harfbuzz \
-        cairo gdk-pixbuf \
-        fontconfig \
-        libffi shared-mime-info \
-        ttf-dejavu ttf-liberation \
-        font-roboto font-roboto-flex font-roboto-mono \
-        font-opensans \
-        font-noto font-noto-extra \
-        font-inconsolata \
-        font-droid font-mononoki \
- && fc-cache -f \
- && pip3 install --no-cache-dir --break-system-packages 'weasyprint~=68.0' \
- && weasyprint --version
+USER root
 
-# Fuentes Google adicionales (Inter / Lora / Merriweather) — variable fonts oficiales.
-RUN mkdir -p /usr/share/fonts/google \
- && cd /usr/share/fonts/google \
- && wget -q -O 'Inter.ttf'        'https://github.com/google/fonts/raw/main/ofl/inter/Inter%5Bopsz%2Cwght%5D.ttf' \
- && wget -q -O 'Inter-Italic.ttf' 'https://github.com/google/fonts/raw/main/ofl/inter/Inter-Italic%5Bopsz%2Cwght%5D.ttf' \
- && wget -q -O 'Lora.ttf'         'https://github.com/google/fonts/raw/main/ofl/lora/Lora%5Bwght%5D.ttf' \
- && wget -q -O 'Lora-Italic.ttf'  'https://github.com/google/fonts/raw/main/ofl/lora/Lora-Italic%5Bwght%5D.ttf' \
- && wget -q -O 'Merriweather.ttf' 'https://github.com/google/fonts/raw/main/ofl/merriweather/Merriweather%5Bopsz%2Cwdth%2Cwght%5D.ttf' \
- && wget -q -O 'Merriweather-Italic.ttf' 'https://github.com/google/fonts/raw/main/ofl/merriweather/Merriweather-Italic%5Bopsz%2Cwdth%2Cwght%5D.ttf' \
- && for f in *.ttf; do test -s "$f" || (echo "Missing $f"; exit 1); done \
- && fc-cache -f
+# Límites propios de la app (el resto de php.ini viene de la base).
+RUN printf 'memory_limit = %s\nupload_max_filesize = %s\npost_max_size = %s\n' \
+        "$PHP_MEMORY_LIMIT" "$PHP_UPLOAD_MAX" "$PHP_UPLOAD_MAX" \
+        > /usr/local/etc/php/conf.d/90-app.ini \
+    && printf '[www]\npm.max_children = %s\n' "$PHP_FPM_MAX_CHILDREN" \
+        > /usr/local/etc/php-fpm.d/90-app.conf
 
-# phpredis: imprescindible en runtime (cache/queue/session). Sin pcov.
-ENV PHPREDIS_VERSION=6.2.0
-RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
- && curl -fsSL "https://github.com/phpredis/phpredis/archive/refs/tags/${PHPREDIS_VERSION}.tar.gz" | tar -xz -C /tmp \
- && cd /tmp/phpredis-${PHPREDIS_VERSION} \
- && phpize && ./configure --enable-redis && make -j"$(nproc)" && make install \
- && docker-php-ext-enable redis \
- && rm -rf /tmp/phpredis-${PHPREDIS_VERSION} \
- && apk del .build-deps
+# El código es de root y solo lectura para la app; storage/ y bootstrap/cache
+# son de www-data (en k8s se montan como emptyDir).
+COPY --from=vendor --chown=root:root /build /var/www/html
+RUN mkdir -p storage/app/public storage/framework/cache/data storage/framework/sessions \
+             storage/framework/views storage/framework/testing storage/logs bootstrap/cache \
+    && chown -R www-data:www-data storage bootstrap/cache
 
-# PHP de producción.
-RUN { \
-        echo 'expose_php=Off'; \
-        echo 'memory_limit=512M'; \
-        echo 'post_max_size=20M'; \
-        echo 'upload_max_filesize=20M'; \
-        echo 'max_execution_time=60'; \
-        echo 'opcache.enable=1'; \
-        echo 'opcache.enable_cli=0'; \
-        echo 'opcache.memory_consumption=192'; \
-        echo 'opcache.interned_strings_buffer=16'; \
-        echo 'opcache.max_accelerated_files=20000'; \
-        echo 'opcache.validate_timestamps=0'; \
-        echo 'opcache.preload_user=www-data'; \
-    } > /usr/local/etc/php/conf.d/zz-prod.ini
+ENV APP_NAME=${MAYA_APP}
 
-WORKDIR /var/www/html
+USER 82:82
 
-# Código + vendor/ ya resuelto desde la stage anterior. www-data:www-data es el
-# usuario por defecto de php-fpm en la imagen oficial.
-COPY --from=composer-deps --chown=www-data:www-data /build /var/www/html
+# Validación en build: la app tiene que poder generar sus cachés con un entorno
+# mínimo ficticio (sin base de datos). Si una config lanza excepción o hay rutas
+# con closures, falla aquí y no en el arranque del pod.
+# hadolint ignore=DL4006
+# (la base maya/php-base define SHELL bash con pipefail; hadolint no lo ve)
+RUN set -eu; \
+    APP_KEY="base64:$(head -c 32 /dev/urandom | base64)"; \
+    export APP_KEY APP_ENV=production APP_DEBUG=false LOG_CHANNEL=stderr \
+           DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PASSWORD=build \
+           CACHE_STORE=array SESSION_DRIVER=array QUEUE_CONNECTION=sync \
+           BROADCAST_CONNECTION=log JWT_AUDIENCE=build \
+           RABBITMQ_USER=build RABBITMQ_PASSWORD=build \
+           LOG_MGMT_DB_PASSWORD=build; \
+    php artisan package:discover --no-interaction; \
+    php artisan config:cache     --no-interaction; \
+    php artisan route:cache      --no-interaction; \
+    php artisan event:cache      --no-interaction; \
+    if [ -d resources/views ]; then php artisan view:cache --no-interaction; fi; \
+    php artisan optimize:clear   --no-interaction; \
+    rm -f bootstrap/cache/*.php
 
-# storage/ y bootstrap/cache se montarán normalmente como emptyDir en K8s con
-# securityContext readOnlyRootFilesystem=true. Aquí garantizamos que existen
-# como árbol mínimo para que la imagen funcione fuera de K8s.
-RUN mkdir -p storage/framework/cache/data \
-             storage/framework/sessions \
-             storage/framework/views \
-             storage/logs \
-             storage/app/media \
-             bootstrap/cache \
- && chown -R www-data:www-data storage bootstrap/cache \
- && chmod -R ug+rwX storage bootstrap/cache
+# ─── 3. Imágenes finales ─────────────────────────────────────────────────────
+FROM app AS worker
+ARG MAYA_WORKER_CMD
+LABEL org.opencontainers.image.title="${MAYA_APP}-worker"
+ENV CONTAINER_ROLE=worker \
+    MAYA_WORKER_CMD=${MAYA_WORKER_CMD}
+CMD ["worker"]
 
-COPY --chown=www-data:www-data docker-entrypoint.prod.sh /usr/local/bin/docker-entrypoint.prod.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.prod.sh
+FROM app AS reverb
+LABEL org.opencontainers.image.title="${MAYA_APP}-reverb"
+ENV CONTAINER_ROLE=reverb
+CMD ["reverb"]
 
-# php-fpm escucha en 9000 (api); reverb en 8080; el healthcheck del rol api
-# usa /api/v1/health/live vía nginx-sidecar o port-forward.
-EXPOSE 9000 8080
-
-USER www-data
-
-ENTRYPOINT ["tini", "--", "/usr/local/bin/docker-entrypoint.prod.sh"]
-CMD ["php-fpm", "--nodaemonize"]
+FROM app AS api
+# Último target: es el que genera `docker build` sin --target.
+LABEL org.opencontainers.image.title="${MAYA_APP}-api"
+ENV CONTAINER_ROLE=api
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+    CMD ["curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:8080/api/v1/health/live"]
+CMD ["api"]
