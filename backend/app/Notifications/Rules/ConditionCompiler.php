@@ -109,26 +109,26 @@ final class ConditionCompiler
     private function applyItem(Builder $query, ConditionItem $item, string $boolean): Builder
     {
         $field = $this->validateField($item->field);
-        $op    = $item->op;
+        $op = $item->op;
 
         return match (true) {
-            $op === 'eq'            => $query->where($field, '=', $item->value, $boolean),
-            $op === 'ne'            => $query->where($field, '!=', $item->value, $boolean),
-            $op === 'gt'            => $query->where($field, '>', $item->value, $boolean),
-            $op === 'lt'            => $query->where($field, '<', $item->value, $boolean),
-            $op === 'gte'           => $query->where($field, '>=', $item->value, $boolean),
-            $op === 'lte'           => $query->where($field, '<=', $item->value, $boolean),
-            $op === 'contains'      => $query->where($field, 'ilike', '%'.$item->value.'%', $boolean),
-            $op === 'starts_with'   => $query->where($field, 'ilike', $item->value.'%', $boolean),
-            $op === 'ends_with'     => $query->where($field, 'ilike', '%'.$item->value, $boolean),
-            $op === 'in'            => $query->whereIn($field, (array) $item->value, $boolean),
-            $op === 'not_in'        => $query->whereNotIn($field, (array) $item->value, $boolean),
-            $op === 'is_null'       => $query->whereNull($field, $boolean),
-            $op === 'is_not_null'   => $query->whereNotNull($field, $boolean),
+            $op === 'eq' => $query->where($field, '=', $item->value, $boolean),
+            $op === 'ne' => $query->where($field, '!=', $item->value, $boolean),
+            $op === 'gt' => $query->where($field, '>', $item->value, $boolean),
+            $op === 'lt' => $query->where($field, '<', $item->value, $boolean),
+            $op === 'gte' => $query->where($field, '>=', $item->value, $boolean),
+            $op === 'lte' => $query->where($field, '<=', $item->value, $boolean),
+            $op === 'contains' => $query->where($field, 'ilike', '%'.$item->value.'%', $boolean),
+            $op === 'starts_with' => $query->where($field, 'ilike', $item->value.'%', $boolean),
+            $op === 'ends_with' => $query->where($field, 'ilike', '%'.$item->value, $boolean),
+            $op === 'in' => $query->whereIn($field, (array) $item->value, $boolean),
+            $op === 'not_in' => $query->whereNotIn($field, (array) $item->value, $boolean),
+            $op === 'is_null' => $query->whereNull($field, $boolean),
+            $op === 'is_not_null' => $query->whereNotNull($field, $boolean),
             $op === 'older_than_days' => $query->where(
                 $field, '<=', Carbon::now()->subDays((int) $item->value)->toDateTimeString(), $boolean
             ),
-            $op === 'within_days'   => $query->where(
+            $op === 'within_days' => $query->where(
                 $field, '>=', Carbon::now()->subDays((int) $item->value)->toDateTimeString(), $boolean
             ),
             default => $query,

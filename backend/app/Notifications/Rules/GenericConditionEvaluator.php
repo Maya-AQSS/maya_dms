@@ -59,8 +59,8 @@ final class GenericConditionEvaluator implements ScheduledNotificationRule
             return 0;
         }
 
-        $maxRows        = max(1, (int) ($params['max_rows'] ?? self::DEFAULT_MAX_ROWS));
-        $recipientCol   = isset($params['recipient_column']) ? (string) $params['recipient_column'] : null;
+        $maxRows = max(1, (int) ($params['max_rows'] ?? self::DEFAULT_MAX_ROWS));
+        $recipientCol = isset($params['recipient_column']) ? (string) $params['recipient_column'] : null;
 
         $rows = $query->limit($maxRows)->get();
 

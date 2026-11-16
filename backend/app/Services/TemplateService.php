@@ -1253,8 +1253,7 @@ class TemplateService implements TemplateServiceInterface
         mixed $deliveryDeadline,
         mixed $visibilityLevel,
         mixed $documentDeliveryDeadline,
-    ): void
-    {
+    ): void {
         if (trim($name) === '') {
             throw ValidationException::withMessages([
                 'name' => [__('validation.template.name_required')],
