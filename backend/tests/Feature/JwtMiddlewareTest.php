@@ -243,6 +243,8 @@ class JwtMiddlewareTest extends TestCase
             ->canOnlyBeUsedAfter($now->modify('-2 hours'))
             ->expiresAt($exp)
             ->relatedTo('user-test-uuid')
+            // Token de acceso de Keycloak: el middleware exige typ=Bearer.
+            ->withClaim('typ', 'Bearer')
             ->withClaim('email', 'test@example.com')
             ->withHeader('kid', $kid)
             ->getToken(new Sha256, InMemory::plainText($privatePem))
