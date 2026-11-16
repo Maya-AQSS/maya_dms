@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DTOs\Templates\SyncUsersDto;
-use App\Models\Template;
 use App\Repositories\Contracts\ResolvedPermissionReaderInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use Illuminate\Validation\ValidationException;

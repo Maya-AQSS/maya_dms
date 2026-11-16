@@ -55,6 +55,9 @@ trait BuildsTestJwt
             ->canOnlyBeUsedAfter($now->modify('-2 hours'))
             ->expiresAt($now->modify('+1 hour'))
             ->relatedTo($sub)
+            // Token de acceso de Keycloak: el JwtMiddleware de shared-auth-laravel
+            // rechaza los que no traen typ=Bearer (ID, Refresh...).
+            ->withClaim('typ', 'Bearer')
             ->withClaim('email', 'test@example.com');
 
         if ($realmRoles !== []) {

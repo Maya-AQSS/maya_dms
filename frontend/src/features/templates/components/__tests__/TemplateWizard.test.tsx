@@ -8,6 +8,7 @@ import {
   updateTemplate,
   syncTemplateValidators,
   submitTemplateForReview,
+  publishTemplate,
 } from '../../../../api/templates';
 import { fetchBlocks } from '../../../../api/blocks';
 import { fetchMe } from '../../../../api/users';
@@ -179,6 +180,9 @@ describe('TemplateWizard Integration', () => {
     (submitTemplateForReview as any).mockResolvedValue(
       fullTemplate({ status: 'published' }),
     );
+    (publishTemplate as any).mockResolvedValue(
+      fullTemplate({ status: 'published' }),
+    );
   });
 
   const renderWizard = async (props = {}) => {
@@ -265,7 +269,14 @@ describe('TemplateWizard Integration', () => {
     }, { timeout: 10000 });
 
     // Step 4: Summary -> Finish (esperar a que la bandeja de bloques del resumen cargue; sin esto
-    // «Publicar plantilla» sigue disabled por blocksLoading/blocksCount y el clic no navega)
+    // «Publicar plantilla» sigue disabled por blocksLoading/blocksCount y el clic no navega).
+    // Primero, el recuento del propio resumen: al entrar, el botón aún lleva el
+    // blocksLoading/blocksCount del paso 2 (habilitado) hasta que el efecto del
+    // resumen lo pone a cargando; comprobar solo `disabled` dejaba que el clic cayera
+    // en ese hueco y se perdiera (fallo intermitente).
+    await waitFor(() => {
+      expect(screen.getByText('Plantilla — 1 bloque')).toBeTruthy();
+    }, { timeout: 10000 });
     await waitFor(() => {
       const publishBtn = screen.getByRole('button', { name: /Publicar plantilla/ }) as HTMLButtonElement;
       expect(publishBtn.disabled).toBe(false);
@@ -283,8 +294,11 @@ describe('TemplateWizard Integration', () => {
     // disparador «Publicar plantilla» que sigue en el DOM tras él.
     fireEvent.click(screen.getByRole('button', { name: 'Publicar' }));
 
+    // Sin validadores, «Publicar plantilla» publica directamente
+    // (POST /templates/{id}/publish), no envía a validación.
     await waitFor(() => {
-      expect(submitTemplateForReview).toHaveBeenCalledWith('t123', 'Primera publicación con changelog.');
+      expect(publishTemplate).toHaveBeenCalledWith('t123', 'Primera publicación con changelog.');
+      expect(submitTemplateForReview).not.toHaveBeenCalled();
       expect(mockNavigate).toHaveBeenCalledWith('/processes/proc-test-1', {
         replace: false,
         state: undefined,

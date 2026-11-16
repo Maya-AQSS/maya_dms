@@ -12,15 +12,14 @@ use App\DTOs\Documents\CreateDocumentSnapshotDto;
 use App\DTOs\Documents\CreationOptionDto;
 use App\DTOs\Documents\DeleteDocumentBlockDto;
 use App\DTOs\Documents\DocumentDto;
-use App\DTOs\Documents\DocumentAcademicListFilter;
 use App\DTOs\Documents\DocumentFilterDto;
-use App\DTOs\Users\JwtProfileDto;
 use App\DTOs\Documents\DocumentMigrationPayloadDto;
 use App\DTOs\Documents\DocumentReviewDto;
 use App\DTOs\Documents\DocumentShareResultDto;
 use App\DTOs\Documents\ReviewerPoolDto;
 use App\DTOs\Documents\TemplateVersionStatusDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
+use App\DTOs\Users\JwtProfileDto;
 use App\DTOs\Versioning\DocumentVersionDetailDto;
 use App\DTOs\Versioning\DocumentVersionDto;
 use App\DTOs\Versioning\DocumentVersionSummaryDto;
@@ -44,13 +43,13 @@ use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Services\Concerns\NotifiesOwner;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
-use App\Services\Contracts\UserProfileServiceInterface;
 use App\Support\AcademicScopeContext;
 use App\Support\AcademicScopeNormalizer;
 use App\Support\CloneDeadlinePolicy;
 use App\Support\DocumentAcademicListFilterResolver;
 use App\Support\DocumentReviewModeResolver;
 use App\Support\ReviewValidationNotificationRecipients;
+use App\Support\TemplateHeadSnapshot;
 use App\Support\VersionSubmissionChangelog;
 use App\Support\VersionSubmissionCycles;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -867,7 +866,7 @@ class DocumentService implements DocumentServiceInterface
             $raw = $template->document_delivery_deadline;
         }
 
-        $normalized = \App\Support\TemplateHeadSnapshot::normalizeDeadlineForSnapshot($raw);
+        $normalized = TemplateHeadSnapshot::normalizeDeadlineForSnapshot($raw);
         if ($normalized === null || trim($normalized) === '') {
             throw ValidationException::withMessages([
                 'template_id' => [__('validation.template.document_deadline_required')],
@@ -881,7 +880,7 @@ class DocumentService implements DocumentServiceInterface
             $template = $this->templateRepository->findOrFail($templateId);
             $templateValidationRaw = $template->delivery_deadline;
         }
-        $templateValidationAt = \App\Support\TemplateHeadSnapshot::normalizeDeadlineForSnapshot($templateValidationRaw);
+        $templateValidationAt = TemplateHeadSnapshot::normalizeDeadlineForSnapshot($templateValidationRaw);
         if ($templateValidationAt !== null && $normalized < $templateValidationAt) {
             throw ValidationException::withMessages([
                 'template_id' => [__('validation.template.document_deadline_before_template')],

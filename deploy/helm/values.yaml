@@ -5,6 +5,8 @@
 # (REDIS_PASSWORD = SESSION_PASS de secret/data/redis; FDW_*_PASSWORD = contraseña
 # del rol lector maya_fdw_reader). image.tag lo fija helmfile (misma versión que el chart).
 # Hosts: dms.ceedcv (SPA) y api.dms.ceedcv (API y WebSocket en /app).
+# MAYA_APPS_VIEWS_PASSWORD (D17): contraseña del rol maya_apps_views, que crea las vistas de
+# maya_apps; solo la recibe el Job views.
 
 image:
   registry: 10.224.237.240:5000
@@ -24,6 +26,7 @@ vault:
   - FDW_USER_PERMISSIONS_PASSWORD
   - FDW_NOTIFICATION_RULES_PASSWORD
   - FDW_PERMISSIONS_PASSWORD
+  - MAYA_APPS_VIEWS_PASSWORD
 config:
   APP_NAME: Maya DMS
   APP_URL: https://api.dms.ceedcv
@@ -164,3 +167,8 @@ worker:
     limits:
       cpu: '1'
       memory: 768Mi
+# D17: vistas de lectura de la app en el esquema maya_apps de maya_erp (php artisan maya:views: las
+# comunes de maya_platform y las de database/views), Job previo a migrate con el rol maya_apps_views.
+# Con maya-common < 0.3.0 esta clave no hace nada.
+views:
+  enabled: true

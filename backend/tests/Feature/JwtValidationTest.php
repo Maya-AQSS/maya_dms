@@ -228,6 +228,8 @@ class JwtValidationTest extends TestCase
             ->canOnlyBeUsedAfter($now->modify('-2 hours'))
             ->expiresAt($exp)
             ->relatedTo($userId)
+            // Token de acceso de Keycloak: el middleware exige typ=Bearer.
+            ->withClaim('typ', 'Bearer')
             ->withClaim('email', 'test@example.com')
             ->withClaim('name', 'Test User')
             ->withHeader('kid', $kid);

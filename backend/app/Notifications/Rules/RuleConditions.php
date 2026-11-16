@@ -18,7 +18,7 @@ final readonly class RuleConditions
     ) {}
 
     /**
-     * @param array<string, mixed>|null $raw
+     * @param  array<string, mixed>|null  $raw
      */
     public static function fromArray(?array $raw): ?self
     {

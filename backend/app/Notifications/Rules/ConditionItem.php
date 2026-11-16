@@ -22,7 +22,7 @@ final readonly class ConditionItem
     {
         $table = trim((string) ($raw['table'] ?? ''));
         $field = trim((string) ($raw['field'] ?? ''));
-        $op    = (string) ($raw['op'] ?? '');
+        $op = (string) ($raw['op'] ?? '');
 
         if ($table === '' || $field === '' || ! in_array($op, ConditionOperators::ALL, true)) {
             return null;

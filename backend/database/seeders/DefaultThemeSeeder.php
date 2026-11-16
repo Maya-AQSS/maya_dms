@@ -29,7 +29,22 @@ class DefaultThemeSeeder extends Seeder
     /** UUID fijo del theme de sistema — determinista para referencias y reseed. */
     public const DEFAULT_THEME_ID = '00000000-0000-4000-8000-000000000001';
 
+    /**
+     * Autor del theme de sistema cuando no hay usuarios de desarrollo (producción y tests):
+     * un UUID estable que no es de nadie, así que solo lo edita quien tenga `theme.update`.
+     */
+    public const SYSTEM_AUTHOR_ID = self::DEFAULT_THEME_ID;
+
     public function run(): void
+    {
+        $this->seedTheme($this->systemAuthorId());
+    }
+
+    /**
+     * Crea el theme de sistema con `$authorId` como autor si aún no existe.
+     * ProductionSeeder lo llama con {@see self::SYSTEM_AUTHOR_ID}.
+     */
+    public function seedTheme(string $authorId): void
     {
         if (! Schema::hasTable('themes')) {
             return;
@@ -50,7 +65,7 @@ class DefaultThemeSeeder extends Seeder
                 .'administradores, pero permanente: no se puede eliminar.',
             'status' => 'published',
             'is_system' => true,
-            'created_by' => $this->systemAuthorId(),
+            'created_by' => $authorId,
             'team_id' => null,
             'palette' => $default['palette'],
             'typography' => $default['typography'],
@@ -78,6 +93,6 @@ class DefaultThemeSeeder extends Seeder
             }
         }
 
-        return self::DEFAULT_THEME_ID;
+        return self::SYSTEM_AUTHOR_ID;
     }
 }

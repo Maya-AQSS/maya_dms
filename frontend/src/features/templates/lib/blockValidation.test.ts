@@ -24,8 +24,10 @@ describe('hasMeaningfulTiptapNode', () => {
     ).toBe(false);
   });
 
-  // Fix histórico description-flatten: iframe/alert cuentan como contenido.
-  it.each(['image', 'table', 'bulletList', 'orderedList', 'iframe', 'alert'])(
+  // Fix histórico description-flatten: alert cuenta como contenido. `iframe` salió
+  // de la lista en db4cb7bc: el editor (@ceedcv-maya/shared-editor-react) ya no
+  // tiene nodo iframe, así que el contenido Tiptap no puede traerlo.
+  it.each(['image', 'table', 'bulletList', 'orderedList', 'alert'])(
     'un nodo %s cuenta como contenido aunque no tenga texto',
     (type) => {
       expect(hasMeaningfulTiptapNode({ type })).toBe(true);
