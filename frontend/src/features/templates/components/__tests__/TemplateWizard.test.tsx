@@ -8,6 +8,7 @@ import {
   updateTemplate,
   syncTemplateValidators,
   submitTemplateForReview,
+  publishTemplate,
 } from '../../../../api/templates';
 import { fetchBlocks } from '../../../../api/blocks';
 import { fetchMe } from '../../../../api/users';
@@ -179,6 +180,9 @@ describe('TemplateWizard Integration', () => {
     (submitTemplateForReview as any).mockResolvedValue(
       fullTemplate({ status: 'published' }),
     );
+    (publishTemplate as any).mockResolvedValue(
+      fullTemplate({ status: 'published' }),
+    );
   });
 
   const renderWizard = async (props = {}) => {
@@ -283,8 +287,11 @@ describe('TemplateWizard Integration', () => {
     // disparador «Publicar plantilla» que sigue en el DOM tras él.
     fireEvent.click(screen.getByRole('button', { name: 'Publicar' }));
 
+    // Sin validadores, «Publicar plantilla» publica directamente
+    // (POST /templates/{id}/publish), no envía a validación.
     await waitFor(() => {
-      expect(submitTemplateForReview).toHaveBeenCalledWith('t123', 'Primera publicación con changelog.');
+      expect(publishTemplate).toHaveBeenCalledWith('t123', 'Primera publicación con changelog.');
+      expect(submitTemplateForReview).not.toHaveBeenCalled();
       expect(mockNavigate).toHaveBeenCalledWith('/processes/proc-test-1', {
         replace: false,
         state: undefined,
