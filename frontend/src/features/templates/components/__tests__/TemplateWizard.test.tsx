@@ -269,7 +269,14 @@ describe('TemplateWizard Integration', () => {
     }, { timeout: 10000 });
 
     // Step 4: Summary -> Finish (esperar a que la bandeja de bloques del resumen cargue; sin esto
-    // «Publicar plantilla» sigue disabled por blocksLoading/blocksCount y el clic no navega)
+    // «Publicar plantilla» sigue disabled por blocksLoading/blocksCount y el clic no navega).
+    // Primero, el recuento del propio resumen: al entrar, el botón aún lleva el
+    // blocksLoading/blocksCount del paso 2 (habilitado) hasta que el efecto del
+    // resumen lo pone a cargando; comprobar solo `disabled` dejaba que el clic cayera
+    // en ese hueco y se perdiera (fallo intermitente).
+    await waitFor(() => {
+      expect(screen.getByText('Plantilla — 1 bloque')).toBeTruthy();
+    }, { timeout: 10000 });
     await waitFor(() => {
       const publishBtn = screen.getByRole('button', { name: /Publicar plantilla/ }) as HTMLButtonElement;
       expect(publishBtn.disabled).toBe(false);
